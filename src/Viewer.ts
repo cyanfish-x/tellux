@@ -140,8 +140,58 @@ export interface CesiumIonResourceOptions {
   autoRefreshToken?: boolean
 }
 
+/**
+ * Viewer 事件的基础信息。
+ *
+ * Base information for Viewer events.
+ */
+export interface ViewerEvent {
+  /** 事件类型。Event type. */
+  type: keyof ViewerEventMap
+  /** 触发事件的 Viewer 实例。Viewer instance that emitted the event. */
+  viewer: Viewer
+}
+
+/**
+ * Viewer canvas 上的点击事件。
+ *
+ * Click event on the Viewer canvas.
+ */
+export interface ViewerClickEvent extends ViewerEvent {
+  /** 事件类型。Event type. */
+  type: 'click'
+  /** 原始 DOM 鼠标事件。Original DOM mouse event. */
+  originalEvent: MouseEvent
+  /** 相对于 canvas 左上角的像素坐标。Pixel position relative to the top-left corner of the canvas. */
+  position: {
+    /** 横向像素坐标。Horizontal pixel coordinate. */
+    x: number
+    /** 纵向像素坐标。Vertical pixel coordinate. */
+    y: number
+  }
+}
+
+/**
+ * Viewer 支持的事件映射。
+ *
+ * Event map supported by Viewer.
+ */
+export interface ViewerEventMap {
+  click: ViewerClickEvent
+}
+
+/**
+ * Viewer 事件监听函数。
+ *
+ * Viewer event listener.
+ */
+export type ViewerEventListener<T extends keyof ViewerEventMap> = (event: ViewerEventMap[T]) => void
+
+type AnyViewerEventListener = (event: ViewerEventMap[keyof ViewerEventMap]) => void
+
 const DEG2RAD = Math.PI / 180
 const CAMERA_FRAME = 1
+const DEFAULT_TELLUX_BASE_URL = ''
 const DEFAULT_CAMERA = {
   latitude: 35.6812,
   longitude: 139.8,
@@ -152,6 +202,40 @@ const DEFAULT_CAMERA = {
   fov: 75,
   near: 10,
   far: 1e6
+}
+
+declare global {
+  interface Window {
+    /**
+     * Tellux 静态资源父级目录。
+     *
+     * 设置后，内置云和 STBN 纹理会从该目录加载
+     * `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin` 和 `stbn.bin`。
+     * 留空时使用上游包默认资源地址。
+     *
+     * Parent directory for Tellux static assets.
+     *
+     * When set, built-in cloud and STBN textures are loaded from this directory:
+     * `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, and `stbn.bin`.
+     * Leave it empty to use the upstream package defaults.
+     */
+    TELLUX_BASE_URL?: string
+  }
+}
+
+function getTelluxAssetUrl(defaultUrl: string): string {
+  const baseUrl = (typeof window === 'undefined' ? DEFAULT_TELLUX_BASE_URL : window.TELLUX_BASE_URL ?? DEFAULT_TELLUX_BASE_URL).trim()
+  if (baseUrl.length === 0) return defaultUrl
+
+  const assetName = getUrlFileName(defaultUrl)
+  const separator = baseUrl.endsWith('/') ? '' : '/'
+  return `${baseUrl}${separator}${assetName}`
+}
+
+function getUrlFileName(url: string): string {
+  const path = url.split(/[?#]/, 1)[0]
+  const index = path.lastIndexOf('/')
+  return index >= 0 ? path.slice(index + 1) : path
 }
 
 class TileCreasedNormalsPlugin implements TileModelPlugin {
@@ -567,6 +651,7 @@ export class Viewer {
   private readonly effectAdapters: ThreeEffectPass[] = []
   private readonly loadedTextures: THREE.Texture[] = []
   private readonly rendererSize = new THREE.Vector2()
+  private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly resizeObserver: ResizeObserver
   private readonly texturesGenerator: PrecomputedTexturesGenerator
   private readonly handleWindowResize = () => {
@@ -581,6 +666,18 @@ export class Viewer {
     if (event.property === 'atmosphereOverlay') this.syncCloudAtmosphereComposition()
     if (event.property === 'atmosphereShadow') this.syncCloudAtmosphereComposition()
     if (event.property === 'atmosphereShadowLength') this.syncCloudAtmosphereComposition()
+  }
+  private readonly handleCanvasClick = (originalEvent: MouseEvent) => {
+    const rect = this.renderer.domElement.getBoundingClientRect()
+    this.dispatchEvent('click', {
+      type: 'click',
+      viewer: this,
+      originalEvent,
+      position: {
+        x: originalEvent.clientX - rect.left,
+        y: originalEvent.clientY - rect.top
+      }
+    })
   }
 
   private cloudsEffect: CloudsEffect | null = null
@@ -658,6 +755,7 @@ export class Viewer {
     this.controls.adjustHeight = false
     this.renderer.domElement.addEventListener('pointerdown', this.enableAdjustHeight)
     this.renderer.domElement.addEventListener('wheel', this.enableAdjustHeight)
+    this.renderer.domElement.addEventListener('click', this.handleCanvasClick)
 
     this.initAtmosphere()
     this.initPostProcessing()
@@ -721,6 +819,33 @@ export class Viewer {
   }
 
   /**
+   * 注册 Viewer 事件监听函数。
+   *
+   * Registers a Viewer event listener.
+   */
+  on<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
+    console.log('注册事件')
+    let listeners = this.eventListeners.get(type)
+    if (!listeners) {
+      listeners = new Set()
+      this.eventListeners.set(type, listeners)
+    }
+
+    listeners.add(listener as AnyViewerEventListener)
+    return this
+  }
+
+  /**
+   * 移除 Viewer 事件监听函数。
+   *
+   * Removes a Viewer event listener.
+   */
+  off<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
+    this.eventListeners.get(type)?.delete(listener as AnyViewerEventListener)
+    return this
+  }
+
+  /**
    * 渲染一帧，并返回以秒为单位的帧间隔。
    *
    * 当 {@link Viewer.useDefaultRenderLoop} 为 `false` 时，请手动调用此方法。
@@ -770,8 +895,10 @@ export class Viewer {
     this.resizeObserver.disconnect()
     this.renderer.domElement.removeEventListener('pointerdown', this.enableAdjustHeight)
     this.renderer.domElement.removeEventListener('wheel', this.enableAdjustHeight)
+    this.renderer.domElement.removeEventListener('click', this.handleCanvasClick)
     this.renderer.setEffects(null)
     this.cloudsEffect?.events.removeEventListener('change', this.handleCloudsChange)
+    this.clearEventListeners()
 
     this.effectAdapters.forEach((adapter) => adapter.dispose())
     this.texturesGenerator.dispose({ textures: true })
@@ -796,6 +923,17 @@ export class Viewer {
       toneMappingExposure: options?.toneMappingExposure ?? 10,
       cloudCoverage: options?.cloudCoverage ?? 0.3
     }
+  }
+
+  private dispatchEvent<T extends keyof ViewerEventMap>(type: T, event: ViewerEventMap[T]) {
+    this.eventListeners.get(type)?.forEach((listener) => {
+      listener(event)
+    })
+  }
+
+  private clearEventListeners() {
+    this.eventListeners.forEach((listeners) => listeners.clear())
+    this.eventListeners.clear()
   }
 
   private initAtmosphere() {
@@ -901,20 +1039,20 @@ export class Viewer {
     Object.assign(this.aerialPerspectiveEffect, textures)
     Object.assign(this.cloudsEffect, textures)
 
-    this.loadCloudTexture(DEFAULT_LOCAL_WEATHER_URL, (texture) => {
+    this.loadCloudTexture(getTelluxAssetUrl(DEFAULT_LOCAL_WEATHER_URL), (texture) => {
       if (this.cloudsEffect) this.cloudsEffect.localWeatherTexture = texture
     })
-    this.loadCloudTexture(DEFAULT_TURBULENCE_URL, (texture) => {
+    this.loadCloudTexture(getTelluxAssetUrl(DEFAULT_TURBULENCE_URL), (texture) => {
       if (this.cloudsEffect) this.cloudsEffect.turbulenceTexture = texture
     })
-    this.loadData3DTexture(DEFAULT_SHAPE_URL, CLOUD_SHAPE_TEXTURE_SIZE, (texture) => {
+    this.loadData3DTexture(getTelluxAssetUrl(DEFAULT_SHAPE_URL), CLOUD_SHAPE_TEXTURE_SIZE, (texture) => {
       if (this.cloudsEffect) this.cloudsEffect.shapeTexture = texture
     })
-    this.loadData3DTexture(DEFAULT_SHAPE_DETAIL_URL, CLOUD_SHAPE_DETAIL_TEXTURE_SIZE, (texture) => {
+    this.loadData3DTexture(getTelluxAssetUrl(DEFAULT_SHAPE_DETAIL_URL), CLOUD_SHAPE_DETAIL_TEXTURE_SIZE, (texture) => {
       if (this.cloudsEffect) this.cloudsEffect.shapeDetailTexture = texture
     })
 
-    new STBNLoader().load(DEFAULT_STBN_URL, (texture) => {
+    new STBNLoader().load(getTelluxAssetUrl(DEFAULT_STBN_URL), (texture) => {
       if (this.isDestroyed || !this.cloudsEffect || !this.aerialPerspectiveEffect) {
         texture.dispose()
         return

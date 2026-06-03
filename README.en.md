@@ -52,6 +52,20 @@ new Viewer(container, {
 })
 ```
 
+## Static asset directory
+
+Tellux loads cloud and STBN textures from upstream asset URLs by default. For intranet deployments,
+put `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, and `stbn.bin` in your
+own static directory and set `window.TELLUX_BASE_URL` before creating the Viewer:
+
+```ts
+import { Viewer } from 'tellux'
+
+window.TELLUX_BASE_URL = '/assets/tellux/'
+
+new Viewer(container)
+```
+
 ## API
 
 ```ts

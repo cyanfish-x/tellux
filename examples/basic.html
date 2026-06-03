@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tellux Basic Scene</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar" aria-label="Basic scene controls">
+        <h1>基础场景渲染</h1>
+        <p>创建 Viewer，加载 Cesium Ion 3D Tiles，并启用默认大气、云层和后处理效果。</p>
+        <p id="token-status" class="status" aria-live="polite"></p>
+        <div class="toolbar__row">
+          <button class="button" id="tokyo" type="button">东京</button>
+          <button class="button" id="shanghai" type="button">上海</button>
+          <a class="button" href="./index.html">返回目录</a>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./basic.ts"></script>
+  </body>
+</html>

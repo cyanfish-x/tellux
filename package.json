@@ -23,7 +23,10 @@
   "scripts": {
     "build": "vite build && tsc -p tsconfig.types.json",
     "type-check": "tsc --noEmit",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "dev": "concurrently -k -n build,types \"vite build --watch\" \"tsc -p tsconfig.types.json --watch\"",
+    "examples": "vite examples --host 127.0.0.1 --port 5173 --strictPort",
+    "dev:types": "tsc -p tsconfig.types.json --watch"
   },
   "peerDependencies": {
     "3d-tiles-renderer": "^0.4.27",
@@ -42,6 +45,7 @@
     "@takram/three-geospatial-effects": "0.6.4",
     "@types/node": "^18.18.12",
     "@types/three": "^0.184.1",
+    "concurrently": "^9.2.1",
     "postprocessing": "6.39.1",
     "rimraf": "^6.0.1",
     "three": "^0.184.0",
