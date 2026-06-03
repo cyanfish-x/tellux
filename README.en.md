@@ -1,16 +1,18 @@
 # Tellux
 
-[English](./README.en.md) | 中文
+English | [中文](./README.md)
 
-Tellux 是一个基于 Three.js 的三维地理空间引擎，用 Three.js 构建数字地球、地形、影像与 3D Tiles 场景。
+Tellux is a Three.js-based GIS viewer for Cesium Ion 3D Tiles with globe controls, atmospheric scattering, clouds, lens flare, SMAA, and dithering effects.
 
-## 安装
+The npm package name is `tellux` because npm package names must be lowercase.
+
+## Install
 
 ```bash
 npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphere @takram/three-clouds @takram/three-geospatial @takram/three-geospatial-effects
 ```
 
-## 使用
+## Usage
 
 ```ts
 import { Viewer, CesiumIonResource } from 'tellux'
@@ -29,7 +31,7 @@ const viewer = new Viewer(container, {
 })
 ```
 
-请确保容器具有非零尺寸：
+Make sure the container has a non-zero size:
 
 ```css
 #viewer {
@@ -38,11 +40,11 @@ const viewer = new Viewer(container, {
 }
 ```
 
-## Draco 解码器
+## Draco decoder
 
-Tellux 使用 `DRACOLoader` 加载 glTF tiles。默认情况下，解码器会从 `/draco/gltf/` 加载。
+Tellux uses `DRACOLoader` for glTF tiles. By default it loads decoders from `/draco/gltf/`.
 
-你可以将 `three/examples/jsm/libs/draco/gltf/` 中的解码器文件复制到应用的 public 目录，或传入自定义路径：
+Copy the decoder files from `three/examples/jsm/libs/draco/gltf/` into your app's public directory, or pass a custom path:
 
 ```ts
 new Viewer(container, {

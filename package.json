@@ -8,6 +8,7 @@
   "files": [
     "dist",
     "README.md",
+    "README.en.md",
     "LICENSE"
   ],
   "main": "./dist/index.js",
