@@ -30,36 +30,113 @@ interface ThreeRendererWithEffects extends THREE.WebGLRenderer {
   setEffects: (effects: THREE.Effect[] | null) => void
 }
 
-export interface GISViewerOptions {
+/**
+ * 创建 {@link Viewer} 时使用的配置项。
+ *
+ * Options used to create a {@link Viewer}.
+ */
+export interface ViewerOptions {
+  /**
+   * Cesium Ion 资源和授权配置。
+   *
+   * 不传时，Tellux 会使用默认资源 id `2275207` 和空 token。
+   *
+   * Cesium Ion asset and authorization options.
+   *
+   * When omitted, Tellux uses the default asset id `2275207` with an empty token.
+   */
   imageryProvider?: CesiumIonResourceOptions
+  /**
+   * 初始相机视角。
+   *
+   * 经纬度和姿态角使用度作为单位；高度、near 和 far 使用米作为单位。
+   *
+   * Initial camera view.
+   *
+   * Geographic coordinates and orientation angles are expressed in degrees.
+   * Height, near, and far are expressed in meters.
+   */
   camera?: {
+    /** 初始纬度（度），默认 `35.6812`。Initial latitude in degrees. Defaults to `35.6812`. */
     latitude?: number
+    /** 初始经度（度），默认 `139.8`。Initial longitude in degrees. Defaults to `139.8`. */
     longitude?: number
+    /** 初始相机高度（米），默认 `500`。Initial camera height in meters. Defaults to `500`. */
     height?: number
+    /** 初始航向角（度），默认 `-90`。Initial heading in degrees. Defaults to `-90`. */
     heading?: number
+    /** 初始俯仰角（度），默认 `-10`。Initial pitch in degrees. Defaults to `-10`. */
     pitch?: number
+    /** 初始翻滚角（度），默认 `0`。Initial roll in degrees. Defaults to `0`. */
     roll?: number
+    /** 透视相机垂直视场角（度），默认 `75`。Perspective camera vertical field of view in degrees. Defaults to `75`. */
     fov?: number
+    /** 透视相机近裁剪面（米），默认 `10`。Perspective camera near clipping plane in meters. Defaults to `10`. */
     near?: number
+    /** 透视相机远裁剪面（米），默认 `1000000`。Perspective camera far clipping plane in meters. Defaults to `1000000`. */
     far?: number
   }
+  /**
+   * 初始场景和后处理配置。
+   *
+   * Initial scene and post-processing options.
+   */
   scene?: {
+    /** 是否启用体积云，默认 `true`。Enables volumetric clouds. Defaults to `true`. */
     clouds?: boolean
+    /** 是否启用大气天空和空气透视，默认 `true`。Enables atmospheric sky and aerial perspective. Defaults to `true`. */
     skyAtmosphere?: boolean
+    /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
     lensFlare?: boolean
+    /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */
     smaa?: boolean
+    /** 是否启用抖动后处理，默认 `false`。Enables dithering post-processing. Defaults to `false`. */
     dithering?: boolean
+    /** 渲染器色调映射曝光值，默认 `10`。Renderer tone mapping exposure. Defaults to `10`. */
     toneMappingExposure?: number
+    /** 云覆盖率，范围 `0` 到 `1`，默认 `0.3`。Cloud coverage from `0` to `1`. Defaults to `0.3`. */
     cloudCoverage?: number
   }
+  /**
+   * 为 `true` 时自动启动渲染循环。
+   *
+   * 默认 `true`。接入外部渲染循环时可设为 `false`，并手动调用 {@link Viewer.render}。
+   *
+   * Starts the render loop automatically when `true`.
+   *
+   * Defaults to `true`. Set this to `false` when integrating with an external
+   * render loop and call {@link Viewer.render} yourself.
+   */
   useDefaultRenderLoop?: boolean
+  /**
+   * 渲染器像素比，默认 `Math.min(window.devicePixelRatio, 2)`。
+   *
+   * Renderer pixel ratio. Defaults to `Math.min(window.devicePixelRatio, 2)`.
+   */
   resolutionScale?: number
+  /**
+   * Draco 解码器文件的公开 URL 路径。
+   *
+   * 默认 `/draco/gltf/`。
+   *
+   * Public URL path for Draco decoder files.
+   *
+   * Defaults to `/draco/gltf/`.
+   */
   dracoDecoderPath?: string
 }
 
+/**
+ * Cesium Ion 资源配置，用于 {@link ViewerOptions.imageryProvider}。
+ *
+ * Cesium Ion resource options used by {@link ViewerOptions.imageryProvider}.
+ */
 export interface CesiumIonResourceOptions {
+  /** Cesium Ion 访问令牌。Cesium Ion access token. */
   apiToken: string
+  /** 要加载的 Cesium Ion 资源 id。Cesium Ion asset id to load. */
   assetId: string | number
+  /** 是否自动刷新 Cesium Ion endpoint 授权，默认 `true`。Refreshes Cesium Ion endpoint authorization automatically. Defaults to `true`. */
   autoRefreshToken?: boolean
 }
 
@@ -141,6 +218,11 @@ class EffectPassAdapter implements ThreeEffectPass {
   }
 }
 
+/**
+ * 场景时钟，用于太阳方向和随时间变化的大气光照。
+ *
+ * Scene clock used for sun direction and time-dependent atmosphere lighting.
+ */
 export class Clock {
   private currentHourUTC = 0
   private readonly onChange: () => void
@@ -149,6 +231,11 @@ export class Clock {
     this.onChange = onChange
   }
 
+  /**
+   * 当前 UTC 小时偏移量，用于计算太阳方向。
+   *
+   * Current UTC hour offset used to compute sun direction.
+   */
   get hourUTC() {
     return this.currentHourUTC
   }
@@ -157,17 +244,37 @@ export class Clock {
     this.setHourUTC(value)
   }
 
+  /**
+   * 设置 UTC 小时偏移量，并更新随时间变化的光照。
+   *
+   * Sets the UTC hour offset and updates time-dependent lighting.
+   */
   setHourUTC(value: number) {
     this.currentHourUTC = value
     this.onChange()
   }
 
+  /**
+   * 内部用于太阳方向计算的日期。
+   *
+   * Date used internally for sun direction calculations.
+   */
   get currentTime() {
     return new Date(Date.UTC(2024, 2, 1) + this.currentHourUTC * 3600000)
   }
 }
 
+/**
+ * 创建 Cesium Ion 资源配置的辅助类。
+ *
+ * Helper for creating Cesium Ion resource options.
+ */
 export class CesiumIonResource {
+  /**
+   * 根据 Cesium Ion 资源 id 和 token 配置创建资源选项。
+   *
+   * Creates a resource option object from a Cesium Ion asset id and token options.
+   */
   static fromAssetId(assetId: string | number, options: Omit<CesiumIonResourceOptions, 'assetId'>): CesiumIonResourceOptions {
     return {
       assetId,
@@ -185,6 +292,11 @@ class SceneToggle {
     this.onChange = onChange
   }
 
+  /**
+   * 场景功能是否可见。
+   *
+   * Whether the scene feature is visible.
+   */
   get show() {
     return this.isShown
   }
@@ -205,6 +317,11 @@ class PostProcessStage {
     this.onChange = onChange
   }
 
+  /**
+   * 该后处理阶段是否启用。
+   *
+   * Whether this post-processing stage is enabled.
+   */
   get enabled() {
     return this.isEnabled
   }
@@ -216,28 +333,60 @@ class PostProcessStage {
   }
 }
 
-class GISPostProcessStages {
+class PostProcessStages {
+  /** 镜头光晕后处理阶段。Lens flare post-processing stage. */
   lensFlare: PostProcessStage
+  /** SMAA 抗锯齿后处理阶段。SMAA anti-aliasing post-processing stage. */
   smaa: PostProcessStage
+  /** 抖动后处理阶段。Dithering post-processing stage. */
   dithering: PostProcessStage
 
-  constructor(options: Required<NonNullable<GISViewerOptions['scene']>>, onChange: () => void) {
+  constructor(options: Required<NonNullable<ViewerOptions['scene']>>, onChange: () => void) {
     this.lensFlare = new PostProcessStage(options.lensFlare, onChange)
     this.smaa = new PostProcessStage(options.smaa, onChange)
     this.dithering = new PostProcessStage(options.dithering, onChange)
   }
 }
 
-export class GISScene {
+/**
+ * 场景级控制项和底层 Three.js 场景。
+ *
+ * 通常通过 {@link Viewer.scene} 访问。
+ *
+ * Scene-level controls and the underlying Three.js scene.
+ *
+ * Access this through {@link Viewer.scene}.
+ */
+export class Scene {
+  /**
+   * 底层 Three.js 场景，可用于添加自定义对象。
+   *
+   * Underlying Three.js scene for adding custom objects.
+   */
   readonly threeScene = new THREE.Scene()
+  /**
+   * 云层可见性开关。
+   *
+   * Cloud visibility toggle.
+   */
   clouds: SceneToggle
+  /**
+   * 大气可见性开关。
+   *
+   * Atmosphere visibility toggle.
+   */
   skyAtmosphere: SceneToggle
-  postProcessStages: GISPostProcessStages
+  /**
+   * 后处理阶段控制项。
+   *
+   * Post-processing stage controls.
+   */
+  postProcessStages: PostProcessStages
   private currentCloudCoverage: number
   private readonly getCloudsEffect: () => CloudsEffect | null
 
   constructor(
-    options: Required<NonNullable<GISViewerOptions['scene']>>,
+    options: Required<NonNullable<ViewerOptions['scene']>>,
     getCloudsEffect: () => CloudsEffect | null,
     onEffectsChange: () => void
   ) {
@@ -245,9 +394,14 @@ export class GISScene {
     this.getCloudsEffect = getCloudsEffect
     this.clouds = new SceneToggle(options.clouds, onEffectsChange)
     this.skyAtmosphere = new SceneToggle(options.skyAtmosphere, onEffectsChange)
-    this.postProcessStages = new GISPostProcessStages(options, onEffectsChange)
+    this.postProcessStages = new PostProcessStages(options, onEffectsChange)
   }
 
+  /**
+   * 云覆盖率，范围 `0` 到 `1`。
+   *
+   * Cloud coverage from `0` to `1`.
+   */
   get cloudCoverage() {
     return this.currentCloudCoverage
   }
@@ -259,24 +413,51 @@ export class GISScene {
   }
 }
 
+/**
+ * 相机控制器，提供 Cesium 风格的视角方法。
+ *
+ * Camera controller with Cesium-style view methods.
+ */
 export class Camera {
+  /**
+   * 底层 Three.js 透视相机。
+   *
+   * Underlying Three.js perspective camera.
+   */
   readonly threeCamera: THREE.PerspectiveCamera
 
   constructor(camera: THREE.PerspectiveCamera) {
     this.threeCamera = camera
   }
 
+  /**
+   * 将相机移动到目标位置。
+   *
+   * 当前会立即应用目标视角；`duration` 保留给未来的动画飞行支持。
+   *
+   * Moves the camera to a destination.
+   *
+   * This currently applies the target view immediately; `duration` is reserved
+   * for future animated flight support.
+   */
   flyTo(options: {
     destination: {
+      /** 目标纬度（度）。Destination latitude in degrees. */
       latitude: number
+      /** 目标经度（度）。Destination longitude in degrees. */
       longitude: number
+      /** 目标高度（米），默认使用 viewer 相机高度。Destination height in meters. Defaults to the viewer camera height. */
       height?: number
     }
     orientation?: {
+      /** 航向角（度）。Heading in degrees. */
       heading?: number
+      /** 俯仰角（度）。Pitch in degrees. */
       pitch?: number
+      /** 翻滚角（度）。Roll in degrees. */
       roll?: number
     }
+    /** 保留给未来的动画飞行支持。Reserved for future animated flight support. */
     duration?: number
   }) {
     const { destination, orientation } = options
@@ -290,12 +471,23 @@ export class Camera {
     })
   }
 
+  /**
+   * 立即设置相机视角。
+   *
+   * Sets the camera view immediately.
+   */
   setView(options: {
+    /** 纬度（度）。Latitude in degrees. */
     latitude: number
+    /** 经度（度）。Longitude in degrees. */
     longitude: number
+    /** 高度（米），默认使用 viewer 相机高度。Height in meters. Defaults to the viewer camera height. */
     height?: number
+    /** 航向角（度）。Heading in degrees. */
     heading?: number
+    /** 俯仰角（度）。Pitch in degrees. */
     pitch?: number
+    /** 翻滚角（度）。Roll in degrees. */
     roll?: number
   }) {
     const ellipsoid = (this.threeCamera.userData.tilesRenderer as TilesRenderer | undefined)?.ellipsoid
@@ -315,13 +507,59 @@ export class Camera {
   }
 }
 
-export class GISViewer {
+/**
+ * Tellux 主视图类。
+ *
+ * Viewer 持有渲染器、场景、相机、Cesium 3D Tiles 渲染器、控制器、
+ * 大气、云、后处理效果和渲染循环。
+ *
+ * Main Tellux viewer.
+ *
+ * The viewer owns the renderer, scene, camera, Cesium 3D Tiles renderer,
+ * controls, atmosphere, clouds, post-processing effects, and render loop.
+ */
+export class Viewer {
+  /**
+   * 接收 WebGL canvas 的容器元素。
+   *
+   * Container element that receives the WebGL canvas.
+   */
   readonly container: HTMLElement
-  readonly scene: GISScene
+  /**
+   * 场景控制项和底层 Three.js 场景。
+   *
+   * Scene controls and the underlying Three.js scene.
+   */
+  readonly scene: Scene
+  /**
+   * 带 Cesium 风格视角辅助方法的相机控制项。
+   *
+   * Camera controls with Cesium-style view helpers.
+   */
   readonly camera: Camera
+  /**
+   * 底层 Three.js 渲染器。
+   *
+   * Underlying Three.js renderer.
+   */
   readonly renderer: ThreeRendererWithEffects
+  /**
+   * 用于太阳方向的场景时钟。
+   *
+   * Scene clock used for sun direction.
+   */
   readonly clock: Clock
+  /**
+   * 底层 3D Tiles 渲染器。
+   *
+   * Underlying 3D Tiles renderer.
+   */
   readonly tileset: TilesRenderer
+  /**
+   * 地球交互控制器。
+   *
+   * Globe interaction controls.
+   */
   readonly controls: GlobeControls
 
   private readonly threeCamera: THREE.PerspectiveCamera
@@ -359,7 +597,12 @@ export class GISViewer {
   private currentResolutionScale: number
   private currentToneMappingExposure: number
 
-  constructor(container: HTMLElement, options: GISViewerOptions = {}) {
+  /**
+   * 在非空容器元素内创建 viewer。
+   *
+   * Creates a viewer inside a non-empty container element.
+   */
+  constructor(container: HTMLElement, options: ViewerOptions = {}) {
     this.container = container
     this.currentResolutionScale = options.resolutionScale ?? Math.min(window.devicePixelRatio, 2)
     const sceneOptions = this.resolveSceneOptions(options.scene)
@@ -374,7 +617,7 @@ export class GISViewer {
 
     this.threeCamera = new THREE.PerspectiveCamera(cameraOptions.fov, width / height, cameraOptions.near, cameraOptions.far)
     this.camera = new Camera(this.threeCamera)
-    this.scene = new GISScene(
+    this.scene = new Scene(
       sceneOptions,
       () => this.cloudsEffect,
       () => this.applyPostProcessingEffects()
@@ -434,6 +677,11 @@ export class GISViewer {
     }
   }
 
+  /**
+   * Tellux 是否接管动画循环。
+   *
+   * Whether Tellux owns the animation loop.
+   */
   get useDefaultRenderLoop() {
     return this.isUsingDefaultRenderLoop
   }
@@ -443,6 +691,11 @@ export class GISViewer {
     this.renderer.setAnimationLoop(value ? (time) => this.render(time) : null)
   }
 
+  /**
+   * 渲染器像素比。
+   *
+   * Renderer pixel ratio.
+   */
   get resolutionScale() {
     return this.currentResolutionScale
   }
@@ -453,6 +706,11 @@ export class GISViewer {
     this.resize()
   }
 
+  /**
+   * 渲染器色调映射曝光值。
+   *
+   * Renderer tone mapping exposure.
+   */
   get toneMappingExposure() {
     return this.currentToneMappingExposure
   }
@@ -462,6 +720,15 @@ export class GISViewer {
     this.renderer.toneMappingExposure = value
   }
 
+  /**
+   * 渲染一帧，并返回以秒为单位的帧间隔。
+   *
+   * 当 {@link Viewer.useDefaultRenderLoop} 为 `false` 时，请手动调用此方法。
+   *
+   * Renders one frame and returns the frame delta time in seconds.
+   *
+   * Call this manually when {@link Viewer.useDefaultRenderLoop} is `false`.
+   */
   render(time = performance.now()) {
     const deltaTime = (time - this.previousTime) / 1000
     this.previousTime = time
@@ -473,6 +740,11 @@ export class GISViewer {
     return deltaTime
   }
 
+  /**
+   * 将渲染器和相机尺寸同步到容器尺寸。
+   *
+   * Resizes the renderer and camera to match the container.
+   */
   resize() {
     const { clientWidth, clientHeight } = this.container
     if (!clientWidth || !clientHeight) return
@@ -486,6 +758,11 @@ export class GISViewer {
     this.tileset.setResolutionFromRenderer(this.threeCamera, this.renderer)
   }
 
+  /**
+   * 释放 WebGL 资源、事件监听器、控制器和已加载纹理。
+   *
+   * Releases WebGL resources, event listeners, controls, and loaded textures.
+   */
   destroy() {
     this.isDestroyed = true
     this.useDefaultRenderLoop = false
@@ -509,7 +786,7 @@ export class GISViewer {
     }
   }
 
-  private resolveSceneOptions(options: GISViewerOptions['scene']): Required<NonNullable<GISViewerOptions['scene']>> {
+  private resolveSceneOptions(options: ViewerOptions['scene']): Required<NonNullable<ViewerOptions['scene']>> {
     return {
       clouds: options?.clouds ?? true,
       skyAtmosphere: options?.skyAtmosphere ?? true,
@@ -689,5 +966,3 @@ export class GISViewer {
       })
   }
 }
-
-export class ThreeGIS extends GISViewer {}

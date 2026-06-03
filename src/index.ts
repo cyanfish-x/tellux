@@ -2,9 +2,8 @@ export {
   Camera,
   CesiumIonResource,
   Clock,
-  GISScene,
-  GISViewer,
-  ThreeGIS,
+  Scene,
+  Viewer,
   type CesiumIonResourceOptions,
-  type GISViewerOptions
-} from './GISViewer'
+  type ViewerOptions
+} from './Viewer'

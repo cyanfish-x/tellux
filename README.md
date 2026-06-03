@@ -13,11 +13,11 @@ npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphe
 ## Usage
 
 ```ts
-import { GISViewer, CesiumIonResource } from 'tellux'
+import { Viewer, CesiumIonResource } from 'tellux'
 
 const container = document.querySelector('#viewer') as HTMLElement
 
-const viewer = new GISViewer(container, {
+const viewer = new Viewer(container, {
   imageryProvider: CesiumIonResource.fromAssetId(2275207, {
     apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
   }),
@@ -45,7 +45,7 @@ Tellux uses `DRACOLoader` for glTF tiles. By default it loads decoders from `/dr
 Copy the decoder files from `three/examples/jsm/libs/draco/gltf/` into your app's public directory, or pass a custom path:
 
 ```ts
-new GISViewer(container, {
+new Viewer(container, {
   dracoDecoderPath: '/assets/draco/gltf/'
 })
 ```
