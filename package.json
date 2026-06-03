@@ -1,0 +1,50 @@
+{
+  "name": "tellux",
+  "version": "0.1.0",
+  "description": "A Three.js GIS viewer for Cesium Ion 3D Tiles, atmosphere, clouds, and post-processing effects.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.types.json",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "peerDependencies": {
+    "3d-tiles-renderer": "^0.4.27",
+    "@takram/three-atmosphere": "0.19.1",
+    "@takram/three-clouds": "0.7.6",
+    "@takram/three-geospatial": "0.9.1",
+    "@takram/three-geospatial-effects": "0.6.4",
+    "postprocessing": "6.39.1",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "3d-tiles-renderer": "^0.4.27",
+    "@takram/three-atmosphere": "0.19.1",
+    "@takram/three-clouds": "0.7.6",
+    "@takram/three-geospatial": "0.9.1",
+    "@takram/three-geospatial-effects": "0.6.4",
+    "@types/node": "^18.18.12",
+    "@types/three": "^0.184.1",
+    "postprocessing": "6.39.1",
+    "rimraf": "^6.0.1",
+    "three": "^0.184.0",
+    "typescript": "~5.2.2",
+    "vite": "^5.4.19"
+  }
+}
