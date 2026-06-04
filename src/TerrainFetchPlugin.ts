@@ -18,11 +18,48 @@ const GZIP_ID2 = 0x8b
 export class TerrainFetchPlugin {
   readonly name = 'TELLUX_TERRAIN_FETCH_PLUGIN'
 
+  private readonly inheritedSearchParams: URLSearchParams
+
+  constructor(terrainUrl: string) {
+    this.inheritedSearchParams = new URL(terrainUrl, location.href).searchParams
+  }
+
+  preprocessURL(url: string | URL) {
+    if (!this.hasInheritedSearchParams()) return url
+
+    const requestUrl = new URL(url, location.href)
+    if (!this.isTerrainUrl(requestUrl)) return url
+
+    this.inheritedSearchParams.forEach((value, key) => {
+      if (!requestUrl.searchParams.has(key)) {
+        requestUrl.searchParams.set(key, value)
+      }
+    })
+
+    return requestUrl.toString()
+  }
+
   fetchData(url: string | URL, options?: RequestInit) {
     const requestUrl = String(url)
-    if (!/\.terrain(?:[?#]|$)/i.test(requestUrl)) return null
+    if (!this.isTerrainDataUrl(requestUrl)) return null
 
     return this.fetchTerrainData(url, options)
+  }
+
+  private hasInheritedSearchParams() {
+    return Array.from(this.inheritedSearchParams).length > 0
+  }
+
+  private isTerrainUrl(url: URL) {
+    return this.isLayerUrl(url.pathname) || this.isTerrainDataUrl(url.pathname)
+  }
+
+  private isLayerUrl(url: string) {
+    return /\/layer\.json$/i.test(url)
+  }
+
+  private isTerrainDataUrl(url: string) {
+    return /\.terrain(?:[?#]|$)/i.test(url)
   }
 
   private async fetchTerrainData(url: string | URL, options?: RequestInit) {

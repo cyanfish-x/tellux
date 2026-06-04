@@ -155,6 +155,8 @@ export class Viewer {
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly resizeObserver: ResizeObserver
   private readonly texturesGenerator: PrecomputedTexturesGenerator
+  private readonly sunLight = new THREE.DirectionalLight(0xffffff, 3)
+  private readonly skyLight = new THREE.HemisphereLight(0xffffff, 0x1f2937, 0.8)
   private surfaceTileset: TilesRenderer
   private terrainTileset: TilesRenderer | null = null
   private currentImageryProvider: ImageryProviderOptions | undefined
@@ -239,6 +241,7 @@ export class Viewer {
       () => this.applyPostProcessingEffects()
     )
     this.clock = new Clock(() => this.updateSunDirection())
+    this.scene.threeScene.add(this.sunLight, this.skyLight)
 
     this.renderer = new THREE.WebGLRenderer({ outputBufferType: THREE.HalfFloatType }) as ThreeRendererWithEffects
     this.renderer.setPixelRatio(this.currentResolutionScale)
@@ -258,6 +261,7 @@ export class Viewer {
       this.terrainTileset = this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource)
       this.scene.threeScene.add(this.terrainTileset.group)
     }
+    this.syncSurfaceVisibility()
     this.threeCamera.userData.tilesRenderer = this.tileset
     this.camera.setView(cameraOptions)
 
@@ -452,8 +456,11 @@ export class Viewer {
 
     this.resize()
     this.controls.update()
-    this.surfaceTileset.update()
-    this.terrainTileset?.update()
+    if (this.terrainTileset) {
+      this.terrainTileset.update()
+    } else {
+      this.surfaceTileset.update()
+    }
     this.renderer.render(this.scene.threeScene, this.threeCamera)
     return deltaTime
   }
@@ -560,6 +567,7 @@ export class Viewer {
       this.scene.threeScene.add(this.terrainTileset.group)
     }
     this.controls.setEllipsoid(this.surfaceTileset.ellipsoid, this.surfaceTileset.group)
+    this.syncSurfaceVisibility()
     this.syncActiveTilesetReference()
     this.resizeTilesets()
   }
@@ -575,6 +583,7 @@ export class Viewer {
     if (nextTileset) {
       this.scene.threeScene.add(nextTileset.group)
     }
+    this.syncSurfaceVisibility()
     this.syncActiveTilesetReference()
     this.resizeTilesets()
   }
@@ -586,6 +595,10 @@ export class Viewer {
 
   private syncActiveTilesetReference() {
     this.threeCamera.userData.tilesRenderer = this.tileset
+  }
+
+  private syncSurfaceVisibility() {
+    this.surfaceTileset.group.visible = this.terrainTileset === null
   }
 
   private registerTerrainProvider(tileset: TilesRenderer, terrain: TerrainOptions | undefined) {
@@ -600,7 +613,7 @@ export class Viewer {
     }
 
     tileset.registerPlugin(new QuantizedMeshPlugin(terrainOptions))
-    tileset.registerPlugin(new TerrainFetchPlugin())
+    tileset.registerPlugin(new TerrainFetchPlugin(terrain.url))
   }
 
   private registerImageryProvider(tileset: TilesRenderer, resource: ImageryProviderResourceOptions | undefined, useOverlay: boolean) {
@@ -800,6 +813,7 @@ export class Viewer {
     getSunDirectionECEF(this.clock.currentTime, sunDirection)
     this.aerialPerspectiveEffect.sunDirection.copy(sunDirection)
     this.cloudsEffect.sunDirection.copy(sunDirection)
+    this.sunLight.position.copy(sunDirection).multiplyScalar(10000000)
   }
 
   private async loadAtmosphereTextures() {

@@ -163,6 +163,14 @@ a {
   outline: none;
 }
 
+.field__input[type="range"] {
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  accent-color: #7dd3fc;
+  background: transparent;
+}
+
 .switch {
   display: inline-flex;
   min-height: 28px;

@@ -102,6 +102,10 @@ export class Scene {
    */
   postProcessStages: PostProcessStages
   private currentCloudCoverage: number
+  private currentCloudLayerAltitude: number
+  private currentCloudLayerHeight: number
+  private readonly cloudLayerOffsets = [0, 250]
+  private readonly cloudLayerHeightScales = [1, 1200 / 650]
   private readonly getCloudsEffect: () => CloudsEffect | null
 
   constructor(
@@ -109,8 +113,11 @@ export class Scene {
     getCloudsEffect: () => CloudsEffect | null,
     onEffectsChange: () => void
   ) {
-    this.currentCloudCoverage = options.cloudCoverage
     this.getCloudsEffect = getCloudsEffect
+    this.currentCloudCoverage = options.cloudCoverage
+    const defaultLayer = this.getCloudsEffect()?.cloudLayers[0]
+    this.currentCloudLayerAltitude = defaultLayer?.altitude ?? 750
+    this.currentCloudLayerHeight = defaultLayer?.height ?? 650
     this.clouds = new SceneToggle(options.clouds, onEffectsChange)
     this.skyAtmosphere = new SceneToggle(options.skyAtmosphere, onEffectsChange)
     this.postProcessStages = new PostProcessStages(options, onEffectsChange)
@@ -129,5 +136,46 @@ export class Scene {
     this.currentCloudCoverage = value
     const clouds = this.getCloudsEffect()
     if (clouds) clouds.coverage = value
+  }
+
+  /**
+   * 低云层组云底高度（米）。
+   *
+   * Base altitude of the low cloud layer group in meters.
+   */
+  get cloudLayerAltitude() {
+    return this.currentCloudLayerAltitude
+  }
+
+  set cloudLayerAltitude(value: number) {
+    this.currentCloudLayerAltitude = value
+    this.updateLowCloudLayers()
+  }
+
+  /**
+   * 低云层组厚度（米）。
+   *
+   * Height of the low cloud layer group in meters.
+   */
+  get cloudLayerHeight() {
+    return this.currentCloudLayerHeight
+  }
+
+  set cloudLayerHeight(value: number) {
+    this.currentCloudLayerHeight = value
+    this.updateLowCloudLayers()
+  }
+
+  private updateLowCloudLayers() {
+    const clouds = this.getCloudsEffect()
+    if (!clouds) return
+
+    this.cloudLayerOffsets.forEach((offset, index) => {
+      const layer = clouds.cloudLayers[index]
+      if (!layer) return
+
+      layer.altitude = this.currentCloudLayerAltitude + offset
+      layer.height = this.currentCloudLayerHeight * this.cloudLayerHeightScales[index]
+    })
   }
 }

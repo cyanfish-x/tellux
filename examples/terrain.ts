@@ -1,6 +1,6 @@
 import { createTelluxViewer } from './shared'
 
-const DEFAULT_TERRAIN_URL = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? 'http://localhost/cesium_terrain/sichuan/'
+const DEFAULT_TERRAIN_URL = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ''
 
 const container = document.querySelector('#viewer')
 const terrainUrlInput = document.querySelector<HTMLInputElement>('#terrain-url')
@@ -29,12 +29,7 @@ const viewer = createTelluxViewer(container, {
     clouds: false,
     lensFlare: false,
     toneMappingExposure: 7
-  },
-  terrain: DEFAULT_TERRAIN_URL
-    ? {
-        url: DEFAULT_TERRAIN_URL
-      }
-    : undefined
+  }
 })
 
 terrainUrlInput.value = DEFAULT_TERRAIN_URL
