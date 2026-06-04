@@ -1,11 +1,11 @@
-import { CesiumIonResource, Viewer, type ViewerOptions } from '../src'
+import tellux, { type ViewerOptions } from '../src'
 
 export const cesiumIonToken = import.meta.env.VITE_CESIUM_ION_TOKEN as string | undefined
-window.TELLUX_BASE_URL = '/tellux/'
+tellux.baseUrl = '/tellux/'
 
 export function createTelluxViewer(container: HTMLElement, options: ViewerOptions = {}) {
-  return new Viewer(container, {
-    imageryProvider: CesiumIonResource.fromAssetId(2275207, {
+  return new tellux.Viewer(container, {
+    imageryProvider: tellux.CesiumIonResource.fromAssetId(2275207, {
       apiToken: cesiumIonToken ?? ''
     }),
     dracoDecoderPath: '/node_modules/three/examples/jsm/libs/draco/gltf/',

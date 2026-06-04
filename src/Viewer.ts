@@ -191,7 +191,6 @@ type AnyViewerEventListener = (event: ViewerEventMap[keyof ViewerEventMap]) => v
 
 const DEG2RAD = Math.PI / 180
 const CAMERA_FRAME = 1
-const DEFAULT_TELLUX_BASE_URL = ''
 const DEFAULT_CAMERA = {
   latitude: 35.6812,
   longitude: 139.8,
@@ -204,27 +203,34 @@ const DEFAULT_CAMERA = {
   far: 1e6
 }
 
-declare global {
-  interface Window {
-    /**
-     * Tellux 静态资源父级目录。
-     *
-     * 设置后，内置云和 STBN 纹理会从该目录加载
-     * `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin` 和 `stbn.bin`。
-     * 留空时使用上游包默认资源地址。
-     *
-     * Parent directory for Tellux static assets.
-     *
-     * When set, built-in cloud and STBN textures are loaded from this directory:
-     * `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, and `stbn.bin`.
-     * Leave it empty to use the upstream package defaults.
-     */
-    TELLUX_BASE_URL?: string
-  }
+/**
+ * Tellux 全局配置。
+ *
+ * Global Tellux configuration.
+ */
+export interface TelluxConfig {
+  /**
+   * Tellux 静态资源父级目录。
+   *
+   * 设置后，内置云和 STBN 纹理会从该目录加载
+   * `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin` 和 `stbn.bin`。
+   * 留空时使用上游包默认资源地址。
+   *
+   * Parent directory for Tellux static assets.
+   *
+   * When set, built-in cloud and STBN textures are loaded from this directory:
+   * `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, and `stbn.bin`.
+   * Leave it empty to use the upstream package defaults.
+   */
+  baseUrl: string
+}
+
+export const telluxConfig: TelluxConfig = {
+  baseUrl: ''
 }
 
 function getTelluxAssetUrl(defaultUrl: string): string {
-  const baseUrl = (typeof window === 'undefined' ? DEFAULT_TELLUX_BASE_URL : window.TELLUX_BASE_URL ?? DEFAULT_TELLUX_BASE_URL).trim()
+  const baseUrl = telluxConfig.baseUrl.trim()
   if (baseUrl.length === 0) return defaultUrl
 
   const assetName = getUrlFileName(defaultUrl)

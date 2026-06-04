@@ -15,12 +15,12 @@ npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphe
 ## Usage
 
 ```ts
-import { Viewer, CesiumIonResource } from 'tellux'
+import tellux from 'tellux'
 
 const container = document.querySelector('#viewer') as HTMLElement
 
-const viewer = new Viewer(container, {
-  imageryProvider: CesiumIonResource.fromAssetId(2275207, {
+const viewer = new tellux.Viewer(container, {
+  imageryProvider: tellux.CesiumIonResource.fromAssetId(2275207, {
     apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
   }),
   camera: {
@@ -56,14 +56,14 @@ new Viewer(container, {
 
 Tellux loads cloud and STBN textures from upstream asset URLs by default. For intranet deployments,
 put `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, and `stbn.bin` in your
-own static directory and set `window.TELLUX_BASE_URL` before creating the Viewer:
+own static directory and set `tellux.baseUrl` before creating the Viewer:
 
 ```ts
-import { Viewer } from 'tellux'
+import tellux from 'tellux'
 
-window.TELLUX_BASE_URL = '/assets/tellux/'
+tellux.baseUrl = '/assets/tellux/'
 
-new Viewer(container)
+new tellux.Viewer(container)
 ```
 
 ## API

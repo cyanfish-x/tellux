@@ -13,12 +13,12 @@ npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphe
 ## 使用
 
 ```ts
-import { Viewer, CesiumIonResource } from 'tellux'
+import tellux from 'tellux'
 
 const container = document.querySelector('#viewer') as HTMLElement
 
-const viewer = new Viewer(container, {
-  imageryProvider: CesiumIonResource.fromAssetId(2275207, {
+const viewer = new tellux.Viewer(container, {
+  imageryProvider: tellux.CesiumIonResource.fromAssetId(2275207, {
     apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
   }),
   camera: {
@@ -54,14 +54,14 @@ new Viewer(container, {
 
 Tellux 默认会从上游资源地址加载云和 STBN 纹理。内网部署时，可以把
 `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin` 和 `stbn.bin`
-放到自己的静态目录，并在创建 Viewer 前设置 `window.TELLUX_BASE_URL`：
+放到自己的静态目录，并在创建 Viewer 前设置 `tellux.baseUrl`：
 
 ```ts
-import { Viewer } from 'tellux'
+import tellux from 'tellux'
 
-window.TELLUX_BASE_URL = '/assets/tellux/'
+tellux.baseUrl = '/assets/tellux/'
 
-new Viewer(container)
+new tellux.Viewer(container)
 ```
 
 ## API
