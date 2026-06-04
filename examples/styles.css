@@ -116,6 +116,10 @@ a {
   backdrop-filter: blur(12px);
 }
 
+.toolbar--wide {
+  max-width: min(520px, calc(100vw - 32px));
+}
+
 .toolbar h1 {
   margin: 0;
   font-size: 16px;
@@ -154,6 +158,12 @@ a {
 .button:hover {
   border-color: rgba(125, 211, 252, 0.86);
   background: rgba(51, 65, 85, 0.92);
+}
+
+.button--active {
+  border-color: rgba(125, 211, 252, 0.96);
+  color: #082f49;
+  background: #7dd3fc;
 }
 
 .status {

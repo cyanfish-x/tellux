@@ -11,8 +11,9 @@ export class CesiumIonResource {
    *
    * Creates a resource option object from a Cesium Ion asset id and token options.
    */
-  static fromAssetId(assetId: string | number, options: Omit<CesiumIonResourceOptions, 'assetId'>): CesiumIonResourceOptions {
+  static fromAssetId(assetId: string | number, options: Omit<CesiumIonResourceOptions, 'type' | 'assetId'>): CesiumIonResourceOptions {
     return {
+      type: 'cesium-ion',
       assetId,
       ...options
     }

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tellux Imagery Data Sources</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar toolbar--wide" aria-label="Imagery data source controls">
+        <h1>数据源切换</h1>
+        <p>在同一个 <code>ImageryProvider</code> 入口下切换 Cesium Ion 和 XYZ 模板资源。</p>
+        <p id="source-status" class="status" aria-live="polite"></p>
+        <div class="toolbar__row" id="source-buttons"></div>
+        <a class="button" href="./index.html">返回目录</a>
+      </section>
+    </main>
+    <script type="module" src="./data-sources.ts"></script>
+  </body>
+</html>

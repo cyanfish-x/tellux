@@ -7,15 +7,16 @@ import type { Viewer } from './Viewer'
  */
 export interface ViewerOptions {
   /**
-   * Cesium Ion 资源和授权配置。
+   * 影像资源配置。
    *
-   * 不传时，Tellux 会使用默认资源 id `2275207` 和空 token。
+   * 不传时，Tellux 会使用默认 Cesium Ion 资源 id `2275207` 和空 token。
    *
-   * Cesium Ion asset and authorization options.
+   * Imagery resource options.
    *
-   * When omitted, Tellux uses the default asset id `2275207` with an empty token.
+   * When omitted, Tellux uses the default Cesium Ion asset id `2275207`
+   * with an empty token.
    */
-  imageryProvider?: CesiumIonResourceOptions
+  imageryProvider?: ImageryProviderOptions
   /**
    * 初始相机视角。
    *
@@ -97,17 +98,70 @@ export interface ViewerOptions {
 }
 
 /**
+ * 影像提供器配置，用于 {@link ViewerOptions.imageryProvider}。
+ *
+ * Imagery provider options used by {@link ViewerOptions.imageryProvider}.
+ */
+export interface ImageryProviderOptions {
+  /** 当前使用的影像资源。Active imagery resource. */
+  resource: ImageryProviderResourceOptions
+}
+
+/**
+ * Viewer 支持的影像资源配置。
+ *
+ * Imagery resource options supported by Viewer.
+ */
+export type ImageryProviderResourceOptions = CesiumIonResourceOptions | TemplateUrlResourceOptions
+
+/**
  * Cesium Ion 资源配置，用于 {@link ViewerOptions.imageryProvider}。
  *
  * Cesium Ion resource options used by {@link ViewerOptions.imageryProvider}.
  */
 export interface CesiumIonResourceOptions {
+  /** 资源类型。Resource type. */
+  type: 'cesium-ion'
   /** Cesium Ion 访问令牌。Cesium Ion access token. */
   apiToken: string
   /** 要加载的 Cesium Ion 资源 id。Cesium Ion asset id to load. */
   assetId: string | number
   /** 是否自动刷新 Cesium Ion endpoint 授权，默认 `true`。Refreshes Cesium Ion endpoint authorization automatically. Defaults to `true`. */
   autoRefreshToken?: boolean
+}
+
+/**
+ * 模板 URL 资源配置，用于 {@link ViewerOptions.imageryProvider}。
+ *
+ * Template URL resource options used by {@link ViewerOptions.imageryProvider}.
+ */
+export interface TemplateUrlResourceOptions {
+  /** 资源类型。Resource type. */
+  type: 'template-url'
+  /**
+   * 瓦片 URL 模板，支持 `{x}`、`{y}`、`{z}` 占位符。
+   *
+   * Tile URL template with `{x}`, `{y}`, and `{z}` placeholders.
+   */
+  url: string
+  /**
+   * 瓦片级别数量，默认 `20`。
+   *
+   * Number of tile levels. Defaults to `20`.
+   */
+  levels?: number
+  /**
+   * 瓦片像素尺寸，默认 `256`。
+   *
+   * Tile pixel size. Defaults to `256`.
+   */
+  tileDimension?: number
+  /**
+   * 投影标识，默认 `EPSG:3857`。
+   *
+   * Projection identifier. Defaults to `EPSG:3857`.
+   */
+  projection?: 'EPSG:3857' | 'EPSG:4326' | string
 }
 
 /**

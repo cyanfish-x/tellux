@@ -1,20 +1,20 @@
 import tellux, { type ViewerOptions } from '../src'
 
-export const cesiumIonToken = import.meta.env.VITE_CESIUM_ION_TOKEN as string | undefined
 tellux.baseUrl = '/tellux/'
+
+export const arcgisWorldImageryUrl =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 
 export function createTelluxViewer(container: HTMLElement, options: ViewerOptions = {}) {
   return new tellux.Viewer(container, {
-    imageryProvider: tellux.CesiumIonResource.fromAssetId(2275207, {
-      apiToken: cesiumIonToken ?? ''
-    }),
+    imageryProvider: tellux.ImageryProvider.fromResource(tellux.TemplateUrlResource.fromUrl(arcgisWorldImageryUrl)),
     dracoDecoderPath: '/node_modules/three/examples/jsm/libs/draco/gltf/',
     ...options
   })
 }
 
 export function showTokenNotice(element: HTMLElement | null) {
-  if (!element || cesiumIonToken) return
+  if (!element) return
 
-  element.textContent = '未检测到 VITE_CESIUM_ION_TOKEN，Cesium Ion 资源可能无法加载。'
+  element.textContent = '当前示例使用 TemplateUrlResource 加载 ArcGIS World Imagery。'
 }

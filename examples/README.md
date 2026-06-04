@@ -6,10 +6,15 @@
 作为开发服务器的静态资源根目录，示例会通过 `tellux.baseUrl = '/tellux/'`
 加载本地的云和 STBN 纹理。
 
+示例默认使用 `TemplateUrlResource` 加载 ArcGIS World Imagery：
+
+```txt
+https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
+```
+
 ## 运行
 
 ```bash
-$env:VITE_CESIUM_ION_TOKEN="your-token"
 pnpm examples
 ```
 
@@ -19,5 +24,4 @@ pnpm examples
 - `http://127.0.0.1:5173/basic.html`
 - `http://127.0.0.1:5173/fly-to.html`
 - `http://127.0.0.1:5173/click.html`
-
-如果没有设置 `VITE_CESIUM_ION_TOKEN`，页面仍会启动，但 Cesium Ion 资源可能无法加载。
+- `http://127.0.0.1:5173/data-sources.html`

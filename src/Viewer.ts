@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { TilesRenderer, GlobeControls } from '3d-tiles-renderer'
-import { CesiumIonAuthPlugin, GLTFExtensionsPlugin, TilesFadePlugin, UpdateOnChangePlugin } from '3d-tiles-renderer/plugins'
+import { CesiumIonAuthPlugin, GLTFExtensionsPlugin, TilesFadePlugin, UpdateOnChangePlugin, XYZTilesPlugin } from '3d-tiles-renderer/plugins'
 import { EffectPass, NormalPass, SMAAEffect } from 'postprocessing'
 import {
   CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
@@ -28,6 +28,7 @@ import { TileCreasedNormalsPlugin } from './TileCreasedNormalsPlugin'
 import type {
   AnyViewerEventListener,
   CartographicCoordinates,
+  ImageryProviderResourceOptions,
   ScreenPosition,
   ViewerEventListener,
   ViewerEventMap,
@@ -37,7 +38,9 @@ import type {
 export { Camera } from './Camera'
 export { CesiumIonResource } from './CesiumIonResource'
 export { Clock } from './Clock'
+export { ImageryProvider } from './ImageryProvider'
 export { Scene } from './Scene'
+export { TemplateUrlResource } from './TemplateUrlResource'
 export { telluxConfig, type TelluxConfig } from './config'
 export type {
   CameraFlyToDestination,
@@ -49,7 +52,10 @@ export type {
 export type {
   CartographicCoordinates,
   CesiumIonResourceOptions,
+  ImageryProviderOptions,
+  ImageryProviderResourceOptions,
   ScreenPosition,
+  TemplateUrlResourceOptions,
   ViewerClickEvent,
   ViewerEvent,
   ViewerEventListener,
@@ -104,7 +110,9 @@ export class Viewer {
    *
    * Underlying 3D Tiles renderer.
    */
-  readonly tileset: TilesRenderer
+  get tileset() {
+    return this.currentTileset
+  }
   /**
    * 地球交互控制器。
    *
@@ -126,6 +134,7 @@ export class Viewer {
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly resizeObserver: ResizeObserver
   private readonly texturesGenerator: PrecomputedTexturesGenerator
+  private currentTileset: TilesRenderer
   private readonly handleWindowResize = () => {
     this.resize()
   }
@@ -209,20 +218,7 @@ export class Viewer {
     this.dracoLoader = new DRACOLoader()
     this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
 
-    this.tileset = new TilesRenderer()
-    this.tileset.registerPlugin(
-      new CesiumIonAuthPlugin({
-        apiToken: options.imageryProvider?.apiToken ?? '',
-        assetId: String(options.imageryProvider?.assetId ?? '2275207'),
-        autoRefreshToken: options.imageryProvider?.autoRefreshToken ?? true
-      })
-    )
-    this.tileset.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: this.dracoLoader }))
-    this.tileset.registerPlugin(new TileCreasedNormalsPlugin())
-    this.tileset.registerPlugin(new TilesFadePlugin())
-    this.tileset.registerPlugin(new UpdateOnChangePlugin())
-    this.tileset.setCamera(this.threeCamera)
-    this.tileset.setResolutionFromRenderer(this.threeCamera, this.renderer)
+    this.currentTileset = this.createTileset(options.imageryProvider?.resource)
     this.scene.threeScene.add(this.tileset.group)
     this.threeCamera.userData.tilesRenderer = this.tileset
     this.camera.setView(cameraOptions)
@@ -336,6 +332,25 @@ export class Viewer {
    */
   flyTo(options: CameraFlyToOptions) {
     this.camera.flyTo(options)
+    return this
+  }
+
+  /**
+   * 运行时切换影像数据源，并保留当前 Viewer、相机、控制器和渲染器状态。
+   *
+   * Switches the imagery data source at runtime while preserving the current
+   * Viewer, camera, controls, and renderer state.
+   */
+  setImageryProvider(imageryProvider: NonNullable<ViewerOptions['imageryProvider']>) {
+    const previousTileset = this.currentTileset
+    const nextTileset = this.createTileset(imageryProvider.resource)
+
+    previousTileset.dispose()
+    this.currentTileset = nextTileset
+    this.scene.threeScene.add(nextTileset.group)
+    this.threeCamera.userData.tilesRenderer = nextTileset
+    this.controls.setEllipsoid(nextTileset.ellipsoid, nextTileset.group)
+    this.resize()
     return this
   }
 
@@ -456,6 +471,45 @@ export class Viewer {
       dithering: options?.dithering ?? false,
       toneMappingExposure: options?.toneMappingExposure ?? 10,
       cloudCoverage: options?.cloudCoverage ?? 0.3
+    }
+  }
+
+  private createTileset(resource: ImageryProviderResourceOptions | undefined) {
+    const tileset = new TilesRenderer()
+    this.registerImageryProvider(tileset, resource)
+    tileset.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: this.dracoLoader, autoDispose: false }))
+    tileset.registerPlugin(new TileCreasedNormalsPlugin())
+    tileset.registerPlugin(new TilesFadePlugin())
+    tileset.registerPlugin(new UpdateOnChangePlugin())
+    tileset.setCamera(this.threeCamera)
+    tileset.setResolutionFromRenderer(this.threeCamera, this.renderer)
+    return tileset
+  }
+
+  private registerImageryProvider(tileset: TilesRenderer, resource: ImageryProviderResourceOptions | undefined) {
+    const resolvedResource = resource ?? CesiumIonResource.fromAssetId(2275207, { apiToken: '' })
+
+    switch (resolvedResource.type) {
+      case 'template-url': {
+        const xyzOptions: ConstructorParameters<typeof XYZTilesPlugin>[0] & { projection?: string } = {
+          url: resolvedResource.url,
+          levels: resolvedResource.levels,
+          tileDimension: resolvedResource.tileDimension,
+          projection: resolvedResource.projection,
+          shape: 'ellipsoid'
+        }
+
+        tileset.registerPlugin(new XYZTilesPlugin(xyzOptions))
+        return
+      }
+      case 'cesium-ion':
+        tileset.registerPlugin(
+          new CesiumIonAuthPlugin({
+            apiToken: resolvedResource.apiToken,
+            assetId: String(resolvedResource.assetId),
+            autoRefreshToken: resolvedResource.autoRefreshToken ?? true
+          })
+        )
     }
   }
 

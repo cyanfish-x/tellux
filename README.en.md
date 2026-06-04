@@ -20,14 +20,28 @@ import tellux from 'tellux'
 const container = document.querySelector('#viewer') as HTMLElement
 
 const viewer = new tellux.Viewer(container, {
-  imageryProvider: tellux.CesiumIonResource.fromAssetId(2275207, {
-    apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-  }),
+  imageryProvider: tellux.ImageryProvider.fromResource(
+    tellux.TemplateUrlResource.fromUrl(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    )
+  ),
   camera: {
     latitude: 35.6812,
     longitude: 139.8,
     height: 500
   }
+})
+```
+
+You can still use Cesium Ion resources:
+
+```ts
+new tellux.Viewer(container, {
+  imageryProvider: tellux.ImageryProvider.fromResource(
+    tellux.CesiumIonResource.fromAssetId(2275207, {
+      apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
+    })
+  )
 })
 ```
 
