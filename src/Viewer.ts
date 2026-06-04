@@ -1,9 +1,8 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
-import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js'
 import { TilesRenderer, GlobeControls } from '3d-tiles-renderer'
 import { CesiumIonAuthPlugin, GLTFExtensionsPlugin, TilesFadePlugin, UpdateOnChangePlugin } from '3d-tiles-renderer/plugins'
-import { EffectMaterial, EffectPass, NormalPass, SMAAEffect } from 'postprocessing'
+import { EffectPass, NormalPass, SMAAEffect } from 'postprocessing'
 import {
   CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
   CLOUD_SHAPE_TEXTURE_SIZE,
@@ -17,585 +16,38 @@ import {
 import { AerialPerspectiveEffect, PrecomputedTexturesGenerator, getSunDirectionECEF } from '@takram/three-atmosphere'
 import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
 import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effects'
+import { Camera } from './Camera'
+import { CesiumIonResource } from './CesiumIonResource'
+import { Clock } from './Clock'
+import { DEFAULT_CAMERA, RAD2DEG } from './constants'
+import { getTelluxAssetUrl, telluxConfig } from './config'
+import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects } from './effects'
+import { Scene } from './Scene'
+import { TileCreasedNormalsPlugin } from './TileCreasedNormalsPlugin'
+import type {
+  AnyViewerEventListener,
+  CartographicCoordinates,
+  ScreenPosition,
+  ViewerEventListener,
+  ViewerEventMap,
+  ViewerOptions
+} from './types'
 
-type ThreeEffectPass = THREE.Effect & {
-  dispose: () => void
-}
-
-interface TileModelPlugin {
-  processTileModel: (scene: THREE.Object3D) => void
-}
-
-interface ThreeRendererWithEffects extends THREE.WebGLRenderer {
-  setEffects: (effects: THREE.Effect[] | null) => void
-}
-
-/**
- * 创建 {@link Viewer} 时使用的配置项。
- *
- * Options used to create a {@link Viewer}.
- */
-export interface ViewerOptions {
-  /**
-   * Cesium Ion 资源和授权配置。
-   *
-   * 不传时，Tellux 会使用默认资源 id `2275207` 和空 token。
-   *
-   * Cesium Ion asset and authorization options.
-   *
-   * When omitted, Tellux uses the default asset id `2275207` with an empty token.
-   */
-  imageryProvider?: CesiumIonResourceOptions
-  /**
-   * 初始相机视角。
-   *
-   * 经纬度和姿态角使用度作为单位；高度、near 和 far 使用米作为单位。
-   *
-   * Initial camera view.
-   *
-   * Geographic coordinates and orientation angles are expressed in degrees.
-   * Height, near, and far are expressed in meters.
-   */
-  camera?: {
-    /** 初始纬度（度），默认 `35.6812`。Initial latitude in degrees. Defaults to `35.6812`. */
-    latitude?: number
-    /** 初始经度（度），默认 `139.8`。Initial longitude in degrees. Defaults to `139.8`. */
-    longitude?: number
-    /** 初始相机高度（米），默认 `500`。Initial camera height in meters. Defaults to `500`. */
-    height?: number
-    /** 初始航向角（度），默认 `-90`。Initial heading in degrees. Defaults to `-90`. */
-    heading?: number
-    /** 初始俯仰角（度），默认 `-10`。Initial pitch in degrees. Defaults to `-10`. */
-    pitch?: number
-    /** 初始翻滚角（度），默认 `0`。Initial roll in degrees. Defaults to `0`. */
-    roll?: number
-    /** 透视相机垂直视场角（度），默认 `75`。Perspective camera vertical field of view in degrees. Defaults to `75`. */
-    fov?: number
-    /** 透视相机近裁剪面（米），默认 `10`。Perspective camera near clipping plane in meters. Defaults to `10`. */
-    near?: number
-    /** 透视相机远裁剪面（米），默认 `1000000`。Perspective camera far clipping plane in meters. Defaults to `1000000`. */
-    far?: number
-  }
-  /**
-   * 初始场景和后处理配置。
-   *
-   * Initial scene and post-processing options.
-   */
-  scene?: {
-    /** 是否启用体积云，默认 `true`。Enables volumetric clouds. Defaults to `true`. */
-    clouds?: boolean
-    /** 是否启用大气天空和空气透视，默认 `true`。Enables atmospheric sky and aerial perspective. Defaults to `true`. */
-    skyAtmosphere?: boolean
-    /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
-    lensFlare?: boolean
-    /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */
-    smaa?: boolean
-    /** 是否启用抖动后处理，默认 `false`。Enables dithering post-processing. Defaults to `false`. */
-    dithering?: boolean
-    /** 渲染器色调映射曝光值，默认 `10`。Renderer tone mapping exposure. Defaults to `10`. */
-    toneMappingExposure?: number
-    /** 云覆盖率，范围 `0` 到 `1`，默认 `0.3`。Cloud coverage from `0` to `1`. Defaults to `0.3`. */
-    cloudCoverage?: number
-  }
-  /**
-   * 为 `true` 时自动启动渲染循环。
-   *
-   * 默认 `true`。接入外部渲染循环时可设为 `false`，并手动调用 {@link Viewer.render}。
-   *
-   * Starts the render loop automatically when `true`.
-   *
-   * Defaults to `true`. Set this to `false` when integrating with an external
-   * render loop and call {@link Viewer.render} yourself.
-   */
-  useDefaultRenderLoop?: boolean
-  /**
-   * 渲染器像素比，默认 `Math.min(window.devicePixelRatio, 2)`。
-   *
-   * Renderer pixel ratio. Defaults to `Math.min(window.devicePixelRatio, 2)`.
-   */
-  resolutionScale?: number
-  /**
-   * Draco 解码器文件的公开 URL 路径。
-   *
-   * 默认 `/draco/gltf/`。
-   *
-   * Public URL path for Draco decoder files.
-   *
-   * Defaults to `/draco/gltf/`.
-   */
-  dracoDecoderPath?: string
-}
-
-/**
- * Cesium Ion 资源配置，用于 {@link ViewerOptions.imageryProvider}。
- *
- * Cesium Ion resource options used by {@link ViewerOptions.imageryProvider}.
- */
-export interface CesiumIonResourceOptions {
-  /** Cesium Ion 访问令牌。Cesium Ion access token. */
-  apiToken: string
-  /** 要加载的 Cesium Ion 资源 id。Cesium Ion asset id to load. */
-  assetId: string | number
-  /** 是否自动刷新 Cesium Ion endpoint 授权，默认 `true`。Refreshes Cesium Ion endpoint authorization automatically. Defaults to `true`. */
-  autoRefreshToken?: boolean
-}
-
-/**
- * Viewer 事件的基础信息。
- *
- * Base information for Viewer events.
- */
-export interface ViewerEvent {
-  /** 事件类型。Event type. */
-  type: keyof ViewerEventMap
-  /** 触发事件的 Viewer 实例。Viewer instance that emitted the event. */
-  viewer: Viewer
-}
-
-/**
- * Viewer canvas 上的点击事件。
- *
- * Click event on the Viewer canvas.
- */
-export interface ViewerClickEvent extends ViewerEvent {
-  /** 事件类型。Event type. */
-  type: 'click'
-  /** 原始 DOM 鼠标事件。Original DOM mouse event. */
-  originalEvent: MouseEvent
-  /** 相对于 canvas 左上角的像素坐标。Pixel position relative to the top-left corner of the canvas. */
-  position: {
-    /** 横向像素坐标。Horizontal pixel coordinate. */
-    x: number
-    /** 纵向像素坐标。Vertical pixel coordinate. */
-    y: number
-  }
-}
-
-/**
- * Viewer 支持的事件映射。
- *
- * Event map supported by Viewer.
- */
-export interface ViewerEventMap {
-  click: ViewerClickEvent
-}
-
-/**
- * Viewer 事件监听函数。
- *
- * Viewer event listener.
- */
-export type ViewerEventListener<T extends keyof ViewerEventMap> = (event: ViewerEventMap[T]) => void
-
-type AnyViewerEventListener = (event: ViewerEventMap[keyof ViewerEventMap]) => void
-
-const DEG2RAD = Math.PI / 180
-const CAMERA_FRAME = 1
-const DEFAULT_CAMERA = {
-  latitude: 35.6812,
-  longitude: 139.8,
-  height: 500,
-  heading: -90,
-  pitch: -10,
-  roll: 0,
-  fov: 75,
-  near: 10,
-  far: 1e6
-}
-
-/**
- * Tellux 全局配置。
- *
- * Global Tellux configuration.
- */
-export interface TelluxConfig {
-  /**
-   * Tellux 静态资源父级目录。
-   *
-   * 设置后，内置云和 STBN 纹理会从该目录加载
-   * `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin` 和 `stbn.bin`。
-   * 留空时使用上游包默认资源地址。
-   *
-   * Parent directory for Tellux static assets.
-   *
-   * When set, built-in cloud and STBN textures are loaded from this directory:
-   * `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, and `stbn.bin`.
-   * Leave it empty to use the upstream package defaults.
-   */
-  baseUrl: string
-}
-
-export const telluxConfig: TelluxConfig = {
-  baseUrl: ''
-}
-
-function getTelluxAssetUrl(defaultUrl: string): string {
-  const baseUrl = telluxConfig.baseUrl.trim()
-  if (baseUrl.length === 0) return defaultUrl
-
-  const assetName = getUrlFileName(defaultUrl)
-  const separator = baseUrl.endsWith('/') ? '' : '/'
-  return `${baseUrl}${separator}${assetName}`
-}
-
-function getUrlFileName(url: string): string {
-  const path = url.split(/[?#]/, 1)[0]
-  const index = path.lastIndexOf('/')
-  return index >= 0 ? path.slice(index + 1) : path
-}
-
-class TileCreasedNormalsPlugin implements TileModelPlugin {
-  processTileModel(tileScene: THREE.Object3D) {
-    tileScene.traverse((object) => {
-      const mesh = object as THREE.Mesh
-      if (!mesh.geometry) return
-
-      mesh.geometry = toCreasedNormals(mesh.geometry, 30 * DEG2RAD)
-    })
-  }
-}
-
-class EffectPassAdapter implements ThreeEffectPass {
-  enabled = true
-  needsSwap: boolean
-  private isInitialized = false
-
-  constructor(
-    private readonly pass: EffectPass | NormalPass,
-    private readonly getCamera: () => THREE.PerspectiveCamera
-  ) {
-    this.needsSwap = this.pass.needsSwap !== false
-  }
-
-  render(
-    webglRenderer: THREE.WebGLRenderer,
-    writeBuffer: THREE.WebGLRenderTarget,
-    readBuffer: THREE.WebGLRenderTarget,
-    deltaTime: number
-  ) {
-    if (!this.isInitialized) {
-      this.pass.initialize(webglRenderer, false, THREE.HalfFloatType)
-      this.pass.setSize(readBuffer.width, readBuffer.height)
-
-      const passWithDepth = this.pass as EffectPass & {
-        setDepthTexture?: (texture: THREE.Texture) => void
-      }
-      if (readBuffer.depthTexture && passWithDepth.setDepthTexture) {
-        passWithDepth.setDepthTexture(readBuffer.depthTexture)
-      }
-
-      this.isInitialized = true
-    }
-
-    const passWithMaterial = this.pass as EffectPass & {
-      fullscreenMaterial?: EffectMaterial
-    }
-    if (passWithMaterial.fullscreenMaterial instanceof EffectMaterial) {
-      passWithMaterial.fullscreenMaterial.adoptCameraSettings(this.getCamera())
-    }
-
-    this.pass.render(webglRenderer, readBuffer, writeBuffer, deltaTime)
-  }
-
-  setSize(width: number, height: number) {
-    if (this.isInitialized) {
-      this.pass.setSize(width, height)
-    }
-  }
-
-  dispose() {
-    this.pass.dispose()
-  }
-}
-
-/**
- * 场景时钟，用于太阳方向和随时间变化的大气光照。
- *
- * Scene clock used for sun direction and time-dependent atmosphere lighting.
- */
-export class Clock {
-  private currentHourUTC = 0
-  private readonly onChange: () => void
-
-  constructor(onChange: () => void) {
-    this.onChange = onChange
-  }
-
-  /**
-   * 当前 UTC 小时偏移量，用于计算太阳方向。
-   *
-   * Current UTC hour offset used to compute sun direction.
-   */
-  get hourUTC() {
-    return this.currentHourUTC
-  }
-
-  set hourUTC(value: number) {
-    this.setHourUTC(value)
-  }
-
-  /**
-   * 设置 UTC 小时偏移量，并更新随时间变化的光照。
-   *
-   * Sets the UTC hour offset and updates time-dependent lighting.
-   */
-  setHourUTC(value: number) {
-    this.currentHourUTC = value
-    this.onChange()
-  }
-
-  /**
-   * 内部用于太阳方向计算的日期。
-   *
-   * Date used internally for sun direction calculations.
-   */
-  get currentTime() {
-    return new Date(Date.UTC(2024, 2, 1) + this.currentHourUTC * 3600000)
-  }
-}
-
-/**
- * 创建 Cesium Ion 资源配置的辅助类。
- *
- * Helper for creating Cesium Ion resource options.
- */
-export class CesiumIonResource {
-  /**
-   * 根据 Cesium Ion 资源 id 和 token 配置创建资源选项。
-   *
-   * Creates a resource option object from a Cesium Ion asset id and token options.
-   */
-  static fromAssetId(assetId: string | number, options: Omit<CesiumIonResourceOptions, 'assetId'>): CesiumIonResourceOptions {
-    return {
-      assetId,
-      ...options
-    }
-  }
-}
-
-class SceneToggle {
-  private isShown: boolean
-  private readonly onChange: () => void
-
-  constructor(isShown: boolean, onChange: () => void) {
-    this.isShown = isShown
-    this.onChange = onChange
-  }
-
-  /**
-   * 场景功能是否可见。
-   *
-   * Whether the scene feature is visible.
-   */
-  get show() {
-    return this.isShown
-  }
-
-  set show(value: boolean) {
-    if (this.isShown === value) return
-    this.isShown = value
-    this.onChange()
-  }
-}
-
-class PostProcessStage {
-  private isEnabled: boolean
-  private readonly onChange: () => void
-
-  constructor(isEnabled: boolean, onChange: () => void) {
-    this.isEnabled = isEnabled
-    this.onChange = onChange
-  }
-
-  /**
-   * 该后处理阶段是否启用。
-   *
-   * Whether this post-processing stage is enabled.
-   */
-  get enabled() {
-    return this.isEnabled
-  }
-
-  set enabled(value: boolean) {
-    if (this.isEnabled === value) return
-    this.isEnabled = value
-    this.onChange()
-  }
-}
-
-class PostProcessStages {
-  /** 镜头光晕后处理阶段。Lens flare post-processing stage. */
-  lensFlare: PostProcessStage
-  /** SMAA 抗锯齿后处理阶段。SMAA anti-aliasing post-processing stage. */
-  smaa: PostProcessStage
-  /** 抖动后处理阶段。Dithering post-processing stage. */
-  dithering: PostProcessStage
-
-  constructor(options: Required<NonNullable<ViewerOptions['scene']>>, onChange: () => void) {
-    this.lensFlare = new PostProcessStage(options.lensFlare, onChange)
-    this.smaa = new PostProcessStage(options.smaa, onChange)
-    this.dithering = new PostProcessStage(options.dithering, onChange)
-  }
-}
-
-/**
- * 场景级控制项和底层 Three.js 场景。
- *
- * 通常通过 {@link Viewer.scene} 访问。
- *
- * Scene-level controls and the underlying Three.js scene.
- *
- * Access this through {@link Viewer.scene}.
- */
-export class Scene {
-  /**
-   * 底层 Three.js 场景，可用于添加自定义对象。
-   *
-   * Underlying Three.js scene for adding custom objects.
-   */
-  readonly threeScene = new THREE.Scene()
-  /**
-   * 云层可见性开关。
-   *
-   * Cloud visibility toggle.
-   */
-  clouds: SceneToggle
-  /**
-   * 大气可见性开关。
-   *
-   * Atmosphere visibility toggle.
-   */
-  skyAtmosphere: SceneToggle
-  /**
-   * 后处理阶段控制项。
-   *
-   * Post-processing stage controls.
-   */
-  postProcessStages: PostProcessStages
-  private currentCloudCoverage: number
-  private readonly getCloudsEffect: () => CloudsEffect | null
-
-  constructor(
-    options: Required<NonNullable<ViewerOptions['scene']>>,
-    getCloudsEffect: () => CloudsEffect | null,
-    onEffectsChange: () => void
-  ) {
-    this.currentCloudCoverage = options.cloudCoverage
-    this.getCloudsEffect = getCloudsEffect
-    this.clouds = new SceneToggle(options.clouds, onEffectsChange)
-    this.skyAtmosphere = new SceneToggle(options.skyAtmosphere, onEffectsChange)
-    this.postProcessStages = new PostProcessStages(options, onEffectsChange)
-  }
-
-  /**
-   * 云覆盖率，范围 `0` 到 `1`。
-   *
-   * Cloud coverage from `0` to `1`.
-   */
-  get cloudCoverage() {
-    return this.currentCloudCoverage
-  }
-
-  set cloudCoverage(value: number) {
-    this.currentCloudCoverage = value
-    const clouds = this.getCloudsEffect()
-    if (clouds) clouds.coverage = value
-  }
-}
-
-/**
- * 相机控制器，提供 Cesium 风格的视角方法。
- *
- * Camera controller with Cesium-style view methods.
- */
-export class Camera {
-  /**
-   * 底层 Three.js 透视相机。
-   *
-   * Underlying Three.js perspective camera.
-   */
-  readonly threeCamera: THREE.PerspectiveCamera
-
-  constructor(camera: THREE.PerspectiveCamera) {
-    this.threeCamera = camera
-  }
-
-  /**
-   * 将相机移动到目标位置。
-   *
-   * 当前会立即应用目标视角；`duration` 保留给未来的动画飞行支持。
-   *
-   * Moves the camera to a destination.
-   *
-   * This currently applies the target view immediately; `duration` is reserved
-   * for future animated flight support.
-   */
-  flyTo(options: {
-    destination: {
-      /** 目标纬度（度）。Destination latitude in degrees. */
-      latitude: number
-      /** 目标经度（度）。Destination longitude in degrees. */
-      longitude: number
-      /** 目标高度（米），默认使用 viewer 相机高度。Destination height in meters. Defaults to the viewer camera height. */
-      height?: number
-    }
-    orientation?: {
-      /** 航向角（度）。Heading in degrees. */
-      heading?: number
-      /** 俯仰角（度）。Pitch in degrees. */
-      pitch?: number
-      /** 翻滚角（度）。Roll in degrees. */
-      roll?: number
-    }
-    /** 保留给未来的动画飞行支持。Reserved for future animated flight support. */
-    duration?: number
-  }) {
-    const { destination, orientation } = options
-    this.setView({
-      latitude: destination.latitude,
-      longitude: destination.longitude,
-      height: destination.height,
-      heading: orientation?.heading,
-      pitch: orientation?.pitch,
-      roll: orientation?.roll
-    })
-  }
-
-  /**
-   * 立即设置相机视角。
-   *
-   * Sets the camera view immediately.
-   */
-  setView(options: {
-    /** 纬度（度）。Latitude in degrees. */
-    latitude: number
-    /** 经度（度）。Longitude in degrees. */
-    longitude: number
-    /** 高度（米），默认使用 viewer 相机高度。Height in meters. Defaults to the viewer camera height. */
-    height?: number
-    /** 航向角（度）。Heading in degrees. */
-    heading?: number
-    /** 俯仰角（度）。Pitch in degrees. */
-    pitch?: number
-    /** 翻滚角（度）。Roll in degrees. */
-    roll?: number
-  }) {
-    const ellipsoid = (this.threeCamera.userData.tilesRenderer as TilesRenderer | undefined)?.ellipsoid
-    if (!ellipsoid) return
-
-    ellipsoid.getObjectFrame(
-      options.latitude * DEG2RAD,
-      options.longitude * DEG2RAD,
-      options.height ?? DEFAULT_CAMERA.height,
-      (options.heading ?? DEFAULT_CAMERA.heading) * DEG2RAD,
-      (options.pitch ?? DEFAULT_CAMERA.pitch) * DEG2RAD,
-      (options.roll ?? DEFAULT_CAMERA.roll) * DEG2RAD,
-      this.threeCamera.matrix,
-      CAMERA_FRAME
-    )
-    this.threeCamera.matrix.decompose(this.threeCamera.position, this.threeCamera.quaternion, this.threeCamera.scale)
-  }
-}
+export { Camera } from './Camera'
+export { CesiumIonResource } from './CesiumIonResource'
+export { Clock } from './Clock'
+export { Scene } from './Scene'
+export { telluxConfig, type TelluxConfig } from './config'
+export type {
+  CartographicCoordinates,
+  CesiumIonResourceOptions,
+  ScreenPosition,
+  ViewerClickEvent,
+  ViewerEvent,
+  ViewerEventListener,
+  ViewerEventMap,
+  ViewerOptions
+} from './types'
 
 /**
  * Tellux 主视图类。
@@ -657,6 +109,12 @@ export class Viewer {
   private readonly effectAdapters: ThreeEffectPass[] = []
   private readonly loadedTextures: THREE.Texture[] = []
   private readonly rendererSize = new THREE.Vector2()
+  private readonly pickCoords = new THREE.Vector2()
+  private readonly pickRaycaster = new THREE.Raycaster()
+  private readonly pickRay = new THREE.Ray()
+  private readonly pickPoint = new THREE.Vector3()
+  private readonly pickMatrix = new THREE.Matrix4()
+  private readonly pickCartographicScratch = { lat: 0, lon: 0, height: 0 }
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly resizeObserver: ResizeObserver
   private readonly texturesGenerator: PrecomputedTexturesGenerator
@@ -675,14 +133,17 @@ export class Viewer {
   }
   private readonly handleCanvasClick = (originalEvent: MouseEvent) => {
     const rect = this.renderer.domElement.getBoundingClientRect()
+    const position = {
+      x: originalEvent.clientX - rect.left,
+      y: originalEvent.clientY - rect.top
+    }
+
     this.dispatchEvent('click', {
       type: 'click',
       viewer: this,
       originalEvent,
-      position: {
-        x: originalEvent.clientX - rect.left,
-        y: originalEvent.clientY - rect.top
-      }
+      position,
+      cartographic: this.pickCartographic(position)
     })
   }
 
@@ -830,7 +291,6 @@ export class Viewer {
    * Registers a Viewer event listener.
    */
   on<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
-    console.log('注册事件')
     let listeners = this.eventListeners.get(type)
     if (!listeners) {
       listeners = new Set()
@@ -849,6 +309,43 @@ export class Viewer {
   off<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
     this.eventListeners.get(type)?.delete(listener as AnyViewerEventListener)
     return this
+  }
+
+  /**
+   * 获取屏幕位置对应的经纬高坐标。
+   *
+   * 传入的坐标相对于 canvas 左上角。方法会优先命中已加载的 3D Tiles，
+   * 未命中时再回退到 WGS84 椭球表面；两者都未命中时返回 `null`。
+   *
+   * Gets the cartographic coordinates for a screen position.
+   *
+   * The input position is relative to the top-left corner of the canvas. The
+   * method hits loaded 3D Tiles first, then falls back to the WGS84 ellipsoid.
+   * It returns `null` when neither target is hit.
+   */
+  pickCartographic(position: ScreenPosition): CartographicCoordinates | null {
+    const canvas = this.renderer.domElement
+    const width = canvas.clientWidth
+    const height = canvas.clientHeight
+    if (!width || !height) return null
+
+    this.pickCoords.set((position.x / width) * 2 - 1, -(position.y / height) * 2 + 1)
+    this.threeCamera.updateMatrixWorld()
+    this.tileset.group.updateMatrixWorld(true)
+    this.pickRaycaster.setFromCamera(this.pickCoords, this.threeCamera)
+    this.pickMatrix.copy(this.tileset.group.matrixWorld).invert()
+
+    const hit = this.pickRaycaster.intersectObject(this.tileset.group, true)[0]
+    if (hit) {
+      this.pickPoint.copy(hit.point).applyMatrix4(this.pickMatrix)
+      return this.toCartographicCoordinates(this.pickPoint)
+    }
+
+    this.pickRay.copy(this.pickRaycaster.ray).applyMatrix4(this.pickMatrix)
+    const point = this.tileset.ellipsoid.intersectRay(this.pickRay, this.pickPoint)
+    if (!point) return null
+
+    return this.toCartographicCoordinates(point)
   }
 
   /**
@@ -928,6 +425,15 @@ export class Viewer {
       dithering: options?.dithering ?? false,
       toneMappingExposure: options?.toneMappingExposure ?? 10,
       cloudCoverage: options?.cloudCoverage ?? 0.3
+    }
+  }
+
+  private toCartographicCoordinates(point: THREE.Vector3): CartographicCoordinates {
+    const cartographic = this.tileset.ellipsoid.getPositionToCartographic(point, this.pickCartographicScratch)
+    return {
+      latitude: cartographic.lat * RAD2DEG,
+      longitude: cartographic.lon * RAD2DEG,
+      height: cartographic.height
     }
   }
 
