@@ -18,7 +18,6 @@ import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
 import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effects'
 import { Camera } from './Camera'
 import type { CameraFlyToOptions } from './Camera'
-import { CesiumIonResource } from './CesiumIonResource'
 import { Clock } from './Clock'
 import { DEFAULT_CAMERA, RAD2DEG } from './constants'
 import { getTelluxAssetUrl, telluxConfig } from './config'
@@ -500,15 +499,15 @@ export class Viewer {
   }
 
   private registerImageryProvider(tileset: TilesRenderer, resource: ImageryProviderResourceOptions | undefined) {
-    const resolvedResource = resource ?? CesiumIonResource.fromAssetId(2275207, { apiToken: '' })
+    if (!resource) return
 
-    switch (resolvedResource.type) {
+    switch (resource.type) {
       case 'template-url': {
         const xyzOptions: ConstructorParameters<typeof XYZTilesPlugin>[0] & { projection?: string } = {
-          url: resolvedResource.url,
-          levels: resolvedResource.levels,
-          tileDimension: resolvedResource.tileDimension,
-          projection: resolvedResource.projection,
+          url: resource.url,
+          levels: resource.levels,
+          tileDimension: resource.tileDimension,
+          projection: resource.projection,
           shape: 'ellipsoid'
         }
 
@@ -518,9 +517,9 @@ export class Viewer {
       case 'cesium-ion':
         tileset.registerPlugin(
           new CesiumIonAuthPlugin({
-            apiToken: resolvedResource.apiToken,
-            assetId: String(resolvedResource.assetId),
-            autoRefreshToken: resolvedResource.autoRefreshToken ?? true
+            apiToken: resource.apiToken,
+            assetId: String(resource.assetId),
+            autoRefreshToken: resource.autoRefreshToken ?? true
           })
         )
     }

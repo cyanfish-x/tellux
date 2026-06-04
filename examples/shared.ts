@@ -10,9 +10,6 @@ export function createTelluxViewer(
   options: ViewerOptions = {}
 ) {
   const viewer = new tellux.Viewer(container, {
-    imageryProvider: tellux.ImageryProvider.fromResource(
-      tellux.TemplateUrlResource.fromUrl(arcgisWorldImageryUrl)
-    ),
     dracoDecoderPath: "/node_modules/three/examples/jsm/libs/draco/gltf/",
     ...options,
   })

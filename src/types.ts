@@ -9,12 +9,11 @@ export interface ViewerOptions {
   /**
    * 影像资源配置。
    *
-   * 不传时，Tellux 会使用默认 Cesium Ion 资源 id `2275207` 和空 token。
+   * 不传时，Tellux 不会注册影像资源。
    *
    * Imagery resource options.
    *
-   * When omitted, Tellux uses the default Cesium Ion asset id `2275207`
-   * with an empty token.
+   * When omitted, Tellux does not register an imagery resource.
    */
   imageryProvider?: ImageryProviderOptions
   /**
