@@ -30,15 +30,26 @@
   },
   "peerDependencies": {
     "3d-tiles-renderer": "^0.4.27",
+    "@mapbox/vector-tile": "^2.0.3",
     "@takram/three-atmosphere": "0.19.1",
     "@takram/three-clouds": "0.7.6",
     "@takram/three-geospatial": "0.9.1",
     "@takram/three-geospatial-effects": "0.6.4",
+    "pbf": "^4.0.1",
     "postprocessing": "6.39.1",
     "three": "^0.184.0"
   },
+  "peerDependenciesMeta": {
+    "@mapbox/vector-tile": {
+      "optional": true
+    },
+    "pbf": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "3d-tiles-renderer": "^0.4.27",
+    "@mapbox/vector-tile": "^2.0.5",
     "@takram/three-atmosphere": "0.19.1",
     "@takram/three-clouds": "0.7.6",
     "@takram/three-geospatial": "0.9.1",
@@ -46,6 +57,7 @@
     "@types/node": "^18.18.12",
     "@types/three": "^0.184.1",
     "concurrently": "^9.2.1",
+    "pbf": "^4.0.2",
     "postprocessing": "6.39.1",
     "rimraf": "^6.0.1",
     "three": "^0.184.0",

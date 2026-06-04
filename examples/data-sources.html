@@ -11,9 +11,13 @@
       <div id="viewer"></div>
       <section class="toolbar toolbar--wide" aria-label="Imagery data source controls">
         <h1>数据源切换</h1>
-        <p>在同一个 <code>ImageryProvider</code> 入口下切换 Cesium Ion 和 XYZ 模板资源。</p>
+        <p>切换 XYZ / Cesium Ion 底图，并用开关把 OpenInfraMap MVT 矢量瓦片叠加到当前表面。</p>
         <p id="source-status" class="status" aria-live="polite"></p>
         <div class="toolbar__row" id="source-buttons"></div>
+        <label class="switch">
+          <input id="mvt-overlay-toggle" type="checkbox" />
+          <span>叠加 OpenInfraMap MVT</span>
+        </label>
         <a class="button" href="./index.html">返回目录</a>
       </section>
     </main>

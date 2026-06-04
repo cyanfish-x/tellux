@@ -17,6 +17,17 @@ export interface ViewerOptions {
    */
   imageryProvider?: ImageryProviderOptions
   /**
+   * 影像叠加层资源配置。
+   *
+   * 叠加层会绘制到当前底图或地形表面之上，适合 MVT 业务矢量图层。
+   *
+   * Imagery overlay resource options.
+   *
+   * Overlays are drawn on top of the current basemap or terrain surface and
+   * are suitable for business vector layers such as MVT.
+   */
+  imageryOverlays?: ImageryOverlayResourceOptions[]
+  /**
    * 地形瓦片资源配置。
    *
    * `url` 指向 Cesium quantized-mesh terrain 根目录或 `layer.json` 文件。
@@ -123,6 +134,14 @@ export interface ImageryProviderOptions {
  * Imagery resource options supported by Viewer.
  */
 export type ImageryProviderResourceOptions = CesiumIonResourceOptions | TemplateUrlResourceOptions
+  | MVTResourceOptions
+
+/**
+ * Viewer 支持的影像叠加层资源配置。
+ *
+ * Imagery overlay resource options supported by Viewer.
+ */
+export type ImageryOverlayResourceOptions = MVTResourceOptions
 
 /**
  * Cesium quantized-mesh 地形配置，用于 {@link ViewerOptions.terrain}。
@@ -217,6 +236,119 @@ export interface TemplateUrlResourceOptions {
    * Projection identifier. Defaults to `EPSG:3857`.
    */
   projection?: 'EPSG:3857' | 'EPSG:4326' | string
+}
+
+/**
+ * MVT feature 样式。
+ *
+ * MVT feature style.
+ */
+export interface MVTFeatureStyle {
+  /** 面填充颜色，使用 CSS 颜色字符串。Polygon fill color as a CSS color string. */
+  fill?: string
+  /** 线描边颜色，使用 CSS 颜色字符串。Line stroke color as a CSS color string. */
+  stroke?: string
+  /** 描边宽度（像素）。Stroke width in pixels. */
+  strokeWidth?: number
+  /** 点半径（像素）。Point radius in pixels. */
+  radius?: number
+  /** 绘制顺序，数值越小越早绘制。Draw order; lower values draw earlier. */
+  order?: number
+  /** 是否渲染该 feature。Whether the feature is rendered. */
+  visible?: boolean
+}
+
+/**
+ * MVT feature 属性。
+ *
+ * MVT feature properties.
+ */
+export type MVTFeatureProperties = Record<string, unknown>
+
+/**
+ * MVT feature 样式回调。
+ *
+ * MVT feature style callback.
+ */
+export type MVTGetStyleCallback = (
+  layerName: string,
+  properties: MVTFeatureProperties | null
+) => MVTFeatureStyle | null
+
+/**
+ * Mapbox Vector Tile 资源配置，用于 {@link ViewerOptions.imageryProvider}。
+ *
+ * Mapbox Vector Tile resource options used by {@link ViewerOptions.imageryProvider}.
+ */
+export interface MVTResourceOptions {
+  /** 资源类型。Resource type. */
+  type: 'mvt'
+  /**
+   * MVT 瓦片 URL 模板，支持 `{x}`、`{y}`、`{z}` 占位符。
+   *
+   * MVT tile URL template with `{x}`, `{y}`, and `{z}` placeholders.
+   */
+  url: string
+  /**
+   * 瓦片级别数量，默认 `20`。
+   *
+   * Number of tile levels. Defaults to `20`.
+   */
+  levels?: number
+  /**
+   * 投影标识，默认 `EPSG:3857`。
+   *
+   * Projection identifier. Defaults to `EPSG:3857`.
+   */
+  projection?: 'EPSG:3857' | 'EPSG:4326' | string
+  /**
+   * 生成矢量瓦片纹理的画布分辨率，默认 `512`。
+   *
+   * Canvas resolution used to rasterize vector tile textures. Defaults to `512`.
+   */
+  resolution?: number
+  /**
+   * 图层透明度，范围 `0` 到 `1`，默认 `1`。
+   *
+   * Layer opacity from `0` to `1`. Defaults to `1`.
+   */
+  opacity?: number
+  /**
+   * 图层颜色乘色。
+   *
+   * Layer color tint.
+   */
+  color?: number | string
+  /**
+   * 是否把 alpha 通道作为遮罩，默认 `false`。
+   *
+   * Uses the alpha channel as a mask. Defaults to `false`.
+   */
+  alphaMask?: boolean
+  /**
+   * 是否反转 alpha 遮罩，默认 `false`。
+   *
+   * Inverts the alpha mask. Defaults to `false`.
+   */
+  alphaInvert?: boolean
+  /**
+   * 瓦片请求配置。
+   *
+   * Tile request options.
+   */
+  fetchOptions?: RequestInit
+  /**
+   * 按 MVT 图层名和 feature 属性返回样式；当 `properties` 为 `null` 时只用于获取图层绘制顺序。
+   *
+   * 返回 `{}` 使用默认样式；返回 `null` 或 `{ visible: false }` 不渲染该 feature。
+   *
+   * Returns a style from the MVT layer name and feature properties. When
+   * `properties` is `null`, the callback is queried only for layer draw order.
+   *
+   * Return `{}` to use the default style. Return `null` or `{ visible: false }`
+   * to skip rendering the feature.
+   */
+  getStyle?: MVTGetStyleCallback
 }
 
 /**

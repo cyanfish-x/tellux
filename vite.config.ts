@@ -13,6 +13,9 @@ const external = [
 ]
 
 export default defineConfig({
+  optimizeDeps: {
+    include: ['@mapbox/vector-tile', 'pbf']
+  },
   build: {
     lib: {
       entry: 'src/index.ts',

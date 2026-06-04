@@ -9,7 +9,7 @@ The npm package name is `tellux` because npm package names must be lowercase.
 ## Install
 
 ```bash
-npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphere @takram/three-clouds @takram/three-geospatial @takram/three-geospatial-effects
+npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphere @takram/three-clouds @takram/three-geospatial @takram/three-geospatial-effects @mapbox/vector-tile pbf
 ```
 
 ## Usage
@@ -57,6 +57,22 @@ new tellux.Viewer(container, {
   )
 })
 ```
+
+MVT vector tiles can be used as imagery overlays with `MVTResource`:
+
+```ts
+viewer.setImageryOverlays([
+  tellux.MVTResource.fromUrl('https://example.com/tiles/{z}/{x}/{y}.pbf', {
+    getStyle(layerName) {
+      if (layerName.includes('water')) return { fill: '#38bdf8', order: 10 }
+      if (layerName.includes('transportation')) return { stroke: '#facc15', strokeWidth: 1.4, order: 30 }
+      return null
+    }
+  })
+])
+```
+
+`MVTResource` uses the `3d-tiles-renderer` MVT overlay and requires `@mapbox/vector-tile` and `pbf` at runtime.
 
 Make sure the container has a non-zero size:
 

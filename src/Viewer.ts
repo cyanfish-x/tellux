@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { TilesRenderer, GlobeControls } from '3d-tiles-renderer'
+import * as TilesRendererPlugins from '3d-tiles-renderer/plugins'
 import {
   CesiumIonAuthPlugin,
   CesiumIonOverlay,
@@ -9,6 +10,7 @@ import {
   QuantizedMeshPlugin,
   TilesFadePlugin,
   UpdateOnChangePlugin,
+  type ImageOverlay,
   XYZTilesOverlay,
   XYZTilesPlugin
 } from '3d-tiles-renderer/plugins'
@@ -39,7 +41,10 @@ import type {
   AnyViewerEventListener,
   CartographicCoordinates,
   ImageryProviderOptions,
+  ImageryOverlayResourceOptions,
   ImageryProviderResourceOptions,
+  MVTGetStyleCallback,
+  MVTResourceOptions,
   ScreenPosition,
   TerrainOptions,
   ViewerEventListener,
@@ -52,6 +57,7 @@ export { Camera } from './Camera'
 export { CesiumIonResource } from './CesiumIonResource'
 export { Clock } from './Clock'
 export { ImageryProvider } from './ImageryProvider'
+export { MVTResource } from './MVTResource'
 export { Scene } from './Scene'
 export { TemplateUrlResource } from './TemplateUrlResource'
 export { telluxConfig, type TelluxConfig } from './config'
@@ -66,7 +72,12 @@ export type {
   CartographicCoordinates,
   CesiumIonResourceOptions,
   ImageryProviderOptions,
+  ImageryOverlayResourceOptions,
   ImageryProviderResourceOptions,
+  MVTFeatureProperties,
+  MVTFeatureStyle,
+  MVTGetStyleCallback,
+  MVTResourceOptions,
   ScreenPosition,
   TemplateUrlResourceOptions,
   TerrainOptions,
@@ -78,6 +89,37 @@ export type {
   ViewerMouseMoveEvent,
   ViewerOptions
 } from './types'
+
+type MVTOverlayOptions = {
+  url: string
+  levels?: number
+  projection?: string
+  resolution?: number
+  opacity?: number
+  color?: THREE.ColorRepresentation
+  alphaMask?: boolean
+  alphaInvert?: boolean
+  getStyle?: MVTGetStyleCallback
+}
+
+type MVTOverlayInstance = ImageOverlay & {
+  fetchOptions: RequestInit
+  getTexture(range: number[]): THREE.Texture | null
+  lockTexture(range: number[]): Promise<THREE.Texture | null>
+}
+
+type MVTOverlayConstructor = new (options: MVTOverlayOptions) => MVTOverlayInstance
+
+type GeneratedSurfacePluginConstructor = new (options: {
+  overlay?: ImageOverlay | null
+  shape?: 'ellipsoid' | 'planar'
+  applyOverlayTexture?: boolean
+}) => object
+
+const { GeneratedSurfacePlugin, MVTOverlay } = TilesRendererPlugins as unknown as {
+  GeneratedSurfacePlugin: GeneratedSurfacePluginConstructor
+  MVTOverlay: MVTOverlayConstructor
+}
 
 /**
  * Tellux 主视图类。
@@ -146,6 +188,7 @@ export class Viewer {
   private readonly effectAdapters: ThreeEffectPass[] = []
   private readonly loadedTextures: THREE.Texture[] = []
   private readonly rendererSize = new THREE.Vector2()
+  private readonly transparentOverlayTexture: THREE.CanvasTexture
   private readonly pickCoords = new THREE.Vector2()
   private readonly pickRaycaster = new THREE.Raycaster()
   private readonly pickRay = new THREE.Ray()
@@ -160,6 +203,7 @@ export class Viewer {
   private surfaceTileset: TilesRenderer
   private terrainTileset: TilesRenderer | null = null
   private currentImageryProvider: ImageryProviderOptions | undefined
+  private currentImageryOverlays: ImageryOverlayResourceOptions[] = []
   private currentTerrain: TerrainOptions | undefined
   private readonly handleWindowResize = () => {
     this.resize()
@@ -249,16 +293,18 @@ export class Viewer {
     this.renderer.toneMapping = THREE.AgXToneMapping
     this.renderer.toneMappingExposure = this.currentToneMappingExposure
     container.appendChild(this.renderer.domElement)
+    this.transparentOverlayTexture = this.createTransparentOverlayTexture()
 
     this.dracoLoader = new DRACOLoader()
     this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
 
     this.currentImageryProvider = options.imageryProvider
+    this.currentImageryOverlays = options.imageryOverlays ?? []
     this.currentTerrain = options.terrain
-    this.surfaceTileset = this.createSurfaceTileset(this.currentImageryProvider?.resource)
+    this.surfaceTileset = this.createSurfaceTileset(this.currentImageryProvider?.resource, this.currentImageryOverlays)
     this.scene.threeScene.add(this.surfaceTileset.group)
     if (this.currentTerrain) {
-      this.terrainTileset = this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource)
+      this.terrainTileset = this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource, this.currentImageryOverlays)
       this.scene.threeScene.add(this.terrainTileset.group)
     }
     this.syncSurfaceVisibility()
@@ -386,9 +432,24 @@ export class Viewer {
    */
   setImageryProvider(imageryProvider: NonNullable<ViewerOptions['imageryProvider']>) {
     this.currentImageryProvider = imageryProvider
-    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider.resource))
+    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider.resource, this.currentImageryOverlays))
     if (this.currentTerrain) {
-      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider.resource))
+      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider.resource, this.currentImageryOverlays))
+    }
+    return this
+  }
+
+  /**
+   * 运行时切换影像叠加层，并保留当前 Viewer、相机、控制器和渲染器状态。
+   *
+   * Switches imagery overlays at runtime while preserving the current Viewer,
+   * camera, controls, and renderer state.
+   */
+  setImageryOverlays(imageryOverlays: ViewerOptions['imageryOverlays'] = []) {
+    this.currentImageryOverlays = imageryOverlays
+    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider?.resource, this.currentImageryOverlays))
+    if (this.currentTerrain) {
+      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource, this.currentImageryOverlays))
     }
     return this
   }
@@ -406,7 +467,7 @@ export class Viewer {
   setTerrain(terrain: ViewerOptions['terrain'] | null) {
     this.currentTerrain = terrain ?? undefined
     this.replaceTerrainTileset(
-      this.currentTerrain ? this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource) : null
+      this.currentTerrain ? this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource, this.currentImageryOverlays) : null
     )
     return this
   }
@@ -507,6 +568,7 @@ export class Viewer {
     this.effectAdapters.forEach((adapter) => adapter.dispose())
     this.texturesGenerator.dispose({ textures: true })
     this.loadedTextures.forEach((texture) => texture.dispose())
+    this.transparentOverlayTexture.dispose()
     this.terrainTileset?.dispose()
     this.surfaceTileset.dispose()
     this.controls.dispose()
@@ -530,17 +592,28 @@ export class Viewer {
     }
   }
 
-  private createSurfaceTileset(resource: ImageryProviderResourceOptions | undefined) {
+  private createSurfaceTileset(
+    resource: ImageryProviderResourceOptions | undefined,
+    overlays: ImageryOverlayResourceOptions[] = []
+  ) {
     const tileset = new TilesRenderer()
-    this.registerImageryProvider(tileset, resource, false)
+    if (overlays.length > 0) {
+      this.registerSurfaceImageryStack(tileset, resource, overlays)
+    } else {
+      this.registerImageryProvider(tileset, resource, false)
+    }
     this.registerCommonTilesetPlugins(tileset)
     return tileset
   }
 
-  private createTerrainTileset(terrain: TerrainOptions, resource: ImageryProviderResourceOptions | undefined) {
+  private createTerrainTileset(
+    terrain: TerrainOptions,
+    resource: ImageryProviderResourceOptions | undefined,
+    overlays: ImageryOverlayResourceOptions[] = []
+  ) {
     const tileset = new TilesRenderer(this.normalizeTerrainUrl(terrain.url))
     this.registerTerrainProvider(tileset, terrain)
-    this.registerImageryProvider(tileset, resource, true)
+    this.registerTerrainImagery(tileset, resource, overlays)
     this.registerCommonTilesetPlugins(tileset)
     return tileset
   }
@@ -640,6 +713,9 @@ export class Viewer {
         }
         return
       }
+      case 'mvt':
+        this.registerImageryOverlays(tileset, [resource])
+        return
       case 'cesium-ion':
         if (useOverlay) {
           tileset.registerPlugin(
@@ -664,6 +740,147 @@ export class Viewer {
           )
         }
     }
+  }
+
+  private registerTerrainImagery(
+    tileset: TilesRenderer,
+    resource: ImageryProviderResourceOptions | undefined,
+    resources: ImageryOverlayResourceOptions[]
+  ) {
+    const overlays: ImageOverlay[] = []
+    const baseOverlay = this.createImageryOverlay(resource)
+    if (baseOverlay) {
+      overlays.push(baseOverlay)
+    }
+
+    resources.forEach((overlayResource) => {
+      overlays.push(this.createMVTOverlay(overlayResource))
+    })
+
+    if (overlays.length === 0) return
+
+    tileset.registerPlugin(
+      new ImageOverlayPlugin({
+        renderer: this.renderer,
+        overlays,
+        enableTileSplitting: resources.length === 0
+      })
+    )
+  }
+
+  private registerSurfaceImageryStack(
+    tileset: TilesRenderer,
+    resource: ImageryProviderResourceOptions | undefined,
+    resources: ImageryOverlayResourceOptions[]
+  ) {
+    const overlays: ImageOverlay[] = []
+    const baseOverlay = this.createImageryOverlay(resource)
+    if (baseOverlay) {
+      overlays.push(baseOverlay)
+    }
+
+    resources.forEach((overlayResource) => {
+      overlays.push(this.createMVTOverlay(overlayResource))
+    })
+
+    const tilingOverlay = baseOverlay ?? overlays[0] ?? null
+    tileset.registerPlugin(
+      new GeneratedSurfacePlugin({
+        overlay: tilingOverlay,
+        shape: 'ellipsoid',
+        applyOverlayTexture: false
+      })
+    )
+
+    if (overlays.length > 0) {
+      tileset.registerPlugin(
+        new ImageOverlayPlugin({
+          renderer: this.renderer,
+          overlays,
+          enableTileSplitting: false
+        })
+      )
+    }
+  }
+
+  private createImageryOverlay(resource: ImageryProviderResourceOptions | undefined): ImageOverlay | null {
+    if (!resource) return null
+
+    switch (resource.type) {
+      case 'template-url':
+        return new XYZTilesOverlay({
+          url: resource.url,
+          levels: resource.levels,
+          tileDimension: resource.tileDimension,
+          projection: resource.projection
+        })
+      case 'cesium-ion':
+        return new CesiumIonOverlay({
+          apiToken: resource.apiToken,
+          assetId: resource.assetId,
+          autoRefreshToken: resource.autoRefreshToken ?? true
+        })
+      case 'mvt':
+        return this.createMVTOverlay(resource)
+    }
+  }
+
+  private registerImageryOverlays(tileset: TilesRenderer, resources: ImageryOverlayResourceOptions[]) {
+    if (resources.length === 0) return
+
+    const overlays = resources.map((resource) => {
+      switch (resource.type) {
+        case 'mvt':
+          return this.createMVTOverlay(resource)
+      }
+    })
+
+    tileset.registerPlugin(
+      new ImageOverlayPlugin({
+        renderer: this.renderer,
+        overlays,
+        enableTileSplitting: false
+      })
+    )
+  }
+
+  private createMVTOverlay(resource: MVTResourceOptions) {
+    const overlay = new MVTOverlay({
+      url: resource.url,
+      levels: resource.levels,
+      projection: resource.projection,
+      resolution: resource.resolution,
+      opacity: resource.opacity,
+      color: resource.color,
+      alphaMask: resource.alphaMask,
+      alphaInvert: resource.alphaInvert,
+      getStyle: resource.getStyle
+    })
+
+    if (resource.fetchOptions) {
+      overlay.fetchOptions = resource.fetchOptions
+    }
+
+    const getTexture = overlay.getTexture.bind(overlay)
+    overlay.getTexture = (range: number[]) => {
+      return getTexture(range) ?? this.transparentOverlayTexture
+    }
+    const lockTexture = overlay.lockTexture.bind(overlay)
+    overlay.lockTexture = async (range: number[]) => {
+      return (await lockTexture(range)) ?? this.transparentOverlayTexture
+    }
+
+    return overlay
+  }
+
+  private createTransparentOverlayTexture() {
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.generateMipmaps = false
+    texture.needsUpdate = true
+    return texture
   }
 
   private normalizeTerrainUrl(url: string) {

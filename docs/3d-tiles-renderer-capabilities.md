@@ -307,6 +307,10 @@ Tellux 当前已使用：
   - template-url imagery provider。
 - `CesiumIonAuthPlugin`
   - Cesium Ion asset 加载。
+- `GeneratedSurfacePlugin`
+  - 基于 MVT overlay 的 tiling 生成无地形模式下的矢量瓦片椭球表面。
+- `MVTOverlay`
+  - 通过 `MVTResource` 接入 Mapbox Vector Tile 数据源，并支持 feature 样式回调。
 - `GlobeControls`
   - 地球控制。
 - `Ellipsoid`
@@ -321,6 +325,7 @@ Tellux 当前已使用：
 2. 更多 imagery provider
    - WMS / WMTS / TMS。
    - Cesium Ion imagery。
+   - GeoJSON / PMTiles 叠加。
    - 多 overlay、透明度、顺序控制。
 
 3. Debug tooling
