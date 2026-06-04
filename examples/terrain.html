@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tellux Cesium Terrain</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar toolbar--wide" aria-label="Terrain controls">
+        <h1>Cesium 地形热切换</h1>
+        <p>输入 Cesium quantized-mesh 地形根目录或 <code>layer.json</code> 地址，使用开关调用 <code>viewer.setTerrain</code>。</p>
+        <label class="field">
+          <span>地形 URL</span>
+          <input id="terrain-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="switch">
+          <input id="terrain-toggle" type="checkbox" />
+          <span>启用地形</span>
+        </label>
+        <p id="terrain-status" class="status" aria-live="polite"></p>
+        <div class="toolbar__row">
+          <button class="button" id="apply-terrain" type="button">应用地形</button>
+          <button class="button" id="clear-terrain" type="button">关闭地形</button>
+          <a class="button" href="./index.html">返回目录</a>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./terrain.ts"></script>
+  </body>
+</html>

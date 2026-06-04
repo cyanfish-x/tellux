@@ -20,6 +20,9 @@ import tellux from 'tellux'
 const container = document.querySelector('#viewer') as HTMLElement
 
 const viewer = new tellux.Viewer(container, {
+  terrain: {
+    url: 'https://example.com/terrain/'
+  },
   imageryProvider: tellux.ImageryProvider.fromResource(
     tellux.TemplateUrlResource.fromUrl(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -31,6 +34,16 @@ const viewer = new tellux.Viewer(container, {
     height: 500
   }
 })
+```
+
+`terrain.url` accepts a Cesium quantized-mesh terrain root directory or a direct `layer.json` URL. You can switch terrain at runtime:
+
+```ts
+viewer.setTerrain({
+  url: 'https://example.com/another-terrain/layer.json'
+})
+
+viewer.setTerrain(null)
 ```
 
 You can still use Cesium Ion resources:

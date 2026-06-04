@@ -15,14 +15,13 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 ## 公开 API 方向
 
-命名需要对齐 Cesium 风格 API：
-
-- 使用 `Viewer`，不要使用 `GISViewer`。
-- 使用 `Scene`，不要使用 `GISScene`。
-- 使用 `ViewerOptions`，不要使用 `GISViewerOptions`。
-- 不要新增 `ThreeGIS` namespace、class 或兼容别名。
+命名、API设计可参考对齐 Cesium、mapboxgl 风格。方便gis人快速理解迁移。
 
 面向用户的 TypeScript API 需要添加中英双语 JSDoc 注释，中文在前，英文在后。
+
+## 参考能力
+
+能力实现需要参考 /docs/3d-tiles-renderer-capabilities.md 文档中的能力描述；本库主要做API使用侧的易用性封装。
 
 ## 常用命令
 

@@ -28,6 +28,7 @@ export {
   type ImageryProviderResourceOptions,
   type ScreenPosition,
   type TemplateUrlResourceOptions,
+  type TerrainOptions,
   type TelluxConfig,
   type ViewerClickEvent,
   type ViewerEvent,

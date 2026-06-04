@@ -18,6 +18,9 @@ import tellux from 'tellux'
 const container = document.querySelector('#viewer') as HTMLElement
 
 const viewer = new tellux.Viewer(container, {
+  terrain: {
+    url: 'https://example.com/terrain/'
+  },
   imageryProvider: tellux.ImageryProvider.fromResource(
     tellux.TemplateUrlResource.fromUrl(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -29,6 +32,16 @@ const viewer = new tellux.Viewer(container, {
     height: 500
   }
 })
+```
+
+`terrain.url` 支持 Cesium quantized-mesh 地形根目录，也可以直接传入 `layer.json` 地址。运行时可以热切换地形：
+
+```ts
+viewer.setTerrain({
+  url: 'https://example.com/another-terrain/layer.json'
+})
+
+viewer.setTerrain(null)
 ```
 
 也可以继续使用 Cesium Ion 资源：

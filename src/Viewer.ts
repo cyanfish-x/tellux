@@ -1,7 +1,17 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { TilesRenderer, GlobeControls } from '3d-tiles-renderer'
-import { CesiumIonAuthPlugin, GLTFExtensionsPlugin, TilesFadePlugin, UpdateOnChangePlugin, XYZTilesPlugin } from '3d-tiles-renderer/plugins'
+import {
+  CesiumIonAuthPlugin,
+  CesiumIonOverlay,
+  GLTFExtensionsPlugin,
+  ImageOverlayPlugin,
+  QuantizedMeshPlugin,
+  TilesFadePlugin,
+  UpdateOnChangePlugin,
+  XYZTilesOverlay,
+  XYZTilesPlugin
+} from '3d-tiles-renderer/plugins'
 import { EffectPass, NormalPass, SMAAEffect } from 'postprocessing'
 import {
   CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
@@ -23,12 +33,15 @@ import { DEFAULT_CAMERA, RAD2DEG } from './constants'
 import { getTelluxAssetUrl, telluxConfig } from './config'
 import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects } from './effects'
 import { Scene } from './Scene'
+import { TerrainFetchPlugin } from './TerrainFetchPlugin'
 import { TileCreasedNormalsPlugin } from './TileCreasedNormalsPlugin'
 import type {
   AnyViewerEventListener,
   CartographicCoordinates,
+  ImageryProviderOptions,
   ImageryProviderResourceOptions,
   ScreenPosition,
+  TerrainOptions,
   ViewerEventListener,
   ViewerEventMap,
   ViewerMouseEvent,
@@ -56,6 +69,7 @@ export type {
   ImageryProviderResourceOptions,
   ScreenPosition,
   TemplateUrlResourceOptions,
+  TerrainOptions,
   ViewerClickEvent,
   ViewerEvent,
   ViewerEventListener,
@@ -110,10 +124,15 @@ export class Viewer {
   /**
    * 底层 3D Tiles 渲染器。
    *
+   * 启用地形时返回地形渲染器，否则返回基础裸球渲染器。
+   *
    * Underlying 3D Tiles renderer.
+   *
+   * Returns the terrain renderer when terrain is enabled, otherwise returns the
+   * base globe surface renderer.
    */
   get tileset() {
-    return this.currentTileset
+    return this.terrainTileset ?? this.surfaceTileset
   }
   /**
    * 地球交互控制器。
@@ -136,7 +155,10 @@ export class Viewer {
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly resizeObserver: ResizeObserver
   private readonly texturesGenerator: PrecomputedTexturesGenerator
-  private currentTileset: TilesRenderer
+  private surfaceTileset: TilesRenderer
+  private terrainTileset: TilesRenderer | null = null
+  private currentImageryProvider: ImageryProviderOptions | undefined
+  private currentTerrain: TerrainOptions | undefined
   private readonly handleWindowResize = () => {
     this.resize()
   }
@@ -228,13 +250,19 @@ export class Viewer {
     this.dracoLoader = new DRACOLoader()
     this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
 
-    this.currentTileset = this.createTileset(options.imageryProvider?.resource)
-    this.scene.threeScene.add(this.tileset.group)
+    this.currentImageryProvider = options.imageryProvider
+    this.currentTerrain = options.terrain
+    this.surfaceTileset = this.createSurfaceTileset(this.currentImageryProvider?.resource)
+    this.scene.threeScene.add(this.surfaceTileset.group)
+    if (this.currentTerrain) {
+      this.terrainTileset = this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource)
+      this.scene.threeScene.add(this.terrainTileset.group)
+    }
     this.threeCamera.userData.tilesRenderer = this.tileset
     this.camera.setView(cameraOptions)
 
     this.controls = new GlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
-    this.controls.setEllipsoid(this.tileset.ellipsoid, this.tileset.group)
+    this.controls.setEllipsoid(this.surfaceTileset.ellipsoid, this.surfaceTileset.group)
     this.controls.enableDamping = true
     this.controls.adjustHeight = false
     this.renderer.domElement.addEventListener('pointerdown', this.handleCameraInteraction)
@@ -353,15 +381,29 @@ export class Viewer {
    * Viewer, camera, controls, and renderer state.
    */
   setImageryProvider(imageryProvider: NonNullable<ViewerOptions['imageryProvider']>) {
-    const previousTileset = this.currentTileset
-    const nextTileset = this.createTileset(imageryProvider.resource)
+    this.currentImageryProvider = imageryProvider
+    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider.resource))
+    if (this.currentTerrain) {
+      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider.resource))
+    }
+    return this
+  }
 
-    previousTileset.dispose()
-    this.currentTileset = nextTileset
-    this.scene.threeScene.add(nextTileset.group)
-    this.threeCamera.userData.tilesRenderer = nextTileset
-    this.controls.setEllipsoid(nextTileset.ellipsoid, nextTileset.group)
-    this.resize()
+  /**
+   * 运行时切换 Cesium quantized-mesh 地形，并保留当前影像、相机、控制器和渲染器状态。
+   *
+   * 传入 `null` 可移除当前地形并回到无地形模式。
+   *
+   * Switches Cesium quantized-mesh terrain at runtime while preserving the current
+   * imagery, camera, controls, and renderer state.
+   *
+   * Pass `null` to remove the current terrain and return to the non-terrain mode.
+   */
+  setTerrain(terrain: ViewerOptions['terrain'] | null) {
+    this.currentTerrain = terrain ?? undefined
+    this.replaceTerrainTileset(
+      this.currentTerrain ? this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource) : null
+    )
     return this
   }
 
@@ -385,21 +427,14 @@ export class Viewer {
 
     this.pickCoords.set((position.x / width) * 2 - 1, -(position.y / height) * 2 + 1)
     this.threeCamera.updateMatrixWorld()
-    this.tileset.group.updateMatrixWorld(true)
     this.pickRaycaster.setFromCamera(this.pickCoords, this.threeCamera)
-    this.pickMatrix.copy(this.tileset.group.matrixWorld).invert()
 
-    const hit = this.pickRaycaster.intersectObject(this.tileset.group, true)[0]
-    if (hit) {
-      this.pickPoint.copy(hit.point).applyMatrix4(this.pickMatrix)
-      return this.toCartographicCoordinates(this.pickPoint)
+    if (this.terrainTileset) {
+      const terrainHit = this.pickTilesetCartographic(this.terrainTileset)
+      if (terrainHit) return terrainHit
     }
 
-    this.pickRay.copy(this.pickRaycaster.ray).applyMatrix4(this.pickMatrix)
-    const point = this.tileset.ellipsoid.intersectRay(this.pickRay, this.pickPoint)
-    if (!point) return null
-
-    return this.toCartographicCoordinates(point)
+    return this.pickTilesetCartographic(this.surfaceTileset) ?? this.pickEllipsoidCartographic()
   }
 
   /**
@@ -417,7 +452,8 @@ export class Viewer {
 
     this.resize()
     this.controls.update()
-    this.tileset.update()
+    this.surfaceTileset.update()
+    this.terrainTileset?.update()
     this.renderer.render(this.scene.threeScene, this.threeCamera)
     return deltaTime
   }
@@ -437,7 +473,7 @@ export class Viewer {
     this.threeCamera.aspect = clientWidth / clientHeight
     this.threeCamera.updateProjectionMatrix()
     this.renderer.setSize(clientWidth, clientHeight)
-    this.tileset.setResolutionFromRenderer(this.threeCamera, this.renderer)
+    this.resizeTilesets()
   }
 
   /**
@@ -464,7 +500,8 @@ export class Viewer {
     this.effectAdapters.forEach((adapter) => adapter.dispose())
     this.texturesGenerator.dispose({ textures: true })
     this.loadedTextures.forEach((texture) => texture.dispose())
-    this.tileset.dispose()
+    this.terrainTileset?.dispose()
+    this.surfaceTileset.dispose()
     this.controls.dispose()
     this.dracoLoader.dispose()
     this.renderer.dispose()
@@ -486,47 +523,171 @@ export class Viewer {
     }
   }
 
-  private createTileset(resource: ImageryProviderResourceOptions | undefined) {
+  private createSurfaceTileset(resource: ImageryProviderResourceOptions | undefined) {
     const tileset = new TilesRenderer()
-    this.registerImageryProvider(tileset, resource)
+    this.registerImageryProvider(tileset, resource, false)
+    this.registerCommonTilesetPlugins(tileset)
+    return tileset
+  }
+
+  private createTerrainTileset(terrain: TerrainOptions, resource: ImageryProviderResourceOptions | undefined) {
+    const tileset = new TilesRenderer(this.normalizeTerrainUrl(terrain.url))
+    this.registerTerrainProvider(tileset, terrain)
+    this.registerImageryProvider(tileset, resource, true)
+    this.registerCommonTilesetPlugins(tileset)
+    return tileset
+  }
+
+  private registerCommonTilesetPlugins(tileset: TilesRenderer) {
     tileset.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: this.dracoLoader, autoDispose: false }))
     tileset.registerPlugin(new TileCreasedNormalsPlugin())
     tileset.registerPlugin(new TilesFadePlugin())
     tileset.registerPlugin(new UpdateOnChangePlugin())
     tileset.setCamera(this.threeCamera)
     tileset.setResolutionFromRenderer(this.threeCamera, this.renderer)
-    return tileset
   }
 
-  private registerImageryProvider(tileset: TilesRenderer, resource: ImageryProviderResourceOptions | undefined) {
+  private replaceSurfaceTileset(nextTileset: TilesRenderer) {
+    const previousTileset = this.surfaceTileset
+
+    this.scene.threeScene.remove(previousTileset.group)
+    previousTileset.dispose()
+    this.surfaceTileset = nextTileset
+    this.scene.threeScene.remove(nextTileset.group)
+    this.scene.threeScene.add(nextTileset.group)
+    if (this.terrainTileset) {
+      this.scene.threeScene.remove(this.terrainTileset.group)
+      this.scene.threeScene.add(this.terrainTileset.group)
+    }
+    this.controls.setEllipsoid(this.surfaceTileset.ellipsoid, this.surfaceTileset.group)
+    this.syncActiveTilesetReference()
+    this.resizeTilesets()
+  }
+
+  private replaceTerrainTileset(nextTileset: TilesRenderer | null) {
+    const previousTileset = this.terrainTileset
+
+    if (previousTileset) {
+      this.scene.threeScene.remove(previousTileset.group)
+      previousTileset.dispose()
+    }
+    this.terrainTileset = nextTileset
+    if (nextTileset) {
+      this.scene.threeScene.add(nextTileset.group)
+    }
+    this.syncActiveTilesetReference()
+    this.resizeTilesets()
+  }
+
+  private resizeTilesets() {
+    this.surfaceTileset.setResolutionFromRenderer(this.threeCamera, this.renderer)
+    this.terrainTileset?.setResolutionFromRenderer(this.threeCamera, this.renderer)
+  }
+
+  private syncActiveTilesetReference() {
+    this.threeCamera.userData.tilesRenderer = this.tileset
+  }
+
+  private registerTerrainProvider(tileset: TilesRenderer, terrain: TerrainOptions | undefined) {
+    if (!terrain) return
+
+    const terrainOptions: ConstructorParameters<typeof QuantizedMeshPlugin>[0] & { generateNormals?: boolean } = {
+      useRecommendedSettings: terrain.useRecommendedSettings,
+      skirtLength: terrain.skirtLength ?? undefined,
+      smoothSkirtNormals: terrain.smoothSkirtNormals,
+      generateNormals: terrain.generateNormals,
+      solid: terrain.solid
+    }
+
+    tileset.registerPlugin(new QuantizedMeshPlugin(terrainOptions))
+    tileset.registerPlugin(new TerrainFetchPlugin())
+  }
+
+  private registerImageryProvider(tileset: TilesRenderer, resource: ImageryProviderResourceOptions | undefined, useOverlay: boolean) {
     if (!resource) return
 
     switch (resource.type) {
       case 'template-url': {
-        const xyzOptions: ConstructorParameters<typeof XYZTilesPlugin>[0] & { projection?: string } = {
+        const xyzOptions = {
           url: resource.url,
           levels: resource.levels,
           tileDimension: resource.tileDimension,
-          projection: resource.projection,
-          shape: 'ellipsoid'
+          projection: resource.projection
         }
 
-        tileset.registerPlugin(new XYZTilesPlugin(xyzOptions))
+        if (useOverlay) {
+          tileset.registerPlugin(
+            new ImageOverlayPlugin({
+              renderer: this.renderer,
+              overlays: [new XYZTilesOverlay(xyzOptions)]
+            })
+          )
+        } else {
+          tileset.registerPlugin(new XYZTilesPlugin({ ...xyzOptions, shape: 'ellipsoid' }))
+        }
         return
       }
       case 'cesium-ion':
-        tileset.registerPlugin(
-          new CesiumIonAuthPlugin({
-            apiToken: resource.apiToken,
-            assetId: String(resource.assetId),
-            autoRefreshToken: resource.autoRefreshToken ?? true
-          })
-        )
+        if (useOverlay) {
+          tileset.registerPlugin(
+            new ImageOverlayPlugin({
+              renderer: this.renderer,
+              overlays: [
+                new CesiumIonOverlay({
+                  apiToken: resource.apiToken,
+                  assetId: resource.assetId,
+                  autoRefreshToken: resource.autoRefreshToken ?? true
+                })
+              ]
+            })
+          )
+        } else {
+          tileset.registerPlugin(
+            new CesiumIonAuthPlugin({
+              apiToken: resource.apiToken,
+              assetId: String(resource.assetId),
+              autoRefreshToken: resource.autoRefreshToken ?? true
+            })
+          )
+        }
     }
   }
 
-  private toCartographicCoordinates(point: THREE.Vector3): CartographicCoordinates {
-    const cartographic = this.tileset.ellipsoid.getPositionToCartographic(point, this.pickCartographicScratch)
+  private normalizeTerrainUrl(url: string) {
+    const terrainUrl = new URL(url, location.href)
+    if (terrainUrl.pathname.endsWith('/layer.json')) {
+      terrainUrl.pathname = terrainUrl.pathname.slice(0, -'layer.json'.length)
+    } else if (!terrainUrl.pathname.endsWith('/')) {
+      terrainUrl.pathname += '/'
+    }
+
+    return terrainUrl.toString()
+  }
+
+  private pickTilesetCartographic(tileset: TilesRenderer): CartographicCoordinates | null {
+    tileset.group.updateMatrixWorld(true)
+    this.pickMatrix.copy(tileset.group.matrixWorld).invert()
+
+    const hit = this.pickRaycaster.intersectObject(tileset.group, true)[0]
+    if (!hit) return null
+
+    this.pickPoint.copy(hit.point).applyMatrix4(this.pickMatrix)
+    return this.toCartographicCoordinates(this.pickPoint, tileset)
+  }
+
+  private pickEllipsoidCartographic() {
+    this.surfaceTileset.group.updateMatrixWorld(true)
+    this.pickMatrix.copy(this.surfaceTileset.group.matrixWorld).invert()
+    this.pickRay.copy(this.pickRaycaster.ray).applyMatrix4(this.pickMatrix)
+
+    const point = this.surfaceTileset.ellipsoid.intersectRay(this.pickRay, this.pickPoint)
+    if (!point) return null
+
+    return this.toCartographicCoordinates(point, this.surfaceTileset)
+  }
+
+  private toCartographicCoordinates(point: THREE.Vector3, tileset: TilesRenderer): CartographicCoordinates {
+    const cartographic = tileset.ellipsoid.getPositionToCartographic(point, this.pickCartographicScratch)
     return {
       latitude: cartographic.lat * RAD2DEG,
       longitude: cartographic.lon * RAD2DEG,

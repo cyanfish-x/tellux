@@ -17,6 +17,17 @@ export interface ViewerOptions {
    */
   imageryProvider?: ImageryProviderOptions
   /**
+   * 地形瓦片资源配置。
+   *
+   * `url` 指向 Cesium quantized-mesh terrain 根目录或 `layer.json` 文件。
+   *
+   * Terrain tile resource options.
+   *
+   * The `url` points to a Cesium quantized-mesh terrain root directory or
+   * `layer.json` file.
+   */
+  terrain?: TerrainOptions
+  /**
    * 初始相机视角。
    *
    * 经纬度和姿态角使用度作为单位；高度、near 和 far 使用米作为单位。
@@ -112,6 +123,51 @@ export interface ImageryProviderOptions {
  * Imagery resource options supported by Viewer.
  */
 export type ImageryProviderResourceOptions = CesiumIonResourceOptions | TemplateUrlResourceOptions
+
+/**
+ * Cesium quantized-mesh 地形配置，用于 {@link ViewerOptions.terrain}。
+ *
+ * Cesium quantized-mesh terrain options used by {@link ViewerOptions.terrain}.
+ */
+export interface TerrainOptions {
+  /**
+   * 地形根 URL 或 `layer.json` URL。
+   *
+   * Terrain root URL or `layer.json` URL.
+   */
+  url: string
+  /**
+   * 是否应用 3d-tiles-renderer 推荐的地形加载设置，默认 `true`。
+   *
+   * Applies the terrain loading settings recommended by 3d-tiles-renderer.
+   * Defaults to `true`.
+   */
+  useRecommendedSettings?: boolean
+  /**
+   * 地形裙边长度（米）。不传时使用瓦片 geometric error。
+   *
+   * Terrain skirt length in meters. When omitted, the tile geometric error is used.
+   */
+  skirtLength?: number | null
+  /**
+   * 是否混合裙边法线以平滑瓦片边缘，默认 `true`。
+   *
+   * Blends skirt normals for smoother tile edges. Defaults to `true`.
+   */
+  smoothSkirtNormals?: boolean
+  /**
+   * 是否为地形网格生成法线，默认 `true`。
+   *
+   * Generates normals for terrain meshes. Defaults to `true`.
+   */
+  generateNormals?: boolean
+  /**
+   * 是否生成封闭实体网格，默认 `false`。
+   *
+   * Generates a solid closed mesh. Defaults to `false`.
+   */
+  solid?: boolean
+}
 
 /**
  * Cesium Ion 资源配置，用于 {@link ViewerOptions.imageryProvider}。

@@ -25,3 +25,15 @@ pnpm examples
 - `http://127.0.0.1:5173/fly-to.html`
 - `http://127.0.0.1:5173/click.html`
 - `http://127.0.0.1:5173/data-sources.html`
+- `http://127.0.0.1:5173/terrain.html`
+
+## Cesium 地形示例
+
+`terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.setTerrain(...)`。它支持输入 Cesium
+quantized-mesh 地形根目录或 `layer.json` 地址，并通过左上角面板开关热切换地形。
+
+可以在项目根目录 `.env` 中配置默认地形地址：
+
+```txt
+VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
+```

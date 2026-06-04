@@ -10,6 +10,11 @@ export function createTelluxViewer(
   options: ViewerOptions = {}
 ) {
   const viewer = new tellux.Viewer(container, {
+    imageryProvider:tellux.ImageryProvider.fromResource(
+      tellux.TemplateUrlResource.fromUrl(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      )
+    ),
     dracoDecoderPath: "/node_modules/three/examples/jsm/libs/draco/gltf/",
     ...options,
   })

@@ -139,6 +139,46 @@ a {
   gap: 8px;
 }
 
+.field {
+  display: grid;
+  gap: 6px;
+  color: #bfdbfe;
+  font-size: 13px;
+}
+
+.field__input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 163, 184, 0.48);
+  border-radius: 6px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.72);
+  font: inherit;
+  font-size: 13px;
+}
+
+.field__input:focus {
+  border-color: rgba(125, 211, 252, 0.96);
+  outline: none;
+}
+
+.switch {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 8px;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.switch input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #7dd3fc;
+}
+
 .button {
   display: inline-flex;
   min-height: 34px;

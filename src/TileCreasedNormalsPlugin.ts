@@ -7,6 +7,8 @@ interface TileModelPlugin {
 }
 
 export class TileCreasedNormalsPlugin implements TileModelPlugin {
+  readonly priority = -20
+
   processTileModel(tileScene: THREE.Object3D) {
     tileScene.traverse((object) => {
       const mesh = object as THREE.Mesh
