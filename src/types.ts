@@ -203,24 +203,44 @@ export interface ViewerEvent {
 }
 
 /**
- * Viewer canvas 上的点击事件。
+ * Viewer canvas 上的鼠标事件。
  *
- * Click event on the Viewer canvas.
+ * Mouse event on the Viewer canvas.
  */
-export interface ViewerClickEvent extends ViewerEvent {
+export interface ViewerMouseEvent extends ViewerEvent {
   /** 事件类型。Event type. */
-  type: 'click'
+  type: 'click' | 'mousemove'
   /** 原始 DOM 鼠标事件。Original DOM mouse event. */
   originalEvent: MouseEvent
   /** 相对于 canvas 左上角的像素坐标。Pixel position relative to the top-left corner of the canvas. */
   position: ScreenPosition
   /**
-   * 点击位置对应的经纬高；未命中 3D Tiles 或椭球时为 `null`。
+   * 鼠标位置对应的经纬高；未命中 3D Tiles 或椭球时为 `null`。
    *
    * Cartographic coordinates for the clicked position, or `null` when neither
    * 3D Tiles nor the ellipsoid is hit.
    */
   cartographic: CartographicCoordinates | null
+}
+
+/**
+ * Viewer canvas 上的点击事件。
+ *
+ * Click event on the Viewer canvas.
+ */
+export interface ViewerClickEvent extends ViewerMouseEvent {
+  /** 事件类型。Event type. */
+  type: 'click'
+}
+
+/**
+ * Viewer canvas 上的鼠标移动事件。
+ *
+ * Mouse move event on the Viewer canvas.
+ */
+export interface ViewerMouseMoveEvent extends ViewerMouseEvent {
+  /** 事件类型。Event type. */
+  type: 'mousemove'
 }
 
 /**
@@ -230,6 +250,7 @@ export interface ViewerClickEvent extends ViewerEvent {
  */
 export interface ViewerEventMap {
   click: ViewerClickEvent
+  mousemove: ViewerMouseMoveEvent
 }
 
 /**

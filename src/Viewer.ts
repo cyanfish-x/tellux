@@ -32,6 +32,7 @@ import type {
   ScreenPosition,
   ViewerEventListener,
   ViewerEventMap,
+  ViewerMouseEvent,
   ViewerOptions
 } from './types'
 
@@ -60,6 +61,8 @@ export type {
   ViewerEvent,
   ViewerEventListener,
   ViewerEventMap,
+  ViewerMouseEvent,
+  ViewerMouseMoveEvent,
   ViewerOptions
 } from './types'
 
@@ -151,20 +154,28 @@ export class Viewer {
     if (event.property === 'atmosphereShadow') this.syncCloudAtmosphereComposition()
     if (event.property === 'atmosphereShadowLength') this.syncCloudAtmosphereComposition()
   }
-  private readonly handleCanvasClick = (originalEvent: MouseEvent) => {
+  private createMouseEvent(type: 'click', originalEvent: MouseEvent): ViewerEventMap['click']
+  private createMouseEvent(type: 'mousemove', originalEvent: MouseEvent): ViewerEventMap['mousemove']
+  private createMouseEvent(type: ViewerMouseEvent['type'], originalEvent: MouseEvent): ViewerMouseEvent {
     const rect = this.renderer.domElement.getBoundingClientRect()
     const position = {
       x: originalEvent.clientX - rect.left,
       y: originalEvent.clientY - rect.top
     }
 
-    this.dispatchEvent('click', {
-      type: 'click',
+    return {
+      type,
       viewer: this,
       originalEvent,
       position,
       cartographic: this.pickCartographic(position)
-    })
+    }
+  }
+  private readonly handleCanvasClick = (originalEvent: MouseEvent) => {
+    this.dispatchEvent('click', this.createMouseEvent('click', originalEvent))
+  }
+  private readonly handleCanvasMouseMove = (originalEvent: MouseEvent) => {
+    this.dispatchEvent('mousemove', this.createMouseEvent('mousemove', originalEvent))
   }
 
   private cloudsEffect: CloudsEffect | null = null
@@ -232,6 +243,7 @@ export class Viewer {
     this.renderer.domElement.addEventListener('pointerdown', this.enableAdjustHeight)
     this.renderer.domElement.addEventListener('wheel', this.enableAdjustHeight)
     this.renderer.domElement.addEventListener('click', this.handleCanvasClick)
+    this.renderer.domElement.addEventListener('mousemove', this.handleCanvasMouseMove)
 
     this.initAtmosphere()
     this.initPostProcessing()
@@ -445,6 +457,7 @@ export class Viewer {
     this.renderer.domElement.removeEventListener('pointerdown', this.enableAdjustHeight)
     this.renderer.domElement.removeEventListener('wheel', this.enableAdjustHeight)
     this.renderer.domElement.removeEventListener('click', this.handleCanvasClick)
+    this.renderer.domElement.removeEventListener('mousemove', this.handleCanvasMouseMove)
     this.renderer.setEffects(null)
     this.cloudsEffect?.events.removeEventListener('change', this.handleCloudsChange)
     this.clearEventListeners()

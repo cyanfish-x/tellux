@@ -33,6 +33,8 @@ export {
   type ViewerEvent,
   type ViewerEventListener,
   type ViewerEventMap,
+  type ViewerMouseEvent,
+  type ViewerMouseMoveEvent,
   type ViewerOptions
 } from './Viewer'
 

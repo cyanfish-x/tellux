@@ -222,6 +222,34 @@ export class Camera {
     })
   }
 
+  /**
+   * 获取当前相机视角参数。
+   *
+   * 返回值可直接传给 {@link Camera.setView}，便于在控制台读取当前视角后，
+   * 用作 Viewer 初始化时的 `camera` 配置。
+   *
+   * Gets the current camera view parameters.
+   *
+   * The returned value can be passed directly to {@link Camera.setView}, making
+   * it convenient to read the current view from the console and reuse it as the
+   * initial `camera` option for Viewer creation.
+   */
+  getState(): CameraSetViewOptions {
+    const ellipsoid = this.getEllipsoid()
+    if (!ellipsoid) {
+      return {
+        latitude: DEFAULT_CAMERA.latitude,
+        longitude: DEFAULT_CAMERA.longitude,
+        height: DEFAULT_CAMERA.height,
+        heading: DEFAULT_CAMERA.heading,
+        pitch: DEFAULT_CAMERA.pitch,
+        roll: DEFAULT_CAMERA.roll
+      }
+    }
+
+    return this.getCurrentView(ellipsoid)
+  }
+
   private applyView(options: CameraViewState) {
     const ellipsoid = this.getEllipsoid()
     if (!ellipsoid) return
