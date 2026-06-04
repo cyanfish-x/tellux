@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tellux Camera FlyTo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar" aria-label="Camera flyTo controls">
+        <h1>相机飞行</h1>
+        <p>使用 <code>viewer.flyTo</code> 触发 Cesium 风格的相机飞行动画。</p>
+        <p id="token-status" class="status" aria-live="polite"></p>
+        <p id="flight-status" class="status" aria-live="polite">选择一个目的地开始飞行。</p>
+        <div class="toolbar__row">
+          <button class="button" data-destination="tokyo" type="button">东京</button>
+          <button class="button" data-destination="shanghai" type="button">上海</button>
+          <button class="button" data-destination="singapore" type="button">新加坡</button>
+          <button class="button" id="cancel-flight" type="button">取消飞行</button>
+          <a class="button" href="./index.html">返回目录</a>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./fly-to.ts"></script>
+  </body>
+</html>

@@ -17,6 +17,7 @@ import { AerialPerspectiveEffect, PrecomputedTexturesGenerator, getSunDirectionE
 import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
 import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effects'
 import { Camera } from './Camera'
+import type { CameraFlyToOptions } from './Camera'
 import { CesiumIonResource } from './CesiumIonResource'
 import { Clock } from './Clock'
 import { DEFAULT_CAMERA, RAD2DEG } from './constants'
@@ -38,6 +39,13 @@ export { CesiumIonResource } from './CesiumIonResource'
 export { Clock } from './Clock'
 export { Scene } from './Scene'
 export { telluxConfig, type TelluxConfig } from './config'
+export type {
+  CameraFlyToDestination,
+  CameraFlyToOptions,
+  CameraFlightEasingFunction,
+  CameraOrientation,
+  CameraSetViewOptions
+} from './Camera'
 export type {
   CartographicCoordinates,
   CesiumIonResourceOptions,
@@ -120,6 +128,9 @@ export class Viewer {
   private readonly texturesGenerator: PrecomputedTexturesGenerator
   private readonly handleWindowResize = () => {
     this.resize()
+  }
+  private readonly handleCameraInteraction = () => {
+    this.camera.cancelFlight()
   }
   private readonly enableAdjustHeight = () => {
     this.controls.adjustHeight = true
@@ -220,6 +231,8 @@ export class Viewer {
     this.controls.setEllipsoid(this.tileset.ellipsoid, this.tileset.group)
     this.controls.enableDamping = true
     this.controls.adjustHeight = false
+    this.renderer.domElement.addEventListener('pointerdown', this.handleCameraInteraction)
+    this.renderer.domElement.addEventListener('wheel', this.handleCameraInteraction)
     this.renderer.domElement.addEventListener('pointerdown', this.enableAdjustHeight)
     this.renderer.domElement.addEventListener('wheel', this.enableAdjustHeight)
     this.renderer.domElement.addEventListener('click', this.handleCanvasClick)
@@ -312,6 +325,21 @@ export class Viewer {
   }
 
   /**
+   * 平滑飞行到目标位置。
+   *
+   * 这是 {@link Viewer.camera} 的快捷代理，等价于调用 `viewer.camera.flyTo(options)`。
+   *
+   * Smoothly flies the camera to a destination.
+   *
+   * This is a shortcut proxy for {@link Viewer.camera}, equivalent to calling
+   * `viewer.camera.flyTo(options)`.
+   */
+  flyTo(options: CameraFlyToOptions) {
+    this.camera.flyTo(options)
+    return this
+  }
+
+  /**
    * 获取屏幕位置对应的经纬高坐标。
    *
    * 传入的坐标相对于 canvas 左上角。方法会优先命中已加载的 3D Tiles，
@@ -393,9 +421,12 @@ export class Viewer {
    */
   destroy() {
     this.isDestroyed = true
+    this.camera.cancelFlight()
     this.useDefaultRenderLoop = false
     window.removeEventListener('resize', this.handleWindowResize)
     this.resizeObserver.disconnect()
+    this.renderer.domElement.removeEventListener('pointerdown', this.handleCameraInteraction)
+    this.renderer.domElement.removeEventListener('wheel', this.handleCameraInteraction)
     this.renderer.domElement.removeEventListener('pointerdown', this.enableAdjustHeight)
     this.renderer.domElement.removeEventListener('wheel', this.enableAdjustHeight)
     this.renderer.domElement.removeEventListener('click', this.handleCanvasClick)

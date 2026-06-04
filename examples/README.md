@@ -17,6 +17,7 @@ pnpm examples
 
 - `http://127.0.0.1:5173/`
 - `http://127.0.0.1:5173/basic.html`
+- `http://127.0.0.1:5173/fly-to.html`
 - `http://127.0.0.1:5173/click.html`
 
 如果没有设置 `VITE_CESIUM_ION_TOKEN`，页面仍会启动，但 Cesium Ion 资源可能无法加载。
