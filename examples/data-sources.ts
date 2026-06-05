@@ -23,6 +23,7 @@ if (!(overlayList instanceof HTMLElement)) {
 
 const overlayListElement = overlayList
 let draggedLayerKey: string | null = null
+let dragHoverLayerKey: string | null = null
 
 interface OverlayLayerExample {
   key: string
@@ -243,6 +244,7 @@ function renderLayerManager() {
     dragHandle.textContent = "≡"
     dragHandle.addEventListener("dragstart", (event) => {
       draggedLayerKey = layer.key
+      dragHoverLayerKey = null
       item.classList.add("layer-manager__item--dragging")
       event.dataTransfer?.setData("text/plain", layer.key)
       if (event.dataTransfer) {
@@ -251,6 +253,7 @@ function renderLayerManager() {
     })
     dragHandle.addEventListener("dragend", () => {
       draggedLayerKey = null
+      dragHoverLayerKey = null
       getLayerItems().forEach((element) => {
         element.classList.remove("layer-manager__item--dragging")
       })
@@ -317,17 +320,45 @@ function renderLayerManager() {
 overlayListElement.addEventListener("dragover", (event) => {
   if (!draggedLayerKey) return
 
+  event.preventDefault()
+
+  const target = getClosestLayerItem(event.target)
+  const targetLayerKey = target?.dataset.layer ?? null
+  if (!targetLayerKey || targetLayerKey === draggedLayerKey) {
+    dragHoverLayerKey = null
+  }
+})
+
+overlayListElement.addEventListener("dragenter", (event) => {
+  if (!draggedLayerKey) return
+
   const target = getClosestLayerItem(event.target)
   if (!target) return
 
   event.preventDefault()
   const targetLayerKey = target.dataset.layer
-  if (!targetLayerKey || targetLayerKey === draggedLayerKey) return
-  if (!shouldSwapWithTarget(draggedLayerKey, targetLayerKey, event.clientY, target)) {
+  if (!targetLayerKey) return
+  if (targetLayerKey === draggedLayerKey) {
+    dragHoverLayerKey = null
+    return
+  }
+  if (targetLayerKey === dragHoverLayerKey) {
     return
   }
 
+  dragHoverLayerKey = targetLayerKey
   reorderOverlayLayer(draggedLayerKey, targetLayerKey)
+})
+
+overlayListElement.addEventListener("dragleave", (event) => {
+  if (!draggedLayerKey || !dragHoverLayerKey) return
+
+  const target = getClosestLayerItem(event.target)
+  const targetLayerKey = target?.dataset.layer
+  if (targetLayerKey !== dragHoverLayerKey) return
+  if (isPointerInsideElement(event, target)) return
+
+  dragHoverLayerKey = null
 })
 
 overlayListElement.addEventListener("drop", (event) => {
@@ -335,6 +366,7 @@ overlayListElement.addEventListener("drop", (event) => {
 
   event.preventDefault()
   draggedLayerKey = null
+  dragHoverLayerKey = null
 })
 
 function reorderOverlayLayer(draggedKey: string, targetKey: string) {
@@ -351,21 +383,6 @@ function reorderOverlayLayer(draggedKey: string, targetKey: string) {
   draggedLayer.layer?.moveTo(toIndex)
   syncLayerItemOrder()
   animateLayerItemMoves(firstRects)
-}
-
-function shouldSwapWithTarget(
-  draggedKey: string,
-  targetKey: string,
-  pointerY: number,
-  target: HTMLElement
-) {
-  const fromIndex = overlayLayers.findIndex((layer) => layer.key === draggedKey)
-  const toIndex = overlayLayers.findIndex((layer) => layer.key === targetKey)
-  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return false
-
-  const rect = target.getBoundingClientRect()
-  const midpoint = rect.top + rect.height / 2
-  return fromIndex < toIndex ? pointerY > midpoint : pointerY < midpoint
 }
 
 function syncLayerItemOrder() {
@@ -386,6 +403,16 @@ function getClosestLayerItem(target: EventTarget | null) {
 function getLayerItems() {
   return Array.from(
     overlayListElement.querySelectorAll<HTMLElement>(".layer-manager__item")
+  )
+}
+
+function isPointerInsideElement(event: DragEvent, element: HTMLElement) {
+  const rect = element.getBoundingClientRect()
+  return (
+    event.clientX >= rect.left &&
+    event.clientX <= rect.right &&
+    event.clientY >= rect.top &&
+    event.clientY <= rect.bottom
   )
 }
 
