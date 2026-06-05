@@ -257,13 +257,12 @@ a {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr) auto;
   gap: 10px;
-  min-height: 58px;
+  min-height: 86px;
   align-items: start;
   padding: 11px 10px;
   border: 1px solid rgba(148, 163, 184, 0.34);
   border-radius: 6px;
   background: linear-gradient(180deg, rgba(30, 41, 59, 0.74), rgba(15, 23, 42, 0.72));
-  cursor: pointer;
   transition:
     border-color 160ms ease,
     background 160ms ease;
@@ -274,7 +273,7 @@ a {
   background: rgba(51, 65, 85, 0.72);
 }
 
-.layer-manager__item input {
+.layer-manager__toggle {
   width: 16px;
   height: 16px;
   margin: 3px 0 0;
@@ -301,6 +300,35 @@ a {
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.layer-manager__opacity {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr) 40px;
+  gap: 8px;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.layer-manager__opacity-label,
+.layer-manager__opacity-value {
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.layer-manager__opacity-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.layer-manager__opacity-slider {
+  width: 100%;
+  min-width: 0;
+  height: 16px;
+  margin: 0;
+  accent-color: #7dd3fc;
+  cursor: pointer;
 }
 
 .layer-manager__tag {

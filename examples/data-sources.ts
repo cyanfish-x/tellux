@@ -223,13 +223,15 @@ function renderLayerManager() {
   overlayListElement.innerHTML = ""
 
   overlayLayers.forEach((layer) => {
-    const item = document.createElement("label")
+    const item = document.createElement("div")
     item.className = "layer-manager__item"
 
     const input = document.createElement("input")
     input.type = "checkbox"
+    input.className = "layer-manager__toggle"
     input.checked = layer.layer?.isVisible() ?? layer.initialVisible
     input.dataset.layer = layer.key
+    input.setAttribute("aria-label", `${layer.label} 显隐`)
     input.addEventListener("change", () => {
       layer.layer?.setVisible(input.checked)
       updateLayerStatus()
@@ -248,10 +250,42 @@ function renderLayerManager() {
     type.className = `layer-manager__tag layer-manager__tag--${layer.type}`
     type.textContent = layer.type
 
-    text.append(name, description)
+    const opacity = layer.layer?.getStyle().opacity ?? 1
+    const opacityControl = document.createElement("div")
+    opacityControl.className = "layer-manager__opacity"
+
+    const opacityLabel = document.createElement("span")
+    opacityLabel.className = "layer-manager__opacity-label"
+    opacityLabel.textContent = "透明度"
+
+    const opacityInput = document.createElement("input")
+    opacityInput.type = "range"
+    opacityInput.className = "layer-manager__opacity-slider"
+    opacityInput.min = "0"
+    opacityInput.max = "1"
+    opacityInput.step = "0.01"
+    opacityInput.value = String(opacity)
+    opacityInput.setAttribute("aria-label", `${layer.label} 透明度`)
+
+    const opacityValue = document.createElement("output")
+    opacityValue.className = "layer-manager__opacity-value"
+    opacityValue.textContent = formatOpacity(opacity)
+
+    opacityInput.addEventListener("input", () => {
+      const nextOpacity = Number(opacityInput.value)
+      layer.layer?.setStyle({ opacity: nextOpacity })
+      opacityValue.textContent = formatOpacity(nextOpacity)
+    })
+
+    opacityControl.append(opacityLabel, opacityInput, opacityValue)
+    text.append(name, description, opacityControl)
     item.append(input, text, type)
     overlayListElement.appendChild(item)
   })
+}
+
+function formatOpacity(opacity: number) {
+  return `${Math.round(opacity * 100)}%`
 }
 
 function updateLayerStatus() {
