@@ -32,7 +32,6 @@ const viewer = createTelluxViewer(container, {
   },
   scene: {
     clouds: false,
-    lensFlare: false,
     toneMappingExposure: 7
   }
 })

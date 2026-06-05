@@ -11,28 +11,28 @@
       <div class="example-home__content">
         <h1>Tellux Examples</h1>
         <p>
-          这些示例从本仓库的 <code>src</code> 直接引入 Tellux，适合开发时快速检查基础场景和 Viewer 事件。
+          这些示例从本仓库的 <code>src</code> 直接引入 Tellux，覆盖基础场景、相机控制、事件读数、影像图层、3D Tiles、地形和大气云层。
         </p>
         <div class="example-list" aria-label="Tellux examples">
           <a class="example-link" href="./basic.html">
             <strong>基础场景渲染</strong>
-            <span>创建 Viewer，通过 TemplateUrlResource 加载 ArcGIS 影像瓦片，并设置初始相机视角。</span>
+            <span>创建 Viewer，加载 ArcGIS 影像瓦片，启用默认大气、云层和后处理，并提供东京、上海视角按钮。</span>
           </a>
           <a class="example-link" href="./fly-to.html">
             <strong>相机飞行</strong>
-            <span>使用 Cesium 风格的 viewer.flyTo 在多个城市视角之间平滑飞行。</span>
+            <span>使用 Cesium 风格的 viewer.flyTo 在东京、上海、新加坡之间平滑飞行，并支持取消飞行。</span>
           </a>
           <a class="example-link" href="./click.html">
-            <strong>点击事件</strong>
-            <span>监听 Viewer canvas 点击事件，并显示点击位置的像素坐标。</span>
+            <strong>点击与鼠标读数</strong>
+            <span>监听 Viewer 点击和鼠标移动事件，显示 canvas 像素坐标以及经度、纬度和高度。</span>
           </a>
           <a class="example-link" href="./data-sources.html">
-            <strong>数据源切换</strong>
-            <span>通过按钮切换 Cesium Ion 和 XYZ 模板影像来源。</span>
+            <strong>影像图层管理器</strong>
+            <span>管理 ArcGIS XYZ、NASA GIBS WMS 和 OpenInfraMap MVT 图层，支持显隐、透明度和拖拽排序。</span>
           </a>
           <a class="example-link" href="./3d-tiles.html">
             <strong>3D Tiles 加载</strong>
-            <span>通过 URL 或 Cesium Ion asset 加载独立场景 3D Tiles。</span>
+            <span>通过 tileset.json URL 或 Cesium Ion asset 加载独立场景 3D Tiles，并支持飞行定位、显隐和移除。</span>
           </a>
           <a class="example-link" href="./terrain.html">
             <strong>Cesium 地形热切换</strong>
@@ -40,7 +40,7 @@
           </a>
           <a class="example-link" href="./atmosphere.html">
             <strong>体积云与大气</strong>
-            <span>通过左上角面板调整大气、体积云、UTC 时间、云覆盖率和曝光参数。</span>
+            <span>切换太平洋和喜马拉雅视角，并通过公共设置面板调整大气、体积云、UTC 时间、光照和曝光。</span>
           </a>
         </div>
       </div>

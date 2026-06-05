@@ -10,7 +10,10 @@
     <main class="viewer-shell">
       <div id="viewer"></div>
       <section class="toolbar" aria-label="Click event readout">
-        <h1>点击事件</h1>
+        <header class="toolbar__header">
+          <h1>点击事件</h1>
+          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+        </header>
         <p>点击画布后，示例会显示相对于 canvas 左上角的像素坐标和经纬高。</p>
         <p id="token-status" class="status" aria-live="polite"></p>
         <dl class="click-readout">
@@ -29,7 +32,6 @@
         </dl>
         <div class="toolbar__row">
           <button class="button" id="clear" type="button">清空</button>
-          <a class="button" href="./index.html">返回目录</a>
         </div>
       </section>
       <section class="location-panel" aria-label="Mouse position readout">

@@ -10,8 +10,11 @@
     <main class="viewer-shell">
       <div id="viewer"></div>
       <section class="toolbar toolbar--wide" aria-label="3D Tiles controls">
-        <h1>3D Tiles 加载</h1>
-        <p>通过 <code>viewer.load3DTileset</code> 加载独立场景 3D Tiles，可选择 tileset JSON URL 或 Cesium Ion 资源。</p>
+        <header class="toolbar__header">
+          <h1>3D Tiles 加载</h1>
+          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+        </header>
+        <p>通过 <code>viewer.load3DTileset</code> 加载独立场景 3D Tiles，默认使用 CesiumGS 公开样例，也可以替换为自定义 URL 或 Cesium Ion 资源。</p>
         <label class="field">
           <span>tileset.json URL</span>
           <input id="tileset-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
@@ -23,7 +26,7 @@
           </label>
           <label class="field">
             <span>Cesium Ion token</span>
-            <input id="ion-token" class="field__input" type="text" autocomplete="off" spellcheck="false" />
+            <input id="ion-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
           </label>
         </div>
         <label class="switch">
@@ -39,7 +42,6 @@
           <button class="button" id="load-url-tileset" type="button">加载 URL</button>
           <button class="button" id="load-ion-tileset" type="button">加载 Cesium Ion</button>
           <button class="button" id="remove-tileset" type="button">移除</button>
-          <a class="button" href="./index.html">返回目录</a>
         </div>
       </section>
     </main>

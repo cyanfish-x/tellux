@@ -34,6 +34,12 @@ pnpm examples
 `3d-tiles.html` 演示 `viewer.load3DTileset(...)`。3D Tiles 会作为独立场景数据加入 Viewer，
 不参与影像 overlay 管线。示例支持直接加载 `tileset.json` URL，也支持加载 Cesium Ion 3D Tiles 资源。
 
+未配置 `.env` 时，示例会默认加载 CesiumGS `3d-tiles-samples` 仓库中的公开 sample：
+
+```txt
+https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json
+```
+
 可以在项目根目录 `.env` 中配置默认值：
 
 ```txt

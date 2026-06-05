@@ -12,9 +12,11 @@ const loadUrlButton = document.querySelector<HTMLButtonElement>('#load-url-tiles
 const loadIonButton = document.querySelector<HTMLButtonElement>('#load-ion-tileset')
 const removeButton = document.querySelector<HTMLButtonElement>('#remove-tileset')
 
-const DEFAULT_TILESET_URL = import.meta.env.VITE_3D_TILESET_URL ?? ''
+const PUBLIC_SAMPLE_TILESET_URL =
+  'https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json'
+const DEFAULT_TILESET_URL = import.meta.env.VITE_3D_TILESET_URL ?? PUBLIC_SAMPLE_TILESET_URL
 const DEFAULT_ION_ASSET_ID = import.meta.env.VITE_CESIUM_ION_3D_TILESET_ASSET_ID ?? ''
-const DEFAULT_ION_TOKEN = ''
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ''
 
 if (!(container instanceof HTMLElement)) {
   throw new Error('Viewer container not found.')
@@ -36,14 +38,14 @@ const removeControl = removeButton
 const viewer = createTelluxViewer(container, {
   scene: {
     clouds: false,
-    lensFlare: false,
     toneMappingExposure: 7
   }
 })
 
 tilesetUrlField.value = DEFAULT_TILESET_URL
 ionAssetIdField.value = DEFAULT_ION_ASSET_ID
-ionTokenField.value = DEFAULT_ION_TOKEN
+ionTokenField.value = ''
+ionTokenField.placeholder = DEFAULT_ION_TOKEN ? '留空使用默认 token' : '输入 Cesium Ion token'
 
 let activeLayer: TilesetLayer | null = null
 
@@ -71,7 +73,7 @@ function activateLayer(layer: TilesetLayer, description: string) {
   setStatus(`${description} 已加入场景。图层 id：${layer.id}`)
 }
 
-loadUrlControl.addEventListener('click', () => {
+function loadUrlTileset() {
   const url = tilesetUrlField.value.trim()
   if (!url) {
     setStatus('请先输入 tileset.json URL，或在 .env 中配置 VITE_3D_TILESET_URL。')
@@ -87,11 +89,13 @@ loadUrlControl.addEventListener('click', () => {
     }),
     'URL 3D Tiles'
   )
-})
+}
+
+loadUrlControl.addEventListener('click', loadUrlTileset)
 
 loadIonControl.addEventListener('click', () => {
   const assetId = ionAssetIdField.value.trim()
-  const apiToken = ionTokenField.value.trim()
+  const apiToken = ionTokenField.value.trim() || DEFAULT_ION_TOKEN
 
   if (!assetId || !apiToken) {
     setStatus('请先输入 Cesium Ion asset id 和 token，或在 .env 中配置默认值。')
@@ -121,7 +125,12 @@ removeControl.addEventListener('click', () => {
 })
 
 if (DEFAULT_TILESET_URL) {
-  setStatus('已读取 VITE_3D_TILESET_URL，可点击“加载 URL”。')
+  loadUrlTileset()
+  setStatus(
+    DEFAULT_TILESET_URL === PUBLIC_SAMPLE_TILESET_URL
+      ? '已自动加载 CesiumGS 公开 3D Tiles 示例；也可以替换 URL 后重新加载。'
+      : '已从 VITE_3D_TILESET_URL 自动加载默认 3D Tiles。'
+  )
 } else if (DEFAULT_ION_ASSET_ID && DEFAULT_ION_TOKEN) {
   setStatus('已读取 Cesium Ion 默认配置，可点击“加载 Cesium Ion”。')
 } else {

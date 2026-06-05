@@ -120,6 +120,14 @@ a {
   max-width: min(520px, calc(100vw - 32px));
 }
 
+.toolbar__header,
+.layer-manager__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .toolbar h1 {
   margin: 0;
   font-size: 16px;
@@ -214,6 +222,46 @@ a {
   background: #7dd3fc;
 }
 
+.icon-button {
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  color: #e2e8f0;
+  background: transparent;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  color: #f8fafc;
+  background: rgba(125, 211, 252, 0.14);
+  outline: none;
+}
+
+.icon-button--back::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  content: "";
+  width: 20px;
+  height: 20px;
+  background: #cbd5e1;
+  -webkit-mask: url("/back.svg") center / contain no-repeat;
+  mask: url("/back.svg") center / contain no-repeat;
+  transform: translate(-50%, -50%);
+}
+
+.icon-button--back:hover::before,
+.icon-button--back:focus-visible::before {
+  background: #7dd3fc;
+}
+
 .status {
   color: #fde68a;
 }
@@ -232,13 +280,6 @@ a {
   background: rgba(15, 23, 42, 0.78);
   box-shadow: 0 18px 48px rgba(2, 6, 23, 0.28);
   backdrop-filter: blur(12px);
-}
-
-.layer-manager__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .layer-manager h1 {
