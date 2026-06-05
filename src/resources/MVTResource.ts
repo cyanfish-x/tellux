@@ -16,14 +16,6 @@ export class MVTResource {
   readonly projection?: string
   /** 生成纹理的画布分辨率。Canvas resolution used to rasterize vector tiles. */
   readonly resolution?: number
-  /** 图层透明度。Layer opacity. */
-  readonly opacity?: number
-  /** 图层颜色乘色。Layer color tint. */
-  readonly color?: number | string
-  /** 是否把 alpha 通道作为遮罩。Whether the alpha channel is used as a mask. */
-  readonly alphaMask?: boolean
-  /** 是否反转 alpha 遮罩。Whether the alpha mask is inverted. */
-  readonly alphaInvert?: boolean
   /** 请求配置。Request options. */
   readonly fetchOptions?: RequestInit
   /** 要应用到 MVT feature 的样式回调。Style callback applied to MVT features. */
@@ -51,10 +43,6 @@ export class MVTResource {
     this.levels = options.levels
     this.projection = options.projection
     this.resolution = options.resolution
-    this.opacity = options.opacity
-    this.color = options.color
-    this.alphaMask = options.alphaMask
-    this.alphaInvert = options.alphaInvert
     this.fetchOptions = options.fetchOptions
     this.getStyle = options.getStyle
   }

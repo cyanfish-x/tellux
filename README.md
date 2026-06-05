@@ -21,11 +21,13 @@ const viewer = new tellux.Viewer(container, {
   terrain: {
     url: 'https://example.com/terrain/'
   },
-  imageryProvider: tellux.ImageryProvider.fromResource(
-    tellux.TemplateUrlResource.fromUrl(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-    )
-  ),
+  layers: [
+    {
+      source: tellux.TemplateUrlResource.fromUrl(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      )
+    }
+  ],
   camera: {
     latitude: 35.6812,
     longitude: 139.8,
@@ -48,29 +50,85 @@ viewer.setTerrain(null)
 
 ```ts
 new tellux.Viewer(container, {
-  imageryProvider: tellux.ImageryProvider.fromResource(
-    tellux.CesiumIonResource.fromAssetId(2275207, {
-      apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-    })
-  )
+  layers: [
+    {
+      source: tellux.CesiumIonResource.fromAssetId(2275207, {
+        apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
+      })
+    }
+  ]
 })
 ```
 
-MVT 矢量瓦片可以通过 `MVTResource` 作为影像叠加层接入：
+影像图层统一通过 `viewer.layers` 管理，图层顺序按数组从下到上绘制：
 
 ```ts
-viewer.setImageryOverlays([
-  tellux.MVTResource.fromUrl('https://example.com/tiles/{z}/{x}/{y}.pbf', {
+const imageryLayer = viewer.layers.add({
+  name: 'World Imagery',
+  source: tellux.TemplateUrlResource.fromUrl(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+  )
+})
+
+imageryLayer.setVisible(false)
+imageryLayer.setStyle({ opacity: 0.65 })
+imageryLayer.moveTo(0)
+imageryLayer.remove()
+```
+
+MVT 矢量瓦片可以通过 `MVTResource` 作为影像图层接入：
+
+```ts
+viewer.layers.add({
+  name: 'Water and roads',
+  source: tellux.MVTResource.fromUrl('https://example.com/tiles/{z}/{x}/{y}.pbf', {
     getStyle(layerName) {
       if (layerName.includes('water')) return { fill: '#38bdf8', order: 10 }
       if (layerName.includes('transportation')) return { stroke: '#facc15', strokeWidth: 1.4, order: 30 }
       return null
     }
   })
-])
+})
 ```
 
 `MVTResource` 依赖 `3d-tiles-renderer` 的 MVT overlay 能力，运行时需要安装 `@mapbox/vector-tile` 和 `pbf`。
+
+WMS 服务可以通过 `WMSResource` 作为影像图层接入：
+
+```ts
+viewer.layers.add({
+  name: 'Province boundary',
+  source: tellux.WMSResource.fromUrl('https://example.com/geoserver/wms', 'workspace:layer', {
+    crs: 'EPSG:4326',
+    format: 'image/png',
+    transparent: true
+  }),
+  style: {
+    opacity: 0.7
+  }
+})
+```
+
+例如 GeoServer WMS 1.1.0 服务：
+
+```ts
+viewer.layers.add({
+  name: '中国省界 WMS',
+  source: tellux.WMSResource.fromUrl('http://localhost:8080/geoserver/YX_yimin/wms', 'YX_yimin:china_province', {
+    version: '1.1.0',
+    crs: 'EPSG:4326',
+    styles: '',
+    format: 'image/png',
+    transparent: true,
+    contentBoundingBox: [73.501142, 3.397162, 135.088511, 53.560901]
+  }),
+  style: {
+    opacity: 0.72
+  }
+})
+```
+
+> WMS 图层应请求图片格式，例如 `image/png`。`format=application/openlayers` 通常是 GeoServer 的预览页格式，不适合作为影像贴图。
 
 请确保容器具有非零尺寸：
 

@@ -7,6 +7,7 @@ import { Clock } from './Clock'
 import { DEFAULT_CAMERA, RAD2DEG } from './constants'
 import { telluxConfig } from './config'
 import type { ThreeRendererWithEffects } from './effects'
+import { LayerManager } from './LayerManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { Scene } from './Scene'
@@ -27,10 +28,11 @@ import type {
 export { Camera } from './Camera'
 export { CesiumIonResource } from './resources/CesiumIonResource'
 export { Clock } from './Clock'
-export { ImageryProvider } from './ImageryProvider'
+export { ImageryLayer, LayerManager } from './LayerManager'
 export { MVTResource } from './resources/MVTResource'
 export { Scene } from './Scene'
 export { TemplateUrlResource } from './resources/TemplateUrlResource'
+export { WMSResource } from './resources/WMSResource'
 export { telluxConfig, type TelluxConfig } from './config'
 export type {
   CameraFlyToDestination,
@@ -44,9 +46,9 @@ export type {
   CesiumIon3DTilesetOptions,
   CesiumIonResourceOptions,
   FlyTo3DTilesetOptions,
-  ImageryProviderOptions,
-  ImageryOverlayResourceOptions,
-  ImageryProviderResourceOptions,
+  ImageryLayerOptions,
+  ImageryLayerSourceOptions,
+  ImageryLayerStyleOptions,
   Load3DTilesetOptions,
   MVTFeatureProperties,
   MVTFeatureStyle,
@@ -63,7 +65,8 @@ export type {
   ViewerEventMap,
   ViewerMouseEvent,
   ViewerMouseMoveEvent,
-  ViewerOptions
+  ViewerOptions,
+  WMSResourceOptions
 } from './types'
 
 /**
@@ -108,6 +111,12 @@ export class Viewer {
    * Scene clock used for sun direction.
    */
   readonly clock: Clock
+  /**
+   * 影像图层管理器。
+   *
+   * Imagery layer manager.
+   */
+  readonly layers: LayerManager
   /**
    * 底层 3D Tiles 渲染器。
    *
@@ -241,8 +250,6 @@ export class Viewer {
       renderer: this.renderer,
       dracoLoader: this.dracoLoader,
       transparentOverlayTexture: this.transparentOverlayTexture,
-      imageryProvider: options.imageryProvider,
-      imageryOverlays: options.imageryOverlays,
       terrain: options.terrain,
       creasedNormals: sceneOptions.creasedNormals
     })
@@ -250,6 +257,10 @@ export class Viewer {
 
     this.controls = new GlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
     this.syncControlsEllipsoid()
+    this.layers = new LayerManager(options.layers, (layers) => {
+      this.tilesets.setImageryLayers(layers)
+      this.syncControlsEllipsoid()
+    })
     this.controls.enableDamping = true
     this.controls.adjustHeight = false
     this.renderer.domElement.addEventListener('pointerdown', this.handleCameraInteraction)
@@ -375,30 +386,6 @@ export class Viewer {
     }
 
     this.camera.flyTo(target)
-    return this
-  }
-
-  /**
-   * 运行时切换影像数据源，并保留当前 Viewer、相机、控制器和渲染器状态。
-   *
-   * Switches the imagery data source at runtime while preserving the current
-   * Viewer, camera, controls, and renderer state.
-   */
-  setImageryProvider(imageryProvider: NonNullable<ViewerOptions['imageryProvider']>) {
-    this.tilesets.setImageryProvider(imageryProvider)
-    this.syncControlsEllipsoid()
-    return this
-  }
-
-  /**
-   * 运行时切换影像叠加层，并保留当前 Viewer、相机、控制器和渲染器状态。
-   *
-   * Switches imagery overlays at runtime while preserving the current Viewer,
-   * camera, controls, and renderer state.
-   */
-  setImageryOverlays(imageryOverlays: ViewerOptions['imageryOverlays'] = []) {
-    this.tilesets.setImageryOverlays(imageryOverlays)
-    this.syncControlsEllipsoid()
     return this
   }
 

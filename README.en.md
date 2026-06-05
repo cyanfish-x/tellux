@@ -23,11 +23,13 @@ const viewer = new tellux.Viewer(container, {
   terrain: {
     url: 'https://example.com/terrain/'
   },
-  imageryProvider: tellux.ImageryProvider.fromResource(
-    tellux.TemplateUrlResource.fromUrl(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-    )
-  ),
+  layers: [
+    {
+      source: tellux.TemplateUrlResource.fromUrl(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      )
+    }
+  ],
   camera: {
     latitude: 35.6812,
     longitude: 139.8,
@@ -50,29 +52,85 @@ You can still use Cesium Ion resources:
 
 ```ts
 new tellux.Viewer(container, {
-  imageryProvider: tellux.ImageryProvider.fromResource(
-    tellux.CesiumIonResource.fromAssetId(2275207, {
-      apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-    })
-  )
+  layers: [
+    {
+      source: tellux.CesiumIonResource.fromAssetId(2275207, {
+        apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
+      })
+    }
+  ]
 })
 ```
 
-MVT vector tiles can be used as imagery overlays with `MVTResource`:
+Imagery layers are managed through `viewer.layers`. Layers are drawn from bottom to top:
 
 ```ts
-viewer.setImageryOverlays([
-  tellux.MVTResource.fromUrl('https://example.com/tiles/{z}/{x}/{y}.pbf', {
+const imageryLayer = viewer.layers.add({
+  name: 'World Imagery',
+  source: tellux.TemplateUrlResource.fromUrl(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+  )
+})
+
+imageryLayer.setVisible(false)
+imageryLayer.setStyle({ opacity: 0.65 })
+imageryLayer.moveTo(0)
+imageryLayer.remove()
+```
+
+MVT vector tiles can be used as imagery layers with `MVTResource`:
+
+```ts
+viewer.layers.add({
+  name: 'Water and roads',
+  source: tellux.MVTResource.fromUrl('https://example.com/tiles/{z}/{x}/{y}.pbf', {
     getStyle(layerName) {
       if (layerName.includes('water')) return { fill: '#38bdf8', order: 10 }
       if (layerName.includes('transportation')) return { stroke: '#facc15', strokeWidth: 1.4, order: 30 }
       return null
     }
   })
-])
+})
 ```
 
 `MVTResource` uses the `3d-tiles-renderer` MVT overlay and requires `@mapbox/vector-tile` and `pbf` at runtime.
+
+WMS services can be used as imagery layers with `WMSResource`:
+
+```ts
+viewer.layers.add({
+  name: 'Province boundary',
+  source: tellux.WMSResource.fromUrl('https://example.com/geoserver/wms', 'workspace:layer', {
+    crs: 'EPSG:4326',
+    format: 'image/png',
+    transparent: true
+  }),
+  style: {
+    opacity: 0.7
+  }
+})
+```
+
+For example, a GeoServer WMS 1.1.0 service:
+
+```ts
+viewer.layers.add({
+  name: 'China Province WMS',
+  source: tellux.WMSResource.fromUrl('http://localhost:8080/geoserver/YX_yimin/wms', 'YX_yimin:china_province', {
+    version: '1.1.0',
+    crs: 'EPSG:4326',
+    styles: '',
+    format: 'image/png',
+    transparent: true,
+    contentBoundingBox: [73.501142, 3.397162, 135.088511, 53.560901]
+  }),
+  style: {
+    opacity: 0.72
+  }
+})
+```
+
+> WMS layers should request an image format such as `image/png`. `format=application/openlayers` is usually a GeoServer preview page format and is not suitable for imagery textures.
 
 Make sure the container has a non-zero size:
 

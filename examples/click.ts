@@ -29,11 +29,13 @@ if (tokenStatus) {
 }
 
 const viewer = createTelluxViewer(container, {
-  imageryProvider: tellux.ImageryProvider.fromResource(
-    tellux.CesiumIonResource.fromAssetId(2275207, {
-      apiToken: cesiumIonToken ?? "",
-    })
-  ),
+  layers: [
+    {
+      source: tellux.CesiumIonResource.fromAssetId(2275207, {
+        apiToken: cesiumIonToken ?? "",
+      }),
+    },
+  ],
   camera: {
     latitude: 30.23008052218771,
     longitude: 102.79593627471901,

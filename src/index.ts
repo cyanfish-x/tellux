@@ -2,10 +2,12 @@ import {
   Camera,
   CesiumIonResource,
   Clock,
-  ImageryProvider,
+  ImageryLayer,
+  LayerManager,
   MVTResource,
   Scene,
   TemplateUrlResource,
+  WMSResource,
   telluxConfig,
   Viewer
 } from './Viewer'
@@ -14,10 +16,12 @@ export {
   Camera,
   CesiumIonResource,
   Clock,
-  ImageryProvider,
+  ImageryLayer,
+  LayerManager,
   MVTResource,
   Scene,
   TemplateUrlResource,
+  WMSResource,
   Viewer,
   type CameraFlyToDestination,
   type CameraFlyToOptions,
@@ -28,9 +32,9 @@ export {
   type CesiumIon3DTilesetOptions,
   type CesiumIonResourceOptions,
   type FlyTo3DTilesetOptions,
-  type ImageryOverlayResourceOptions,
-  type ImageryProviderOptions,
-  type ImageryProviderResourceOptions,
+  type ImageryLayerOptions,
+  type ImageryLayerSourceOptions,
+  type ImageryLayerStyleOptions,
   type Load3DTilesetOptions,
   type MVTFeatureProperties,
   type MVTFeatureStyle,
@@ -48,7 +52,8 @@ export {
   type ViewerEventMap,
   type ViewerMouseEvent,
   type ViewerMouseMoveEvent,
-  type ViewerOptions
+  type ViewerOptions,
+  type WMSResourceOptions
 } from './Viewer'
 
 /**
@@ -62,9 +67,11 @@ const tellux = {
   Camera,
   Clock,
   CesiumIonResource,
-  ImageryProvider,
+  ImageryLayer,
+  LayerManager,
   MVTResource,
   TemplateUrlResource,
+  WMSResource,
 
   /**
    * Tellux 静态资源父级目录。

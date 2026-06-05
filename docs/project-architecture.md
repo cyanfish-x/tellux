@@ -4,7 +4,7 @@
 
 ## 总体架构
 
-Tellux 采用 `Viewer` 门面加内部 manager 的结构。用户侧主要接触 `Viewer`、`Camera`、`Scene`、`Clock`、`ImageryProvider` 和 `resources/*` 中的资源配置 helper；内部由不同 manager 分别管理瓦片、地形、影像、大气、云和后处理。
+Tellux 采用 `Viewer` 门面加内部 manager 的结构。用户侧主要接触 `Viewer`、`Camera`、`Scene`、`Clock`、`viewer.layers` 和 `resources/*` 中的资源配置 helper；内部由不同 manager 分别管理瓦片、影像图层、地形、大气、云和后处理。
 
 ```mermaid
 flowchart TB
@@ -14,6 +14,7 @@ flowchart TB
   Viewer --> Camera["Camera<br/>Cesium 风格视角 API"]
   Viewer --> Scene["Scene<br/>场景状态 / 开关"]
   Viewer --> Clock["Clock<br/>太阳时间"]
+  Viewer --> LayerManager["LayerManager<br/>imagery layer 公开管理器"]
   Viewer --> Controls["GlobeControls<br/>地球交互"]
   Viewer --> Renderer["Three.WebGLRenderer<br/>canvas / render"]
 
@@ -22,9 +23,10 @@ flowchart TB
   Viewer --> PostProcessingManager["PostProcessingManager<br/>后处理 pass 组合"]
 
   TilesetManager --> TilesRenderer["3d-tiles-renderer<br/>TilesRenderer"]
-  TilesetManager --> RendererPlugins["3d-tiles-renderer/plugins<br/>XYZ / Overlay / Terrain / Auth / Fade"]
+  LayerManager --> TilesetManager
+  TilesetManager --> RendererPlugins["3d-tiles-renderer/plugins<br/>GeneratedSurface / Overlay / Terrain / Auth / Fade"]
   TilesetManager --> LocalPlugins["本地插件<br/>TerrainFetchPlugin<br/>TileCreasedNormalsPlugin"]
-  TilesetManager --> Resources["resources/*<br/>CesiumIonResource<br/>TemplateUrlResource<br/>MVTResource"]
+  LayerManager --> Resources["resources/*<br/>CesiumIonResource<br/>TemplateUrlResource<br/>MVTResource<br/>WMSResource"]
 
   AtmosphereManager --> Takram["@takram<br/>three-atmosphere / three-clouds"]
   PostProcessingManager --> Postprocessing["postprocessing<br/>EffectPass / NormalPass"]
@@ -33,13 +35,14 @@ flowchart TB
 ## 模块职责
 
 - `src/Viewer.ts`：主门面类。负责创建核心对象、启动默认渲染循环、转发公开 API、处理 resize、事件、拾取和销毁。
+- `src/LayerManager.ts`：影像图层管理器。负责影像图层的增删、显隐、样式和顺序，并把变化同步给 `TilesetManager`。
 - `src/Camera.ts`：相机控制封装。提供 `setView`、`flyTo`、`getState` 等 Cesium 风格视角方法。
 - `src/Scene.ts`：场景状态对象。维护云、大气、后处理阶段开关和云参数，状态变化时触发后处理重组。
 - `src/Clock.ts`：太阳时间状态。`currentTime` 或 `hourUTC` 变化时通知大气模块更新太阳方向。
-- `src/tiles/TilesetManager.ts`：瓦片和图层管理器。负责地球表面、地形、影像、叠加层、插件注册、热切换、每帧 tileset 更新。
+- `src/tiles/TilesetManager.ts`：瓦片和渲染管线管理器。负责地球表面、地形、影像 overlay 注册、插件注册、热切换、每帧 tileset 更新。
 - `src/rendering/AtmosphereManager.ts`：大气和云管理器。负责创建大气、云、太阳光、天空光，并加载云纹理和 STBN 资源。
 - `src/rendering/PostProcessingManager.ts`：后处理管理器。根据 `Scene` 状态组合 normal pass、大气云 pass、lens flare、SMAA、dithering。
-- `src/resources/*`：资源配置 helper。当前包含 Cesium Ion、模板 URL 和 MVT，后续 WMS、GeoJSON、PMTiles 等资源类型应继续放在该目录。
+- `src/resources/*`：资源配置 helper。当前包含 Cesium Ion、模板 URL、MVT 和 WMS，后续 GeoJSON、PMTiles 等资源类型应继续放在该目录。
 
 ## Viewer 创建流程
 
@@ -69,7 +72,7 @@ sequenceDiagram
   V->>R: 默认启动 setAnimationLoop(render)
 ```
 
-`Viewer` 构造函数里先创建 renderer、camera、scene 和 atmosphere，再创建 `TilesetManager`。这是因为 `TilesetManager` 需要 Three.js scene、camera、renderer、Draco loader 和透明 overlay fallback texture。创建完成后，`Viewer` 把相机设置到初始经纬高位置，再创建 `GlobeControls` 并绑定 `TilesetManager.surfaceTileset` 的 ellipsoid。
+`Viewer` 构造函数里先创建 renderer、camera、scene 和 atmosphere，再创建 `TilesetManager`。这是因为 `TilesetManager` 需要 Three.js scene、camera、renderer、Draco loader 和透明 overlay fallback texture。创建完成后，`Viewer` 把相机设置到初始经纬高位置，再创建 `GlobeControls` 并绑定 `TilesetManager.surfaceTileset` 的 ellipsoid。最后创建 `LayerManager`，把 `options.layers` 转成可控制的 `ImageryLayer` 句柄，并在图层变化时同步给 `TilesetManager`。
 
 ## 每帧渲染流程
 
@@ -101,7 +104,7 @@ sequenceDiagram
 flowchart TB
   Viewer["Viewer"] --> TM["TilesetManager"]
 
-  TM --> State["内部状态<br/>currentImageryProvider<br/>currentImageryOverlays<br/>currentTerrain"]
+  TM --> State["内部状态<br/>currentImageryLayers<br/>currentTerrain"]
   TM --> Surface["activeSurfaceTileset<br/>无地形地球表面"]
   TM --> Terrain["activeTerrainTileset<br/>quantized-mesh 地形，可为空"]
 
@@ -112,9 +115,10 @@ flowchart TB
   Common --> Normals["TileCreasedNormalsPlugin<br/>可选折痕法线"]
 
   TM --> Imagery["影像注册"]
-  Imagery --> XYZ["XYZTilesPlugin / XYZTilesOverlay"]
+  Imagery --> XYZ["XYZTilesOverlay"]
   Imagery --> Ion["CesiumIonAuthPlugin / CesiumIonOverlay"]
   Imagery --> MVT["MVTOverlay"]
+  Imagery --> WMS["WMSTilesOverlay"]
   Imagery --> Overlay["ImageOverlayPlugin"]
   Imagery --> SurfaceGen["GeneratedSurfacePlugin"]
 
@@ -129,7 +133,7 @@ flowchart TB
 
 - `activeSurfaceTileset`：基础地球表面 tileset。无地形模式下它是可见且被更新的活动 tileset。
 - `activeTerrainTileset`：地形 tileset。启用地形时存在；禁用地形时为 `null`。
-- `currentImageryProvider`、`currentImageryOverlays`、`currentTerrain`：记录当前影像、叠加层和地形配置，用于热切换时重建 tileset。
+- `currentImageryLayers`、`currentTerrain`：记录当前影像图层和地形配置，用于热切换时重建 tileset。
 
 对外只暴露三个 getter：
 
@@ -141,7 +145,7 @@ flowchart TB
 
 初始化时，`TilesetManager` 会：
 
-1. 保存 `imageryProvider`、`imageryOverlays`、`terrain` 当前配置。
+1. 保存 `layers` 和 `terrain` 当前配置。
 2. 创建 `activeSurfaceTileset`。
 3. 将 `activeSurfaceTileset.group` 加入 Three.js scene。
 4. 如果传入 `terrain`，创建 `activeTerrainTileset` 并加入 scene。
@@ -150,48 +154,41 @@ flowchart TB
 
 ### Surface tileset 创建
 
-`createSurfaceTileset(resource, overlays)` 用于无地形地球表面：
+`createSurfaceTileset(layers)` 用于无地形地球表面：
 
-- 没有 overlays 时，通过 `registerImageryProvider(..., useOverlay=false)` 注册底图。
-- 有 overlays 时，通过 `registerSurfaceImageryStack()` 创建可贴叠加层的地球表面。
+- 始终注册 `GeneratedSurfacePlugin({ shape: 'ellipsoid' })` 创建基础椭球表面。
+- 有可见影像图层时，通过 `ImageOverlayPlugin` 把 overlay stack 贴到椭球表面。
 - 最后统一调用 `registerCommonTilesetPlugins()` 注册通用插件和相机分辨率。
 
-Surface 的典型用途是无地形模式下显示基础椭球地球。它也始终存在，用于控制器 ellipsoid 和椭球 fallback 拾取。
+Surface 的典型用途是无地形模式下显示基础椭球地球。即使没有 layers、也没有 terrain，它也会照常创建裸球，用于控制器 ellipsoid 和椭球 fallback 拾取。
 
 ### Terrain tileset 创建
 
-`createTerrainTileset(terrain, resource, overlays)` 用于 Cesium quantized-mesh 地形：
+`createTerrainTileset(terrain, layers)` 用于 Cesium quantized-mesh 地形：
 
 - 先通过 `normalizeTerrainUrl()` 把 terrain URL 归一到根目录。
 - 通过 `registerTerrainProvider()` 注册 `QuantizedMeshPlugin` 和 `TerrainFetchPlugin`。
-- 通过 `registerTerrainImagery()` 把底图和 MVT overlays 作为 `ImageOverlayPlugin` 叠加到地形表面。
+- 通过 `registerTerrainImagery()` 把可见影像图层作为 `ImageOverlayPlugin` 叠加到地形表面。
 - 最后同样注册通用插件、相机和分辨率。
 
 地形模式下，terrain tileset 成为活动 tileset；surface tileset 保留在 scene 中但隐藏。
 
-### 影像和叠加层策略
+### 影像图层策略
 
-`TilesetManager` 当前支持三类 imagery resource：
+`LayerManager` 只管理 imagery layer。resource helper 只描述数据来源，图层自身保存名称、显隐、顺序和显示样式。`TilesetManager` 当前支持四类 imagery resource：
 
-- `template-url`：无地形 surface 使用 `XYZTilesPlugin` 生成椭球瓦片表面；地形或 overlay 模式使用 `XYZTilesOverlay`。
-- `cesium-ion`：无 overlay 时通过 `CesiumIonAuthPlugin` 处理 Ion asset endpoint 和 token；overlay 模式使用 `CesiumIonOverlay`。
+- `template-url`：通过 `XYZTilesOverlay` 贴到裸球或地形表面。
+- `cesium-ion`：通过 `CesiumIonOverlay` 贴到裸球或地形表面。
 - `mvt`：通过 `MVTOverlay` 转成可贴到地球或地形表面的影像 overlay。
+- `wms`：通过 `WMSTilesOverlay` 加载 WMS GetMap 图片瓦片，并贴到裸球或地形表面。
 
 当 MVT overlay 暂时没有 texture 时，`createMVTOverlay()` 会返回透明 fallback texture，避免 overlay 缺失导致渲染链路拿到 `null`。
 
 ### 热切换工作方式
 
-`setImageryProvider()`：
+`LayerManager` 的 `add()`、`remove()`、`removeAll()`、`move()`、`ImageryLayer.setVisible()` 和 `ImageryLayer.setStyle()` 会触发内部 `TilesetManager.setImageryLayers()`：
 
-1. 更新 `currentImageryProvider`。
-2. 重建 surface tileset。
-3. 如果当前有 terrain，也重建 terrain tileset。
-4. 替换旧 tileset，dispose 旧资源。
-5. 同步 surface 可见性、活动 tileset 引用和分辨率。
-
-`setImageryOverlays()`：
-
-1. 更新 `currentImageryOverlays`。
+1. 更新 `currentImageryLayers`。
 2. 重建 surface tileset。
 3. 如果当前有 terrain，也重建 terrain tileset。
 4. 同步可见性、活动引用和分辨率。
@@ -209,8 +206,7 @@ Surface 的典型用途是无地形模式下显示基础椭球地球。它也始
 `Viewer` 调用 `TilesetManager` 的位置主要有：
 
 - 构造阶段：创建 `TilesetManager`，并把 `scene`、`camera`、`renderer`、`dracoLoader` 等依赖传入。
-- `setImageryProvider()`：转发给 `tilesets.setImageryProvider()`，随后同步 controls ellipsoid。
-- `setImageryOverlays()`：转发给 `tilesets.setImageryOverlays()`，随后同步 controls ellipsoid。
+- `layers`：创建 `LayerManager`，图层变化时转发给 `tilesets.setImageryLayers()`，随后同步 controls ellipsoid。
 - `setTerrain()`：转发给 `tilesets.setTerrain()`。
 - `render()`：每帧调用 `tilesets.update()`。
 - `resize()`：尺寸变化时调用 `tilesets.resize()`。

@@ -11,20 +11,22 @@ import {
   QuantizedMeshPlugin,
   TilesFadePlugin,
   UpdateOnChangePlugin,
+  WMSTilesOverlay,
   type ImageOverlay,
   XYZTilesOverlay
 } from '3d-tiles-renderer/plugins'
 import { TerrainFetchPlugin } from '../TerrainFetchPlugin'
 import { TileCreasedNormalsPlugin } from '../TileCreasedNormalsPlugin'
+import type { ImageryLayer } from '../LayerManager'
 import type {
-  ImageryOverlayResourceOptions,
-  ImageryProviderOptions,
-  ImageryProviderResourceOptions,
+  ImageryLayerSourceOptions,
+  ImageryLayerStyleOptions,
   Load3DTilesetOptions,
   MVTGetStyleCallback,
   MVTResourceOptions,
   TerrainOptions,
-  TilesetLayer
+  TilesetLayer,
+  WMSResourceOptions
 } from '../types'
 import type { ThreeRendererWithEffects } from '../effects'
 
@@ -35,8 +37,6 @@ type MVTOverlayOptions = {
   resolution?: number
   opacity?: number
   color?: THREE.ColorRepresentation
-  alphaMask?: boolean
-  alphaInvert?: boolean
   getStyle?: MVTGetStyleCallback
 }
 
@@ -47,6 +47,16 @@ type MVTOverlayInstance = ImageOverlay & {
 }
 
 type MVTOverlayConstructor = new (options: MVTOverlayOptions) => MVTOverlayInstance
+
+type ReleasableImageSource = {
+  release(...args: number[]): void
+}
+
+type WMSOverlayInstance = InstanceType<typeof WMSTilesOverlay> & {
+  imageSource?: ReleasableImageSource
+  getTexture(range: number[], level?: number | null): THREE.Texture | null
+  lockTexture(range: number[], level?: number | null): Promise<THREE.Texture | null>
+}
 
 type GeneratedSurfacePluginConstructor = new (options?: {
   overlay?: ImageOverlay | null
@@ -123,8 +133,6 @@ export interface TilesetManagerOptions {
   renderer: ThreeRendererWithEffects
   dracoLoader: DRACOLoader
   transparentOverlayTexture: THREE.Texture
-  imageryProvider?: ImageryProviderOptions
-  imageryOverlays?: ImageryOverlayResourceOptions[]
   terrain?: TerrainOptions
   creasedNormals?: boolean
 }
@@ -133,24 +141,17 @@ export class TilesetManager {
   private activeSurfaceTileset: TilesRenderer
   private activeTerrainTileset: TilesRenderer | null = null
   private readonly sceneTilesets = new Map<string, TilesRenderer>()
-  private currentImageryProvider: ImageryProviderOptions | undefined
-  private currentImageryOverlays: ImageryOverlayResourceOptions[]
+  private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
   private sceneTilesetId = 0
 
   constructor(private readonly options: TilesetManagerOptions) {
-    this.currentImageryProvider = options.imageryProvider
-    this.currentImageryOverlays = options.imageryOverlays ?? []
     this.currentTerrain = options.terrain
 
-    this.activeSurfaceTileset = this.createSurfaceTileset(this.currentImageryProvider?.resource, this.currentImageryOverlays)
+    this.activeSurfaceTileset = this.createSurfaceTileset(this.currentImageryLayers)
     this.options.scene.add(this.activeSurfaceTileset.group)
     if (this.currentTerrain) {
-      this.activeTerrainTileset = this.createTerrainTileset(
-        this.currentTerrain,
-        this.currentImageryProvider?.resource,
-        this.currentImageryOverlays
-      )
+      this.activeTerrainTileset = this.createTerrainTileset(this.currentTerrain, this.currentImageryLayers)
       this.options.scene.add(this.activeTerrainTileset.group)
     }
     this.syncSurfaceVisibility()
@@ -173,19 +174,11 @@ export class TilesetManager {
     return [...this.sceneTilesets.values()]
   }
 
-  setImageryProvider(imageryProvider: ImageryProviderOptions) {
-    this.currentImageryProvider = imageryProvider
-    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider.resource, this.currentImageryOverlays))
+  setImageryLayers(layers: ImageryLayer[] = []) {
+    this.currentImageryLayers = layers
+    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryLayers))
     if (this.currentTerrain) {
-      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider.resource, this.currentImageryOverlays))
-    }
-  }
-
-  setImageryOverlays(imageryOverlays: ImageryOverlayResourceOptions[] = []) {
-    this.currentImageryOverlays = imageryOverlays
-    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider?.resource, this.currentImageryOverlays))
-    if (this.currentTerrain) {
-      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource, this.currentImageryOverlays))
+      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryLayers))
     }
   }
 
@@ -193,7 +186,7 @@ export class TilesetManager {
     this.currentTerrain = terrain ?? undefined
     this.replaceTerrainTileset(
       this.currentTerrain
-        ? this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource, this.currentImageryOverlays)
+        ? this.createTerrainTileset(this.currentTerrain, this.currentImageryLayers)
         : null
     )
   }
@@ -265,24 +258,20 @@ export class TilesetManager {
     this.activeSurfaceTileset.dispose()
   }
 
-  private createSurfaceTileset(
-    resource: ImageryProviderResourceOptions | undefined,
-    overlays: ImageryOverlayResourceOptions[] = []
-  ) {
+  private createSurfaceTileset(layers: ImageryLayer[] = []) {
     const tileset = new TilesRenderer()
-    this.registerSurfaceImageryStack(tileset, resource, overlays)
+    this.registerSurfaceImageryStack(tileset, layers)
     this.registerCommonTilesetPlugins(tileset)
     return tileset
   }
 
   private createTerrainTileset(
     terrain: TerrainOptions,
-    resource: ImageryProviderResourceOptions | undefined,
-    overlays: ImageryOverlayResourceOptions[] = []
+    layers: ImageryLayer[] = []
   ) {
     const tileset = new TilesRenderer(this.normalizeTerrainUrl(terrain.url))
     this.registerTerrainProvider(tileset, terrain)
-    this.registerTerrainImagery(tileset, resource, overlays)
+    this.registerTerrainImagery(tileset, layers)
     this.registerCommonTilesetPlugins(tileset)
     return tileset
   }
@@ -358,23 +347,8 @@ export class TilesetManager {
     tileset.registerPlugin(new TerrainFetchPlugin(terrain.url))
   }
 
-  private registerTerrainImagery(
-    tileset: TilesRenderer,
-    resource: ImageryProviderResourceOptions | undefined,
-    resources: ImageryOverlayResourceOptions[]
-  ) {
-    const overlays: ImageOverlay[] = []
-    const baseOverlay = this.createImageryOverlay(resource)
-    if (baseOverlay) {
-      overlays.push(baseOverlay)
-    }
-
-    resources.forEach((overlayResource) => {
-      const overlay = this.createImageryOverlay(overlayResource)
-      if (overlay) {
-        overlays.push(overlay)
-      }
-    })
+  private registerTerrainImagery(tileset: TilesRenderer, layers: ImageryLayer[]) {
+    const overlays = this.createVisibleImageryOverlays(layers)
 
     if (overlays.length === 0) return
 
@@ -382,35 +356,20 @@ export class TilesetManager {
       new ImageOverlayPlugin({
         renderer: this.options.renderer,
         overlays,
-        enableTileSplitting: resources.length === 0
+        enableTileSplitting: false
       })
     )
   }
 
-  private registerSurfaceImageryStack(
-    tileset: TilesRenderer,
-    resource: ImageryProviderResourceOptions | undefined,
-    resources: ImageryOverlayResourceOptions[]
-  ) {
-    const overlays: ImageOverlay[] = []
-    const baseOverlay = this.createImageryOverlay(resource)
-    if (baseOverlay) {
-      overlays.push(baseOverlay)
-    }
+  private registerSurfaceImageryStack(tileset: TilesRenderer, layers: ImageryLayer[]) {
+    const overlays = this.createVisibleImageryOverlays(layers)
 
-    resources.forEach((overlayResource) => {
-      const overlay = this.createImageryOverlay(overlayResource)
-      if (overlay) {
-        overlays.push(overlay)
-      }
-    })
-
-    const tilingOverlay = baseOverlay ?? overlays[0] ?? null
+    const tilingOverlay = overlays[0] ?? null
     tileset.registerPlugin(tilingOverlay ? new GeneratedSurfacePlugin({
       overlay: tilingOverlay,
       shape: 'ellipsoid',
       applyOverlayTexture: false
-    }) : new GeneratedSurfacePlugin())
+    }) : new GeneratedSurfacePlugin({ shape: 'ellipsoid' }))
 
     if (overlays.length > 0) {
       tileset.registerPlugin(
@@ -423,25 +382,43 @@ export class TilesetManager {
     }
   }
 
-  private createImageryOverlay(resource: ImageryProviderResourceOptions | undefined): ImageOverlay | null {
-    if (!resource) return null
+  private createVisibleImageryOverlays(layers: ImageryLayer[]) {
+    const overlays: ImageOverlay[] = []
+    layers.forEach((layer) => {
+      if (!layer.isVisible()) return
 
-    switch (resource.type) {
+      const overlay = this.createImageryOverlay(layer.source, layer.getStyle())
+      if (overlay) {
+        overlays.push(overlay)
+      }
+    })
+
+    return overlays
+  }
+
+  private createImageryOverlay(source: ImageryLayerSourceOptions, style: ImageryLayerStyleOptions = {}): ImageOverlay | null {
+    switch (source.type) {
       case 'template-url':
         return new XYZTilesOverlay({
-          url: resource.url,
-          levels: resource.levels,
-          tileDimension: resource.tileDimension,
-          projection: resource.projection
+          url: source.url,
+          levels: source.levels,
+          tileDimension: source.tileDimension,
+          projection: source.projection,
+          opacity: style.opacity,
+          color: style.color === undefined ? undefined : new THREE.Color(style.color)
         })
       case 'cesium-ion':
         return new CesiumIonOverlay({
-          apiToken: resource.apiToken,
-          assetId: resource.assetId,
-          autoRefreshToken: resource.autoRefreshToken ?? true
+          apiToken: source.apiToken,
+          assetId: source.assetId,
+          autoRefreshToken: source.autoRefreshToken ?? true,
+          opacity: style.opacity,
+          color: style.color === undefined ? undefined : new THREE.Color(style.color)
         })
       case 'mvt':
-        return this.createMVTOverlay(resource)
+        return this.createMVTOverlay(source, style)
+      case 'wms':
+        return this.createWMSOverlay(source, style)
     }
   }
 
@@ -474,16 +451,14 @@ export class TilesetManager {
     return `tileset-${this.sceneTilesetId}`
   }
 
-  private createMVTOverlay(resource: MVTResourceOptions) {
+  private createMVTOverlay(resource: MVTResourceOptions, style: ImageryLayerStyleOptions = {}) {
     const overlay = new MVTOverlay({
       url: resource.url,
       levels: resource.levels,
       projection: resource.projection,
       resolution: resource.resolution,
-      opacity: resource.opacity,
-      color: resource.color,
-      alphaMask: resource.alphaMask,
-      alphaInvert: resource.alphaInvert,
+      opacity: style.opacity,
+      color: style.color,
       getStyle: resource.getStyle
     })
 
@@ -503,6 +478,123 @@ export class TilesetManager {
     return overlay
   }
 
+  private createWMSOverlay(resource: WMSResourceOptions, style: ImageryLayerStyleOptions = {}) {
+    const overlay = new WMSTilesOverlay({
+      url: this.normalizeResourceUrl(resource.url),
+      layer: resource.layer,
+      crs: resource.crs,
+      format: resource.format,
+      tileDimension: resource.tileDimension,
+      styles: resource.styles,
+      version: resource.version,
+      levels: resource.levels,
+      transparent: resource.transparent,
+      contentBoundingBox: this.normalizeWMSContentBoundingBox(resource),
+      opacity: style.opacity,
+      color: style.color === undefined ? undefined : new THREE.Color(style.color),
+      preprocessURL: this.createWMSPreprocessURL(resource)
+    }) as WMSOverlayInstance
+
+    if (resource.fetchOptions) {
+      overlay.fetchOptions = resource.fetchOptions
+    }
+
+    this.patchMissingWMSReleaseGuard(overlay)
+    this.patchMissingTextureFallback(overlay)
+
+    return overlay
+  }
+
+  private patchMissingWMSReleaseGuard(overlay: WMSOverlayInstance) {
+    const imageSource = overlay.imageSource
+    if (!imageSource) return
+
+    const release = imageSource.release.bind(imageSource)
+    imageSource.release = (...args: number[]) => {
+      try {
+        release(...args)
+      } catch (error) {
+        if (this.isMissingDataCacheReleaseError(error)) return
+        throw error
+      }
+    }
+  }
+
+  private patchMissingTextureFallback(overlay: WMSOverlayInstance) {
+    const getTexture = overlay.getTexture.bind(overlay)
+    overlay.getTexture = (range: number[], level?: number | null) => {
+      return getTexture(range, level) ?? this.options.transparentOverlayTexture
+    }
+
+    const lockTexture = overlay.lockTexture.bind(overlay)
+    overlay.lockTexture = async (range: number[], level?: number | null) => {
+      return (await lockTexture(range, level)) ?? this.options.transparentOverlayTexture
+    }
+  }
+
+  private isMissingDataCacheReleaseError(error: unknown) {
+    return error instanceof Error &&
+      error.message === 'DataCache: Attempting to release key that does not exist'
+  }
+
+  private normalizeWMSContentBoundingBox(resource: WMSResourceOptions) {
+    const bbox = resource.contentBoundingBox
+    if (!bbox) return undefined
+
+    const crs = (resource.crs ?? 'EPSG:4326').toUpperCase()
+    if (crs === 'EPSG:3857' || crs === 'EPSG:900913') {
+      const [minX, minY, maxX, maxY] = bbox
+      return [
+        this.webMercatorXToLongitude(minX),
+        this.webMercatorYToLatitude(minY),
+        this.webMercatorXToLongitude(maxX),
+        this.webMercatorYToLatitude(maxY)
+      ] as [number, number, number, number]
+    }
+
+    return bbox.map((value) => value * THREE.MathUtils.DEG2RAD) as [number, number, number, number]
+  }
+
+  private webMercatorXToLongitude(x: number) {
+    return x / 6378137
+  }
+
+  private webMercatorYToLatitude(y: number) {
+    return 2 * Math.atan(Math.exp(y / 6378137)) - Math.PI / 2
+  }
+
+  private createWMSPreprocessURL(resource: WMSResourceOptions) {
+    const preprocessURL = resource.preprocessURL
+    if (!this.isWMS11Version(resource.version)) return preprocessURL
+
+    return (url: string) => {
+      const normalizedUrl = this.normalizeWMS11URL(url)
+      return preprocessURL ? preprocessURL(normalizedUrl) : normalizedUrl
+    }
+  }
+
+  private isWMS11Version(version: string | undefined) {
+    return version ? /^1\.1\./.test(version) : false
+  }
+
+  private normalizeWMS11URL(url: string) {
+    const nextUrl = new URL(url, location.href)
+    const crs = nextUrl.searchParams.get('CRS')
+    if (!crs) return url
+
+    nextUrl.searchParams.delete('CRS')
+    nextUrl.searchParams.set('SRS', crs)
+
+    if (crs.toUpperCase() === 'EPSG:4326') {
+      const bbox = nextUrl.searchParams.get('BBOX')?.split(',').map(Number)
+      if (bbox?.length === 4 && bbox.every(Number.isFinite)) {
+        nextUrl.searchParams.set('BBOX', [bbox[1], bbox[0], bbox[3], bbox[2]].join(','))
+      }
+    }
+
+    return nextUrl.toString()
+  }
+
   private normalizeTerrainUrl(url: string) {
     const terrainUrl = new URL(url, location.href)
     if (terrainUrl.pathname.endsWith('/layer.json')) {
@@ -512,5 +604,9 @@ export class TilesetManager {
     }
 
     return terrainUrl.toString()
+  }
+
+  private normalizeResourceUrl(url: string) {
+    return new URL(url, location.href).toString()
   }
 }

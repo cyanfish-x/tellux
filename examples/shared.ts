@@ -31,12 +31,12 @@ export function createTelluxViewer(
   options: ViewerOptions = {},
   settingsPanel: ExampleSettingsPanelOptions = {}
 ) {
+  const layers = options.layers ?? [
+    {
+      source: tellux.TemplateUrlResource.fromUrl(arcgisWorldImageryUrl),
+    },
+  ]
   const viewer = new tellux.Viewer(container, {
-    imageryProvider: tellux.ImageryProvider.fromResource(
-      tellux.TemplateUrlResource.fromUrl(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-      )
-    ),
     dracoDecoderPath: "/node_modules/three/examples/jsm/libs/draco/gltf/",
     terrain: DEFAULT_TERRAIN_URL
       ? {
@@ -44,6 +44,7 @@ export function createTelluxViewer(
         }
       : undefined,
     ...options,
+    layers,
   })
   applyInitialSettings(viewer, settingsPanel)
   //默认视角固定到川西

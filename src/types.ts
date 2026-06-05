@@ -9,26 +9,15 @@ import type { Viewer } from './Viewer'
  */
 export interface ViewerOptions {
   /**
-   * 影像资源配置。
+   * 初始影像图层列表。
    *
-   * 不传时，Tellux 不会注册影像资源。
+   * 图层会按数组顺序从下到上贴到裸球或地形表面。
    *
-   * Imagery resource options.
+   * Initial imagery layer list.
    *
-   * When omitted, Tellux does not register an imagery resource.
+   * Layers are drawn from bottom to top on the globe or terrain surface.
    */
-  imageryProvider?: ImageryProviderOptions
-  /**
-   * 影像叠加层资源配置。
-   *
-   * 叠加层会绘制到当前底图或地形表面之上，适合 MVT 业务矢量图层。
-   *
-   * Imagery overlay resource options.
-   *
-   * Overlays are drawn on top of the current basemap or terrain surface and
-   * are suitable for business vector layers such as MVT.
-   */
-  imageryOverlays?: ImageryOverlayResourceOptions[]
+  layers?: ImageryLayerOptions[]
   /**
    * 地形瓦片资源配置。
    *
@@ -132,29 +121,71 @@ export interface ViewerOptions {
 }
 
 /**
- * 影像提供器配置，用于 {@link ViewerOptions.imageryProvider}。
+ * 影像图层配置，用于 {@link ViewerOptions.layers} 和 `viewer.layers.add(...)`。
  *
- * Imagery provider options used by {@link ViewerOptions.imageryProvider}.
+ * Imagery layer options used by {@link ViewerOptions.layers} and
+ * `viewer.layers.add(...)`.
  */
-export interface ImageryProviderOptions {
-  /** 当前使用的影像资源。Active imagery resource. */
-  resource: ImageryProviderResourceOptions
+export interface ImageryLayerOptions {
+  /**
+   * 图层 id。不传时 Tellux 会自动生成。
+   *
+   * Layer id. Tellux generates one when omitted.
+   */
+  id?: string
+  /**
+   * 图层名称，用于应用侧展示。
+   *
+   * Layer name for application UI display.
+   */
+  name?: string
+  /**
+   * 图层数据源。
+   *
+   * Layer data source.
+   */
+  source: ImageryLayerSourceOptions
+  /**
+   * 图层是否可见，默认 `true`。
+   *
+   * Whether the layer is visible. Defaults to `true`.
+   */
+  visible?: boolean
+  /**
+   * 图层显示样式。
+   *
+   * Layer display style.
+   */
+  style?: ImageryLayerStyleOptions
 }
 
 /**
- * Viewer 支持的影像资源配置。
+ * 影像图层显示样式。
  *
- * Imagery resource options supported by Viewer.
+ * Imagery layer display style.
  */
-export type ImageryProviderResourceOptions = CesiumIonResourceOptions | TemplateUrlResourceOptions
-  | MVTResourceOptions
+export interface ImageryLayerStyleOptions {
+  /**
+   * 图层透明度，范围 `0` 到 `1`，默认 `1`。
+   *
+   * Layer opacity from `0` to `1`. Defaults to `1`.
+   */
+  opacity?: number
+  /**
+   * 图层颜色乘色。
+   *
+   * Layer color tint.
+   */
+  color?: number | string
+}
 
 /**
- * Viewer 支持的影像叠加层资源配置。
+ * Viewer 支持的影像图层数据源配置。
  *
- * Imagery overlay resource options supported by Viewer.
+ * Imagery layer source options supported by Viewer.
  */
-export type ImageryOverlayResourceOptions = MVTResourceOptions
+export type ImageryLayerSourceOptions = CesiumIonResourceOptions | TemplateUrlResourceOptions
+  | MVTResourceOptions | WMSResourceOptions
 
 /**
  * Cesium quantized-mesh 地形配置，用于 {@link ViewerOptions.terrain}。
@@ -309,9 +340,9 @@ export interface TilesetLayer {
 }
 
 /**
- * Cesium Ion 资源配置，用于 {@link ViewerOptions.imageryProvider}。
+ * Cesium Ion 影像资源配置，用于影像图层。
  *
- * Cesium Ion resource options used by {@link ViewerOptions.imageryProvider}.
+ * Cesium Ion imagery resource options used by imagery layers.
  */
 export interface CesiumIonResourceOptions {
   /** 资源类型。Resource type. */
@@ -325,9 +356,9 @@ export interface CesiumIonResourceOptions {
 }
 
 /**
- * 模板 URL 资源配置，用于 {@link ViewerOptions.imageryProvider}。
+ * 模板 URL 影像资源配置，用于影像图层。
  *
- * Template URL resource options used by {@link ViewerOptions.imageryProvider}.
+ * Template URL imagery resource options used by imagery layers.
  */
 export interface TemplateUrlResourceOptions {
   /** 资源类型。Resource type. */
@@ -356,6 +387,88 @@ export interface TemplateUrlResourceOptions {
    * Projection identifier. Defaults to `EPSG:3857`.
    */
   projection?: 'EPSG:3857' | 'EPSG:4326' | string
+}
+
+/**
+ * WMS 影像资源配置，用于影像图层。
+ *
+ * WMS imagery resource options used by imagery layers.
+ */
+export interface WMSResourceOptions {
+  /** 资源类型。Resource type. */
+  type: 'wms'
+  /**
+   * WMS 服务基础 URL。
+   *
+   * WMS service base URL.
+   */
+  url: string
+  /**
+   * WMS 图层名，对应 GetMap 请求的 `LAYERS` 参数。
+   *
+   * WMS layer name used as the GetMap `LAYERS` parameter.
+   */
+  layer: string
+  /**
+   * 坐标参考系，默认 `EPSG:4326`。
+   *
+   * Coordinate reference system. Defaults to `EPSG:4326`.
+   */
+  crs?: 'EPSG:4326' | 'EPSG:3857' | 'CRS:84' | string
+  /**
+   * 图片格式，默认 `image/png`。
+   *
+   * Image format. Defaults to `image/png`.
+   */
+  format?: string
+  /**
+   * 瓦片像素尺寸，默认 `256`。
+   *
+   * Tile pixel size. Defaults to `256`.
+   */
+  tileDimension?: number
+  /**
+   * WMS 样式名，对应 GetMap 请求的 `STYLES` 参数。
+   *
+   * WMS style name used as the GetMap `STYLES` parameter.
+   */
+  styles?: string
+  /**
+   * WMS 版本，默认 `1.3.0`。
+   *
+   * WMS version. Defaults to `1.3.0`.
+   */
+  version?: '1.3.0' | '1.1.1' | string
+  /**
+   * 瓦片级别数量，默认 `18`。
+   *
+   * Number of tile levels. Defaults to `18`.
+   */
+  levels?: number
+  /**
+   * 是否请求透明背景，默认 `false`。
+   *
+   * Requests a transparent background. Defaults to `false`.
+   */
+  transparent?: boolean
+  /**
+   * 内容范围，顺序为 `[west, south, east, north]`，单位由 `crs` 决定。
+   *
+   * Content bounds as `[west, south, east, north]`, in the units of `crs`.
+   */
+  contentBoundingBox?: [number, number, number, number]
+  /**
+   * 瓦片请求 URL 预处理函数，可用于追加 token 或签名参数。
+   *
+   * Preprocesses tile request URLs, useful for appending tokens or signatures.
+   */
+  preprocessURL?: (url: string) => string | null
+  /**
+   * 瓦片请求配置。
+   *
+   * Tile request options.
+   */
+  fetchOptions?: RequestInit
 }
 
 /**
@@ -396,9 +509,9 @@ export type MVTGetStyleCallback = (
 ) => MVTFeatureStyle | null
 
 /**
- * Mapbox Vector Tile 资源配置，用于 {@link ViewerOptions.imageryProvider}。
+ * Mapbox Vector Tile 资源配置，用于影像图层。
  *
- * Mapbox Vector Tile resource options used by {@link ViewerOptions.imageryProvider}.
+ * Mapbox Vector Tile resource options used by imagery layers.
  */
 export interface MVTResourceOptions {
   /** 资源类型。Resource type. */
@@ -427,30 +540,6 @@ export interface MVTResourceOptions {
    * Canvas resolution used to rasterize vector tile textures. Defaults to `512`.
    */
   resolution?: number
-  /**
-   * 图层透明度，范围 `0` 到 `1`，默认 `1`。
-   *
-   * Layer opacity from `0` to `1`. Defaults to `1`.
-   */
-  opacity?: number
-  /**
-   * 图层颜色乘色。
-   *
-   * Layer color tint.
-   */
-  color?: number | string
-  /**
-   * 是否把 alpha 通道作为遮罩，默认 `false`。
-   *
-   * Uses the alpha channel as a mask. Defaults to `false`.
-   */
-  alphaMask?: boolean
-  /**
-   * 是否反转 alpha 遮罩，默认 `false`。
-   *
-   * Inverts the alpha mask. Defaults to `false`.
-   */
-  alphaInvert?: boolean
   /**
    * 瓦片请求配置。
    *

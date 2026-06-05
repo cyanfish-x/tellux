@@ -69,8 +69,8 @@ Overlay 的优势是可以被复用到不同表面：同一个 overlay 可以贴
 Tellux 当前用法：
 
 - `CesiumIonResource.fromAssetId(...)` 生成资源配置。
-- 无 overlay 模式下，`TilesetManager` 注册 `CesiumIonAuthPlugin`。
-- overlay 模式下，影像使用 `CesiumIonOverlay`。
+- 3D Tiles 场景数据通过 `CesiumIonAuthPlugin` 加载。
+- imagery layer 通过 `CesiumIonOverlay` 贴到裸球或地形表面。
 
 能力重点：
 
@@ -145,7 +145,7 @@ Tellux 当前用法：
 
 Tellux 当前用法：
 
-- 在有 overlay 的无地形 surface 模式下注册。
+- 无地形 surface 模式下始终注册，即使没有影像图层也照常生成裸球。
 - `shape: 'ellipsoid'`。
 - `applyOverlayTexture: false`，真正 overlay 贴图由 `ImageOverlayPlugin` 负责。
 
@@ -169,8 +169,8 @@ Tellux 当前用法：
 
 Tellux 当前用法：
 
-- template-url 无 overlay 模式下注册 `XYZTilesPlugin`。
-- 固定 `shape: 'ellipsoid'`，生成基础地球表面。
+- 当前不再把 `XYZTilesPlugin` 作为公开影像入口，template-url 统一走 `XYZTilesOverlay`。
+- 裸球表面统一由 `GeneratedSurfacePlugin({ shape: 'ellipsoid' })` 生成。
 
 与 overlay 的区别：
 
@@ -192,8 +192,8 @@ Tellux 当前用法：
 
 Tellux 当前用法：
 
-- 地形模式下，底图和 MVT 都通过 `ImageOverlayPlugin` 贴到 terrain。
-- 无地形且存在 overlays 时，`GeneratedSurfacePlugin` 生成椭球表面，`ImageOverlayPlugin` 负责真正贴 overlay。
+- 地形模式下，全部可见 imagery layer 都通过 `ImageOverlayPlugin` 贴到 terrain。
+- 无地形模式下，`GeneratedSurfacePlugin` 生成椭球表面，`ImageOverlayPlugin` 负责真正贴 overlay。
 - `MVTOverlay` 没拿到 texture 时，Tellux 会返回透明 fallback texture，避免 overlay 纹理为空导致渲染链路不稳定。
 
 ### LOD 和按需更新
@@ -327,7 +327,8 @@ viewer.debug.colorMode = 'geometricError'
 
 Tellux 当前已使用：
 
-- `XYZTilesOverlay`：template-url 在 overlay 模式下使用。
+- `XYZTilesOverlay`：template-url imagery layer 使用。
+- `WMSTilesOverlay`：WMS imagery layer 使用。
 
 ### 平台影像 overlays
 
@@ -337,7 +338,7 @@ Tellux 当前已使用：
 
 Tellux 当前已使用：
 
-- `cesium-ion` resource 在 overlay 模式下创建 `CesiumIonOverlay`。
+- `cesium-ion` imagery layer 创建 `CesiumIonOverlay`。
 
 #### GoogleMapsOverlay
 
@@ -405,19 +406,21 @@ Tellux 当前已使用：
 
 ```mermaid
 flowchart LR
-  TemplateUrlResource --> XYZTilesPlugin
-  XYZTilesPlugin --> SurfaceTileset["surface TilesRenderer"]
+  TemplateUrlResource --> XYZTilesOverlay
+  GeneratedSurfacePlugin --> SurfaceTileset["surface TilesRenderer"]
+  XYZTilesOverlay --> ImageOverlayPlugin
+  ImageOverlayPlugin --> SurfaceTileset
   SurfaceTileset --> Scene["threeScene"]
 ```
 
-用途：只有基础影像，无业务 overlay，无 terrain。Tellux 当前通过 `XYZTilesPlugin({ shape: 'ellipsoid' })` 生成椭球地球表面。
+用途：只有基础影像，无业务 overlay，无 terrain。Tellux 当前通过 `GeneratedSurfacePlugin({ shape: 'ellipsoid' })` 生成椭球地球表面，并通过 `ImageOverlayPlugin` 贴 imagery layer。
 
 ### 无地形但有业务叠加层
 
 ```mermaid
 flowchart LR
   BaseOverlay["base overlay"] --> GeneratedSurfacePlugin
-  MVTOverlay --> ImageOverlayPlugin
+  BusinessOverlay["MVT / WMS / GeoJSON"] --> ImageOverlayPlugin
   GeneratedSurfacePlugin --> SurfaceTileset["surface TilesRenderer"]
   ImageOverlayPlugin --> SurfaceTileset
 ```
@@ -457,20 +460,20 @@ flowchart LR
 - `GLTFExtensionsPlugin`
 - `TilesFadePlugin`
 - `UpdateOnChangePlugin`
-- `XYZTilesPlugin`
 - `ImageOverlayPlugin`
 - `XYZTilesOverlay`
 - `CesiumIonAuthPlugin`
 - `CesiumIonOverlay`
 - `GeneratedSurfacePlugin`
 - `MVTOverlay`
+- `WMSTilesOverlay`
 - `QuantizedMeshPlugin`
 - `TerrainFetchPlugin`
 - `TileCreasedNormalsPlugin`
 
 当前未接入但适合后续评估：
 
-- WMS / WMTS / TMS plugin 和 overlay。
+- WMTS / TMS plugin 和 overlay。
 - `GeoJSONOverlay`。
 - `PMTilesOverlay`。
 - `DebugTilesPlugin`。
@@ -487,15 +490,16 @@ flowchart LR
    - `TemplateUrlResource`
    - `CesiumIonResource`
    - `MVTResource`
-   - 后续 `WMSResource`、`GeoJsonResource`、`PMTilesResource`
+   - `WMSResource`
+   - 后续 `GeoJsonResource`、`PMTilesResource`
 
 2. 不直接暴露上游 plugin 类作为首选 API。
    - 上游插件很强，但配置细节偏底层。
-   - Tellux 应优先包装成 GIS 用户熟悉的 provider / layer / overlay API。
+   - Tellux 应优先包装成 GIS 用户熟悉的 resource / layer API。
 
 3. 把 overlay 能力设计成图层。
-   - 后续可以引入 `viewer.layers.add(...)` 或 `viewer.setImageryOverlays(...)` 的增强版本。
-   - 每个 overlay 应包含资源、样式、透明度、顺序、可见性。
+   - 当前通过 `viewer.layers.add(...)`、`viewer.layers.remove(...)`、`viewer.layers.move(...)` 管理 imagery layer。
+   - 每个 imagery layer 包含资源、样式、透明度、顺序、可见性。
 
 4. 性能敏感插件先做可选项。
    - `TileCreasedNormalsPlugin` 当前已默认关闭。

@@ -9,16 +9,13 @@
   <body>
     <main class="viewer-shell">
       <div id="viewer"></div>
-      <section class="toolbar toolbar--wide" aria-label="Imagery data source controls">
-        <h1>数据源切换</h1>
-        <p>切换 XYZ / Cesium Ion 底图，并用开关把 OpenInfraMap MVT 矢量瓦片叠加到当前表面。</p>
-        <p id="source-status" class="status" aria-live="polite"></p>
-        <div class="toolbar__row" id="source-buttons"></div>
-        <label class="switch">
-          <input id="mvt-overlay-toggle" type="checkbox" />
-          <span>叠加 OpenInfraMap MVT</span>
-        </label>
-        <a class="button" href="./index.html">返回目录</a>
+      <section class="layer-manager" aria-label="图层管理器">
+        <header class="layer-manager__header">
+          <h1>图层管理器</h1>
+          <a class="button" href="./index.html">返回目录</a>
+        </header>
+        <div id="overlay-list" class="layer-manager__list"></div>
+        <p id="layer-status" class="layer-manager__status" aria-live="polite"></p>
       </section>
     </main>
     <script type="module" src="./data-sources.ts"></script>
