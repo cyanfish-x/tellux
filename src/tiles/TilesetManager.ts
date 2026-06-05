@@ -70,13 +70,15 @@ type UnlitCompatibilityPlugin = GLTFLoaderPlugin & {
 function createMaterialsUnlitCompatibilityPlugin(parser: GLTFParser): GLTFLoaderPlugin {
   const unlitExtension: UnlitCompatibilityPlugin = {
     name: KHR_MATERIALS_UNLIT,
-    getMaterialType: () => THREE.MeshBasicMaterial,
+    getMaterialType: () => THREE.MeshStandardMaterial,
     extendParams(materialParams, materialDef, gltfParser) {
       const pending: Promise<unknown>[] = []
       const metallicRoughness = materialDef.pbrMetallicRoughness
 
       materialParams.color = new THREE.Color(1, 1, 1)
       materialParams.opacity = 1
+      materialParams.metalness = 0
+      materialParams.roughness = 1
 
       if (metallicRoughness) {
         if (Array.isArray(metallicRoughness.baseColorFactor)) {

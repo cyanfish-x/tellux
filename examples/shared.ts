@@ -1,14 +1,35 @@
-import tellux, { type ViewerOptions } from "../src"
+import * as THREE from "three"
+import tellux, { type Viewer, type ViewerOptions } from "../src"
 const DEFAULT_TERRAIN_URL = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ""
 
 tellux.baseUrl = "/tellux/"
+
+export interface ExampleSettingsPanelOptions {
+  hourUTC?: number
+  cloudLayerAltitude?: number
+  cloudLayerHeight?: number
+  sunIntensity?: number
+  skyIntensity?: number
+  showFps?: boolean
+}
+
+interface RangeControlOptions {
+  id: string
+  label: string
+  min: number
+  max: number
+  step: number
+  value: number
+  format: (value: number) => string
+}
 
 export const arcgisWorldImageryUrl =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
 export function createTelluxViewer(
   container: HTMLElement,
-  options: ViewerOptions = {}
+  options: ViewerOptions = {},
+  settingsPanel: ExampleSettingsPanelOptions = {}
 ) {
   const viewer = new tellux.Viewer(container, {
     imageryProvider: tellux.ImageryProvider.fromResource(
@@ -24,6 +45,7 @@ export function createTelluxViewer(
       : undefined,
     ...options,
   })
+  applyInitialSettings(viewer, settingsPanel)
   //默认视角固定到川西
   viewer.camera.setView({
     latitude: 30.766820698598725,
@@ -33,6 +55,7 @@ export function createTelluxViewer(
     pitch: -12.746698381597836,
     roll: -0.00009952275437999403,
   })
+  mountExampleSettingsPanel(viewer, settingsPanel)
   ;(window as any).viewer = viewer
   return viewer
 }
@@ -42,4 +65,357 @@ export function showTokenNotice(element: HTMLElement | null) {
 
   element.textContent =
     "当前示例使用 TemplateUrlResource 加载 ArcGIS World Imagery。"
+}
+
+function applyInitialSettings(
+  viewer: Viewer,
+  settings: ExampleSettingsPanelOptions
+) {
+  const lights = getSceneLights(viewer)
+
+  if (settings.hourUTC !== undefined) {
+    viewer.clock.hourUTC = settings.hourUTC
+  }
+
+  if (settings.cloudLayerAltitude !== undefined) {
+    viewer.scene.cloudLayerAltitude = settings.cloudLayerAltitude
+  }
+
+  if (settings.cloudLayerHeight !== undefined) {
+    viewer.scene.cloudLayerHeight = settings.cloudLayerHeight
+  }
+
+  if (settings.sunIntensity !== undefined && lights.sunLight) {
+    lights.sunLight.intensity = settings.sunIntensity
+  }
+
+  if (settings.skyIntensity !== undefined && lights.skyLight) {
+    lights.skyLight.intensity = settings.skyIntensity
+  }
+}
+
+function mountExampleSettingsPanel(
+  viewer: Viewer,
+  settings: ExampleSettingsPanelOptions
+) {
+  const shell = viewer.container.parentElement ?? viewer.container
+  const existingPanel = shell.querySelector(".example-settings")
+  existingPanel?.remove()
+
+  const lights = getSceneLights(viewer)
+  const panel = document.createElement("section")
+  panel.className = "example-settings"
+  panel.setAttribute("aria-label", "公共场景设置")
+
+  const toggle = document.createElement("button")
+  toggle.className = "example-settings__toggle"
+  toggle.type = "button"
+  toggle.textContent = "设置"
+  toggle.title = "打开公共设置"
+  toggle.setAttribute("aria-expanded", "false")
+
+  const body = document.createElement("div")
+  body.className = "example-settings__panel"
+  body.hidden = true
+
+  const title = document.createElement("h2")
+  title.textContent = "场景设置"
+  body.appendChild(title)
+
+  const skyToggle = createSwitchControl("sky-atmosphere", "大气", viewer.scene.skyAtmosphere.show)
+  const cloudToggle = createSwitchControl("clouds", "体积云", viewer.scene.clouds.show)
+  const lensFlareToggle = createSwitchControl(
+    "lens-flare",
+    "镜头光晕",
+    viewer.scene.postProcessStages.lensFlare.enabled
+  )
+  const smaaToggle = createSwitchControl("smaa", "SMAA", viewer.scene.postProcessStages.smaa.enabled)
+  const ditheringToggle = createSwitchControl(
+    "dithering",
+    "抖动",
+    viewer.scene.postProcessStages.dithering.enabled
+  )
+  const fpsToggle = createSwitchControl("fps", "显示帧率", settings.showFps ?? true)
+
+  body.appendChild(
+    createGroup("光照", [
+      createRangeControl({
+        id: "utc-time",
+        label: "UTC 时间",
+        min: 0,
+        max: 24,
+        step: 0.05,
+        value: settings.hourUTC ?? viewer.clock.hourUTC,
+        format: formatHour,
+      }).element,
+      createRangeControl({
+        id: "sun-intensity",
+        label: "太阳强度",
+        min: 0,
+        max: 8,
+        step: 0.1,
+        value: settings.sunIntensity ?? lights.sunLight?.intensity ?? 3,
+        format: (value) => value.toFixed(1),
+      }).element,
+      createRangeControl({
+        id: "sky-intensity",
+        label: "天空补光",
+        min: 0,
+        max: 3,
+        step: 0.05,
+        value: settings.skyIntensity ?? lights.skyLight?.intensity ?? 0.8,
+        format: (value) => value.toFixed(2),
+      }).element,
+    ])
+  )
+
+  const utcRange = body.querySelector<HTMLInputElement>("#example-settings-utc-time")
+  const sunIntensityRange = body.querySelector<HTMLInputElement>("#example-settings-sun-intensity")
+  const skyIntensityRange = body.querySelector<HTMLInputElement>("#example-settings-sky-intensity")
+
+  const coverageControl = createRangeControl({
+    id: "cloud-coverage",
+    label: "云覆盖率",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    value: viewer.scene.cloudCoverage,
+    format: (value) => value.toFixed(2),
+  })
+  const cloudAltitudeControl = createRangeControl({
+    id: "cloud-altitude",
+    label: "低云云底",
+    min: 200,
+    max: 4000,
+    step: 50,
+    value: settings.cloudLayerAltitude ?? viewer.scene.cloudLayerAltitude,
+    format: (value) => `${Math.round(value)}m`,
+  })
+  const cloudHeightControl = createRangeControl({
+    id: "cloud-height",
+    label: "低云厚度",
+    min: 100,
+    max: 3000,
+    step: 50,
+    value: settings.cloudLayerHeight ?? viewer.scene.cloudLayerHeight,
+    format: (value) => `${Math.round(value)}m`,
+  })
+
+  body.appendChild(
+    createGroup("体积云与大气", [
+      skyToggle.element,
+      cloudToggle.element,
+      coverageControl.element,
+      cloudAltitudeControl.element,
+      cloudHeightControl.element,
+    ])
+  )
+
+  const exposureControl = createRangeControl({
+    id: "exposure",
+    label: "曝光",
+    min: 2,
+    max: 14,
+    step: 0.1,
+    value: viewer.toneMappingExposure,
+    format: (value) => value.toFixed(1),
+  })
+  const resolutionControl = createRangeControl({
+    id: "resolution",
+    label: "像素倍率",
+    min: 0.5,
+    max: 2,
+    step: 0.05,
+    value: viewer.resolutionScale,
+    format: (value) => `${value.toFixed(2)}x`,
+  })
+
+  body.appendChild(
+    createGroup("渲染", [
+      exposureControl.element,
+      resolutionControl.element,
+      fpsToggle.element,
+      lensFlareToggle.element,
+      smaaToggle.element,
+      ditheringToggle.element,
+    ])
+  )
+
+  const status = document.createElement("p")
+  status.className = "example-settings__status"
+  status.setAttribute("aria-live", "polite")
+  body.appendChild(status)
+
+  panel.append(toggle, body)
+  shell.appendChild(panel)
+  const fpsHud = mountFpsHud(viewer, shell, fpsToggle.input.checked)
+
+  function applyControls() {
+    const currentLights = getSceneLights(viewer)
+
+    viewer.scene.skyAtmosphere.show = skyToggle.input.checked
+    viewer.scene.clouds.show = cloudToggle.input.checked
+    viewer.clock.hourUTC = Number(utcRange?.value ?? viewer.clock.hourUTC)
+    viewer.scene.cloudCoverage = Number(coverageControl.input.value)
+    viewer.scene.cloudLayerAltitude = Number(cloudAltitudeControl.input.value)
+    viewer.scene.cloudLayerHeight = Number(cloudHeightControl.input.value)
+    viewer.toneMappingExposure = Number(exposureControl.input.value)
+    viewer.resolutionScale = Number(resolutionControl.input.value)
+    viewer.scene.postProcessStages.lensFlare.enabled = lensFlareToggle.input.checked
+    viewer.scene.postProcessStages.smaa.enabled = smaaToggle.input.checked
+    viewer.scene.postProcessStages.dithering.enabled = ditheringToggle.input.checked
+    fpsHud.setVisible(fpsToggle.input.checked)
+
+    if (currentLights.sunLight && sunIntensityRange) {
+      currentLights.sunLight.intensity = Number(sunIntensityRange.value)
+    }
+
+    if (currentLights.skyLight && skyIntensityRange) {
+      currentLights.skyLight.intensity = Number(skyIntensityRange.value)
+    }
+
+    status.textContent =
+      `UTC ${formatHour(viewer.clock.hourUTC)} / 云量 ${viewer.scene.cloudCoverage.toFixed(2)} / ` +
+      `曝光 ${viewer.toneMappingExposure.toFixed(1)}`
+  }
+
+  toggle.addEventListener("click", () => {
+    const isOpen = body.hidden
+    body.hidden = !isOpen
+    toggle.setAttribute("aria-expanded", String(isOpen))
+  })
+
+  body.querySelectorAll("input").forEach((input) => {
+    const eventType = input.type === "range" ? "input" : "change"
+    input.addEventListener(eventType, applyControls)
+  })
+
+  applyControls()
+
+  const destroy = viewer.destroy.bind(viewer)
+  viewer.destroy = () => {
+    panel.remove()
+    fpsHud.dispose()
+    destroy()
+  }
+}
+
+function mountFpsHud(viewer: Viewer, shell: HTMLElement, isVisible: boolean) {
+  const hud = document.createElement("div")
+  hud.className = "example-fps"
+  hud.textContent = "-- fps"
+  hud.hidden = !isVisible
+  shell.appendChild(hud)
+
+  const render = viewer.render.bind(viewer)
+  let frames = 0
+  let lastSampleTime = performance.now()
+
+  viewer.render = (time = performance.now()) => {
+    const deltaTime = render(time)
+    frames += 1
+
+    const elapsed = time - lastSampleTime
+    if (elapsed >= 500) {
+      hud.textContent = `${Math.round((frames * 1000) / elapsed)} fps`
+      frames = 0
+      lastSampleTime = time
+    }
+
+    return deltaTime
+  }
+
+  return {
+    setVisible(value: boolean) {
+      hud.hidden = !value
+    },
+    dispose() {
+      viewer.render = render
+      hud.remove()
+    },
+  }
+}
+
+function createGroup(label: string, controls: HTMLElement[]) {
+  const group = document.createElement("div")
+  group.className = "example-settings__group"
+
+  const title = document.createElement("h3")
+  title.textContent = label
+  group.appendChild(title)
+  controls.forEach((control) => {
+    group.appendChild(control)
+  })
+
+  return group
+}
+
+function createSwitchControl(id: string, label: string, checked: boolean) {
+  const wrapper = document.createElement("label")
+  wrapper.className = "example-settings__switch"
+
+  const input = document.createElement("input")
+  input.id = `example-settings-${id}`
+  input.type = "checkbox"
+  input.checked = checked
+
+  const text = document.createElement("span")
+  text.textContent = label
+
+  wrapper.append(input, text)
+  return { element: wrapper, input }
+}
+
+function createRangeControl(options: RangeControlOptions) {
+  const wrapper = document.createElement("label")
+  wrapper.className = "example-settings__range"
+
+  const header = document.createElement("span")
+  header.className = "example-settings__range-header"
+
+  const label = document.createElement("span")
+  label.textContent = options.label
+
+  const value = document.createElement("output")
+  value.textContent = options.format(options.value)
+
+  const input = document.createElement("input")
+  input.id = `example-settings-${options.id}`
+  input.type = "range"
+  input.min = String(options.min)
+  input.max = String(options.max)
+  input.step = String(options.step)
+  input.value = String(options.value)
+  input.addEventListener("input", () => {
+    value.textContent = options.format(Number(input.value))
+  })
+
+  header.append(label, value)
+  wrapper.append(header, input)
+
+  return { element: wrapper, input }
+}
+
+function getSceneLights(viewer: Viewer) {
+  let sunLight: THREE.DirectionalLight | null = null
+  let skyLight: THREE.HemisphereLight | null = null
+
+  viewer.scene.threeScene.traverse((object) => {
+    if (!sunLight && object instanceof THREE.DirectionalLight) {
+      sunLight = object
+    }
+
+    if (!skyLight && object instanceof THREE.HemisphereLight) {
+      skyLight = object
+    }
+  })
+
+  return { sunLight, skyLight }
+}
+
+function formatHour(value: number) {
+  const totalMinutes = Math.round(value * 60) % (24 * 60)
+  const hour = Math.floor(totalMinutes / 60)
+  const minute = totalMinutes % 60
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
 }
