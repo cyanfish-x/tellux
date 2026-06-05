@@ -11,6 +11,7 @@ const layerStatus = document.querySelector<HTMLElement>("#layer-status")
 const openInfraMapUrl = "https://openinframap.org/tiles/{z}/{x}/{y}.pbf"
 const nasaGIBSWMSUrl =
   "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
+const nasaGIBSLandCoverTime = "2024-01-01"
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -21,6 +22,7 @@ if (!(overlayList instanceof HTMLElement)) {
 }
 
 const overlayListElement = overlayList
+let draggedLayerKey: string | null = null
 
 interface OverlayLayerExample {
   key: string
@@ -116,18 +118,23 @@ const arcgisWorldImageryLayer = tellux.TemplateUrlResource.fromUrl(
   arcgisWorldImageryUrl
 )
 
-const nasaGIBSReferenceOverlay = tellux.WMSResource.fromUrl(
+const nasaGIBSLandCoverOverlay = tellux.WMSResource.fromUrl(
   nasaGIBSWMSUrl,
-  "Reference_Features_15m",
+  "MODIS_Combined_L3_IGBP_Land_Cover_Type_Annual",
   {
     version: "1.1.1",
     crs: "EPSG:4326",
-    styles: "",
+    styles: "default",
     format: "image/png",
     transparent: true,
     levels: 10,
     tileDimension: 512,
     contentBoundingBox: [-180, -90, 180, 90],
+    preprocessURL(url) {
+      const nextUrl = new URL(url)
+      nextUrl.searchParams.set("TIME", nasaGIBSLandCoverTime)
+      return nextUrl.toString()
+    },
   }
 )
 
@@ -148,9 +155,9 @@ const overlayLayers: OverlayLayerExample[] = [
     initialVisible: true,
   },
   {
-    key: "nasa-gibs-reference-wms",
-    label: "NASA GIBS 边界 WMS",
-    description: "Reference_Features_15m",
+    key: "nasa-gibs-land-cover-wms",
+    label: "NASA GIBS 土地覆盖 WMS",
+    description: `MODIS IGBP Land Cover ${nasaGIBSLandCoverTime}`,
     type: "wms",
     initialVisible: true,
   },
@@ -171,12 +178,12 @@ const initialLayers: ImageryLayerOptions[] = [
     visible: true,
   },
   {
-    id: "nasa-gibs-reference-wms",
-    name: "NASA GIBS 边界 WMS",
-    source: nasaGIBSReferenceOverlay,
+    id: "nasa-gibs-land-cover-wms",
+    name: "NASA GIBS 土地覆盖 WMS",
+    source: nasaGIBSLandCoverOverlay,
     visible: true,
     style: {
-      opacity: 0.72,
+      opacity: 0.82,
     },
   },
   {
@@ -225,6 +232,29 @@ function renderLayerManager() {
   overlayLayers.forEach((layer) => {
     const item = document.createElement("div")
     item.className = "layer-manager__item"
+    item.dataset.layer = layer.key
+
+    const dragHandle = document.createElement("button")
+    dragHandle.type = "button"
+    dragHandle.className = "layer-manager__drag-handle"
+    dragHandle.draggable = true
+    dragHandle.setAttribute("aria-label", `拖动 ${layer.label} 调整顺序`)
+    dragHandle.title = "拖动调整顺序"
+    dragHandle.textContent = "≡"
+    dragHandle.addEventListener("dragstart", (event) => {
+      draggedLayerKey = layer.key
+      item.classList.add("layer-manager__item--dragging")
+      event.dataTransfer?.setData("text/plain", layer.key)
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move"
+      }
+    })
+    dragHandle.addEventListener("dragend", () => {
+      draggedLayerKey = null
+      getLayerItems().forEach((element) => {
+        element.classList.remove("layer-manager__item--dragging")
+      })
+    })
 
     const input = document.createElement("input")
     input.type = "checkbox"
@@ -279,8 +309,118 @@ function renderLayerManager() {
 
     opacityControl.append(opacityLabel, opacityInput, opacityValue)
     text.append(name, description, opacityControl)
-    item.append(input, text, type)
+    item.append(dragHandle, input, text, type)
     overlayListElement.appendChild(item)
+  })
+}
+
+overlayListElement.addEventListener("dragover", (event) => {
+  if (!draggedLayerKey) return
+
+  const target = getClosestLayerItem(event.target)
+  if (!target) return
+
+  event.preventDefault()
+  const targetLayerKey = target.dataset.layer
+  if (!targetLayerKey || targetLayerKey === draggedLayerKey) return
+  if (!shouldSwapWithTarget(draggedLayerKey, targetLayerKey, event.clientY, target)) {
+    return
+  }
+
+  reorderOverlayLayer(draggedLayerKey, targetLayerKey)
+})
+
+overlayListElement.addEventListener("drop", (event) => {
+  if (!draggedLayerKey) return
+
+  event.preventDefault()
+  draggedLayerKey = null
+})
+
+function reorderOverlayLayer(draggedKey: string, targetKey: string) {
+  const fromIndex = overlayLayers.findIndex((layer) => layer.key === draggedKey)
+  const toIndex = overlayLayers.findIndex((layer) => layer.key === targetKey)
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return
+
+  const firstRects = captureLayerItemRects()
+  const draggedLayer = overlayLayers[fromIndex]
+  const targetLayer = overlayLayers[toIndex]
+  overlayLayers[fromIndex] = overlayLayers[toIndex]
+  overlayLayers[toIndex] = draggedLayer
+  targetLayer.layer?.moveTo(fromIndex)
+  draggedLayer.layer?.moveTo(toIndex)
+  syncLayerItemOrder()
+  animateLayerItemMoves(firstRects)
+}
+
+function shouldSwapWithTarget(
+  draggedKey: string,
+  targetKey: string,
+  pointerY: number,
+  target: HTMLElement
+) {
+  const fromIndex = overlayLayers.findIndex((layer) => layer.key === draggedKey)
+  const toIndex = overlayLayers.findIndex((layer) => layer.key === targetKey)
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return false
+
+  const rect = target.getBoundingClientRect()
+  const midpoint = rect.top + rect.height / 2
+  return fromIndex < toIndex ? pointerY > midpoint : pointerY < midpoint
+}
+
+function syncLayerItemOrder() {
+  overlayLayers.forEach((layer) => {
+    const item = getLayerItems().find((element) => element.dataset.layer === layer.key)
+    if (item) {
+      overlayListElement.appendChild(item)
+    }
+  })
+}
+
+function getClosestLayerItem(target: EventTarget | null) {
+  return target instanceof Element
+    ? target.closest<HTMLElement>(".layer-manager__item")
+    : null
+}
+
+function getLayerItems() {
+  return Array.from(
+    overlayListElement.querySelectorAll<HTMLElement>(".layer-manager__item")
+  )
+}
+
+function captureLayerItemRects() {
+  const rects = new Map<string, DOMRect>()
+  getLayerItems().forEach((item) => {
+    const key = item.dataset.layer
+    if (key) {
+      rects.set(key, item.getBoundingClientRect())
+    }
+  })
+  return rects
+}
+
+function animateLayerItemMoves(firstRects: Map<string, DOMRect>) {
+  getLayerItems().forEach((item) => {
+    const key = item.dataset.layer
+    const firstRect = key ? firstRects.get(key) : undefined
+    if (!firstRect) return
+
+    const lastRect = item.getBoundingClientRect()
+    const deltaX = firstRect.left - lastRect.left
+    const deltaY = firstRect.top - lastRect.top
+    if (deltaX === 0 && deltaY === 0) return
+
+    item.animate(
+      [
+        { transform: `translate(${deltaX}px, ${deltaY}px)` },
+        { transform: "translate(0, 0)" },
+      ],
+      {
+        duration: 180,
+        easing: "cubic-bezier(0.2, 0, 0, 1)",
+      }
+    )
   })
 }
 

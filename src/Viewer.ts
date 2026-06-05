@@ -262,6 +262,8 @@ export class Viewer {
       if (change.type === 'structure') {
         this.tilesets.setImageryLayers(layers)
         this.syncControlsEllipsoid()
+      } else if (change.type === 'order') {
+        this.tilesets.syncImageryLayerOrder(layers)
       } else if (change.type === 'visibility' || change.type === 'style') {
         this.tilesets.syncImageryLayer(change.layer)
       }

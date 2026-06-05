@@ -255,7 +255,7 @@ a {
 .layer-manager__item {
   position: relative;
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  grid-template-columns: 22px 18px minmax(0, 1fr) auto;
   gap: 10px;
   min-height: 86px;
   align-items: start;
@@ -268,9 +268,33 @@ a {
     background 160ms ease;
 }
 
+.layer-manager__item--dragging {
+  border-color: rgba(125, 211, 252, 0.86);
+  opacity: 0.68;
+}
+
 .layer-manager__item:hover {
   border-color: rgba(125, 211, 252, 0.72);
   background: rgba(51, 65, 85, 0.72);
+}
+
+.layer-manager__drag-handle {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 5px;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.38);
+  cursor: grab;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.layer-manager__drag-handle:active {
+  cursor: grabbing;
 }
 
 .layer-manager__toggle {

@@ -199,6 +199,14 @@ export class TilesetManager {
     }
   }
 
+  syncImageryLayerOrder(layers: ImageryLayer[] = []) {
+    this.currentImageryLayers = layers
+    this.syncTilesetImageryLayerOrder(this.activeSurfaceTileset)
+    if (this.activeTerrainTileset) {
+      this.syncTilesetImageryLayerOrder(this.activeTerrainTileset)
+    }
+  }
+
   setTerrain(terrain: TerrainOptions | null | undefined) {
     this.currentTerrain = terrain ?? undefined
     this.replaceTerrainTileset(
@@ -432,6 +440,19 @@ export class TilesetManager {
     }
 
     this.applyLayerStyleToOverlay(layer, overlay)
+    this.requestTilesetRender(tileset)
+  }
+
+  private syncTilesetImageryLayerOrder(tileset: TilesRenderer) {
+    const context = this.imageryOverlayContexts.get(tileset)
+    if (!context) return
+
+    this.currentImageryLayers.forEach((layer, index) => {
+      const overlay = context.overlays.get(layer.id)
+      if (overlay) {
+        context.plugin.setOverlayOrder(overlay, index)
+      }
+    })
     this.requestTilesetRender(tileset)
   }
 

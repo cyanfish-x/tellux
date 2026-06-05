@@ -2,6 +2,7 @@ import type { ImageryLayerOptions, ImageryLayerSourceOptions, ImageryLayerStyleO
 
 export type ImageryLayerChange =
   | { type: 'structure' }
+  | { type: 'order' }
   | { type: 'visibility'; layer: ImageryLayer }
   | { type: 'style'; layer: ImageryLayer }
   | { type: 'metadata'; layer: ImageryLayer }
@@ -168,7 +169,7 @@ export class LayerManager {
 
     const [layer] = this.layers.splice(currentIndex, 1)
     this.layers.splice(this.clampLayerIndex(index), 0, layer)
-    this.notifyLayersChanged({ type: 'structure' })
+    this.notifyLayersChanged({ type: 'order' })
     return true
   }
 
