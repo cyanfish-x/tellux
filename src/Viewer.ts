@@ -258,9 +258,13 @@ export class Viewer {
 
     this.controls = new GlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
     this.syncControlsEllipsoid()
-    this.layers = new LayerManager(options.layers, (layers) => {
-      this.tilesets.setImageryLayers(layers)
-      this.syncControlsEllipsoid()
+    this.layers = new LayerManager(options.layers, (layers, change) => {
+      if (change.type === 'structure') {
+        this.tilesets.setImageryLayers(layers)
+        this.syncControlsEllipsoid()
+      } else if (change.type === 'visibility' || change.type === 'style') {
+        this.tilesets.syncImageryLayer(change.layer)
+      }
     })
     this.controls.enableDamping = true
     this.controls.adjustHeight = false

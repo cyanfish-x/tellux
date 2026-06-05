@@ -9,7 +9,8 @@ const container = document.querySelector("#viewer")
 const overlayList = document.querySelector<HTMLElement>("#overlay-list")
 const layerStatus = document.querySelector<HTMLElement>("#layer-status")
 const openInfraMapUrl = "https://openinframap.org/tiles/{z}/{x}/{y}.pbf"
-const chinaProvinceWMSUrl = "/geoserver/YX_yimin/wms"
+const nasaGIBSWMSUrl =
+  "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -115,18 +116,18 @@ const arcgisWorldImageryLayer = tellux.TemplateUrlResource.fromUrl(
   arcgisWorldImageryUrl
 )
 
-const chinaProvinceOverlay = tellux.WMSResource.fromUrl(
-  chinaProvinceWMSUrl,
-  "YX_yimin:china_province",
+const nasaGIBSReferenceOverlay = tellux.WMSResource.fromUrl(
+  nasaGIBSWMSUrl,
+  "Reference_Features_15m",
   {
-    version: "1.1.0",
+    version: "1.1.1",
     crs: "EPSG:4326",
     styles: "",
     format: "image/png",
     transparent: true,
-    levels: 16,
+    levels: 10,
     tileDimension: 512,
-    contentBoundingBox: [73.501142, 3.397162, 135.088511, 53.560901],
+    contentBoundingBox: [-180, -90, 180, 90],
   }
 )
 
@@ -147,9 +148,9 @@ const overlayLayers: OverlayLayerExample[] = [
     initialVisible: true,
   },
   {
-    key: "china-province-wms",
-    label: "中国省界 WMS",
-    description: "YX_yimin:china_province",
+    key: "nasa-gibs-reference-wms",
+    label: "NASA GIBS 边界 WMS",
+    description: "Reference_Features_15m",
     type: "wms",
     initialVisible: true,
   },
@@ -170,9 +171,9 @@ const initialLayers: ImageryLayerOptions[] = [
     visible: true,
   },
   {
-    id: "china-province-wms",
-    name: "中国省界 WMS",
-    source: chinaProvinceOverlay,
+    id: "nasa-gibs-reference-wms",
+    name: "NASA GIBS 边界 WMS",
+    source: nasaGIBSReferenceOverlay,
     visible: true,
     style: {
       opacity: 0.72,
@@ -192,6 +193,7 @@ const viewer = createTelluxViewer(container, {
     clouds: false,
     toneMappingExposure: 7,
   },
+  terrain: undefined,
 })
 
 setTimeout(() => {

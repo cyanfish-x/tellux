@@ -1,10 +1,16 @@
 import type { ImageryLayerOptions, ImageryLayerSourceOptions, ImageryLayerStyleOptions } from './types'
 
-type LayersChangedCallback = (layers: ImageryLayer[]) => void
+export type ImageryLayerChange =
+  | { type: 'structure' }
+  | { type: 'visibility'; layer: ImageryLayer }
+  | { type: 'style'; layer: ImageryLayer }
+  | { type: 'metadata'; layer: ImageryLayer }
+
+type LayersChangedCallback = (layers: ImageryLayer[], change: ImageryLayerChange) => void
 type ImageryLayerOwner = {
   remove(id: string): boolean
   move(id: string, index: number): boolean
-  update(): void
+  update(change: Omit<ImageryLayerChange, 'layer'>): void
 }
 
 /**
@@ -42,8 +48,10 @@ export class ImageryLayer {
 
   /** 设置图层名称。Sets the layer name. */
   setName(name: string | undefined) {
+    if (this.currentName === name) return this
+
     this.currentName = name
-    this.owner.update()
+    this.owner.update({ type: 'metadata' })
     return this
   }
 
@@ -52,10 +60,25 @@ export class ImageryLayer {
     return this.currentVisible
   }
 
+  /**
+   * 获取或设置图层是否显示。
+   *
+   * Gets or sets whether the layer is shown.
+   */
+  get show() {
+    return this.currentVisible
+  }
+
+  set show(visible: boolean) {
+    this.setVisible(visible)
+  }
+
   /** 设置图层是否可见，并立即应用到 Viewer。Sets whether the layer is visible and applies it to Viewer. */
   setVisible(visible: boolean) {
+    if (this.currentVisible === visible) return this
+
     this.currentVisible = visible
-    this.owner.update()
+    this.owner.update({ type: 'visibility' })
     return this
   }
 
@@ -70,7 +93,7 @@ export class ImageryLayer {
       ...this.currentStyle,
       ...style
     }
-    this.owner.update()
+    this.owner.update({ type: 'style' })
     return this
   }
 
@@ -103,7 +126,7 @@ export class LayerManager {
       this.layers.push(this.createLayer(layer))
     })
     if (this.layers.length > 0) {
-      this.notifyLayersChanged()
+      this.notifyLayersChanged({ type: 'structure' })
     }
   }
 
@@ -116,7 +139,7 @@ export class LayerManager {
 
     const layer = this.createLayer({ ...options, id })
     this.layers.push(layer)
-    this.notifyLayersChanged()
+    this.notifyLayersChanged({ type: 'structure' })
     return layer
   }
 
@@ -126,7 +149,7 @@ export class LayerManager {
     if (index === -1) return false
 
     this.layers.splice(index, 1)
-    this.notifyLayersChanged()
+    this.notifyLayersChanged({ type: 'structure' })
     return true
   }
 
@@ -135,7 +158,7 @@ export class LayerManager {
     if (this.layers.length === 0) return
 
     this.layers.length = 0
-    this.notifyLayersChanged()
+    this.notifyLayersChanged({ type: 'structure' })
   }
 
   /** 移动影像图层到指定顺序。Moves an imagery layer to a target order. */
@@ -145,7 +168,7 @@ export class LayerManager {
 
     const [layer] = this.layers.splice(currentIndex, 1)
     this.layers.splice(this.clampLayerIndex(index), 0, layer)
-    this.notifyLayersChanged()
+    this.notifyLayersChanged({ type: 'structure' })
     return true
   }
 
@@ -165,18 +188,21 @@ export class LayerManager {
       throw new Error(`LayerManager: imagery layer "${id}" already exists.`)
     }
 
-    return new ImageryLayer({
+    let layer: ImageryLayer
+    layer = new ImageryLayer({
       ...options,
       id
     }, {
       remove: (layerId) => this.remove(layerId),
       move: (layerId, index) => this.move(layerId, index),
-      update: () => this.notifyLayersChanged()
+      update: (change) => this.notifyLayersChanged({ ...change, layer })
     })
+
+    return layer
   }
 
-  private notifyLayersChanged() {
-    this.onLayersChanged(this.getAll())
+  private notifyLayersChanged(change: ImageryLayerChange) {
+    this.onLayersChanged(this.getAll(), change)
   }
 
   private createLayerId() {

@@ -58,11 +58,20 @@ type WMSOverlayInstance = InstanceType<typeof WMSTilesOverlay> & {
   lockTexture(range: number[], level?: number | null): Promise<THREE.Texture | null>
 }
 
+type RegionVisibleOverlayInstance = ImageOverlay & {
+  setRegionVisible(range: number[], visible: boolean): void
+}
+
 type GeneratedSurfacePluginConstructor = new (options?: {
   overlay?: ImageOverlay | null
   shape?: 'ellipsoid' | 'planar'
   applyOverlayTexture?: boolean
 }) => object
+
+type ImageryOverlayContext = {
+  plugin: ImageOverlayPlugin
+  overlays: Map<string, ImageOverlay>
+}
 
 const { GeneratedSurfacePlugin, MVTOverlay } = TilesRendererPlugins as unknown as {
   GeneratedSurfacePlugin: GeneratedSurfacePluginConstructor
@@ -141,6 +150,7 @@ export class TilesetManager {
   private activeSurfaceTileset: TilesRenderer
   private activeTerrainTileset: TilesRenderer | null = null
   private readonly sceneTilesets = new Map<string, TilesRenderer>()
+  private readonly imageryOverlayContexts = new WeakMap<TilesRenderer, ImageryOverlayContext>()
   private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
   private sceneTilesetId = 0
@@ -179,6 +189,13 @@ export class TilesetManager {
     this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryLayers))
     if (this.currentTerrain) {
       this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryLayers))
+    }
+  }
+
+  syncImageryLayer(layer: ImageryLayer) {
+    this.syncTilesetImageryLayer(this.activeSurfaceTileset, layer)
+    if (this.activeTerrainTileset) {
+      this.syncTilesetImageryLayer(this.activeTerrainTileset, layer)
     }
   }
 
@@ -348,58 +365,103 @@ export class TilesetManager {
   }
 
   private registerTerrainImagery(tileset: TilesRenderer, layers: ImageryLayer[]) {
-    const overlays = this.createVisibleImageryOverlays(layers)
+    const context = this.createImageryOverlayContext(layers)
 
-    if (overlays.length === 0) return
-
-    tileset.registerPlugin(
-      new ImageOverlayPlugin({
-        renderer: this.options.renderer,
-        overlays,
-        enableTileSplitting: false
-      })
-    )
+    this.imageryOverlayContexts.set(tileset, context)
+    tileset.registerPlugin(context.plugin)
   }
 
   private registerSurfaceImageryStack(tileset: TilesRenderer, layers: ImageryLayer[]) {
-    const overlays = this.createVisibleImageryOverlays(layers)
+    const context = this.createImageryOverlayContext(layers)
+    const tilingOverlay = context.overlays.values().next().value ?? null
 
-    const tilingOverlay = overlays[0] ?? null
+    this.imageryOverlayContexts.set(tileset, context)
     tileset.registerPlugin(tilingOverlay ? new GeneratedSurfacePlugin({
       overlay: tilingOverlay,
       shape: 'ellipsoid',
       applyOverlayTexture: false
     }) : new GeneratedSurfacePlugin({ shape: 'ellipsoid' }))
-
-    if (overlays.length > 0) {
-      tileset.registerPlugin(
-        new ImageOverlayPlugin({
-          renderer: this.options.renderer,
-          overlays,
-          enableTileSplitting: false
-        })
-      )
-    }
+    tileset.registerPlugin(context.plugin)
   }
 
-  private createVisibleImageryOverlays(layers: ImageryLayer[]) {
-    const overlays: ImageOverlay[] = []
+  private createImageryOverlayContext(layers: ImageryLayer[]): ImageryOverlayContext {
+    const plugin = new ImageOverlayPlugin({
+      renderer: this.options.renderer,
+      overlays: [],
+      enableTileSplitting: false
+    })
+    const overlays = new Map<string, ImageOverlay>()
+
     layers.forEach((layer) => {
       if (!layer.isVisible()) return
 
       const overlay = this.createImageryOverlay(layer.source, layer.getStyle())
       if (overlay) {
-        overlays.push(overlay)
+        this.applyLayerStyleToOverlay(layer, overlay)
+        overlays.set(layer.id, overlay)
+        plugin.addOverlay(overlay, this.getLayerOrder(layer))
       }
     })
 
-    return overlays
+    return { plugin, overlays }
+  }
+
+  private syncTilesetImageryLayer(tileset: TilesRenderer, layer: ImageryLayer) {
+    const context = this.imageryOverlayContexts.get(tileset)
+    if (!context) return
+
+    let overlay = context.overlays.get(layer.id)
+    if (!layer.isVisible()) {
+      if (overlay) {
+        context.plugin.deleteOverlay(overlay)
+        context.overlays.delete(layer.id)
+        this.requestTilesetRender(tileset)
+      }
+      return
+    }
+
+    if (!overlay) {
+      const nextOverlay = this.createImageryOverlay(layer.source, layer.getStyle())
+      if (!nextOverlay) return
+
+      overlay = nextOverlay
+      context.overlays.set(layer.id, overlay)
+      context.plugin.addOverlay(overlay, this.getLayerOrder(layer))
+    } else {
+      context.plugin.setOverlayOrder(overlay, this.getLayerOrder(layer))
+    }
+
+    this.applyLayerStyleToOverlay(layer, overlay)
+    this.requestTilesetRender(tileset)
+  }
+
+  private applyLayerStyleToOverlay(layer: ImageryLayer, overlay: ImageOverlay) {
+    const style = layer.getStyle()
+    overlay.opacity = style.opacity ?? 1
+    if (style.color !== undefined) {
+      overlay.color = new THREE.Color(style.color)
+    } else if (overlay.color instanceof THREE.Color) {
+      overlay.color.set(0xffffff)
+    } else {
+      overlay.color = new THREE.Color(0xffffff)
+    }
+  }
+
+  private getLayerOrder(layer: ImageryLayer) {
+    const index = this.currentImageryLayers.findIndex((item) => item.id === layer.id)
+    return index === -1 ? this.currentImageryLayers.length : index
+  }
+
+  private requestTilesetRender(tileset: TilesRenderer) {
+    tileset.dispatchEvent({ type: 'needs-render' })
   }
 
   private createImageryOverlay(source: ImageryLayerSourceOptions, style: ImageryLayerStyleOptions = {}): ImageOverlay | null {
+    let overlay: ImageOverlay
+
     switch (source.type) {
       case 'template-url':
-        return new XYZTilesOverlay({
+        overlay = new XYZTilesOverlay({
           url: source.url,
           levels: source.levels,
           tileDimension: source.tileDimension,
@@ -407,19 +469,26 @@ export class TilesetManager {
           opacity: style.opacity,
           color: style.color === undefined ? undefined : new THREE.Color(style.color)
         })
+        break
       case 'cesium-ion':
-        return new CesiumIonOverlay({
+        overlay = new CesiumIonOverlay({
           apiToken: source.apiToken,
           assetId: source.assetId,
           autoRefreshToken: source.autoRefreshToken ?? true,
           opacity: style.opacity,
           color: style.color === undefined ? undefined : new THREE.Color(style.color)
         })
+        break
       case 'mvt':
-        return this.createMVTOverlay(source, style)
+        overlay = this.createMVTOverlay(source, style)
+        break
       case 'wms':
-        return this.createWMSOverlay(source, style)
+        overlay = this.createWMSOverlay(source, style)
+        break
     }
+
+    this.patchRegionVisibilityGuard(overlay)
+    return overlay
   }
 
   private createSceneTileset(options: Load3DTilesetOptions) {
@@ -529,6 +598,31 @@ export class TilesetManager {
     const lockTexture = overlay.lockTexture.bind(overlay)
     overlay.lockTexture = async (range: number[], level?: number | null) => {
       return (await lockTexture(range, level)) ?? this.options.transparentOverlayTexture
+    }
+  }
+
+  private patchRegionVisibilityGuard(overlay: ImageOverlay) {
+    const regionOverlay = overlay as Partial<RegionVisibleOverlayInstance>
+    if (typeof regionOverlay.setRegionVisible !== 'function') return
+
+    const setRegionVisible = regionOverlay.setRegionVisible.bind(overlay)
+    const visibleRegionCounts = new Map<string, number>()
+
+    regionOverlay.setRegionVisible = (range: number[], visible: boolean) => {
+      const key = range.join('_')
+      const count = visibleRegionCounts.get(key) ?? 0
+
+      if (!visible && count === 0) return
+
+      if (visible) {
+        visibleRegionCounts.set(key, count + 1)
+      } else if (count === 1) {
+        visibleRegionCounts.delete(key)
+      } else {
+        visibleRegionCounts.set(key, count - 1)
+      }
+
+      setRegionVisible(range, visible)
     }
   }
 
