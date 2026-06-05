@@ -5,6 +5,7 @@
  */
 export class Clock {
   private currentHourUTC = 0
+  private currentDate = new Date(Date.UTC(2024, 2, 1))
   private readonly onChange: () => void
 
   constructor(onChange: () => void) {
@@ -31,15 +32,32 @@ export class Clock {
    */
   setHourUTC(value: number) {
     this.currentHourUTC = value
+    this.currentDate = new Date(Date.UTC(2024, 2, 1) + this.currentHourUTC * 3600000)
     this.onChange()
   }
 
   /**
-   * 内部用于太阳方向计算的日期。
+   * 当前太阳方向计算时间。
    *
-   * Date used internally for sun direction calculations.
+   * Current time used for sun direction calculations.
    */
   get currentTime() {
-    return new Date(Date.UTC(2024, 2, 1) + this.currentHourUTC * 3600000)
+    return new Date(this.currentDate)
+  }
+
+  set currentTime(value: Date) {
+    this.setCurrentTime(value)
+  }
+
+  /**
+   * 设置太阳方向计算时间，并更新随时间变化的光照。
+   *
+   * Sets the time used for sun direction calculations and updates
+   * time-dependent lighting.
+   */
+  setCurrentTime(value: Date) {
+    this.currentDate = new Date(value)
+    this.currentHourUTC = this.currentDate.getUTCHours() + this.currentDate.getUTCMinutes() / 60 + this.currentDate.getUTCSeconds() / 3600
+    this.onChange()
   }
 }

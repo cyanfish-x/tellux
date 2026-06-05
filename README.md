@@ -126,3 +126,88 @@ viewer.resolutionScale = 1.5
 
 viewer.destroy()
 ```
+
+## 项目架构
+
+Tellux 采用 `Viewer` 门面加多个内部 manager 协作的结构。用户侧只需要面对 `Viewer`、`Camera`、`Scene`、`Clock` 和资源配置对象；复杂的瓦片、地形、影像、大气、云和后处理逻辑由内部模块分工管理。
+
+```mermaid
+flowchart TB
+  User["用户代码<br/>new tellux.Viewer"] --> Entry["src/index.ts<br/>tellux 入口"]
+  Entry --> Viewer["Viewer<br/>主门面 / 生命周期 / 事件 / render loop"]
+
+  Viewer --> Camera["Camera<br/>Cesium 风格相机 API"]
+  Viewer --> Scene["Scene<br/>云 / 大气 / 后处理开关"]
+  Viewer --> Clock["Clock<br/>太阳时间"]
+  Viewer --> Controls["GlobeControls<br/>地球交互控制"]
+  Viewer --> Renderer["Three.WebGLRenderer<br/>canvas / render"]
+
+  Viewer --> TilesetManager["TilesetManager<br/>surface / terrain / imagery / overlays"]
+  Viewer --> AtmosphereManager["AtmosphereManager<br/>大气 / 云 / 太阳光 / 贴图"]
+  Viewer --> PostProcessingManager["PostProcessingManager<br/>NormalPass / 大气云组合 / SMAA 等"]
+
+  TilesetManager --> Resources["resources/*<br/>CesiumIonResource<br/>TemplateUrlResource<br/>MVTResource"]
+  TilesetManager --> TilesRenderer["3d-tiles-renderer<br/>TilesRenderer / plugins"]
+  TilesetManager --> TilePlugins["本地插件<br/>TerrainFetchPlugin<br/>TileCreasedNormalsPlugin"]
+
+  AtmosphereManager --> Takram["@takram<br/>atmosphere / clouds / geospatial"]
+  PostProcessingManager --> Postprocessing["postprocessing<br/>EffectPass / NormalPass"]
+
+  Scene --> PostProcessingManager
+  Clock --> AtmosphereManager
+  Camera --> TilesRenderer
+  Controls --> Camera
+  Renderer --> Scene
+```
+
+主要模块职责：
+
+- `Viewer`：主入口和门面类，负责创建 renderer、scene、camera、clock、controls，并协调各 manager 的生命周期。
+- `Camera`：封装 Cesium 风格的 `setView`、`flyTo` 和当前视角读取。
+- `Scene`：保存云、大气、后处理等场景状态，并在状态变化时触发后处理重组。
+- `TilesetManager`：创建和热切换基础地球表面、quantized-mesh 地形、影像底图和影像叠加层。
+- `AtmosphereManager`：创建大气、云、太阳光、天空光，并加载云纹理和 STBN 资源。
+- `PostProcessingManager`：根据 `Scene` 状态组合 normal pass、大气云 pass、SMAA、dithering 和 lens flare。
+- `resources/*`：资源配置工厂目录，后续可继续扩展 WMS、GeoJSON、PMTiles 等资源类型。
+
+## 渲染流程
+
+从 `new tellux.Viewer(container, options)` 到画面渲染出来，大致会经历以下流程：
+
+```mermaid
+sequenceDiagram
+  participant U as 用户
+  participant V as Viewer
+  participant R as WebGLRenderer
+  participant S as Scene
+  participant A as AtmosphereManager
+  participant T as TilesetManager
+  participant P as PostProcessingManager
+  participant C as Camera/GlobeControls
+
+  U->>V: new Viewer(container, options)
+  V->>R: 创建 WebGLRenderer 并挂载 canvas
+  V->>S: 创建 Scene 状态对象
+  V->>A: 创建大气 / 云 / 光源
+  A->>S: 添加 sunLight / skyLight
+  V->>T: 创建 surface / terrain tileset
+  T->>S: 将 tileset.group 加入 threeScene
+  T->>T: 注册 3d-tiles-renderer 插件
+  V->>C: 设置初始视角并创建 GlobeControls
+  V->>P: 创建后处理 pass
+  P->>R: renderer.setEffects(...)
+  V->>A: 异步加载大气和云贴图
+  V->>V: 注册 resize / click / mousemove
+  V->>R: setAnimationLoop(render)
+
+  loop 每帧
+    R->>V: render(time)
+    V->>V: resize()
+    V->>C: controls.update()
+    V->>T: tilesets.update()
+    T->>T: 根据相机加载和更新可见瓦片
+    V->>R: renderer.render(scene, camera)
+  end
+```
+
+运行时，`Viewer` 只负责串联流程：先同步容器尺寸，再更新地球控制器，然后让 `TilesetManager` 推进瓦片加载与 LOD 更新，最后交给 Three.js renderer 渲染当前场景。影像、地形和叠加层切换时，`Viewer` 会转发给 `TilesetManager`；云、大气和后处理开关变化时，`Scene` 会触发 `PostProcessingManager` 重新组合渲染效果。

@@ -1,52 +1,20 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { TilesRenderer, GlobeControls } from '3d-tiles-renderer'
-import * as TilesRendererPlugins from '3d-tiles-renderer/plugins'
-import {
-  CesiumIonAuthPlugin,
-  CesiumIonOverlay,
-  GLTFExtensionsPlugin,
-  ImageOverlayPlugin,
-  QuantizedMeshPlugin,
-  TilesFadePlugin,
-  UpdateOnChangePlugin,
-  type ImageOverlay,
-  XYZTilesOverlay,
-  XYZTilesPlugin
-} from '3d-tiles-renderer/plugins'
-import { EffectPass, NormalPass, SMAAEffect } from 'postprocessing'
-import {
-  CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
-  CLOUD_SHAPE_TEXTURE_SIZE,
-  CloudsEffect,
-  type CloudsEffectChangeEvent,
-  DEFAULT_LOCAL_WEATHER_URL,
-  DEFAULT_SHAPE_DETAIL_URL,
-  DEFAULT_SHAPE_URL,
-  DEFAULT_TURBULENCE_URL
-} from '@takram/three-clouds'
-import { AerialPerspectiveEffect, PrecomputedTexturesGenerator, getSunDirectionECEF } from '@takram/three-atmosphere'
-import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
-import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effects'
 import { Camera } from './Camera'
 import type { CameraFlyToOptions } from './Camera'
 import { Clock } from './Clock'
 import { DEFAULT_CAMERA, RAD2DEG } from './constants'
-import { getTelluxAssetUrl, telluxConfig } from './config'
-import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects } from './effects'
+import { telluxConfig } from './config'
+import type { ThreeRendererWithEffects } from './effects'
+import { AtmosphereManager } from './rendering/AtmosphereManager'
+import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { Scene } from './Scene'
-import { TerrainFetchPlugin } from './TerrainFetchPlugin'
-import { TileCreasedNormalsPlugin } from './TileCreasedNormalsPlugin'
+import { TilesetManager } from './tiles/TilesetManager'
 import type {
   AnyViewerEventListener,
   CartographicCoordinates,
-  ImageryProviderOptions,
-  ImageryOverlayResourceOptions,
-  ImageryProviderResourceOptions,
-  MVTGetStyleCallback,
-  MVTResourceOptions,
   ScreenPosition,
-  TerrainOptions,
   ViewerEventListener,
   ViewerEventMap,
   ViewerMouseEvent,
@@ -54,12 +22,12 @@ import type {
 } from './types'
 
 export { Camera } from './Camera'
-export { CesiumIonResource } from './CesiumIonResource'
+export { CesiumIonResource } from './resources/CesiumIonResource'
 export { Clock } from './Clock'
 export { ImageryProvider } from './ImageryProvider'
-export { MVTResource } from './MVTResource'
+export { MVTResource } from './resources/MVTResource'
 export { Scene } from './Scene'
-export { TemplateUrlResource } from './TemplateUrlResource'
+export { TemplateUrlResource } from './resources/TemplateUrlResource'
 export { telluxConfig, type TelluxConfig } from './config'
 export type {
   CameraFlyToDestination,
@@ -89,37 +57,6 @@ export type {
   ViewerMouseMoveEvent,
   ViewerOptions
 } from './types'
-
-type MVTOverlayOptions = {
-  url: string
-  levels?: number
-  projection?: string
-  resolution?: number
-  opacity?: number
-  color?: THREE.ColorRepresentation
-  alphaMask?: boolean
-  alphaInvert?: boolean
-  getStyle?: MVTGetStyleCallback
-}
-
-type MVTOverlayInstance = ImageOverlay & {
-  fetchOptions: RequestInit
-  getTexture(range: number[]): THREE.Texture | null
-  lockTexture(range: number[]): Promise<THREE.Texture | null>
-}
-
-type MVTOverlayConstructor = new (options: MVTOverlayOptions) => MVTOverlayInstance
-
-type GeneratedSurfacePluginConstructor = new (options: {
-  overlay?: ImageOverlay | null
-  shape?: 'ellipsoid' | 'planar'
-  applyOverlayTexture?: boolean
-}) => object
-
-const { GeneratedSurfacePlugin, MVTOverlay } = TilesRendererPlugins as unknown as {
-  GeneratedSurfacePlugin: GeneratedSurfacePluginConstructor
-  MVTOverlay: MVTOverlayConstructor
-}
 
 /**
  * Tellux 主视图类。
@@ -174,7 +111,7 @@ export class Viewer {
    * base globe surface renderer.
    */
   get tileset() {
-    return this.terrainTileset ?? this.surfaceTileset
+    return this.tilesets.tileset
   }
   /**
    * 地球交互控制器。
@@ -185,8 +122,6 @@ export class Viewer {
 
   private readonly threeCamera: THREE.PerspectiveCamera
   private readonly dracoLoader: DRACOLoader
-  private readonly effectAdapters: ThreeEffectPass[] = []
-  private readonly loadedTextures: THREE.Texture[] = []
   private readonly rendererSize = new THREE.Vector2()
   private readonly transparentOverlayTexture: THREE.CanvasTexture
   private readonly pickCoords = new THREE.Vector2()
@@ -197,14 +132,9 @@ export class Viewer {
   private readonly pickCartographicScratch = { lat: 0, lon: 0, height: 0 }
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly resizeObserver: ResizeObserver
-  private readonly texturesGenerator: PrecomputedTexturesGenerator
-  private readonly sunLight = new THREE.DirectionalLight(0xffffff, 3)
-  private readonly skyLight = new THREE.HemisphereLight(0xffffff, 0x1f2937, 0.8)
-  private surfaceTileset: TilesRenderer
-  private terrainTileset: TilesRenderer | null = null
-  private currentImageryProvider: ImageryProviderOptions | undefined
-  private currentImageryOverlays: ImageryOverlayResourceOptions[] = []
-  private currentTerrain: TerrainOptions | undefined
+  private readonly atmosphere: AtmosphereManager
+  private readonly postProcessing: PostProcessingManager
+  private readonly tilesets: TilesetManager
   private readonly handleWindowResize = () => {
     this.resize()
   }
@@ -215,11 +145,6 @@ export class Viewer {
     this.controls.adjustHeight = true
     this.renderer.domElement.removeEventListener('pointerdown', this.enableAdjustHeight)
     this.renderer.domElement.removeEventListener('wheel', this.enableAdjustHeight)
-  }
-  private readonly handleCloudsChange = (event: CloudsEffectChangeEvent) => {
-    if (event.property === 'atmosphereOverlay') this.syncCloudAtmosphereComposition()
-    if (event.property === 'atmosphereShadow') this.syncCloudAtmosphereComposition()
-    if (event.property === 'atmosphereShadowLength') this.syncCloudAtmosphereComposition()
   }
   private createMouseEvent(type: 'click', originalEvent: MouseEvent): ViewerEventMap['click']
   private createMouseEvent(type: 'mousemove', originalEvent: MouseEvent): ViewerEventMap['mousemove']
@@ -238,21 +163,18 @@ export class Viewer {
       cartographic: this.pickCartographic(position)
     }
   }
+  private hasEventListeners(type: keyof ViewerEventMap) {
+    return Boolean(this.eventListeners.get(type)?.size)
+  }
   private readonly handleCanvasClick = (originalEvent: MouseEvent) => {
     this.dispatchEvent('click', this.createMouseEvent('click', originalEvent))
   }
   private readonly handleCanvasMouseMove = (originalEvent: MouseEvent) => {
+    if (!this.hasEventListeners('mousemove')) return
+
     this.dispatchEvent('mousemove', this.createMouseEvent('mousemove', originalEvent))
   }
 
-  private cloudsEffect: CloudsEffect | null = null
-  private aerialPerspectiveEffect: AerialPerspectiveEffect | null = null
-  private normalAdapter: ThreeEffectPass | null = null
-  private cloudAtmosphereAdapter: ThreeEffectPass | null = null
-  private atmosphereAdapter: ThreeEffectPass | null = null
-  private lensFlareAdapter: ThreeEffectPass | null = null
-  private smaaAdapter: ThreeEffectPass | null = null
-  private ditheringAdapter: ThreeEffectPass | null = null
   private previousTime = 0
   private isDestroyed = false
   private isUsingDefaultRenderLoop = false
@@ -270,8 +192,8 @@ export class Viewer {
     const sceneOptions = this.resolveSceneOptions(options.scene)
     this.currentToneMappingExposure = sceneOptions.toneMappingExposure
 
-    const width = container.clientWidth
-    const height = container.clientHeight
+    const width = container.clientWidth || 1
+    const height = container.clientHeight || 1
     const cameraOptions = {
       ...DEFAULT_CAMERA,
       ...options.camera
@@ -279,14 +201,6 @@ export class Viewer {
 
     this.threeCamera = new THREE.PerspectiveCamera(cameraOptions.fov, width / height, cameraOptions.near, cameraOptions.far)
     this.camera = new Camera(this.threeCamera)
-    this.scene = new Scene(
-      sceneOptions,
-      () => this.cloudsEffect,
-      () => this.applyPostProcessingEffects()
-    )
-    this.clock = new Clock(() => this.updateSunDirection())
-    this.scene.threeScene.add(this.sunLight, this.skyLight)
-
     this.renderer = new THREE.WebGLRenderer({ outputBufferType: THREE.HalfFloatType }) as ThreeRendererWithEffects
     this.renderer.setPixelRatio(this.currentResolutionScale)
     this.renderer.setSize(width, height)
@@ -295,24 +209,36 @@ export class Viewer {
     container.appendChild(this.renderer.domElement)
     this.transparentOverlayTexture = this.createTransparentOverlayTexture()
 
+    let atmosphere: AtmosphereManager | null = null
+    this.scene = new Scene(
+      sceneOptions,
+      () => atmosphere?.cloudsEffect ?? null,
+      () => this.postProcessing.applyEffects()
+    )
+    this.atmosphere = new AtmosphereManager(this.renderer, this.threeCamera, () => this.postProcessing.applyEffects())
+    atmosphere = this.atmosphere
+    this.atmosphere.addLightsTo(this.scene.threeScene)
+    this.scene.cloudCoverage = this.scene.cloudCoverage
+    this.clock = new Clock(() => this.atmosphere.updateSunDirection(this.clock.currentTime))
+
     this.dracoLoader = new DRACOLoader()
     this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
 
-    this.currentImageryProvider = options.imageryProvider
-    this.currentImageryOverlays = options.imageryOverlays ?? []
-    this.currentTerrain = options.terrain
-    this.surfaceTileset = this.createSurfaceTileset(this.currentImageryProvider?.resource, this.currentImageryOverlays)
-    this.scene.threeScene.add(this.surfaceTileset.group)
-    if (this.currentTerrain) {
-      this.terrainTileset = this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource, this.currentImageryOverlays)
-      this.scene.threeScene.add(this.terrainTileset.group)
-    }
-    this.syncSurfaceVisibility()
-    this.threeCamera.userData.tilesRenderer = this.tileset
+    this.tilesets = new TilesetManager({
+      scene: this.scene.threeScene,
+      camera: this.threeCamera,
+      renderer: this.renderer,
+      dracoLoader: this.dracoLoader,
+      transparentOverlayTexture: this.transparentOverlayTexture,
+      imageryProvider: options.imageryProvider,
+      imageryOverlays: options.imageryOverlays,
+      terrain: options.terrain,
+      creasedNormals: sceneOptions.creasedNormals
+    })
     this.camera.setView(cameraOptions)
 
     this.controls = new GlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
-    this.controls.setEllipsoid(this.surfaceTileset.ellipsoid, this.surfaceTileset.group)
+    this.syncControlsEllipsoid()
     this.controls.enableDamping = true
     this.controls.adjustHeight = false
     this.renderer.domElement.addEventListener('pointerdown', this.handleCameraInteraction)
@@ -322,11 +248,10 @@ export class Viewer {
     this.renderer.domElement.addEventListener('click', this.handleCanvasClick)
     this.renderer.domElement.addEventListener('mousemove', this.handleCanvasMouseMove)
 
-    this.initAtmosphere()
-    this.initPostProcessing()
-    this.applyPostProcessingEffects()
-    this.texturesGenerator = new PrecomputedTexturesGenerator(this.renderer)
-    this.loadAtmosphereTextures()
+    this.postProcessing = new PostProcessingManager(this.renderer, this.scene, this.scene.threeScene, this.threeCamera, this.atmosphere)
+    this.postProcessing.applyEffects()
+    this.atmosphere.loadTextures()
+    this.atmosphere.updateSunDirection(this.clock.currentTime)
 
     this.resizeObserver = new ResizeObserver(() => {
       this.resize()
@@ -431,11 +356,8 @@ export class Viewer {
    * Viewer, camera, controls, and renderer state.
    */
   setImageryProvider(imageryProvider: NonNullable<ViewerOptions['imageryProvider']>) {
-    this.currentImageryProvider = imageryProvider
-    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider.resource, this.currentImageryOverlays))
-    if (this.currentTerrain) {
-      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider.resource, this.currentImageryOverlays))
-    }
+    this.tilesets.setImageryProvider(imageryProvider)
+    this.syncControlsEllipsoid()
     return this
   }
 
@@ -446,11 +368,8 @@ export class Viewer {
    * camera, controls, and renderer state.
    */
   setImageryOverlays(imageryOverlays: ViewerOptions['imageryOverlays'] = []) {
-    this.currentImageryOverlays = imageryOverlays
-    this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider?.resource, this.currentImageryOverlays))
-    if (this.currentTerrain) {
-      this.replaceTerrainTileset(this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource, this.currentImageryOverlays))
-    }
+    this.tilesets.setImageryOverlays(imageryOverlays)
+    this.syncControlsEllipsoid()
     return this
   }
 
@@ -465,10 +384,7 @@ export class Viewer {
    * Pass `null` to remove the current terrain and return to the non-terrain mode.
    */
   setTerrain(terrain: ViewerOptions['terrain'] | null) {
-    this.currentTerrain = terrain ?? undefined
-    this.replaceTerrainTileset(
-      this.currentTerrain ? this.createTerrainTileset(this.currentTerrain, this.currentImageryProvider?.resource, this.currentImageryOverlays) : null
-    )
+    this.tilesets.setTerrain(terrain)
     return this
   }
 
@@ -494,12 +410,12 @@ export class Viewer {
     this.threeCamera.updateMatrixWorld()
     this.pickRaycaster.setFromCamera(this.pickCoords, this.threeCamera)
 
-    if (this.terrainTileset) {
-      const terrainHit = this.pickTilesetCartographic(this.terrainTileset)
+    if (this.tilesets.terrainTileset) {
+      const terrainHit = this.pickTilesetCartographic(this.tilesets.terrainTileset)
       if (terrainHit) return terrainHit
     }
 
-    return this.pickTilesetCartographic(this.surfaceTileset) ?? this.pickEllipsoidCartographic()
+    return this.pickTilesetCartographic(this.tilesets.surfaceTileset) ?? this.pickEllipsoidCartographic()
   }
 
   /**
@@ -517,11 +433,7 @@ export class Viewer {
 
     this.resize()
     this.controls.update()
-    if (this.terrainTileset) {
-      this.terrainTileset.update()
-    } else {
-      this.surfaceTileset.update()
-    }
+    this.tilesets.update()
     this.renderer.render(this.scene.threeScene, this.threeCamera)
     return deltaTime
   }
@@ -541,7 +453,7 @@ export class Viewer {
     this.threeCamera.aspect = clientWidth / clientHeight
     this.threeCamera.updateProjectionMatrix()
     this.renderer.setSize(clientWidth, clientHeight)
-    this.resizeTilesets()
+    this.tilesets.resize()
   }
 
   /**
@@ -550,6 +462,8 @@ export class Viewer {
    * Releases WebGL resources, event listeners, controls, and loaded textures.
    */
   destroy() {
+    if (this.isDestroyed) return
+
     this.isDestroyed = true
     this.camera.cancelFlight()
     this.useDefaultRenderLoop = false
@@ -561,16 +475,12 @@ export class Viewer {
     this.renderer.domElement.removeEventListener('wheel', this.enableAdjustHeight)
     this.renderer.domElement.removeEventListener('click', this.handleCanvasClick)
     this.renderer.domElement.removeEventListener('mousemove', this.handleCanvasMouseMove)
-    this.renderer.setEffects(null)
-    this.cloudsEffect?.events.removeEventListener('change', this.handleCloudsChange)
     this.clearEventListeners()
 
-    this.effectAdapters.forEach((adapter) => adapter.dispose())
-    this.texturesGenerator.dispose({ textures: true })
-    this.loadedTextures.forEach((texture) => texture.dispose())
+    this.postProcessing.dispose()
+    this.atmosphere.dispose()
     this.transparentOverlayTexture.dispose()
-    this.terrainTileset?.dispose()
-    this.surfaceTileset.dispose()
+    this.tilesets.dispose()
     this.controls.dispose()
     this.dracoLoader.dispose()
     this.renderer.dispose()
@@ -588,289 +498,9 @@ export class Viewer {
       smaa: options?.smaa ?? true,
       dithering: options?.dithering ?? false,
       toneMappingExposure: options?.toneMappingExposure ?? 10,
-      cloudCoverage: options?.cloudCoverage ?? 0.3
+      cloudCoverage: options?.cloudCoverage ?? 0.3,
+      creasedNormals: options?.creasedNormals ?? false
     }
-  }
-
-  private createSurfaceTileset(
-    resource: ImageryProviderResourceOptions | undefined,
-    overlays: ImageryOverlayResourceOptions[] = []
-  ) {
-    const tileset = new TilesRenderer()
-    if (overlays.length > 0) {
-      this.registerSurfaceImageryStack(tileset, resource, overlays)
-    } else {
-      this.registerImageryProvider(tileset, resource, false)
-    }
-    this.registerCommonTilesetPlugins(tileset)
-    return tileset
-  }
-
-  private createTerrainTileset(
-    terrain: TerrainOptions,
-    resource: ImageryProviderResourceOptions | undefined,
-    overlays: ImageryOverlayResourceOptions[] = []
-  ) {
-    const tileset = new TilesRenderer(this.normalizeTerrainUrl(terrain.url))
-    this.registerTerrainProvider(tileset, terrain)
-    this.registerTerrainImagery(tileset, resource, overlays)
-    this.registerCommonTilesetPlugins(tileset)
-    return tileset
-  }
-
-  private registerCommonTilesetPlugins(tileset: TilesRenderer) {
-    tileset.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: this.dracoLoader, autoDispose: false }))
-    tileset.registerPlugin(new TileCreasedNormalsPlugin())
-    tileset.registerPlugin(new TilesFadePlugin())
-    tileset.registerPlugin(new UpdateOnChangePlugin())
-    tileset.setCamera(this.threeCamera)
-    tileset.setResolutionFromRenderer(this.threeCamera, this.renderer)
-  }
-
-  private replaceSurfaceTileset(nextTileset: TilesRenderer) {
-    const previousTileset = this.surfaceTileset
-
-    this.scene.threeScene.remove(previousTileset.group)
-    previousTileset.dispose()
-    this.surfaceTileset = nextTileset
-    this.scene.threeScene.remove(nextTileset.group)
-    this.scene.threeScene.add(nextTileset.group)
-    if (this.terrainTileset) {
-      this.scene.threeScene.remove(this.terrainTileset.group)
-      this.scene.threeScene.add(this.terrainTileset.group)
-    }
-    this.controls.setEllipsoid(this.surfaceTileset.ellipsoid, this.surfaceTileset.group)
-    this.syncSurfaceVisibility()
-    this.syncActiveTilesetReference()
-    this.resizeTilesets()
-  }
-
-  private replaceTerrainTileset(nextTileset: TilesRenderer | null) {
-    const previousTileset = this.terrainTileset
-
-    if (previousTileset) {
-      this.scene.threeScene.remove(previousTileset.group)
-      previousTileset.dispose()
-    }
-    this.terrainTileset = nextTileset
-    if (nextTileset) {
-      this.scene.threeScene.add(nextTileset.group)
-    }
-    this.syncSurfaceVisibility()
-    this.syncActiveTilesetReference()
-    this.resizeTilesets()
-  }
-
-  private resizeTilesets() {
-    this.surfaceTileset.setResolutionFromRenderer(this.threeCamera, this.renderer)
-    this.terrainTileset?.setResolutionFromRenderer(this.threeCamera, this.renderer)
-  }
-
-  private syncActiveTilesetReference() {
-    this.threeCamera.userData.tilesRenderer = this.tileset
-  }
-
-  private syncSurfaceVisibility() {
-    this.surfaceTileset.group.visible = this.terrainTileset === null
-  }
-
-  private registerTerrainProvider(tileset: TilesRenderer, terrain: TerrainOptions | undefined) {
-    if (!terrain) return
-
-    const terrainOptions: ConstructorParameters<typeof QuantizedMeshPlugin>[0] & { generateNormals?: boolean } = {
-      useRecommendedSettings: terrain.useRecommendedSettings,
-      skirtLength: terrain.skirtLength ?? undefined,
-      smoothSkirtNormals: terrain.smoothSkirtNormals,
-      generateNormals: terrain.generateNormals,
-      solid: terrain.solid
-    }
-
-    tileset.registerPlugin(new QuantizedMeshPlugin(terrainOptions))
-    tileset.registerPlugin(new TerrainFetchPlugin(terrain.url))
-  }
-
-  private registerImageryProvider(tileset: TilesRenderer, resource: ImageryProviderResourceOptions | undefined, useOverlay: boolean) {
-    if (!resource) return
-
-    switch (resource.type) {
-      case 'template-url': {
-        const xyzOptions = {
-          url: resource.url,
-          levels: resource.levels,
-          tileDimension: resource.tileDimension,
-          projection: resource.projection
-        }
-
-        if (useOverlay) {
-          tileset.registerPlugin(
-            new ImageOverlayPlugin({
-              renderer: this.renderer,
-              overlays: [new XYZTilesOverlay(xyzOptions)]
-            })
-          )
-        } else {
-          tileset.registerPlugin(new XYZTilesPlugin({ ...xyzOptions, shape: 'ellipsoid' }))
-        }
-        return
-      }
-      case 'mvt':
-        this.registerImageryOverlays(tileset, [resource])
-        return
-      case 'cesium-ion':
-        if (useOverlay) {
-          tileset.registerPlugin(
-            new ImageOverlayPlugin({
-              renderer: this.renderer,
-              overlays: [
-                new CesiumIonOverlay({
-                  apiToken: resource.apiToken,
-                  assetId: resource.assetId,
-                  autoRefreshToken: resource.autoRefreshToken ?? true
-                })
-              ]
-            })
-          )
-        } else {
-          tileset.registerPlugin(
-            new CesiumIonAuthPlugin({
-              apiToken: resource.apiToken,
-              assetId: String(resource.assetId),
-              autoRefreshToken: resource.autoRefreshToken ?? true
-            })
-          )
-        }
-    }
-  }
-
-  private registerTerrainImagery(
-    tileset: TilesRenderer,
-    resource: ImageryProviderResourceOptions | undefined,
-    resources: ImageryOverlayResourceOptions[]
-  ) {
-    const overlays: ImageOverlay[] = []
-    const baseOverlay = this.createImageryOverlay(resource)
-    if (baseOverlay) {
-      overlays.push(baseOverlay)
-    }
-
-    resources.forEach((overlayResource) => {
-      overlays.push(this.createMVTOverlay(overlayResource))
-    })
-
-    if (overlays.length === 0) return
-
-    tileset.registerPlugin(
-      new ImageOverlayPlugin({
-        renderer: this.renderer,
-        overlays,
-        enableTileSplitting: resources.length === 0
-      })
-    )
-  }
-
-  private registerSurfaceImageryStack(
-    tileset: TilesRenderer,
-    resource: ImageryProviderResourceOptions | undefined,
-    resources: ImageryOverlayResourceOptions[]
-  ) {
-    const overlays: ImageOverlay[] = []
-    const baseOverlay = this.createImageryOverlay(resource)
-    if (baseOverlay) {
-      overlays.push(baseOverlay)
-    }
-
-    resources.forEach((overlayResource) => {
-      overlays.push(this.createMVTOverlay(overlayResource))
-    })
-
-    const tilingOverlay = baseOverlay ?? overlays[0] ?? null
-    tileset.registerPlugin(
-      new GeneratedSurfacePlugin({
-        overlay: tilingOverlay,
-        shape: 'ellipsoid',
-        applyOverlayTexture: false
-      })
-    )
-
-    if (overlays.length > 0) {
-      tileset.registerPlugin(
-        new ImageOverlayPlugin({
-          renderer: this.renderer,
-          overlays,
-          enableTileSplitting: false
-        })
-      )
-    }
-  }
-
-  private createImageryOverlay(resource: ImageryProviderResourceOptions | undefined): ImageOverlay | null {
-    if (!resource) return null
-
-    switch (resource.type) {
-      case 'template-url':
-        return new XYZTilesOverlay({
-          url: resource.url,
-          levels: resource.levels,
-          tileDimension: resource.tileDimension,
-          projection: resource.projection
-        })
-      case 'cesium-ion':
-        return new CesiumIonOverlay({
-          apiToken: resource.apiToken,
-          assetId: resource.assetId,
-          autoRefreshToken: resource.autoRefreshToken ?? true
-        })
-      case 'mvt':
-        return this.createMVTOverlay(resource)
-    }
-  }
-
-  private registerImageryOverlays(tileset: TilesRenderer, resources: ImageryOverlayResourceOptions[]) {
-    if (resources.length === 0) return
-
-    const overlays = resources.map((resource) => {
-      switch (resource.type) {
-        case 'mvt':
-          return this.createMVTOverlay(resource)
-      }
-    })
-
-    tileset.registerPlugin(
-      new ImageOverlayPlugin({
-        renderer: this.renderer,
-        overlays,
-        enableTileSplitting: false
-      })
-    )
-  }
-
-  private createMVTOverlay(resource: MVTResourceOptions) {
-    const overlay = new MVTOverlay({
-      url: resource.url,
-      levels: resource.levels,
-      projection: resource.projection,
-      resolution: resource.resolution,
-      opacity: resource.opacity,
-      color: resource.color,
-      alphaMask: resource.alphaMask,
-      alphaInvert: resource.alphaInvert,
-      getStyle: resource.getStyle
-    })
-
-    if (resource.fetchOptions) {
-      overlay.fetchOptions = resource.fetchOptions
-    }
-
-    const getTexture = overlay.getTexture.bind(overlay)
-    overlay.getTexture = (range: number[]) => {
-      return getTexture(range) ?? this.transparentOverlayTexture
-    }
-    const lockTexture = overlay.lockTexture.bind(overlay)
-    overlay.lockTexture = async (range: number[]) => {
-      return (await lockTexture(range)) ?? this.transparentOverlayTexture
-    }
-
-    return overlay
   }
 
   private createTransparentOverlayTexture() {
@@ -883,15 +513,8 @@ export class Viewer {
     return texture
   }
 
-  private normalizeTerrainUrl(url: string) {
-    const terrainUrl = new URL(url, location.href)
-    if (terrainUrl.pathname.endsWith('/layer.json')) {
-      terrainUrl.pathname = terrainUrl.pathname.slice(0, -'layer.json'.length)
-    } else if (!terrainUrl.pathname.endsWith('/')) {
-      terrainUrl.pathname += '/'
-    }
-
-    return terrainUrl.toString()
+  private syncControlsEllipsoid() {
+    this.controls.setEllipsoid(this.tilesets.surfaceTileset.ellipsoid, this.tilesets.surfaceTileset.group)
   }
 
   private pickTilesetCartographic(tileset: TilesRenderer): CartographicCoordinates | null {
@@ -906,14 +529,14 @@ export class Viewer {
   }
 
   private pickEllipsoidCartographic() {
-    this.surfaceTileset.group.updateMatrixWorld(true)
-    this.pickMatrix.copy(this.surfaceTileset.group.matrixWorld).invert()
+    this.tilesets.surfaceTileset.group.updateMatrixWorld(true)
+    this.pickMatrix.copy(this.tilesets.surfaceTileset.group.matrixWorld).invert()
     this.pickRay.copy(this.pickRaycaster.ray).applyMatrix4(this.pickMatrix)
 
-    const point = this.surfaceTileset.ellipsoid.intersectRay(this.pickRay, this.pickPoint)
+    const point = this.tilesets.surfaceTileset.ellipsoid.intersectRay(this.pickRay, this.pickPoint)
     if (!point) return null
 
-    return this.toCartographicCoordinates(point, this.surfaceTileset)
+    return this.toCartographicCoordinates(point, this.tilesets.surfaceTileset)
   }
 
   private toCartographicCoordinates(point: THREE.Vector3, tileset: TilesRenderer): CartographicCoordinates {
@@ -934,174 +557,5 @@ export class Viewer {
   private clearEventListeners() {
     this.eventListeners.forEach((listeners) => listeners.clear())
     this.eventListeners.clear()
-  }
-
-  private initAtmosphere() {
-    this.aerialPerspectiveEffect = new AerialPerspectiveEffect(this.threeCamera)
-    this.aerialPerspectiveEffect.sky = true
-    this.aerialPerspectiveEffect.sunLight = true
-    this.aerialPerspectiveEffect.skyLight = true
-
-    this.cloudsEffect = new CloudsEffect(this.threeCamera)
-    this.scene.cloudCoverage = this.scene.cloudCoverage
-    this.cloudsEffect.localWeatherVelocity.set(0.001, 0)
-    this.cloudsEffect.shadow.farScale = 0.25
-    this.cloudsEffect.shadow.maxFar = 1e5
-    this.cloudsEffect.shadow.cascadeCount = 2
-    this.cloudsEffect.shadow.mapSize.set(512, 512)
-    this.cloudsEffect.shadow.splitMode = 'practical'
-    this.cloudsEffect.shadow.splitLambda = 0.71
-    this.cloudsEffect.events.addEventListener('change', this.handleCloudsChange)
-  }
-
-  private initPostProcessing() {
-    if (!this.aerialPerspectiveEffect || !this.cloudsEffect) return
-
-    const normalPass = new NormalPass(this.scene.threeScene, this.threeCamera)
-    this.aerialPerspectiveEffect.normalBuffer = normalPass.texture
-
-    this.cloudAtmosphereAdapter = new EffectPassAdapter(
-      new EffectPass(this.threeCamera, this.cloudsEffect, this.aerialPerspectiveEffect),
-      () => this.threeCamera
-    )
-    this.atmosphereAdapter = new EffectPassAdapter(new EffectPass(this.threeCamera, this.aerialPerspectiveEffect), () => this.threeCamera)
-    this.normalAdapter = new EffectPassAdapter(normalPass, () => this.threeCamera)
-    this.lensFlareAdapter = new EffectPassAdapter(new EffectPass(this.threeCamera, new LensFlareEffect()), () => this.threeCamera)
-    this.smaaAdapter = new EffectPassAdapter(new EffectPass(this.threeCamera, new SMAAEffect()), () => this.threeCamera)
-    this.ditheringAdapter = new EffectPassAdapter(new EffectPass(this.threeCamera, new DitheringEffect()), () => this.threeCamera)
-
-    this.effectAdapters.push(
-      this.normalAdapter,
-      this.cloudAtmosphereAdapter,
-      this.atmosphereAdapter,
-      this.lensFlareAdapter,
-      this.smaaAdapter,
-      this.ditheringAdapter
-    )
-  }
-
-  private applyPostProcessingEffects() {
-    this.syncCloudAtmosphereComposition()
-
-    const nextEffects: ThreeEffectPass[] = []
-    const shouldRenderAtmosphere = this.scene.skyAtmosphere.show && this.aerialPerspectiveEffect !== null
-    const shouldRenderClouds = shouldRenderAtmosphere && this.scene.clouds.show && this.cloudsEffect !== null
-
-    if (shouldRenderAtmosphere && this.normalAdapter) {
-      nextEffects.push(this.normalAdapter)
-    }
-    if (shouldRenderClouds && this.cloudAtmosphereAdapter) {
-      nextEffects.push(this.cloudAtmosphereAdapter)
-    } else if (shouldRenderAtmosphere && this.atmosphereAdapter) {
-      nextEffects.push(this.atmosphereAdapter)
-    }
-    if (this.scene.postProcessStages.lensFlare.enabled && this.lensFlareAdapter) {
-      nextEffects.push(this.lensFlareAdapter)
-    }
-    if (this.scene.postProcessStages.smaa.enabled && this.smaaAdapter) {
-      nextEffects.push(this.smaaAdapter)
-    }
-    if (this.scene.postProcessStages.dithering.enabled && this.ditheringAdapter) {
-      nextEffects.push(this.ditheringAdapter)
-    }
-
-    this.renderer.setEffects(nextEffects)
-  }
-
-  private syncCloudAtmosphereComposition() {
-    if (!this.aerialPerspectiveEffect) return
-
-    if (!this.scene.clouds.show || !this.scene.skyAtmosphere.show || !this.cloudsEffect) {
-      this.aerialPerspectiveEffect.overlay = null
-      this.aerialPerspectiveEffect.shadow = null
-      this.aerialPerspectiveEffect.shadowLength = null
-      return
-    }
-
-    this.aerialPerspectiveEffect.overlay = this.cloudsEffect.atmosphereOverlay
-    this.aerialPerspectiveEffect.shadow = this.cloudsEffect.atmosphereShadow
-    this.aerialPerspectiveEffect.shadowLength = this.cloudsEffect.atmosphereShadowLength
-  }
-
-  private updateSunDirection() {
-    if (!this.aerialPerspectiveEffect || !this.cloudsEffect) return
-
-    const sunDirection = new THREE.Vector3()
-    getSunDirectionECEF(this.clock.currentTime, sunDirection)
-    this.aerialPerspectiveEffect.sunDirection.copy(sunDirection)
-    this.cloudsEffect.sunDirection.copy(sunDirection)
-    this.sunLight.position.copy(sunDirection).multiplyScalar(10000000)
-  }
-
-  private async loadAtmosphereTextures() {
-    const textures = await this.texturesGenerator.update()
-    if (this.isDestroyed || !this.aerialPerspectiveEffect || !this.cloudsEffect) return
-
-    Object.assign(this.aerialPerspectiveEffect, textures)
-    Object.assign(this.cloudsEffect, textures)
-
-    this.loadCloudTexture(getTelluxAssetUrl(DEFAULT_LOCAL_WEATHER_URL), (texture) => {
-      if (this.cloudsEffect) this.cloudsEffect.localWeatherTexture = texture
-    })
-    this.loadCloudTexture(getTelluxAssetUrl(DEFAULT_TURBULENCE_URL), (texture) => {
-      if (this.cloudsEffect) this.cloudsEffect.turbulenceTexture = texture
-    })
-    this.loadData3DTexture(getTelluxAssetUrl(DEFAULT_SHAPE_URL), CLOUD_SHAPE_TEXTURE_SIZE, (texture) => {
-      if (this.cloudsEffect) this.cloudsEffect.shapeTexture = texture
-    })
-    this.loadData3DTexture(getTelluxAssetUrl(DEFAULT_SHAPE_DETAIL_URL), CLOUD_SHAPE_DETAIL_TEXTURE_SIZE, (texture) => {
-      if (this.cloudsEffect) this.cloudsEffect.shapeDetailTexture = texture
-    })
-
-    new STBNLoader().load(getTelluxAssetUrl(DEFAULT_STBN_URL), (texture) => {
-      if (this.isDestroyed || !this.cloudsEffect || !this.aerialPerspectiveEffect) {
-        texture.dispose()
-        return
-      }
-
-      this.loadedTextures.push(texture)
-      this.cloudsEffect.stbnTexture = texture
-      this.aerialPerspectiveEffect.stbnTexture = texture
-    })
-
-    this.updateSunDirection()
-  }
-
-  private loadCloudTexture(url: string, applyTexture: (texture: THREE.Texture) => void) {
-    new THREE.TextureLoader().load(url, (texture) => {
-      if (this.isDestroyed) {
-        texture.dispose()
-        return
-      }
-
-      texture.minFilter = THREE.LinearMipMapLinearFilter
-      texture.magFilter = THREE.LinearFilter
-      texture.wrapS = THREE.RepeatWrapping
-      texture.wrapT = THREE.RepeatWrapping
-      texture.colorSpace = THREE.NoColorSpace
-      texture.needsUpdate = true
-      this.loadedTextures.push(texture)
-      applyTexture(texture)
-    })
-  }
-
-  private loadData3DTexture(url: string, size: number, applyTexture: (texture: THREE.Data3DTexture) => void) {
-    fetch(url)
-      .then((res) => res.arrayBuffer())
-      .then((buffer) => {
-        if (this.isDestroyed) return
-
-        const texture = new THREE.Data3DTexture(new Uint8Array(buffer), size, size, size)
-        texture.format = THREE.RedFormat
-        texture.minFilter = THREE.LinearFilter
-        texture.magFilter = THREE.LinearFilter
-        texture.wrapS = THREE.RepeatWrapping
-        texture.wrapT = THREE.RepeatWrapping
-        texture.wrapR = THREE.RepeatWrapping
-        texture.colorSpace = THREE.NoColorSpace
-        texture.needsUpdate = true
-        this.loadedTextures.push(texture)
-        applyTexture(texture)
-      })
   }
 }

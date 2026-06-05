@@ -1,4 +1,4 @@
-import type { CesiumIonResourceOptions } from './types'
+import type { CesiumIonResourceOptions } from '../types'
 
 /**
  * 创建 Cesium Ion 资源配置的辅助类。

@@ -88,6 +88,17 @@ export interface ViewerOptions {
     toneMappingExposure?: number
     /** 云覆盖率，范围 `0` 到 `1`，默认 `0.3`。Cloud coverage from `0` to `1`. Defaults to `0.3`. */
     cloudCoverage?: number
+    /**
+     * 是否为 3D Tiles 网格重新生成折痕法线，默认 `false`。
+     *
+     * 该处理会改善部分瓦片的光照边缘，但会增加瓦片加载时的 CPU 和内存成本。
+     *
+     * Regenerates creased normals for 3D Tiles meshes. Defaults to `false`.
+     *
+     * This can improve lighting edges for some tiles, but adds CPU and memory
+     * cost while tiles load.
+     */
+    creasedNormals?: boolean
   }
   /**
    * 为 `true` 时自动启动渲染循环。

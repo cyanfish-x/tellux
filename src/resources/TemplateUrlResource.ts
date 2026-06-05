@@ -1,4 +1,4 @@
-import type { TemplateUrlResourceOptions } from './types'
+import type { TemplateUrlResourceOptions } from '../types'
 
 /**
  * 创建模板 URL 资源配置的辅助类。

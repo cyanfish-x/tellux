@@ -1,4 +1,4 @@
-import type { MVTResourceOptions } from './types'
+import type { MVTResourceOptions } from '../types'
 
 /**
  * 创建 Mapbox Vector Tile 资源配置的辅助类。
