@@ -122,6 +122,10 @@ function mountExampleSettingsPanel(
   title.textContent = "场景设置"
   body.appendChild(title)
 
+  const content = document.createElement("div")
+  content.className = "example-settings__content"
+  body.appendChild(content)
+
   const skyToggle = createSwitchControl("sky-atmosphere", "大气", viewer.scene.skyAtmosphere.show)
   const cloudToggle = createSwitchControl("clouds", "体积云", viewer.scene.clouds.show)
   const lensFlareToggle = createSwitchControl(
@@ -137,7 +141,7 @@ function mountExampleSettingsPanel(
   )
   const fpsToggle = createSwitchControl("fps", "显示帧率", settings.showFps ?? true)
 
-  body.appendChild(
+  content.appendChild(
     createGroup("光照", [
       createRangeControl({
         id: "utc-time",
@@ -169,9 +173,9 @@ function mountExampleSettingsPanel(
     ])
   )
 
-  const utcRange = body.querySelector<HTMLInputElement>("#example-settings-utc-time")
-  const sunIntensityRange = body.querySelector<HTMLInputElement>("#example-settings-sun-intensity")
-  const skyIntensityRange = body.querySelector<HTMLInputElement>("#example-settings-sky-intensity")
+  const utcRange = content.querySelector<HTMLInputElement>("#example-settings-utc-time")
+  const sunIntensityRange = content.querySelector<HTMLInputElement>("#example-settings-sun-intensity")
+  const skyIntensityRange = content.querySelector<HTMLInputElement>("#example-settings-sky-intensity")
 
   const coverageControl = createRangeControl({
     id: "cloud-coverage",
@@ -201,7 +205,7 @@ function mountExampleSettingsPanel(
     format: (value) => `${Math.round(value)}m`,
   })
 
-  body.appendChild(
+  content.appendChild(
     createGroup("体积云与大气", [
       skyToggle.element,
       cloudToggle.element,
@@ -230,7 +234,7 @@ function mountExampleSettingsPanel(
     format: (value) => `${value.toFixed(2)}x`,
   })
 
-  body.appendChild(
+  content.appendChild(
     createGroup("渲染", [
       exposureControl.element,
       resolutionControl.element,
@@ -244,7 +248,7 @@ function mountExampleSettingsPanel(
   const status = document.createElement("p")
   status.className = "example-settings__status"
   status.setAttribute("aria-live", "polite")
-  body.appendChild(status)
+  content.appendChild(status)
 
   panel.append(toggle, body)
   shell.appendChild(panel)
@@ -285,7 +289,7 @@ function mountExampleSettingsPanel(
     toggle.setAttribute("aria-expanded", String(isOpen))
   })
 
-  body.querySelectorAll("input").forEach((input) => {
+  content.querySelectorAll("input").forEach((input) => {
     const eventType = input.type === "range" ? "input" : "change"
     input.addEventListener(eventType, applyControls)
   })

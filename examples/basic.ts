@@ -18,7 +18,7 @@ const viewer = createTelluxViewer(container, {
     pitch: -12
   },
   scene: {
-    cloudCoverage: 0.22,
+    clouds:false,
     toneMappingExposure: 8
   }
 })
