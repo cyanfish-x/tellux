@@ -8,6 +8,7 @@ export interface ExampleSettingsPanelOptions {
   hourUTC?: number
   cloudLayerAltitude?: number
   cloudLayerHeight?: number
+  atmosphereInscatter?: boolean
   sunIntensity?: number
   skyIntensity?: number
   showFps?: boolean
@@ -21,6 +22,14 @@ interface RangeControlOptions {
   step: number
   value: number
   format: (value: number) => string
+}
+
+interface ViewerInternalAtmosphere {
+  atmosphere?: {
+    aerialPerspectiveEffect?: {
+      inscatter: boolean
+    }
+  }
 }
 
 export const arcgisWorldImageryUrl =
@@ -86,6 +95,13 @@ function applyInitialSettings(
     viewer.scene.cloudLayerHeight = settings.cloudLayerHeight
   }
 
+  if (settings.atmosphereInscatter !== undefined) {
+    const aerialPerspective = getAerialPerspectiveEffect(viewer)
+    if (aerialPerspective) {
+      aerialPerspective.inscatter = settings.atmosphereInscatter
+    }
+  }
+
   if (settings.sunIntensity !== undefined && lights.sunLight) {
     lights.sunLight.intensity = settings.sunIntensity
   }
@@ -128,6 +144,11 @@ function mountExampleSettingsPanel(
   body.appendChild(content)
 
   const skyToggle = createSwitchControl("sky-atmosphere", "大气", viewer.scene.skyAtmosphere.show)
+  const inscatterToggle = createSwitchControl(
+    "atmosphere-inscatter",
+    "空气散射",
+    getAerialPerspectiveEffect(viewer)?.inscatter ?? true
+  )
   const cloudToggle = createSwitchControl("clouds", "体积云", viewer.scene.clouds.show)
   const lensFlareToggle = createSwitchControl(
     "lens-flare",
@@ -209,6 +230,7 @@ function mountExampleSettingsPanel(
   content.appendChild(
     createGroup("体积云与大气", [
       skyToggle.element,
+      inscatterToggle.element,
       cloudToggle.element,
       coverageControl.element,
       cloudAltitudeControl.element,
@@ -259,6 +281,10 @@ function mountExampleSettingsPanel(
     const currentLights = getSceneLights(viewer)
 
     viewer.scene.skyAtmosphere.show = skyToggle.input.checked
+    const aerialPerspective = getAerialPerspectiveEffect(viewer)
+    if (aerialPerspective) {
+      aerialPerspective.inscatter = inscatterToggle.input.checked
+    }
     viewer.scene.clouds.show = cloudToggle.input.checked
     viewer.clock.hourUTC = Number(utcRange?.value ?? viewer.clock.hourUTC)
     viewer.scene.cloudCoverage = Number(coverageControl.input.value)
@@ -416,6 +442,10 @@ function getSceneLights(viewer: Viewer) {
   })
 
   return { sunLight, skyLight }
+}
+
+function getAerialPerspectiveEffect(viewer: Viewer) {
+  return (viewer as unknown as ViewerInternalAtmosphere).atmosphere?.aerialPerspectiveEffect ?? null
 }
 
 function formatHour(value: number) {
