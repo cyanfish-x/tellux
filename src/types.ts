@@ -69,6 +69,41 @@ export interface ViewerOptions {
     clouds?: boolean
     /** 是否启用大气天空和空气透视，默认 `true`。Enables atmospheric sky and aerial perspective. Defaults to `true`. */
     skyAtmosphere?: boolean
+    /**
+     * 空气散射强度，范围 `0` 到 `1`，默认 `1`。
+     *
+     * 控制空气透视中沿视线进入镜头的散射光强度。降低后远景会更通透。
+     *
+     * Atmospheric in-scattering intensity from `0` to `1`. Defaults to `1`.
+     *
+     * Controls the light scattered into the view ray by aerial perspective.
+     * Lower values make distant imagery clearer.
+     */
+    atmosphereInscatterIntensity?: number
+    /**
+     * 是否按地平线和球体边缘混合空气散射，默认 `true`。
+     *
+     * 开启后，正俯视区域会减弱散射，越接近地平线或球体边缘散射越强。
+     *
+     * Blends atmospheric in-scattering by horizon and globe edge. Defaults to
+     * `true`.
+     *
+     * When enabled, in-scattering is reduced in top-down areas and strengthened
+     * toward the horizon or globe edge.
+     */
+    atmosphereInscatterHorizonBlend?: boolean
+    /**
+     * 空气散射地平线混合范围，默认 `[0, 0.6]`。
+     *
+     * 值基于视线与地表法线夹角的余弦。第一个值以内保留完整散射，第二个值以外接近无散射。
+     *
+     * Horizon blend range for in-scattering. Defaults to `[0, 0.6]`.
+     *
+     * Values are based on the cosine between the view ray and surface normal.
+     * At or below the first value, full in-scattering is preserved; at or above
+     * the second value, in-scattering approaches zero.
+     */
+    atmosphereInscatterHorizonRange?: [number, number]
     /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
     lensFlare?: boolean
     /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */

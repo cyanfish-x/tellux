@@ -490,6 +490,7 @@ export class Viewer {
 
     this.resize()
     this.controls.update()
+    this.syncAtmosphereInscatter()
     this.tilesets.update()
     this.renderer.render(this.scene.threeScene, this.threeCamera)
     return deltaTime
@@ -556,6 +557,9 @@ export class Viewer {
       dithering: options?.dithering ?? false,
       toneMappingExposure: options?.toneMappingExposure ?? 10,
       cloudCoverage: options?.cloudCoverage ?? 0.3,
+      atmosphereInscatterIntensity: options?.atmosphereInscatterIntensity ?? 1,
+      atmosphereInscatterHorizonBlend: options?.atmosphereInscatterHorizonBlend ?? true,
+      atmosphereInscatterHorizonRange: options?.atmosphereInscatterHorizonRange ?? [0, 0.6],
       creasedNormals: options?.creasedNormals ?? false
     }
   }
@@ -572,6 +576,12 @@ export class Viewer {
 
   private syncControlsEllipsoid() {
     this.controls.setEllipsoid(this.tilesets.surfaceTileset.ellipsoid, this.tilesets.surfaceTileset.group)
+  }
+
+  private syncAtmosphereInscatter() {
+    this.atmosphere.inscatterIntensity = this.scene.atmosphereInscatterIntensity
+    this.atmosphere.inscatterHorizonBlend = this.scene.atmosphereInscatterHorizonBlend
+    this.atmosphere.inscatterHorizonRange = this.scene.atmosphereInscatterHorizonRange
   }
 
   private flyToTileset(tileset: TilesRenderer, options: FlyTo3DTilesetOptions) {

@@ -8,7 +8,9 @@ export interface ExampleSettingsPanelOptions {
   hourUTC?: number
   cloudLayerAltitude?: number
   cloudLayerHeight?: number
-  atmosphereInscatter?: boolean
+  atmosphereInscatterIntensity?: number
+  atmosphereInscatterHorizonBlend?: boolean
+  atmosphereInscatterHorizonRange?: [number, number]
   sunIntensity?: number
   skyIntensity?: number
   showFps?: boolean
@@ -22,14 +24,6 @@ interface RangeControlOptions {
   step: number
   value: number
   format: (value: number) => string
-}
-
-interface ViewerInternalAtmosphere {
-  atmosphere?: {
-    aerialPerspectiveEffect?: {
-      inscatter: boolean
-    }
-  }
 }
 
 export const arcgisWorldImageryUrl =
@@ -95,11 +89,16 @@ function applyInitialSettings(
     viewer.scene.cloudLayerHeight = settings.cloudLayerHeight
   }
 
-  if (settings.atmosphereInscatter !== undefined) {
-    const aerialPerspective = getAerialPerspectiveEffect(viewer)
-    if (aerialPerspective) {
-      aerialPerspective.inscatter = settings.atmosphereInscatter
-    }
+  if (settings.atmosphereInscatterIntensity !== undefined) {
+    viewer.scene.atmosphereInscatterIntensity = settings.atmosphereInscatterIntensity
+  }
+
+  if (settings.atmosphereInscatterHorizonBlend !== undefined) {
+    viewer.scene.atmosphereInscatterHorizonBlend = settings.atmosphereInscatterHorizonBlend
+  }
+
+  if (settings.atmosphereInscatterHorizonRange !== undefined) {
+    viewer.scene.atmosphereInscatterHorizonRange = settings.atmosphereInscatterHorizonRange
   }
 
   if (settings.sunIntensity !== undefined && lights.sunLight) {
@@ -144,10 +143,10 @@ function mountExampleSettingsPanel(
   body.appendChild(content)
 
   const skyToggle = createSwitchControl("sky-atmosphere", "大气", viewer.scene.skyAtmosphere.show)
-  const inscatterToggle = createSwitchControl(
-    "atmosphere-inscatter",
-    "空气散射",
-    getAerialPerspectiveEffect(viewer)?.inscatter ?? true
+  const inscatterHorizonToggle = createSwitchControl(
+    "atmosphere-inscatter-horizon",
+    "地平线散射",
+    viewer.scene.atmosphereInscatterHorizonBlend
   )
   const cloudToggle = createSwitchControl("clouds", "体积云", viewer.scene.clouds.show)
   const lensFlareToggle = createSwitchControl(
@@ -226,11 +225,42 @@ function mountExampleSettingsPanel(
     value: settings.cloudLayerHeight ?? viewer.scene.cloudLayerHeight,
     format: (value) => `${Math.round(value)}m`,
   })
+  const inscatterIntensityControl = createRangeControl({
+    id: "atmosphere-inscatter-intensity",
+    label: "空气散射",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    value: settings.atmosphereInscatterIntensity ?? viewer.scene.atmosphereInscatterIntensity,
+    format: (value) => value.toFixed(2),
+  })
+  const horizonRange = settings.atmosphereInscatterHorizonRange ?? viewer.scene.atmosphereInscatterHorizonRange
+  const horizonStartControl = createRangeControl({
+    id: "atmosphere-horizon-start",
+    label: "边缘保留",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    value: horizonRange[0],
+    format: (value) => value.toFixed(2),
+  })
+  const horizonEndControl = createRangeControl({
+    id: "atmosphere-horizon-end",
+    label: "中心衰减",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    value: horizonRange[1],
+    format: (value) => value.toFixed(2),
+  })
 
   content.appendChild(
     createGroup("体积云与大气", [
       skyToggle.element,
-      inscatterToggle.element,
+      inscatterIntensityControl.element,
+      inscatterHorizonToggle.element,
+      horizonStartControl.element,
+      horizonEndControl.element,
       cloudToggle.element,
       coverageControl.element,
       cloudAltitudeControl.element,
@@ -281,10 +311,12 @@ function mountExampleSettingsPanel(
     const currentLights = getSceneLights(viewer)
 
     viewer.scene.skyAtmosphere.show = skyToggle.input.checked
-    const aerialPerspective = getAerialPerspectiveEffect(viewer)
-    if (aerialPerspective) {
-      aerialPerspective.inscatter = inscatterToggle.input.checked
-    }
+    viewer.scene.atmosphereInscatterIntensity = Number(inscatterIntensityControl.input.value)
+    viewer.scene.atmosphereInscatterHorizonBlend = inscatterHorizonToggle.input.checked
+    viewer.scene.atmosphereInscatterHorizonRange = [
+      Number(horizonStartControl.input.value),
+      Number(horizonEndControl.input.value),
+    ]
     viewer.scene.clouds.show = cloudToggle.input.checked
     viewer.clock.hourUTC = Number(utcRange?.value ?? viewer.clock.hourUTC)
     viewer.scene.cloudCoverage = Number(coverageControl.input.value)
@@ -307,7 +339,7 @@ function mountExampleSettingsPanel(
 
     status.textContent =
       `UTC ${formatHour(viewer.clock.hourUTC)} / 云量 ${viewer.scene.cloudCoverage.toFixed(2)} / ` +
-      `曝光 ${viewer.toneMappingExposure.toFixed(1)}`
+      `散射 ${viewer.scene.atmosphereInscatterIntensity.toFixed(2)} / 曝光 ${viewer.toneMappingExposure.toFixed(1)}`
   }
 
   toggle.addEventListener("click", () => {
@@ -442,10 +474,6 @@ function getSceneLights(viewer: Viewer) {
   })
 
   return { sunLight, skyLight }
-}
-
-function getAerialPerspectiveEffect(viewer: Viewer) {
-  return (viewer as unknown as ViewerInternalAtmosphere).atmosphere?.aerialPerspectiveEffect ?? null
 }
 
 function formatHour(value: number) {

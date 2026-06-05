@@ -104,6 +104,9 @@ export class Scene {
   private currentCloudCoverage: number
   private currentCloudLayerAltitude: number
   private currentCloudLayerHeight: number
+  private currentAtmosphereInscatterIntensity: number
+  private isAtmosphereInscatterHorizonBlend: boolean
+  private currentAtmosphereInscatterHorizonRange: [number, number]
   private readonly cloudLayerOffsets = [0, 250]
   private readonly cloudLayerHeightScales = [1, 1200 / 650]
   private readonly getCloudsEffect: () => CloudsEffect | null
@@ -115,6 +118,9 @@ export class Scene {
   ) {
     this.getCloudsEffect = getCloudsEffect
     this.currentCloudCoverage = options.cloudCoverage
+    this.currentAtmosphereInscatterIntensity = options.atmosphereInscatterIntensity
+    this.isAtmosphereInscatterHorizonBlend = options.atmosphereInscatterHorizonBlend
+    this.currentAtmosphereInscatterHorizonRange = options.atmosphereInscatterHorizonRange
     const defaultLayer = this.getCloudsEffect()?.cloudLayers[0]
     this.currentCloudLayerAltitude = defaultLayer?.altitude ?? 750
     this.currentCloudLayerHeight = defaultLayer?.height ?? 650
@@ -136,6 +142,61 @@ export class Scene {
     this.currentCloudCoverage = value
     const clouds = this.getCloudsEffect()
     if (clouds) clouds.coverage = value
+  }
+
+  /**
+   * 空气散射强度，范围 `0` 到 `1`。
+   *
+   * 控制空气透视中沿视线进入镜头的散射光强度。降低后远景会更通透。
+   *
+   * Atmospheric in-scattering intensity from `0` to `1`.
+   *
+   * Controls the light scattered into the view ray by aerial perspective.
+   * Lower values make distant imagery clearer.
+   */
+  get atmosphereInscatterIntensity() {
+    return this.currentAtmosphereInscatterIntensity
+  }
+
+  set atmosphereInscatterIntensity(value: number) {
+    this.currentAtmosphereInscatterIntensity = THREE.MathUtils.clamp(value, 0, 1)
+  }
+
+  /**
+   * 是否按地平线和球体边缘混合空气散射。
+   *
+   * 开启后，正俯视区域会减弱散射，越接近地平线或球体边缘散射越强。
+   *
+   * Whether atmospheric in-scattering is blended by horizon and globe edge.
+   *
+   * When enabled, in-scattering is reduced in top-down areas and strengthened
+   * toward the horizon or globe edge.
+   */
+  get atmosphereInscatterHorizonBlend() {
+    return this.isAtmosphereInscatterHorizonBlend
+  }
+
+  set atmosphereInscatterHorizonBlend(value: boolean) {
+    this.isAtmosphereInscatterHorizonBlend = value
+  }
+
+  /**
+   * 空气散射地平线混合范围。
+   *
+   * 值基于视线与地表法线夹角的余弦。第一个值以内保留完整散射，第二个值以外接近无散射。
+   *
+   * Horizon blend range for in-scattering.
+   *
+   * Values are based on the cosine between the view ray and surface normal.
+   * At or below the first value, full in-scattering is preserved; at or above
+   * the second value, in-scattering approaches zero.
+   */
+  get atmosphereInscatterHorizonRange(): [number, number] {
+    return [...this.currentAtmosphereInscatterHorizonRange]
+  }
+
+  set atmosphereInscatterHorizonRange(value: [number, number]) {
+    this.currentAtmosphereInscatterHorizonRange = [...value]
   }
 
   /**

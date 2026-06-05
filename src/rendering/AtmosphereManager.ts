@@ -15,7 +15,18 @@ import { getTelluxAssetUrl } from '../config'
 
 type TextureApplyCallback<T extends THREE.Texture> = (texture: T) => void
 
+interface PatchableEffectShader {
+  getFragmentShader(): string
+  setFragmentShader(fragmentShader: string): void
+  setChanged(): void
+}
+
+type DynamicUniforms = Map<string, THREE.Uniform>
+
 const CLOUD_COMPOSITION_PROPERTIES = new Set(['atmosphereOverlay', 'atmosphereShadow', 'atmosphereShadowLength'])
+const INSCATTER_INTENSITY_UNIFORM = 'telluxInscatterIntensity'
+const INSCATTER_HORIZON_BLEND_UNIFORM = 'telluxInscatterHorizonBlend'
+const INSCATTER_HORIZON_RANGE_UNIFORM = 'telluxInscatterHorizonRange'
 
 export class AtmosphereManager {
   readonly sunLight = new THREE.DirectionalLight(0xffffff, 3)
@@ -37,6 +48,7 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.sky = true
     this.aerialPerspectiveEffect.sunLight = true
     this.aerialPerspectiveEffect.skyLight = true
+    this.patchInscatterIntensity()
 
     this.cloudsEffect = new CloudsEffect(this.camera)
     this.cloudsEffect.localWeatherVelocity.set(0.001, 0)
@@ -74,6 +86,41 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.sunDirection.copy(sunDirection)
     this.cloudsEffect.sunDirection.copy(sunDirection)
     this.sunLight.position.copy(sunDirection).multiplyScalar(10000000)
+  }
+
+  get inscatterIntensity() {
+    return this.getInscatterIntensityUniform()?.value ?? 1
+  }
+
+  set inscatterIntensity(value: number) {
+    const uniform = this.getInscatterIntensityUniform()
+    if (uniform) uniform.value = THREE.MathUtils.clamp(value, 0, 1)
+  }
+
+  get inscatterHorizonBlend() {
+    return Boolean(this.getInscatterHorizonBlendUniform()?.value)
+  }
+
+  set inscatterHorizonBlend(value: boolean) {
+    const uniform = this.getInscatterHorizonBlendUniform()
+    if (uniform) uniform.value = value ? 1 : 0
+  }
+
+  get inscatterHorizonRange(): [number, number] {
+    const value = this.getInscatterHorizonRangeUniform()?.value
+    return value ? [value.x, value.y] : [0, 0.6]
+  }
+
+  set inscatterHorizonRange(value: [number, number]) {
+    const uniform = this.getInscatterHorizonRangeUniform()
+    if (uniform) {
+      const start = THREE.MathUtils.clamp(Math.min(value[0], value[1]), 0, 1)
+      const end = THREE.MathUtils.clamp(Math.max(value[0], value[1]), 0, 1)
+      uniform.value.set(
+        start,
+        end
+      )
+    }
   }
 
   async loadTextures() {
@@ -116,6 +163,62 @@ export class AtmosphereManager {
     if (event.property && CLOUD_COMPOSITION_PROPERTIES.has(event.property)) {
       this.onCompositionChange()
     }
+  }
+
+  private patchInscatterIntensity() {
+    const effect = this.aerialPerspectiveEffect
+    const uniforms = effect.uniforms as unknown as DynamicUniforms
+    uniforms.set(INSCATTER_INTENSITY_UNIFORM, new THREE.Uniform(1))
+    uniforms.set(INSCATTER_HORIZON_BLEND_UNIFORM, new THREE.Uniform(1))
+    uniforms.set(INSCATTER_HORIZON_RANGE_UNIFORM, new THREE.Uniform(new THREE.Vector2(0, 0.6)))
+
+    const shaderEffect = effect as unknown as PatchableEffectShader
+    const fragmentShader = shaderEffect.getFragmentShader()
+    if (fragmentShader.includes(INSCATTER_INTENSITY_UNIFORM)) return
+
+    const withUniform = fragmentShader.replace(
+      'uniform float albedoScale;',
+      `uniform float albedoScale;\nuniform float ${INSCATTER_INTENSITY_UNIFORM};\nuniform float ${INSCATTER_HORIZON_BLEND_UNIFORM};\nuniform vec2 ${INSCATTER_HORIZON_RANGE_UNIFORM};`
+    )
+    if (withUniform === fragmentShader) {
+      console.warn('Tellux atmosphere shader patch failed: uniform hook was not found.')
+      shaderEffect.setChanged()
+      return
+    }
+
+    const patchedShader = withUniform.replace(
+      'radiance = radiance + inscatter;',
+      [
+        'vec3 telluxGlobeNormal = normalize(positionECEF / vEllipsoidRadiiSquared);',
+        'float telluxViewNormalCos = clamp(dot(telluxGlobeNormal, normalize(vCameraPosition - positionECEF)), 0.0, 1.0);',
+        `float telluxHorizonMask = 1.0 - smoothstep(${INSCATTER_HORIZON_RANGE_UNIFORM}.x, ${INSCATTER_HORIZON_RANGE_UNIFORM}.y, telluxViewNormalCos);`,
+        `float telluxInscatterMask = mix(1.0, telluxHorizonMask, ${INSCATTER_HORIZON_BLEND_UNIFORM});`,
+        `radiance = radiance + inscatter * ${INSCATTER_INTENSITY_UNIFORM} * telluxInscatterMask;`
+      ].join('\n  ')
+    )
+
+    if (patchedShader === withUniform) {
+      console.warn('Tellux atmosphere shader patch failed: inscatter intensity hook was not found.')
+      shaderEffect.setChanged()
+      return
+    }
+
+    shaderEffect.setFragmentShader(patchedShader)
+  }
+
+  private getInscatterIntensityUniform(): THREE.Uniform<number> | null {
+    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(INSCATTER_INTENSITY_UNIFORM) ??
+      null) as THREE.Uniform<number> | null
+  }
+
+  private getInscatterHorizonBlendUniform(): THREE.Uniform<number> | null {
+    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(INSCATTER_HORIZON_BLEND_UNIFORM) ??
+      null) as THREE.Uniform<number> | null
+  }
+
+  private getInscatterHorizonRangeUniform(): THREE.Uniform<THREE.Vector2> | null {
+    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(INSCATTER_HORIZON_RANGE_UNIFORM) ??
+      null) as THREE.Uniform<THREE.Vector2> | null
   }
 
   private loadCloudTexture(url: string, applyTexture: TextureApplyCallback<THREE.Texture>) {
