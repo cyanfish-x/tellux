@@ -22,11 +22,12 @@
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.types.json",
+    "build:examples": "vite build --config examples/vite.config.ts",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
-    "dev": "concurrently -k -n build,types \"vite build --watch\" \"tsc -p tsconfig.types.json --watch\"",
-    "examples": "vite examples --host 127.0.0.1 --port 5173 --strictPort",
-    "dev:types": "tsc -p tsconfig.types.json --watch"
+    "dev": "vite examples --host 127.0.0.1 --port 5173 --strictPort",
+    "deploy": "npm run build && node actions/deploy.js",
+    "deploy:examples": "npm run build:examples && node actions/deploy.js"
   },
   "peerDependencies": {
     "3d-tiles-renderer": "^0.4.27",
@@ -63,5 +64,9 @@
     "three": "^0.184.0",
     "typescript": "~5.2.2",
     "vite": "^5.4.19"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "tencentcloud-sdk-nodejs-cdn": "^4.1.200"
   }
 }

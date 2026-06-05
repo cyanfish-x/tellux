@@ -233,6 +233,7 @@ export class Viewer {
     this.scene = new Scene(
       sceneOptions,
       () => atmosphere?.cloudsEffect ?? null,
+      () => atmosphere ?? null,
       () => this.postProcessing.applyEffects()
     )
     this.atmosphere = new AtmosphereManager(this.renderer, this.threeCamera, () => this.postProcessing.applyEffects())

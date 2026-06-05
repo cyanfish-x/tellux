@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { CloudsEffect } from '@takram/three-clouds'
+import type { AtmosphereRuntimeControls } from './rendering/AtmosphereManager'
 import type { ViewerOptions } from './types'
 
 class SceneToggle {
@@ -110,13 +111,16 @@ export class Scene {
   private readonly cloudLayerOffsets = [0, 250]
   private readonly cloudLayerHeightScales = [1, 1200 / 650]
   private readonly getCloudsEffect: () => CloudsEffect | null
+  private readonly getAtmosphereControls: () => AtmosphereRuntimeControls | null
 
   constructor(
     options: Required<NonNullable<ViewerOptions['scene']>>,
     getCloudsEffect: () => CloudsEffect | null,
+    getAtmosphereControls: () => AtmosphereRuntimeControls | null,
     onEffectsChange: () => void
   ) {
     this.getCloudsEffect = getCloudsEffect
+    this.getAtmosphereControls = getAtmosphereControls
     this.currentCloudCoverage = options.cloudCoverage
     this.currentAtmosphereInscatterIntensity = options.atmosphereInscatterIntensity
     this.isAtmosphereInscatterHorizonBlend = options.atmosphereInscatterHorizonBlend
@@ -197,6 +201,314 @@ export class Scene {
 
   set atmosphereInscatterHorizonRange(value: [number, number]) {
     this.currentAtmosphereInscatterHorizonRange = [...value]
+  }
+
+  /**
+   * 是否修正相机高度和椭球高度误差。
+   *
+   * Corrects camera altitude against the ellipsoid used by the atmosphere.
+   */
+  get atmosphereCorrectAltitude() {
+    return this.getAtmosphereControls()?.correctAltitude ?? true
+  }
+
+  set atmosphereCorrectAltitude(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.correctAltitude = value
+  }
+
+  /**
+   * 是否修正地表瓦片几何误差导致的光照伪影。
+   *
+   * Corrects lighting artifacts caused by surface tile geometric error.
+   */
+  get atmosphereCorrectGeometricError() {
+    return this.getAtmosphereControls()?.correctGeometricError ?? true
+  }
+
+  set atmosphereCorrectGeometricError(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.correctGeometricError = value
+  }
+
+  /**
+   * 是否应用大气透射衰减。
+   *
+   * Applies atmospheric transmittance attenuation.
+   */
+  get atmosphereTransmittance() {
+    return this.getAtmosphereControls()?.transmittance ?? true
+  }
+
+  set atmosphereTransmittance(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.transmittance = value
+  }
+
+  /**
+   * 是否应用进入视线的空气散射光。
+   *
+   * Applies atmospheric in-scattered light along the view ray.
+   */
+  get atmosphereInscatter() {
+    return this.getAtmosphereControls()?.inscatter ?? true
+  }
+
+  set atmosphereInscatter(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.inscatter = value
+  }
+
+  /**
+   * 是否在后处理中应用太阳直射光照。
+   *
+   * Applies direct sun irradiance in post-processing.
+   */
+  get atmosphereSunLight() {
+    return this.getAtmosphereControls()?.postProcessSunLight ?? true
+  }
+
+  set atmosphereSunLight(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.postProcessSunLight = value
+  }
+
+  /**
+   * 是否在后处理中应用天空环境光照。
+   *
+   * Applies sky irradiance in post-processing.
+   */
+  get atmosphereSkyLight() {
+    return this.getAtmosphereControls()?.postProcessSkyLight ?? true
+  }
+
+  set atmosphereSkyLight(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.postProcessSkyLight = value
+  }
+
+  /**
+   * 是否在天空中绘制太阳盘。
+   *
+   * Renders the sun disc in the sky.
+   */
+  get atmosphereSun() {
+    return this.getAtmosphereControls()?.sun ?? true
+  }
+
+  set atmosphereSun(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.sun = value
+  }
+
+  /**
+   * 是否在天空中绘制月亮。
+   *
+   * Renders the moon in the sky.
+   */
+  get atmosphereMoon() {
+    return this.getAtmosphereControls()?.moon ?? true
+  }
+
+  set atmosphereMoon(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.moon = value
+  }
+
+  /**
+   * 是否绘制大气天空里的地面。
+   *
+   * Renders the ground term in the atmospheric sky.
+   */
+  get atmosphereGround() {
+    return this.getAtmosphereControls()?.ground ?? true
+  }
+
+  set atmosphereGround(value: boolean) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.ground = value
+  }
+
+  /**
+   * 后处理光照使用的反照率缩放。
+   *
+   * Albedo scale used by post-process lighting.
+   */
+  get atmosphereAlbedoScale() {
+    return this.getAtmosphereControls()?.albedoScale ?? 1
+  }
+
+  set atmosphereAlbedoScale(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.albedoScale = value
+  }
+
+  /**
+   * 太阳角半径（弧度）。
+   *
+   * Sun angular radius in radians.
+   */
+  get atmosphereSunAngularRadius() {
+    return this.getAtmosphereControls()?.sunAngularRadius ?? 0.004675
+  }
+
+  set atmosphereSunAngularRadius(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.sunAngularRadius = value
+  }
+
+  /**
+   * 月亮角半径（弧度）。
+   *
+   * Moon angular radius in radians.
+   */
+  get atmosphereMoonAngularRadius() {
+    return this.getAtmosphereControls()?.moonAngularRadius ?? 0.0045
+  }
+
+  set atmosphereMoonAngularRadius(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.moonAngularRadius = value
+  }
+
+  /**
+   * 月光辐射亮度缩放。
+   *
+   * Lunar radiance scale.
+   */
+  get atmosphereLunarRadianceScale() {
+    return this.getAtmosphereControls()?.lunarRadianceScale ?? 1
+  }
+
+  set atmosphereLunarRadianceScale(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.lunarRadianceScale = value
+  }
+
+  /**
+   * 云影采样的屏幕模糊半径。
+   *
+   * Screen-space blur radius for cloud shadow sampling.
+   */
+  get atmosphereShadowRadius() {
+    return this.getAtmosphereControls()?.shadowRadius ?? 3
+  }
+
+  set atmosphereShadowRadius(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.shadowRadius = value
+  }
+
+  /**
+   * 云影 PCF 采样数量，范围 `1` 到 `16`。
+   *
+   * Cloud shadow PCF sample count from `1` to `16`.
+   */
+  get atmosphereShadowSampleCount() {
+    return this.getAtmosphereControls()?.shadowSampleCount ?? 8
+  }
+
+  set atmosphereShadowSampleCount(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.shadowSampleCount = value
+  }
+
+  /**
+   * 太阳入射光谱强度缩放。
+   *
+   * Scale for top-of-atmosphere solar spectral irradiance.
+   */
+  get atmosphereSolarIrradianceScale() {
+    return this.getAtmosphereControls()?.solarIrradianceScale ?? 1
+  }
+
+  set atmosphereSolarIrradianceScale(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.solarIrradianceScale = value
+  }
+
+  /**
+   * 瑞利散射系数缩放。
+   *
+   * Scale for Rayleigh scattering coefficients.
+   */
+  get atmosphereRayleighScatteringScale() {
+    return this.getAtmosphereControls()?.rayleighScatteringScale ?? 1
+  }
+
+  set atmosphereRayleighScatteringScale(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.rayleighScatteringScale = value
+  }
+
+  /**
+   * 米氏散射系数缩放。
+   *
+   * Scale for Mie scattering coefficients.
+   */
+  get atmosphereMieScatteringScale() {
+    return this.getAtmosphereControls()?.mieScatteringScale ?? 1
+  }
+
+  set atmosphereMieScatteringScale(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.mieScatteringScale = value
+  }
+
+  /**
+   * 米氏消光系数缩放。
+   *
+   * Scale for Mie extinction coefficients.
+   */
+  get atmosphereMieExtinctionScale() {
+    return this.getAtmosphereControls()?.mieExtinctionScale ?? 1
+  }
+
+  set atmosphereMieExtinctionScale(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.mieExtinctionScale = value
+  }
+
+  /**
+   * 米氏相函数不对称因子。
+   *
+   * Mie phase function asymmetry factor.
+   */
+  get atmosphereMiePhaseFunctionG() {
+    return this.getAtmosphereControls()?.miePhaseFunctionG ?? 0.8
+  }
+
+  set atmosphereMiePhaseFunctionG(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.miePhaseFunctionG = value
+  }
+
+  /**
+   * 臭氧等吸收介质的消光系数缩放。
+   *
+   * Scale for absorption extinction, such as ozone absorption.
+   */
+  get atmosphereAbsorptionExtinctionScale() {
+    return this.getAtmosphereControls()?.absorptionExtinctionScale ?? 1
+  }
+
+  set atmosphereAbsorptionExtinctionScale(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.absorptionExtinctionScale = value
+  }
+
+  /**
+   * 大气模型里的平均地表反照率，范围 `0` 到 `1`。
+   *
+   * Average ground albedo in the atmosphere model from `0` to `1`.
+   */
+  get atmosphereGroundAlbedo() {
+    return this.getAtmosphereControls()?.groundAlbedo ?? 0.1
+  }
+
+  set atmosphereGroundAlbedo(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.groundAlbedo = value
   }
 
   /**

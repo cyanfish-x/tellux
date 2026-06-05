@@ -2,6 +2,16 @@ import { resolve } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
 
 const projectRoot = resolve(__dirname, '..')
+const htmlInputs = {
+  index: resolve(__dirname, 'index.html'),
+  basic: resolve(__dirname, 'basic.html'),
+  flyTo: resolve(__dirname, 'fly-to.html'),
+  click: resolve(__dirname, 'click.html'),
+  dataSources: resolve(__dirname, 'data-sources.html'),
+  tiles3d: resolve(__dirname, '3d-tiles.html'),
+  terrain: resolve(__dirname, 'terrain.html'),
+  atmosphere: resolve(__dirname, 'atmosphere.html')
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, projectRoot, '')
@@ -22,6 +32,11 @@ export default defineConfig(({ mode }) => {
           target: geoserverProxyTarget,
           changeOrigin: true
         }
+      }
+    },
+    build: {
+      rollupOptions: {
+        input: htmlInputs
       }
     }
   }
