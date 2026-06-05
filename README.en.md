@@ -6,6 +6,8 @@ Tellux is a Three.js-based GIS viewer for Cesium Ion 3D Tiles with globe control
 
 The npm package name is `tellux` because npm package names must be lowercase.
 
+Live demo: https://tellux.cyanfish.site
+
 ## Install
 
 ```bash

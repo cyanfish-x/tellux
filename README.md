@@ -4,6 +4,8 @@
 
 Tellux 是一个基于 Three.js 的三维地理空间引擎，用 Three.js 构建数字地球、地形、影像与 3D Tiles 场景。
 
+在线预览：https://tellux.cyanfish.site
+
 ## 安装
 
 ```bash
