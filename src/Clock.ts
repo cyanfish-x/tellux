@@ -4,8 +4,7 @@
  * Scene clock used for sun direction and time-dependent atmosphere lighting.
  */
 export class Clock {
-  private currentHourUTC = 0
-  private currentDate = new Date(Date.UTC(2024, 2, 1))
+  private currentDate = new Date()
   private readonly onChange: () => void
 
   constructor(onChange: () => void) {
@@ -18,7 +17,7 @@ export class Clock {
    * Current UTC hour offset used to compute sun direction.
    */
   get hourUTC() {
-    return this.currentHourUTC
+    return getUTCHour(this.currentDate)
   }
 
   set hourUTC(value: number) {
@@ -31,8 +30,14 @@ export class Clock {
    * Sets the UTC hour offset and updates time-dependent lighting.
    */
   setHourUTC(value: number) {
-    this.currentHourUTC = value
-    this.currentDate = new Date(Date.UTC(2024, 2, 1) + this.currentHourUTC * 3600000)
+    const nextDate = new Date(this.currentDate)
+    const totalSeconds = Math.round(clamp(toFinite(value, this.hourUTC), 0, 24) * 3600) % 86400
+    const hour = Math.floor(totalSeconds / 3600)
+    const minute = Math.floor((totalSeconds % 3600) / 60)
+    const second = totalSeconds % 60
+
+    nextDate.setUTCHours(hour, minute, second, 0)
+    this.currentDate = nextDate
     this.onChange()
   }
 
@@ -57,7 +62,18 @@ export class Clock {
    */
   setCurrentTime(value: Date) {
     this.currentDate = new Date(value)
-    this.currentHourUTC = this.currentDate.getUTCHours() + this.currentDate.getUTCMinutes() / 60 + this.currentDate.getUTCSeconds() / 3600
     this.onChange()
   }
+}
+
+function getUTCHour(date: Date) {
+  return date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600
+}
+
+function toFinite(value: number, fallback: number) {
+  return Number.isFinite(value) ? value : fallback
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
 }

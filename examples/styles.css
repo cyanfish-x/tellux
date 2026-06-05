@@ -594,7 +594,7 @@ a {
 
 .example-settings__group {
   display: grid;
-  gap: 10px;
+  gap: 0;
   padding-top: 12px;
   border-top: 1px solid rgba(226, 232, 240, 0.14);
 }
@@ -608,11 +608,72 @@ a {
   margin-top: 14px;
 }
 
-.example-settings__group h3 {
+.example-settings__group-header {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  border: 0;
   color: #bfdbfe;
+  background: transparent;
+  font: inherit;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.example-settings__group-header:hover,
+.example-settings__group-header:focus-visible {
+  color: #e0f2fe;
+  outline: none;
+}
+
+.example-settings__group-marker {
+  position: relative;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  transition: transform 180ms ease;
+}
+
+.example-settings__group-marker::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: translate(-50%, -62%) rotate(45deg);
+}
+
+.example-settings__group-header[aria-expanded="false"] .example-settings__group-marker {
+  transform: rotate(-90deg);
+}
+
+.example-settings__group-content {
+  display: grid;
+  gap: 10px;
+  max-height: 760px;
+  overflow: hidden;
+  padding-top: 10px;
+  opacity: 1;
+  transition:
+    max-height 220ms ease,
+    opacity 160ms ease,
+    padding-top 220ms ease;
+}
+
+.example-settings__group-header[aria-expanded="false"] + .example-settings__group-content {
+  max-height: 0;
+  padding-top: 0;
+  opacity: 0;
 }
 
 .example-settings__switch {

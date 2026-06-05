@@ -34,7 +34,6 @@ const viewer = createTelluxViewer(
     resolutionScale: 1
   },
   {
-    hourUTC: 8,
     cloudLayerAltitude: 750,
     cloudLayerHeight: 650
   }

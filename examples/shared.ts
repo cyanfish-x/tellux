@@ -6,6 +6,7 @@ tellux.baseUrl = "/tellux/"
 
 export interface ExampleSettingsPanelOptions {
   hourUTC?: number
+  dayOfYear?: number
   cloudLayerAltitude?: number
   cloudLayerHeight?: number
   atmosphereInscatterIntensity?: number
@@ -99,8 +100,12 @@ function applyInitialSettings(
 ) {
   const lights = getSceneLights(viewer)
 
-  if (settings.hourUTC !== undefined) {
-    viewer.clock.hourUTC = settings.hourUTC
+  if (settings.dayOfYear !== undefined || settings.hourUTC !== undefined) {
+    viewer.clock.currentTime = createUTCDateFromControls(
+      viewer.clock.currentTime.getUTCFullYear(),
+      settings.dayOfYear ?? getUTCDayOfYear(viewer.clock.currentTime),
+      settings.hourUTC ?? getUTCHour(viewer.clock.currentTime)
+    )
   }
 
   if (settings.cloudLayerAltitude !== undefined) {
@@ -317,17 +322,38 @@ function mountExampleSettingsPanel(
   )
   const fpsToggle = createSwitchControl("fps", "显示帧率", settings.showFps ?? true)
 
+  const initialClockTime = viewer.clock.currentTime
+  const initialYearUTC = initialClockTime.getUTCFullYear()
+  const initialDayOfYear = settings.dayOfYear ?? getUTCDayOfYear(initialClockTime)
+  const initialHourUTC = settings.hourUTC ?? getUTCHour(initialClockTime)
+  const dayOfYearControl = createRangeControl({
+    id: "day-of-year",
+    label: "年内日",
+    min: 1,
+    max: getDaysInUTCYear(initialYearUTC),
+    step: 1,
+    value: initialDayOfYear,
+    format: (value) => `${Math.round(value)}日`,
+  })
+  const utcControl = createRangeControl({
+    id: "utc-time",
+    label: "UTC 时间",
+    min: 0,
+    max: 24,
+    step: 0.05,
+    value: initialHourUTC,
+    format: formatHour,
+  })
+
+  content.appendChild(
+    createGroup("日期和时间", [
+      dayOfYearControl.element,
+      utcControl.element,
+    ])
+  )
+
   content.appendChild(
     createGroup("光照", [
-      createRangeControl({
-        id: "utc-time",
-        label: "UTC 时间",
-        min: 0,
-        max: 24,
-        step: 0.05,
-        value: settings.hourUTC ?? viewer.clock.hourUTC,
-        format: formatHour,
-      }).element,
       createRangeControl({
         id: "sun-intensity",
         label: "太阳强度",
@@ -346,10 +372,9 @@ function mountExampleSettingsPanel(
         value: settings.skyIntensity ?? lights.skyLight?.intensity ?? 0.8,
         format: (value) => value.toFixed(2),
       }).element,
-    ])
+    ], false)
   )
 
-  const utcRange = content.querySelector<HTMLInputElement>("#example-settings-utc-time")
   const sunIntensityRange = content.querySelector<HTMLInputElement>("#example-settings-sun-intensity")
   const skyIntensityRange = content.querySelector<HTMLInputElement>("#example-settings-sky-intensity")
 
@@ -542,7 +567,7 @@ function mountExampleSettingsPanel(
       groundToggle.element,
       correctAltitudeToggle.element,
       correctGeometricToggle.element,
-    ])
+    ], false)
   )
 
   content.appendChild(
@@ -560,7 +585,7 @@ function mountExampleSettingsPanel(
       lunarRadianceScaleControl.element,
       shadowRadiusControl.element,
       shadowSampleCountControl.element,
-    ])
+    ], false)
   )
 
   content.appendChild(
@@ -569,7 +594,7 @@ function mountExampleSettingsPanel(
       coverageControl.element,
       cloudAltitudeControl.element,
       cloudHeightControl.element,
-    ])
+    ], false)
   )
 
   const exposureControl = createRangeControl({
@@ -599,7 +624,7 @@ function mountExampleSettingsPanel(
       lensFlareToggle.element,
       smaaToggle.element,
       ditheringToggle.element,
-    ])
+    ], false)
   )
 
   const status = document.createElement("p")
@@ -644,7 +669,11 @@ function mountExampleSettingsPanel(
     viewer.scene.atmosphereShadowRadius = Number(shadowRadiusControl.input.value)
     viewer.scene.atmosphereShadowSampleCount = Number(shadowSampleCountControl.input.value)
     viewer.scene.clouds.show = cloudToggle.input.checked
-    viewer.clock.hourUTC = Number(utcRange?.value ?? viewer.clock.hourUTC)
+    viewer.clock.currentTime = createUTCDateFromControls(
+      viewer.clock.currentTime.getUTCFullYear(),
+      Number(dayOfYearControl.input.value),
+      Number(utcControl.input.value)
+    )
     viewer.scene.cloudCoverage = Number(coverageControl.input.value)
     viewer.scene.cloudLayerAltitude = Number(cloudAltitudeControl.input.value)
     viewer.scene.cloudLayerHeight = Number(cloudHeightControl.input.value)
@@ -663,8 +692,9 @@ function mountExampleSettingsPanel(
       currentLights.skyLight.intensity = Number(skyIntensityRange.value)
     }
 
+    const currentTime = viewer.clock.currentTime
     status.textContent =
-      `UTC ${formatHour(viewer.clock.hourUTC)} / 云量 ${viewer.scene.cloudCoverage.toFixed(2)} / ` +
+      `第 ${getUTCDayOfYear(currentTime)} 日 UTC ${formatHour(getUTCHour(currentTime))} / 云量 ${viewer.scene.cloudCoverage.toFixed(2)} / ` +
       `散射 ${viewer.scene.atmosphereInscatterIntensity.toFixed(2)} / 曝光 ${viewer.toneMappingExposure.toFixed(1)}`
   }
 
@@ -725,17 +755,38 @@ function mountFpsHud(viewer: Viewer, shell: HTMLElement, isVisible: boolean) {
   }
 }
 
-function createGroup(label: string, controls: HTMLElement[]) {
+function createGroup(label: string, controls: HTMLElement[], expanded = true) {
   const group = document.createElement("div")
   group.className = "example-settings__group"
 
-  const title = document.createElement("h3")
+  const header = document.createElement("button")
+  header.className = "example-settings__group-header"
+  header.type = "button"
+  header.setAttribute("aria-expanded", String(expanded))
+
+  const title = document.createElement("span")
   title.textContent = label
-  group.appendChild(title)
+
+  const marker = document.createElement("span")
+  marker.className = "example-settings__group-marker"
+  marker.setAttribute("aria-hidden", "true")
+
+  const content = document.createElement("div")
+  content.className = "example-settings__group-content"
+  content.inert = !expanded
+
+  header.append(title, marker)
   controls.forEach((control) => {
-    group.appendChild(control)
+    content.appendChild(control)
   })
 
+  header.addEventListener("click", () => {
+    const isOpen = header.getAttribute("aria-expanded") === "true"
+    header.setAttribute("aria-expanded", String(!isOpen))
+    content.inert = isOpen
+  })
+
+  group.append(header, content)
   return group
 }
 
@@ -811,4 +862,42 @@ function formatHour(value: number) {
 
 function formatRadians(value: number) {
   return `${value.toFixed(4)}rad`
+}
+
+function getUTCHour(date: Date) {
+  return date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600
+}
+
+function getUTCDayOfYear(date: Date) {
+  const year = date.getUTCFullYear()
+  const start = Date.UTC(year, 0, 1)
+  const current = Date.UTC(year, date.getUTCMonth(), date.getUTCDate())
+  return Math.floor((current - start) / 86400000) + 1
+}
+
+function getDaysInUTCYear(year: number) {
+  return (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86400000
+}
+
+function createUTCDateFromControls(year: number, dayOfYear: number, hourUTC: number) {
+  const safeYear = Math.round(toFinite(year, new Date().getUTCFullYear()))
+  const safeDayOfYear = clamp(
+    Math.round(toFinite(dayOfYear, 1)),
+    1,
+    getDaysInUTCYear(safeYear)
+  )
+  const totalSeconds = Math.round(clamp(toFinite(hourUTC, 0), 0, 24) * 3600) % 86400
+  const hour = Math.floor(totalSeconds / 3600)
+  const minute = Math.floor((totalSeconds % 3600) / 60)
+  const second = totalSeconds % 60
+
+  return new Date(Date.UTC(safeYear, 0, safeDayOfYear, hour, minute, second, 0))
+}
+
+function toFinite(value: number, fallback: number) {
+  return Number.isFinite(value) ? value : fallback
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
 }
