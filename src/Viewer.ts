@@ -2,9 +2,8 @@ import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { TilesRenderer, GlobeControls } from '3d-tiles-renderer'
 import { Camera } from './Camera'
-import type { CameraFlyToOptions } from './Camera'
 import { Clock } from './Clock'
-import { DEFAULT_CAMERA, RAD2DEG } from './constants'
+import { CAMERA_FRAME, DEFAULT_CAMERA, DEG2RAD, RAD2DEG } from './constants'
 import { telluxConfig } from './config'
 import type { ThreeRendererWithEffects } from './effects'
 import { LayerManager } from './LayerManager'
@@ -15,7 +14,8 @@ import { TilesetManager } from './tiles/TilesetManager'
 import type {
   AnyViewerEventListener,
   CartographicCoordinates,
-  FlyTo3DTilesetOptions,
+  FlyToTargetOptions,
+  FlyToTargetTarget,
   Load3DTilesetOptions,
   ScreenPosition,
   TilesetLayer,
@@ -45,7 +45,9 @@ export type {
   CartographicCoordinates,
   CesiumIon3DTilesetOptions,
   CesiumIonResourceOptions,
-  FlyTo3DTilesetOptions,
+  FlyToTargetOffset,
+  FlyToTargetOptions,
+  FlyToTargetTarget,
   ImageryLayerOptions,
   ImageryLayerSourceOptions,
   ImageryLayerStyleOptions,
@@ -141,9 +143,15 @@ export class Viewer {
   private readonly dracoLoader: DRACOLoader
   private readonly rendererSize = new THREE.Vector2()
   private readonly transparentOverlayTexture: THREE.CanvasTexture
-  private readonly flyToTilesetSphere = new THREE.Sphere()
-  private readonly flyToTilesetCenter = new THREE.Vector3()
-  private readonly flyToTilesetCartographicScratch = { lat: 0, lon: 0, height: 0 }
+  private readonly flyToTargetSphere = new THREE.Sphere()
+  private readonly flyToTargetBox = new THREE.Box3()
+  private readonly flyToTargetCenter = new THREE.Vector3()
+  private readonly flyToTargetDirection = new THREE.Vector3()
+  private readonly flyToTargetEast = new THREE.Vector3()
+  private readonly flyToTargetNorth = new THREE.Vector3()
+  private readonly flyToTargetUp = new THREE.Vector3()
+  private readonly flyToTargetCamera = new THREE.PerspectiveCamera()
+  private readonly flyToTargetCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly pickCoords = new THREE.Vector2()
   private readonly pickRaycaster = new THREE.Raycaster()
   private readonly pickRay = new THREE.Ray()
@@ -364,35 +372,29 @@ export class Viewer {
   }
 
   /**
-   * 平滑飞行到目标位置。
+   * 平滑飞行到目标，并让相机最终看向目标点。
    *
-   * 这是 {@link Viewer.camera} 的快捷代理，等价于调用 `viewer.camera.flyTo(options)`。
+   * 经纬高点位会直接作为目标点；Three.js 模型和 3D Tiles 会自动使用包围体中心。
+   * 如果传入的 3D Tiles 根数据尚未加载，Viewer 会在根 tileset 加载完成后自动执行飞行。
    *
-   * Smoothly flies the camera to a destination.
+   * Smoothly flies to a target and ends with the camera looking at it.
    *
-   * This is a shortcut proxy for {@link Viewer.camera}, equivalent to calling
-   * `viewer.camera.flyTo(options)`.
+   * Cartographic points are used directly; Three.js models and 3D Tiles
+   * automatically use their bounding-volume center. If a 3D Tiles root is not
+   * loaded yet, Viewer runs the flight after the root tileset finishes loading.
    */
-  flyTo(options: CameraFlyToOptions): this
-  /**
-   * 平滑飞行到 3D Tiles 附近，并以 30 度俯视角观察数据集中心。
-   *
-   * 如果传入的 tileset 根数据尚未加载，Viewer 会在根 tileset 加载完成后自动执行飞行。
-   *
-   * Smoothly flies near a 3D Tiles dataset and views its center from a
-   * 30-degree downward angle.
-   *
-   * If the tileset root is not loaded yet, Viewer runs the flight after the
-   * root tileset finishes loading.
-   */
-  flyTo(tileset: TilesRenderer, options?: FlyTo3DTilesetOptions): this
-  flyTo(target: CameraFlyToOptions | TilesRenderer, options: FlyTo3DTilesetOptions = {}) {
+  flyToTarget(target: FlyToTargetTarget, options: FlyToTargetOptions = {}) {
+    if (this.applyTargetFlight(target, options)) return this
+
     if (target instanceof TilesRenderer) {
-      this.flyToTileset(target, options)
-      return this
+      const handleRootLoaded = () => {
+        target.removeEventListener('load-root-tileset', handleRootLoaded)
+        this.applyTargetFlight(target, options)
+      }
+
+      target.addEventListener('load-root-tileset', handleRootLoaded)
     }
 
-    this.camera.flyTo(target)
     return this
   }
 
@@ -591,38 +593,59 @@ export class Viewer {
     this.atmosphere.inscatterHorizonRange = this.scene.atmosphereInscatterHorizonRange
   }
 
-  private flyToTileset(tileset: TilesRenderer, options: FlyTo3DTilesetOptions) {
-    if (this.applyTilesetFlight(tileset, options)) return
+  private applyTargetFlight(target: FlyToTargetTarget, options: FlyToTargetOptions) {
+    const resolvedTarget = this.resolveFlyToTarget(target)
+    if (!resolvedTarget) return false
 
-    const handleRootLoaded = () => {
-      tileset.removeEventListener('load-root-tileset', handleRootLoaded)
-      this.applyTilesetFlight(tileset, options)
-    }
-
-    tileset.addEventListener('load-root-tileset', handleRootLoaded)
-  }
-
-  private applyTilesetFlight(tileset: TilesRenderer, options: FlyTo3DTilesetOptions) {
-    if (!tileset.getBoundingSphere(this.flyToTilesetSphere)) return false
-
-    this.flyToTilesetCenter.copy(this.flyToTilesetSphere.center)
-    const cartographic = tileset.ellipsoid.getPositionToCartographic(
-      this.flyToTilesetCenter,
-      this.flyToTilesetCartographicScratch
+    const ellipsoid = this.tilesets.tileset.ellipsoid
+    const targetCartographic = ellipsoid.getPositionToCartographic(
+      resolvedTarget.center,
+      this.flyToTargetCartographicScratch
     )
-    const radius = Math.max(this.flyToTilesetSphere.radius, 1)
-    const height = cartographic.height + Math.max(radius * 2.8, 500)
+    const distance = options.distance ?? Math.max(resolvedTarget.radius * 2.8, 500)
+    const heading = options.heading ?? 0
+    const pitch = options.pitch ?? -30
+    const roll = options.roll ?? 0
+
+    ellipsoid.getEastNorthUpAxes(
+      targetCartographic.lat,
+      targetCartographic.lon,
+      this.flyToTargetEast,
+      this.flyToTargetNorth,
+      this.flyToTargetUp
+    )
+
+    this.flyToTargetDirection
+      .copy(this.flyToTargetEast)
+      .multiplyScalar(Math.sin(heading * DEG2RAD) * Math.cos(pitch * DEG2RAD))
+      .addScaledVector(this.flyToTargetNorth, Math.cos(heading * DEG2RAD) * Math.cos(pitch * DEG2RAD))
+      .addScaledVector(this.flyToTargetUp, Math.sin(pitch * DEG2RAD))
+      .normalize()
+
+    this.flyToTargetCamera.position
+      .copy(resolvedTarget.center)
+      .addScaledVector(this.flyToTargetDirection, -Math.max(distance, 1))
+    this.flyToTargetCamera.up.copy(this.flyToTargetUp)
+    this.flyToTargetCamera.lookAt(resolvedTarget.center)
+    this.flyToTargetCamera.rotateZ(roll * DEG2RAD)
+    this.flyToTargetCamera.updateMatrixWorld(true)
+
+    const cameraCartographic = ellipsoid.getCartographicFromObjectFrame(
+      this.flyToTargetCamera.matrixWorld,
+      this.flyToTargetCartographicScratch,
+      CAMERA_FRAME
+    )
 
     this.camera.flyTo({
       destination: {
-        latitude: cartographic.lat * RAD2DEG,
-        longitude: cartographic.lon * RAD2DEG,
-        height
+        latitude: cameraCartographic.lat * RAD2DEG,
+        longitude: cameraCartographic.lon * RAD2DEG,
+        height: cameraCartographic.height
       },
       orientation: {
-        heading: options.heading ?? 0,
-        pitch: options.pitch ?? -30,
-        roll: options.roll ?? 0
+        heading: cameraCartographic.azimuth * RAD2DEG,
+        pitch: cameraCartographic.elevation * RAD2DEG,
+        roll: cameraCartographic.roll * RAD2DEG
       },
       duration: options.duration,
       maximumHeight: options.maximumHeight,
@@ -631,6 +654,46 @@ export class Viewer {
       easingFunction: options.easingFunction
     })
     return true
+  }
+
+  private resolveFlyToTarget(target: FlyToTargetTarget) {
+    if (target instanceof TilesRenderer) {
+      target.group.updateMatrixWorld(true)
+      if (!target.getBoundingBox(this.flyToTargetBox)) return null
+
+      this.flyToTargetCenter
+        .copy(this.flyToTargetBox.getCenter(this.flyToTargetCenter))
+        .applyMatrix4(target.group.matrixWorld)
+      this.flyToTargetBox.getBoundingSphere(this.flyToTargetSphere)
+      return {
+        center: this.flyToTargetCenter,
+        radius: Math.max(this.flyToTargetSphere.radius * target.group.matrixWorld.getMaxScaleOnAxis(), 1)
+      }
+    }
+
+    if (target instanceof THREE.Object3D) {
+      target.updateMatrixWorld(true)
+      this.flyToTargetBox.setFromObject(target)
+      if (this.flyToTargetBox.isEmpty()) return null
+
+      this.flyToTargetBox.getCenter(this.flyToTargetCenter)
+      this.flyToTargetBox.getBoundingSphere(this.flyToTargetSphere)
+      return {
+        center: this.flyToTargetCenter,
+        radius: Math.max(this.flyToTargetSphere.radius, 1)
+      }
+    }
+
+    this.tilesets.tileset.ellipsoid.getCartographicToPosition(
+      target.latitude * DEG2RAD,
+      target.longitude * DEG2RAD,
+      target.height,
+      this.flyToTargetCenter
+    )
+    return {
+      center: this.flyToTargetCenter,
+      radius: 1
+    }
   }
 
   private pickTilesetCartographic(tileset: TilesRenderer): CartographicCoordinates | null {

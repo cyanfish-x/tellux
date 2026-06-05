@@ -68,7 +68,10 @@ function activateLayer(layer: TilesetLayer, description: string) {
   activeLayer = layer
   syncLayerVisibility()
   if (flyToTilesetToggle.checked) {
-    viewer.flyTo(layer.tileset)
+    viewer.flyToTarget(layer.tileset, {
+      heading: 0,
+      pitch: -30
+    })
   }
   setStatus(`${description} 已加入场景。图层 id：${layer.id}`)
 }

@@ -81,7 +81,7 @@ document.querySelectorAll<HTMLElement>('[data-destination]').forEach((button) =>
     if (!options) return
 
     setStatus(`正在飞往${options.label}...`)
-    viewer.flyTo({
+    viewer.camera.flyTo({
       ...options,
       complete: () => {
         setStatus(`已抵达${options.label}。`)

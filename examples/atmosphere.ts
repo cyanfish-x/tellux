@@ -41,7 +41,7 @@ const viewer = createTelluxViewer(
 )
 
 pacificButton.addEventListener('click', () => {
-  viewer.flyTo({
+  viewer.camera.flyTo({
     destination: {
       latitude: 22.8,
       longitude: 151.4,
@@ -55,7 +55,7 @@ pacificButton.addEventListener('click', () => {
 })
 
 himalayaButton.addEventListener('click', () => {
-  viewer.flyTo({
+  viewer.camera.flyTo({
     destination: {
       latitude: 28.1,
       longitude: 86.9,

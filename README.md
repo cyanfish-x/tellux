@@ -176,6 +176,26 @@ viewer.camera.setView({
   pitch: -15
 })
 
+viewer.flyToTarget({
+  latitude: 31.2304,
+  longitude: 121.4737,
+  height: 0
+}, {
+  heading: -90,
+  pitch: -30,
+  distance: 1200
+})
+
+const layer = viewer.load3DTileset({
+  type: 'url',
+  url: 'https://example.com/tileset.json'
+})
+
+viewer.flyToTarget(layer.tileset, {
+  heading: 0,
+  pitch: -30
+})
+
 viewer.scene.clouds.show = false
 viewer.scene.skyAtmosphere.show = true
 viewer.scene.postProcessStages.smaa.enabled = true
