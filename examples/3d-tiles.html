@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tellux 3D Tiles</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar toolbar--wide" aria-label="3D Tiles controls">
+        <h1>3D Tiles 加载</h1>
+        <p>通过 <code>viewer.load3DTileset</code> 加载独立场景 3D Tiles，可选择 tileset JSON URL 或 Cesium Ion 资源。</p>
+        <label class="field">
+          <span>tileset.json URL</span>
+          <input id="tileset-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="toolbar__row">
+          <label class="field">
+            <span>Cesium Ion asset id</span>
+            <input id="ion-asset-id" class="field__input" type="text" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span>Cesium Ion token</span>
+            <input id="ion-token" class="field__input" type="text" autocomplete="off" spellcheck="false" />
+          </label>
+        </div>
+        <label class="switch">
+          <input id="tileset-visible" type="checkbox" checked />
+          <span>显示 3D Tiles</span>
+        </label>
+        <label class="switch">
+          <input id="tileset-fly-to" type="checkbox" checked />
+          <span>加载后飞行到 3D Tiles</span>
+        </label>
+        <p id="tileset-status" class="status" aria-live="polite"></p>
+        <div class="toolbar__row">
+          <button class="button" id="load-url-tileset" type="button">加载 URL</button>
+          <button class="button" id="load-ion-tileset" type="button">加载 Cesium Ion</button>
+          <button class="button" id="remove-tileset" type="button">移除</button>
+          <a class="button" href="./index.html">返回目录</a>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./3d-tiles.ts"></script>
+  </body>
+</html>

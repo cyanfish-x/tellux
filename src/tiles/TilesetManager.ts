@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import type { GLTFLoaderPlugin, GLTFParser } from 'three/addons/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { TilesRenderer } from '3d-tiles-renderer'
 import * as TilesRendererPlugins from '3d-tiles-renderer/plugins'
@@ -11,8 +12,7 @@ import {
   TilesFadePlugin,
   UpdateOnChangePlugin,
   type ImageOverlay,
-  XYZTilesOverlay,
-  XYZTilesPlugin
+  XYZTilesOverlay
 } from '3d-tiles-renderer/plugins'
 import { TerrainFetchPlugin } from '../TerrainFetchPlugin'
 import { TileCreasedNormalsPlugin } from '../TileCreasedNormalsPlugin'
@@ -20,9 +20,11 @@ import type {
   ImageryOverlayResourceOptions,
   ImageryProviderOptions,
   ImageryProviderResourceOptions,
+  Load3DTilesetOptions,
   MVTGetStyleCallback,
   MVTResourceOptions,
-  TerrainOptions
+  TerrainOptions,
+  TilesetLayer
 } from '../types'
 import type { ThreeRendererWithEffects } from '../effects'
 
@@ -46,7 +48,7 @@ type MVTOverlayInstance = ImageOverlay & {
 
 type MVTOverlayConstructor = new (options: MVTOverlayOptions) => MVTOverlayInstance
 
-type GeneratedSurfacePluginConstructor = new (options: {
+type GeneratedSurfacePluginConstructor = new (options?: {
   overlay?: ImageOverlay | null
   shape?: 'ellipsoid' | 'planar'
   applyOverlayTexture?: boolean
@@ -55,6 +57,62 @@ type GeneratedSurfacePluginConstructor = new (options: {
 const { GeneratedSurfacePlugin, MVTOverlay } = TilesRendererPlugins as unknown as {
   GeneratedSurfacePlugin: GeneratedSurfacePluginConstructor
   MVTOverlay: MVTOverlayConstructor
+}
+
+const KHR_MATERIALS_UNLIT = 'KHR_materials_unlit'
+
+type MaterialParams = Record<string, unknown>
+
+type UnlitCompatibilityPlugin = GLTFLoaderPlugin & {
+  extendParams(materialParams: MaterialParams, materialDef: Record<string, any>, parser: GLTFParser): Promise<unknown[]>
+}
+
+function createMaterialsUnlitCompatibilityPlugin(parser: GLTFParser): GLTFLoaderPlugin {
+  const unlitExtension: UnlitCompatibilityPlugin = {
+    name: KHR_MATERIALS_UNLIT,
+    getMaterialType: () => THREE.MeshBasicMaterial,
+    extendParams(materialParams, materialDef, gltfParser) {
+      const pending: Promise<unknown>[] = []
+      const metallicRoughness = materialDef.pbrMetallicRoughness
+
+      materialParams.color = new THREE.Color(1, 1, 1)
+      materialParams.opacity = 1
+
+      if (metallicRoughness) {
+        if (Array.isArray(metallicRoughness.baseColorFactor)) {
+          const color = materialParams.color as THREE.Color
+          color.setRGB(
+            metallicRoughness.baseColorFactor[0],
+            metallicRoughness.baseColorFactor[1],
+            metallicRoughness.baseColorFactor[2],
+            THREE.LinearSRGBColorSpace
+          )
+          materialParams.opacity = metallicRoughness.baseColorFactor[3]
+        }
+
+        if (metallicRoughness.baseColorTexture) {
+          pending.push(gltfParser.assignTexture(materialParams, 'map', metallicRoughness.baseColorTexture, THREE.SRGBColorSpace))
+        }
+      }
+
+      return Promise.all(pending)
+    }
+  }
+
+  return {
+    name: 'TELLUX_materials_unlit_compatibility',
+    beforeRoot() {
+      const hasUnlitMaterial = (parser.json.materials ?? []).some((material: Record<string, any>) => {
+        return Boolean(material.extensions?.[KHR_MATERIALS_UNLIT])
+      })
+
+      if (hasUnlitMaterial && !parser.extensions[KHR_MATERIALS_UNLIT]) {
+        parser.extensions[KHR_MATERIALS_UNLIT] = unlitExtension
+      }
+
+      return null
+    }
+  }
 }
 
 export interface TilesetManagerOptions {
@@ -72,9 +130,11 @@ export interface TilesetManagerOptions {
 export class TilesetManager {
   private activeSurfaceTileset: TilesRenderer
   private activeTerrainTileset: TilesRenderer | null = null
+  private readonly sceneTilesets = new Map<string, TilesRenderer>()
   private currentImageryProvider: ImageryProviderOptions | undefined
   private currentImageryOverlays: ImageryOverlayResourceOptions[]
   private currentTerrain: TerrainOptions | undefined
+  private sceneTilesetId = 0
 
   constructor(private readonly options: TilesetManagerOptions) {
     this.currentImageryProvider = options.imageryProvider
@@ -107,6 +167,10 @@ export class TilesetManager {
     return this.activeTerrainTileset
   }
 
+  get loadedSceneTilesets() {
+    return [...this.sceneTilesets.values()]
+  }
+
   setImageryProvider(imageryProvider: ImageryProviderOptions) {
     this.currentImageryProvider = imageryProvider
     this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryProvider.resource, this.currentImageryOverlays))
@@ -132,16 +196,69 @@ export class TilesetManager {
     )
   }
 
+  load3DTileset(options: Load3DTilesetOptions): TilesetLayer {
+    const id = options.id ?? this.createSceneTilesetId()
+    if (this.sceneTilesets.has(id)) {
+      throw new Error(`TilesetManager: 3D Tiles layer "${id}" already exists.`)
+    }
+
+    const tileset = this.createSceneTileset(options)
+    this.registerCommonTilesetPlugins(tileset)
+    this.sceneTilesets.set(id, tileset)
+    this.options.scene.add(tileset.group)
+
+    return {
+      id,
+      tileset,
+      get show() {
+        return tileset.group.visible
+      },
+      set show(value: boolean) {
+        tileset.group.visible = value
+      },
+      remove: () => {
+        this.remove3DTileset(id)
+      }
+    }
+  }
+
+  get3DTileset(id: string) {
+    return this.sceneTilesets.get(id) ?? null
+  }
+
+  remove3DTileset(id: string) {
+    const tileset = this.sceneTilesets.get(id)
+    if (!tileset) return false
+
+    this.options.scene.remove(tileset.group)
+    tileset.dispose()
+    this.sceneTilesets.delete(id)
+    return true
+  }
+
   update() {
     this.tileset.update()
+    this.sceneTilesets.forEach((tileset) => {
+      if (tileset.group.visible) {
+        tileset.update()
+      }
+    })
   }
 
   resize() {
     this.activeSurfaceTileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
     this.activeTerrainTileset?.setResolutionFromRenderer(this.options.camera, this.options.renderer)
+    this.sceneTilesets.forEach((tileset) => {
+      tileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
+    })
   }
 
   dispose() {
+    this.sceneTilesets.forEach((tileset) => {
+      this.options.scene.remove(tileset.group)
+      tileset.dispose()
+    })
+    this.sceneTilesets.clear()
     this.activeTerrainTileset?.dispose()
     this.activeSurfaceTileset.dispose()
   }
@@ -151,11 +268,7 @@ export class TilesetManager {
     overlays: ImageryOverlayResourceOptions[] = []
   ) {
     const tileset = new TilesRenderer()
-    if (overlays.length > 0) {
-      this.registerSurfaceImageryStack(tileset, resource, overlays)
-    } else {
-      this.registerImageryProvider(tileset, resource, false)
-    }
+    this.registerSurfaceImageryStack(tileset, resource, overlays)
     this.registerCommonTilesetPlugins(tileset)
     return tileset
   }
@@ -173,7 +286,11 @@ export class TilesetManager {
   }
 
   private registerCommonTilesetPlugins(tileset: TilesRenderer) {
-    tileset.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: this.options.dracoLoader, autoDispose: false }))
+    tileset.registerPlugin(new GLTFExtensionsPlugin({
+      dracoLoader: this.options.dracoLoader,
+      plugins: [createMaterialsUnlitCompatibilityPlugin],
+      autoDispose: false
+    }))
     if (this.options.creasedNormals) {
       tileset.registerPlugin(new TileCreasedNormalsPlugin())
     }
@@ -239,59 +356,6 @@ export class TilesetManager {
     tileset.registerPlugin(new TerrainFetchPlugin(terrain.url))
   }
 
-  private registerImageryProvider(tileset: TilesRenderer, resource: ImageryProviderResourceOptions | undefined, useOverlay: boolean) {
-    if (!resource) return
-
-    switch (resource.type) {
-      case 'template-url': {
-        const xyzOptions = {
-          url: resource.url,
-          levels: resource.levels,
-          tileDimension: resource.tileDimension,
-          projection: resource.projection
-        }
-
-        if (useOverlay) {
-          tileset.registerPlugin(
-            new ImageOverlayPlugin({
-              renderer: this.options.renderer,
-              overlays: [new XYZTilesOverlay(xyzOptions)]
-            })
-          )
-        } else {
-          tileset.registerPlugin(new XYZTilesPlugin({ ...xyzOptions, shape: 'ellipsoid' }))
-        }
-        return
-      }
-      case 'mvt':
-        this.registerImageryOverlays(tileset, [resource])
-        return
-      case 'cesium-ion':
-        if (useOverlay) {
-          tileset.registerPlugin(
-            new ImageOverlayPlugin({
-              renderer: this.options.renderer,
-              overlays: [
-                new CesiumIonOverlay({
-                  apiToken: resource.apiToken,
-                  assetId: resource.assetId,
-                  autoRefreshToken: resource.autoRefreshToken ?? true
-                })
-              ]
-            })
-          )
-        } else {
-          tileset.registerPlugin(
-            new CesiumIonAuthPlugin({
-              apiToken: resource.apiToken,
-              assetId: String(resource.assetId),
-              autoRefreshToken: resource.autoRefreshToken ?? true
-            })
-          )
-        }
-    }
-  }
-
   private registerTerrainImagery(
     tileset: TilesRenderer,
     resource: ImageryProviderResourceOptions | undefined,
@@ -304,7 +368,10 @@ export class TilesetManager {
     }
 
     resources.forEach((overlayResource) => {
-      overlays.push(this.createMVTOverlay(overlayResource))
+      const overlay = this.createImageryOverlay(overlayResource)
+      if (overlay) {
+        overlays.push(overlay)
+      }
     })
 
     if (overlays.length === 0) return
@@ -330,17 +397,18 @@ export class TilesetManager {
     }
 
     resources.forEach((overlayResource) => {
-      overlays.push(this.createMVTOverlay(overlayResource))
+      const overlay = this.createImageryOverlay(overlayResource)
+      if (overlay) {
+        overlays.push(overlay)
+      }
     })
 
     const tilingOverlay = baseOverlay ?? overlays[0] ?? null
-    tileset.registerPlugin(
-      new GeneratedSurfacePlugin({
-        overlay: tilingOverlay,
-        shape: 'ellipsoid',
-        applyOverlayTexture: false
-      })
-    )
+    tileset.registerPlugin(tilingOverlay ? new GeneratedSurfacePlugin({
+      overlay: tilingOverlay,
+      shape: 'ellipsoid',
+      applyOverlayTexture: false
+    }) : new GeneratedSurfacePlugin())
 
     if (overlays.length > 0) {
       tileset.registerPlugin(
@@ -375,23 +443,33 @@ export class TilesetManager {
     }
   }
 
-  private registerImageryOverlays(tileset: TilesRenderer, resources: ImageryOverlayResourceOptions[]) {
-    if (resources.length === 0) return
-
-    const overlays = resources.map((resource) => {
-      switch (resource.type) {
-        case 'mvt':
-          return this.createMVTOverlay(resource)
+  private createSceneTileset(options: Load3DTilesetOptions) {
+    switch (options.type) {
+      case 'url':
+        return new TilesRenderer(options.url)
+      case 'cesium-ion': {
+        const tileset = new TilesRenderer()
+        tileset.registerPlugin(
+          new CesiumIonAuthPlugin({
+            apiToken: options.apiToken,
+            assetId: String(options.assetId),
+            autoRefreshToken: options.autoRefreshToken ?? true,
+            assetTypeHandler: (type) => {
+              throw new Error(`TilesetManager: Cesium Ion asset type "${type}" is not supported by load3DTileset.`)
+            }
+          })
+        )
+        return tileset
       }
-    })
+    }
+  }
 
-    tileset.registerPlugin(
-      new ImageOverlayPlugin({
-        renderer: this.options.renderer,
-        overlays,
-        enableTileSplitting: false
-      })
-    )
+  private createSceneTilesetId() {
+    do {
+      this.sceneTilesetId += 1
+    } while (this.sceneTilesets.has(`tileset-${this.sceneTilesetId}`))
+
+    return `tileset-${this.sceneTilesetId}`
   }
 
   private createMVTOverlay(resource: MVTResourceOptions) {

@@ -32,6 +32,17 @@ if (
   throw new Error('Atmosphere controls not found.')
 }
 
+const skyToggleControl = skyToggle
+const cloudToggleControl = cloudToggle
+const timeRangeControl = timeRange
+const coverageRangeControl = coverageRange
+const cloudAltitudeRangeControl = cloudAltitudeRange
+const cloudHeightRangeControl = cloudHeightRange
+const resolutionRangeControl = resolutionRange
+const exposureRangeControl = exposureRange
+const pacificControl = pacificButton
+const himalayaControl = himalayaButton
+
 const viewer = createTelluxViewer(container, {
   camera: {
     latitude: 22.8,
@@ -44,17 +55,17 @@ const viewer = createTelluxViewer(container, {
   scene: {
     clouds: true,
     skyAtmosphere: true,
-    cloudCoverage: Number(coverageRange.value),
-    toneMappingExposure: Number(exposureRange.value),
+    cloudCoverage: Number(coverageRangeControl.value),
+    toneMappingExposure: Number(exposureRangeControl.value),
     lensFlare: true,
     smaa: true
   },
-  resolutionScale: Number(resolutionRange.value)
+  resolutionScale: Number(resolutionRangeControl.value)
 })
 
-viewer.clock.hourUTC = Number(timeRange.value)
-viewer.scene.cloudLayerAltitude = Number(cloudAltitudeRange.value)
-viewer.scene.cloudLayerHeight = Number(cloudHeightRange.value)
+viewer.clock.hourUTC = Number(timeRangeControl.value)
+viewer.scene.cloudLayerAltitude = Number(cloudAltitudeRangeControl.value)
+viewer.scene.cloudLayerHeight = Number(cloudHeightRangeControl.value)
 
 function formatHour(value: number) {
   const hour = Math.floor(value)
@@ -72,27 +83,27 @@ function updateStatus() {
 }
 
 function applyControls() {
-  viewer.scene.skyAtmosphere.show = skyToggle.checked
-  viewer.scene.clouds.show = cloudToggle.checked
-  viewer.clock.hourUTC = Number(timeRange.value)
-  viewer.scene.cloudCoverage = Number(coverageRange.value)
-  viewer.scene.cloudLayerAltitude = Number(cloudAltitudeRange.value)
-  viewer.scene.cloudLayerHeight = Number(cloudHeightRange.value)
-  viewer.resolutionScale = Number(resolutionRange.value)
-  viewer.toneMappingExposure = Number(exposureRange.value)
+  viewer.scene.skyAtmosphere.show = skyToggleControl.checked
+  viewer.scene.clouds.show = cloudToggleControl.checked
+  viewer.clock.hourUTC = Number(timeRangeControl.value)
+  viewer.scene.cloudCoverage = Number(coverageRangeControl.value)
+  viewer.scene.cloudLayerAltitude = Number(cloudAltitudeRangeControl.value)
+  viewer.scene.cloudLayerHeight = Number(cloudHeightRangeControl.value)
+  viewer.resolutionScale = Number(resolutionRangeControl.value)
+  viewer.toneMappingExposure = Number(exposureRangeControl.value)
   updateStatus()
 }
 
-skyToggle.addEventListener('change', applyControls)
-cloudToggle.addEventListener('change', applyControls)
-timeRange.addEventListener('input', applyControls)
-coverageRange.addEventListener('input', applyControls)
-cloudAltitudeRange.addEventListener('input', applyControls)
-cloudHeightRange.addEventListener('input', applyControls)
-resolutionRange.addEventListener('input', applyControls)
-exposureRange.addEventListener('input', applyControls)
+skyToggleControl.addEventListener('change', applyControls)
+cloudToggleControl.addEventListener('change', applyControls)
+timeRangeControl.addEventListener('input', applyControls)
+coverageRangeControl.addEventListener('input', applyControls)
+cloudAltitudeRangeControl.addEventListener('input', applyControls)
+cloudHeightRangeControl.addEventListener('input', applyControls)
+resolutionRangeControl.addEventListener('input', applyControls)
+exposureRangeControl.addEventListener('input', applyControls)
 
-pacificButton.addEventListener('click', () => {
+pacificControl.addEventListener('click', () => {
   viewer.flyTo({
     destination: {
       latitude: 22.8,
@@ -106,7 +117,7 @@ pacificButton.addEventListener('click', () => {
   })
 })
 
-himalayaButton.addEventListener('click', () => {
+himalayaControl.addEventListener('click', () => {
   viewer.flyTo({
     destination: {
       latitude: 28.1,

@@ -1,3 +1,5 @@
+import type { TilesRenderer } from '3d-tiles-renderer'
+import type { CameraFlightEasingFunction } from './Camera'
 import type { Viewer } from './Viewer'
 
 /**
@@ -197,6 +199,113 @@ export interface TerrainOptions {
    * Generates a solid closed mesh. Defaults to `false`.
    */
   solid?: boolean
+}
+
+/**
+ * 通过 tileset JSON URL 加载 3D Tiles 的配置。
+ *
+ * Options for loading 3D Tiles from a tileset JSON URL.
+ */
+export interface Url3DTilesetOptions {
+  /** 数据源类型。Data source type. */
+  type: 'url'
+  /**
+   * 图层 id。不传时 Tellux 会自动生成。
+   *
+   * Layer id. Tellux generates one when omitted.
+   */
+  id?: string
+  /**
+   * `tileset.json` 的 URL。
+   *
+   * URL of the `tileset.json`.
+   */
+  url: string
+}
+
+/**
+ * 通过 Cesium Ion 资源加载 3D Tiles 的配置。
+ *
+ * Options for loading 3D Tiles from a Cesium Ion asset.
+ */
+export interface CesiumIon3DTilesetOptions {
+  /** 数据源类型。Data source type. */
+  type: 'cesium-ion'
+  /**
+   * 图层 id。不传时 Tellux 会自动生成。
+   *
+   * Layer id. Tellux generates one when omitted.
+   */
+  id?: string
+  /** Cesium Ion 访问令牌。Cesium Ion access token. */
+  apiToken: string
+  /** Cesium Ion 3D Tiles 资源 id。Cesium Ion 3D Tiles asset id. */
+  assetId: string | number
+  /** 是否自动刷新 Cesium Ion endpoint 授权，默认 `true`。Refreshes Cesium Ion endpoint authorization automatically. Defaults to `true`. */
+  autoRefreshToken?: boolean
+}
+
+/**
+ * Viewer 支持的 3D Tiles 加载配置。
+ *
+ * 3D Tiles 会作为独立场景数据加载，不参与影像 overlay 管线。
+ *
+ * 3D Tiles loading options supported by Viewer.
+ *
+ * 3D Tiles are loaded as independent scene data and do not participate in the
+ * imagery overlay pipeline.
+ */
+export type Load3DTilesetOptions = Url3DTilesetOptions | CesiumIon3DTilesetOptions
+
+/**
+ * 飞行到 3D Tiles 数据集时的配置。
+ *
+ * Viewer 会根据 tileset 根包围球自动计算目标经纬度和飞行高度，默认使用
+ * 30 度俯视角观察数据集中心。
+ *
+ * Options for flying to a 3D Tiles dataset.
+ *
+ * Viewer computes the target longitude, latitude, and flight height from the
+ * root bounding sphere, and views the dataset center from a 30-degree downward
+ * angle by default.
+ */
+export interface FlyTo3DTilesetOptions {
+  /** 最终航向角（度），默认 `0`。Final heading in degrees. Defaults to `0`. */
+  heading?: number
+  /** 最终俯仰角（度），默认 `-30`。Final pitch in degrees. Defaults to `-30`. */
+  pitch?: number
+  /** 最终翻滚角（度），默认 `0`。Final roll in degrees. Defaults to `0`. */
+  roll?: number
+  /** 飞行持续时间（秒）。Flight duration in seconds. */
+  duration?: number
+  /** 飞行最高高度（米），用于形成弧线飞行路径。Maximum flight height in meters, used to form an arced path. */
+  maximumHeight?: number
+  /** 飞行完成时调用。Called when the flight completes. */
+  complete?: () => void
+  /** 飞行被新飞行、立即定位或用户交互取消时调用。Called when the flight is cancelled by a new flight, immediate view change, or user input. */
+  cancel?: () => void
+  /** 控制飞行时间插值的缓动函数。Easing function that controls flight time interpolation. */
+  easingFunction?: CameraFlightEasingFunction
+}
+
+/**
+ * 已加载 3D Tiles 图层的控制句柄。
+ *
+ * Handle for a loaded 3D Tiles layer.
+ */
+export interface TilesetLayer {
+  /** 图层 id。Layer id. */
+  readonly id: string
+  /** 底层 3D Tiles renderer。Underlying 3D Tiles renderer. */
+  readonly tileset: TilesRenderer
+  /** 是否显示该图层。Whether the layer is visible. */
+  show: boolean
+  /**
+   * 从 Viewer 中移除该图层并释放资源。
+   *
+   * Removes the layer from Viewer and releases its resources.
+   */
+  remove(): void
 }
 
 /**

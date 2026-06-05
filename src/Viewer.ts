@@ -14,7 +14,10 @@ import { TilesetManager } from './tiles/TilesetManager'
 import type {
   AnyViewerEventListener,
   CartographicCoordinates,
+  FlyTo3DTilesetOptions,
+  Load3DTilesetOptions,
   ScreenPosition,
+  TilesetLayer,
   ViewerEventListener,
   ViewerEventMap,
   ViewerMouseEvent,
@@ -38,10 +41,13 @@ export type {
 } from './Camera'
 export type {
   CartographicCoordinates,
+  CesiumIon3DTilesetOptions,
   CesiumIonResourceOptions,
+  FlyTo3DTilesetOptions,
   ImageryProviderOptions,
   ImageryOverlayResourceOptions,
   ImageryProviderResourceOptions,
+  Load3DTilesetOptions,
   MVTFeatureProperties,
   MVTFeatureStyle,
   MVTGetStyleCallback,
@@ -49,6 +55,8 @@ export type {
   ScreenPosition,
   TemplateUrlResourceOptions,
   TerrainOptions,
+  TilesetLayer,
+  Url3DTilesetOptions,
   ViewerClickEvent,
   ViewerEvent,
   ViewerEventListener,
@@ -124,6 +132,9 @@ export class Viewer {
   private readonly dracoLoader: DRACOLoader
   private readonly rendererSize = new THREE.Vector2()
   private readonly transparentOverlayTexture: THREE.CanvasTexture
+  private readonly flyToTilesetSphere = new THREE.Sphere()
+  private readonly flyToTilesetCenter = new THREE.Vector3()
+  private readonly flyToTilesetCartographicScratch = { lat: 0, lon: 0, height: 0 }
   private readonly pickCoords = new THREE.Vector2()
   private readonly pickRaycaster = new THREE.Raycaster()
   private readonly pickRay = new THREE.Ray()
@@ -344,8 +355,26 @@ export class Viewer {
    * This is a shortcut proxy for {@link Viewer.camera}, equivalent to calling
    * `viewer.camera.flyTo(options)`.
    */
-  flyTo(options: CameraFlyToOptions) {
-    this.camera.flyTo(options)
+  flyTo(options: CameraFlyToOptions): this
+  /**
+   * 平滑飞行到 3D Tiles 附近，并以 30 度俯视角观察数据集中心。
+   *
+   * 如果传入的 tileset 根数据尚未加载，Viewer 会在根 tileset 加载完成后自动执行飞行。
+   *
+   * Smoothly flies near a 3D Tiles dataset and views its center from a
+   * 30-degree downward angle.
+   *
+   * If the tileset root is not loaded yet, Viewer runs the flight after the
+   * root tileset finishes loading.
+   */
+  flyTo(tileset: TilesRenderer, options?: FlyTo3DTilesetOptions): this
+  flyTo(target: CameraFlyToOptions | TilesRenderer, options: FlyTo3DTilesetOptions = {}) {
+    if (target instanceof TilesRenderer) {
+      this.flyToTileset(target, options)
+      return this
+    }
+
+    this.camera.flyTo(target)
     return this
   }
 
@@ -389,6 +418,40 @@ export class Viewer {
   }
 
   /**
+   * 加载独立的 3D Tiles 场景数据。
+   *
+   * 支持直接传入 `tileset.json` URL，或传入 Cesium Ion 3D Tiles 资源。
+   * 该方法加载的是场景 3D Tiles，不参与影像 overlay 管线。
+   *
+   * Loads an independent 3D Tiles scene dataset.
+   *
+   * Supports either a direct `tileset.json` URL or a Cesium Ion 3D Tiles asset.
+   * The loaded dataset is scene 3D Tiles data and does not participate in the
+   * imagery overlay pipeline.
+   */
+  load3DTileset(options: Load3DTilesetOptions): TilesetLayer {
+    return this.tilesets.load3DTileset(options)
+  }
+
+  /**
+   * 根据 id 获取已加载的 3D Tiles renderer。
+   *
+   * Gets a loaded 3D Tiles renderer by id.
+   */
+  get3DTileset(id: string) {
+    return this.tilesets.get3DTileset(id)
+  }
+
+  /**
+   * 根据 id 移除已加载的 3D Tiles 图层。
+   *
+   * Removes a loaded 3D Tiles layer by id.
+   */
+  remove3DTileset(id: string) {
+    return this.tilesets.remove3DTileset(id)
+  }
+
+  /**
    * 获取屏幕位置对应的经纬高坐标。
    *
    * 传入的坐标相对于 canvas 左上角。方法会优先命中已加载的 3D Tiles，
@@ -409,6 +472,13 @@ export class Viewer {
     this.pickCoords.set((position.x / width) * 2 - 1, -(position.y / height) * 2 + 1)
     this.threeCamera.updateMatrixWorld()
     this.pickRaycaster.setFromCamera(this.pickCoords, this.threeCamera)
+
+    for (const tileset of this.tilesets.loadedSceneTilesets) {
+      if (!tileset.group.visible) continue
+
+      const tilesetHit = this.pickTilesetCartographic(tileset)
+      if (tilesetHit) return tilesetHit
+    }
 
     if (this.tilesets.terrainTileset) {
       const terrainHit = this.pickTilesetCartographic(this.tilesets.terrainTileset)
@@ -515,6 +585,48 @@ export class Viewer {
 
   private syncControlsEllipsoid() {
     this.controls.setEllipsoid(this.tilesets.surfaceTileset.ellipsoid, this.tilesets.surfaceTileset.group)
+  }
+
+  private flyToTileset(tileset: TilesRenderer, options: FlyTo3DTilesetOptions) {
+    if (this.applyTilesetFlight(tileset, options)) return
+
+    const handleRootLoaded = () => {
+      tileset.removeEventListener('load-root-tileset', handleRootLoaded)
+      this.applyTilesetFlight(tileset, options)
+    }
+
+    tileset.addEventListener('load-root-tileset', handleRootLoaded)
+  }
+
+  private applyTilesetFlight(tileset: TilesRenderer, options: FlyTo3DTilesetOptions) {
+    if (!tileset.getBoundingSphere(this.flyToTilesetSphere)) return false
+
+    this.flyToTilesetCenter.copy(this.flyToTilesetSphere.center)
+    const cartographic = tileset.ellipsoid.getPositionToCartographic(
+      this.flyToTilesetCenter,
+      this.flyToTilesetCartographicScratch
+    )
+    const radius = Math.max(this.flyToTilesetSphere.radius, 1)
+    const height = cartographic.height + Math.max(radius * 2.8, 500)
+
+    this.camera.flyTo({
+      destination: {
+        latitude: cartographic.lat * RAD2DEG,
+        longitude: cartographic.lon * RAD2DEG,
+        height
+      },
+      orientation: {
+        heading: options.heading ?? 0,
+        pitch: options.pitch ?? -30,
+        roll: options.roll ?? 0
+      },
+      duration: options.duration,
+      maximumHeight: options.maximumHeight,
+      complete: options.complete,
+      cancel: options.cancel,
+      easingFunction: options.easingFunction
+    })
+    return true
   }
 
   private pickTilesetCartographic(tileset: TilesRenderer): CartographicCoordinates | null {

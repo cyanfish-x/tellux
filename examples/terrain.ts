@@ -17,6 +17,11 @@ if (!terrainUrlInput || !terrainToggle || !applyTerrainButton || !clearTerrainBu
   throw new Error('Terrain controls not found.')
 }
 
+const terrainUrlField = terrainUrlInput
+const terrainToggleControl = terrainToggle
+const applyTerrainControl = applyTerrainButton
+const clearTerrainControl = clearTerrainButton
+
 const viewer = createTelluxViewer(container, {
   camera: {
     latitude: 46.8523,
@@ -32,47 +37,47 @@ const viewer = createTelluxViewer(container, {
   }
 })
 
-terrainUrlInput.value = DEFAULT_TERRAIN_URL
-terrainToggle.checked = Boolean(DEFAULT_TERRAIN_URL)
+terrainUrlField.value = DEFAULT_TERRAIN_URL
+terrainToggleControl.checked = Boolean(DEFAULT_TERRAIN_URL)
 
 function setStatus(message: string) {
   if (terrainStatus) terrainStatus.textContent = message
 }
 
 function getTerrainUrl() {
-  return terrainUrlInput.value.trim()
+  return terrainUrlField.value.trim()
 }
 
 function enableTerrain() {
   const url = getTerrainUrl()
   if (!url) {
-    terrainToggle.checked = false
+    terrainToggleControl.checked = false
     setStatus('请先输入 quantized-mesh 地形根目录或 layer.json 地址。')
     return
   }
 
   viewer.setTerrain({ url })
-  terrainToggle.checked = true
+  terrainToggleControl.checked = true
   setStatus('地形已开启，当前 tileset 已通过 setTerrain 热切换。')
 }
 
 function disableTerrain() {
   viewer.setTerrain(null)
-  terrainToggle.checked = false
+  terrainToggleControl.checked = false
   setStatus('地形已关闭，Viewer 已切回无地形模式。')
 }
 
-applyTerrainButton.addEventListener('click', enableTerrain)
-clearTerrainButton.addEventListener('click', disableTerrain)
-terrainToggle.addEventListener('change', () => {
-  if (terrainToggle.checked) {
+applyTerrainControl.addEventListener('click', enableTerrain)
+clearTerrainControl.addEventListener('click', disableTerrain)
+terrainToggleControl.addEventListener('change', () => {
+  if (terrainToggleControl.checked) {
     enableTerrain()
   } else {
     disableTerrain()
   }
 })
 
-terrainUrlInput.addEventListener('keydown', (event) => {
+terrainUrlField.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     enableTerrain()
   }
