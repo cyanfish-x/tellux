@@ -4,7 +4,7 @@
 
 `examples/public/tellux/` 存放示例使用的 Tellux 静态资源。Vite 会把 `examples/public`
 作为开发服务器的静态资源根目录，示例会通过 `tellux.baseUrl = '/tellux/'`
-加载本地的云和 STBN 纹理。
+加载本地的云、STBN 和星空资源。
 
 示例默认使用 `TemplateUrlResource` 加载 ArcGIS World Imagery：
 

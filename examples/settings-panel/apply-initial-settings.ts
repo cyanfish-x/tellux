@@ -14,6 +14,18 @@ export function applyInitialSettings(
     viewer.scene.skyAtmosphere.show = settings.skyAtmosphere
   }
 
+  if (settings.stars !== undefined) {
+    viewer.scene.stars.show = settings.stars
+  }
+
+  if (settings.starsIntensity !== undefined) {
+    viewer.scene.starsIntensity = settings.starsIntensity
+  }
+
+  if (settings.starsPointSize !== undefined) {
+    viewer.scene.starsPointSize = settings.starsPointSize
+  }
+
   if (settings.clockAnimate !== undefined) {
     viewer.clock.animate = settings.clockAnimate
   }

@@ -5,6 +5,8 @@ import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects 
 import type { Scene } from '../Scene'
 import type { AtmosphereManager } from './AtmosphereManager'
 
+const CLOUD_RENDER_MAX_HEIGHT = 27000
+
 export class PostProcessingManager {
   private readonly effectAdapters: ThreeEffectPass[] = []
   private readonly normalAdapter: ThreeEffectPass
@@ -13,13 +15,15 @@ export class PostProcessingManager {
   private readonly lensFlareAdapter: ThreeEffectPass
   private readonly smaaAdapter: ThreeEffectPass
   private readonly ditheringAdapter: ThreeEffectPass
+  private currentEffectsKey = ''
 
   constructor(
     private readonly renderer: ThreeRendererWithEffects,
     private readonly scene: Scene,
     threeScene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera,
-    private readonly atmosphere: AtmosphereManager
+    private readonly atmosphere: AtmosphereManager,
+    private readonly getCurrentHeight: () => number | null
   ) {
     const normalPass = new NormalPass(threeScene, this.camera)
     this.atmosphere.aerialPerspectiveEffect.normalBuffer = normalPass.texture
@@ -48,13 +52,33 @@ export class PostProcessingManager {
   }
 
   applyEffects() {
-    this.atmosphere.syncCloudAtmosphereComposition(this.scene.clouds.show, this.scene.skyAtmosphere.show)
-    this.cloudAtmosphereAdapter.recompile?.()
-    this.atmosphereAdapter.recompile?.()
+    this.syncEffects(this.getCurrentHeight(), true)
+  }
 
+  updateForCameraHeight(currentHeight: number | null) {
+    this.syncEffects(currentHeight, false)
+  }
+
+  private syncEffects(currentHeight: number | null, forceRecompile: boolean) {
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.skyAtmosphere.show
-    const shouldRenderClouds = shouldRenderAtmosphere && this.scene.clouds.show
+    const shouldRenderClouds =
+      shouldRenderAtmosphere &&
+      this.scene.clouds.show &&
+      this.shouldRenderCloudsAtHeight(currentHeight)
+    const effectsKey = [
+      shouldRenderAtmosphere,
+      shouldRenderClouds,
+      this.scene.postProcessStages.lensFlare.enabled,
+      this.scene.postProcessStages.smaa.enabled,
+      this.scene.postProcessStages.dithering.enabled
+    ].join(':')
+
+    this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
+    if (!forceRecompile && effectsKey === this.currentEffectsKey) return
+
+    this.cloudAtmosphereAdapter.recompile?.()
+    this.atmosphereAdapter.recompile?.()
 
     if (shouldRenderAtmosphere) {
       nextEffects.push(this.normalAdapter)
@@ -74,7 +98,12 @@ export class PostProcessingManager {
       nextEffects.push(this.ditheringAdapter)
     }
 
+    this.currentEffectsKey = effectsKey
     this.renderer.setEffects(nextEffects)
+  }
+
+  private shouldRenderCloudsAtHeight(currentHeight: number | null) {
+    return currentHeight !== null && Number.isFinite(currentHeight) && currentHeight < CLOUD_RENDER_MAX_HEIGHT
   }
 
   dispose() {

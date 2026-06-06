@@ -54,6 +54,11 @@ export function mountExampleSettingsPanel(
     "大气",
     settings.skyAtmosphere ?? viewer.scene.skyAtmosphere.show
   )
+  const starsToggle = createSwitchControl(
+    "stars",
+    "星空",
+    settings.stars ?? viewer.scene.stars.show
+  )
   const transmittanceToggle = createSwitchControl(
     "atmosphere-transmittance",
     "透射衰减",
@@ -340,6 +345,24 @@ export function mountExampleSettingsPanel(
       viewer.scene.atmosphereShadowSampleCount,
     format: (value) => String(Math.round(value)),
   })
+  const starsIntensityControl = createRangeControl({
+    id: "stars-intensity",
+    label: "星空亮度",
+    min: 0,
+    max: 8,
+    step: 0.05,
+    value: settings.starsIntensity ?? viewer.scene.starsIntensity,
+    format: (value) => value.toFixed(2),
+  })
+  const starsPointSizeControl = createRangeControl({
+    id: "stars-point-size",
+    label: "星点大小",
+    min: 0.1,
+    max: 4,
+    step: 0.05,
+    value: settings.starsPointSize ?? viewer.scene.starsPointSize,
+    format: (value) => value.toFixed(2),
+  })
   const solarIrradianceControl = createRangeControl({
     id: "atmosphere-solar-irradiance",
     label: "太阳辐照",
@@ -422,6 +445,9 @@ export function mountExampleSettingsPanel(
       "天空显示",
       [
         skyToggle.element,
+        starsToggle.element,
+        starsIntensityControl.element,
+        starsPointSizeControl.element,
         sunDiscToggle.element,
         moonToggle.element,
       ],
@@ -593,6 +619,9 @@ export function mountExampleSettingsPanel(
       hourUTCValue !== previousHourUTCValue
 
     viewer.scene.skyAtmosphere.show = skyToggle.input.checked
+    viewer.scene.stars.show = starsToggle.input.checked
+    viewer.scene.starsIntensity = Number(starsIntensityControl.input.value)
+    viewer.scene.starsPointSize = Number(starsPointSizeControl.input.value)
     viewer.scene.atmosphereTransmittance = transmittanceToggle.input.checked
     viewer.scene.atmosphereInscatter = nativeInscatterToggle.input.checked
     viewer.scene.atmosphereInscatterIntensity = Number(
@@ -686,6 +715,9 @@ export function mountExampleSettingsPanel(
     fpsHud.setVisible(fpsToggle.input.checked)
     saveStoredExampleSettings({
       skyAtmosphere: skyToggle.input.checked,
+      stars: starsToggle.input.checked,
+      starsIntensity: Number(starsIntensityControl.input.value),
+      starsPointSize: Number(starsPointSizeControl.input.value),
       clockAnimate: clockAnimateToggle.input.checked,
       clockMultiplier: Number(clockMultiplierControl.input.value),
       dayOfYear: dayOfYearValue,

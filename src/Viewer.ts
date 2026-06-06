@@ -266,6 +266,8 @@ export class Viewer {
     this.atmosphere.addLightSourcesTo(this.scene.threeScene)
     this.applyInitialAtmosphereOptions(sceneOptions)
     this.scene.cloudCoverage = this.scene.cloudCoverage
+    this.scene.cloudLayerAltitude = this.scene.cloudLayerAltitude
+    this.scene.cloudLayerHeight = this.scene.cloudLayerHeight
     this.clock = new Clock(() => this.atmosphere.updateSunDirection(this.clock.currentTime))
 
     this.dracoLoader = new DRACOLoader()
@@ -303,7 +305,14 @@ export class Viewer {
     this.renderer.domElement.addEventListener('click', this.handleCanvasClick)
     this.renderer.domElement.addEventListener('mousemove', this.handleCanvasMouseMove)
 
-    this.postProcessing = new PostProcessingManager(this.renderer, this.scene, this.scene.threeScene, this.threeCamera, this.atmosphere)
+    this.postProcessing = new PostProcessingManager(
+      this.renderer,
+      this.scene,
+      this.scene.threeScene,
+      this.threeCamera,
+      this.atmosphere,
+      () => this.camera.getCurrentHeight()
+    )
     this.postProcessing.applyEffects()
     this.atmosphere.loadTextures()
     this.atmosphere.updateSunDirection(this.clock.currentTime)
@@ -519,7 +528,8 @@ export class Viewer {
     this.resize()
     this.controls.update()
     this.syncAtmosphereInscatter()
-    this.syncFallbackAmbientLight()
+    const currentHeight = this.syncFallbackAmbientLight()
+    this.postProcessing.updateForCameraHeight(currentHeight)
     this.tilesets.update()
     this.atmosphere.updateLightSources()
     this.renderer.render(this.scene.threeScene, this.threeCamera)
@@ -582,6 +592,9 @@ export class Viewer {
     return {
       clouds: options?.clouds ?? true,
       skyAtmosphere: options?.skyAtmosphere ?? true,
+      stars: options?.stars ?? true,
+      starsIntensity: options?.starsIntensity ?? 1,
+      starsPointSize: options?.starsPointSize ?? 1,
       lensFlare: options?.lensFlare ?? true,
       smaa: options?.smaa ?? true,
       dithering: options?.dithering ?? false,
@@ -614,6 +627,9 @@ export class Viewer {
     this.atmosphere.skyLightIntensity = options.atmosphereSkyLightIntensity
     this.atmosphere.sunLight = options.atmosphereSunLight
     this.atmosphere.skyLight = options.atmosphereSkyLight
+    this.atmosphere.starsVisible = options.stars
+    this.atmosphere.starsIntensity = options.starsIntensity
+    this.atmosphere.starsPointSize = options.starsPointSize
   }
 
   private createTransparentOverlayTexture() {
@@ -644,6 +660,7 @@ export class Viewer {
       CAMERA_FRAME
     )
     this.scene.updateFallbackAmbientLight(cartographic.height)
+    return cartographic.height
   }
 
   private applyTargetFlight(target: FlyToTargetTarget, options: FlyToTargetOptions) {

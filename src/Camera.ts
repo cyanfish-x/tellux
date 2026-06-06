@@ -223,6 +223,23 @@ export class Camera {
   }
 
   /**
+   * 获取当前相机高度。
+   *
+   * 返回相机相对当前地球椭球的高度，单位为米；当相机尚未绑定地球渲染器时返回 `null`。
+   *
+   * Gets the current camera height.
+   *
+   * Returns the camera height above the current globe ellipsoid in meters, or
+   * `null` when the camera is not yet bound to a globe renderer.
+   */
+  getCurrentHeight() {
+    const ellipsoid = this.getEllipsoid()
+    if (!ellipsoid) return null
+
+    return this.getCurrentView(ellipsoid).height
+  }
+
+  /**
    * 获取当前相机视角参数。
    *
    * 返回值可直接传给 {@link Camera.setView}，便于在控制台读取当前视角后，
@@ -270,13 +287,6 @@ export class Camera {
 
   private getEllipsoid() {
     return (this.threeCamera.userData.tilesRenderer as TilesRenderer | undefined)?.ellipsoid
-  }
-
-  private getCurrentHeight() {
-    const ellipsoid = this.getEllipsoid()
-    if (!ellipsoid) return null
-
-    return this.getCurrentView(ellipsoid).height
   }
 
   private getCurrentView(ellipsoid: TilesRenderer['ellipsoid']): CameraViewState {

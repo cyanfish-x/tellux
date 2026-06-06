@@ -11,9 +11,13 @@ import {
 } from '@takram/three-clouds'
 import {
   AerialPerspectiveEffect,
+  DEFAULT_STARS_DATA_URL,
   PrecomputedTexturesGenerator,
   SkyLightProbe,
+  StarsGeometry,
+  StarsMaterial,
   SunDirectionalLight,
+  getECIToECEFRotationMatrix,
   getMoonDirectionECEF,
   getSunDirectionECEF
 } from '@takram/three-atmosphere'
@@ -60,6 +64,9 @@ export interface AtmosphereRuntimeControls {
   lunarRadianceScale: number
   shadowRadius: number
   shadowSampleCount: number
+  starsVisible: boolean
+  starsIntensity: number
+  starsPointSize: number
   solarIrradianceScale: number
   rayleighScatteringScale: number
   mieScatteringScale: number
@@ -77,12 +84,15 @@ const INSCATTER_HORIZON_RANGE_UNIFORM = 'telluxInscatterHorizonRange'
 export class AtmosphereManager {
   readonly aerialPerspectiveEffect: AerialPerspectiveEffect
   readonly cloudsEffect: CloudsEffect
+  readonly stars: THREE.Points<THREE.BufferGeometry, StarsMaterial>
+  readonly starsMaterial: StarsMaterial
   readonly sunLightSource: SunDirectionalLight
   readonly skyLightSource: SkyLightProbe
 
   private readonly loadedTextures: THREE.Texture[] = []
   private readonly texturesGenerator: PrecomputedTexturesGenerator
   private readonly textureAbortController = new AbortController()
+  private readonly inertialToECEFMatrix = new THREE.Matrix4()
   private readonly baseSolarIrradiance = new THREE.Vector3()
   private readonly baseRayleighScattering = new THREE.Vector3()
   private readonly baseMieScattering = new THREE.Vector3()
@@ -104,6 +114,10 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.sky = true
     this.patchInscatterIntensity()
     this.captureAtmosphereDefaults()
+
+    this.starsMaterial = new StarsMaterial()
+    this.stars = new THREE.Points(new THREE.BufferGeometry(), this.starsMaterial)
+    this.stars.frustumCulled = false
 
     this.sunLightSource = new SunDirectionalLight()
     this.sunLightSource.visible = false
@@ -132,6 +146,7 @@ export class AtmosphereManager {
     scene.add(this.sunLightSource)
     scene.add(this.sunLightSource.target)
     scene.add(this.skyLightSource)
+    scene.add(this.stars)
   }
 
   syncCloudAtmosphereComposition(cloudsVisible: boolean, atmosphereVisible: boolean) {
@@ -155,6 +170,8 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.sunDirection.copy(sunDirection)
     this.aerialPerspectiveEffect.moonDirection.copy(moonDirection)
     this.cloudsEffect.sunDirection.copy(sunDirection)
+    this.starsMaterial.sunDirection.copy(sunDirection)
+    this.stars.setRotationFromMatrix(getECIToECEFRotationMatrix(currentTime, this.inertialToECEFMatrix))
     this.sunLightSource.sunDirection.copy(sunDirection)
     this.skyLightSource.sunDirection.copy(sunDirection)
   }
@@ -165,6 +182,7 @@ export class AtmosphereManager {
     this.skyLightSource.position.copy(this.lightPosition)
     this.sunLightSource.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
     this.skyLightSource.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
+    this.starsMaterial.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
     this.sunLightSource.target.updateMatrixWorld(true)
     this.skyLightSource.updateMatrixWorld(true)
     this.sunLightSource.update()
@@ -358,6 +376,30 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.shadowSampleCount = Math.round(THREE.MathUtils.clamp(this.toFinite(value, 8), 1, 16))
   }
 
+  get starsVisible() {
+    return this.stars.visible
+  }
+
+  set starsVisible(value: boolean) {
+    this.stars.visible = value
+  }
+
+  get starsIntensity() {
+    return this.starsMaterial.intensity
+  }
+
+  set starsIntensity(value: number) {
+    this.starsMaterial.intensity = Math.max(0, this.toFinite(value, 1))
+  }
+
+  get starsPointSize() {
+    return this.starsMaterial.pointSize
+  }
+
+  set starsPointSize(value: number) {
+    this.starsMaterial.pointSize = Math.max(0, this.toFinite(value, 1))
+  }
+
   get solarIrradianceScale() {
     return this.getVectorScale('solar_irradiance', this.baseSolarIrradiance)
   }
@@ -422,9 +464,11 @@ export class AtmosphereManager {
 
       Object.assign(this.aerialPerspectiveEffect, textures)
       Object.assign(this.cloudsEffect, textures)
+      Object.assign(this.starsMaterial, textures)
       this.sunLightSource.transmittanceTexture = textures.transmittanceTexture
       this.skyLightSource.irradianceTexture = textures.irradianceTexture
 
+      this.loadStarsData(getTelluxAssetUrl(DEFAULT_STARS_DATA_URL))
       this.loadCloudTexture(getTelluxAssetUrl(DEFAULT_LOCAL_WEATHER_URL), (texture) => {
         this.cloudsEffect.localWeatherTexture = texture
       })
@@ -450,6 +494,8 @@ export class AtmosphereManager {
     this.textureAbortController.abort()
     this.cloudsEffect.events.removeEventListener('change', this.handleCloudsChange)
     this.removeLightSourcesFromScene()
+    this.stars.geometry.dispose()
+    this.starsMaterial.dispose()
     this.texturesGenerator.dispose({ textures: true })
     this.loadedTextures.forEach((texture) => texture.dispose())
   }
@@ -468,6 +514,7 @@ export class AtmosphereManager {
     this.lightSourceScene.remove(this.sunLightSource)
     this.lightSourceScene.remove(this.sunLightSource.target)
     this.lightSourceScene.remove(this.skyLightSource)
+    this.lightSourceScene.remove(this.stars)
     this.lightSourceScene = null
   }
 
@@ -636,6 +683,25 @@ export class AtmosphereManager {
         this.warnTextureLoadFailure(url, error)
       }
     )
+  }
+
+  private async loadStarsData(url: string) {
+    try {
+      const response = await fetch(url, { signal: this.textureAbortController.signal })
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`)
+      }
+
+      const buffer = await response.arrayBuffer()
+      if (this.isDisposed) return
+
+      const previousGeometry = this.stars.geometry
+      this.stars.geometry = new StarsGeometry(buffer)
+      previousGeometry.dispose()
+    } catch (error) {
+      if (this.isAbortError(error)) return
+      this.warnTextureLoadFailure(url, error)
+    }
   }
 
   private isAbortError(error: unknown) {

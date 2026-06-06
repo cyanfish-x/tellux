@@ -7,14 +7,14 @@ export interface TelluxConfig {
   /**
    * Tellux 静态资源父级目录。
    *
-   * 设置后，内置云和 STBN 纹理会从该目录加载
-   * `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin` 和 `stbn.bin`。
+   * 设置后，内置云、STBN 和星空资源会从该目录加载
+   * `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`。
    * 留空时使用上游包默认资源地址。
    *
    * Parent directory for Tellux static assets.
    *
-   * When set, built-in cloud and STBN textures are loaded from this directory:
-   * `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, and `stbn.bin`.
+   * When set, built-in cloud, STBN, and star field assets are loaded from this directory:
+   * `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, `stbn.bin`, and `stars.bin`.
    * Leave it empty to use the upstream package defaults.
    */
   baseUrl: string

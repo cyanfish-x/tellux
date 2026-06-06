@@ -83,6 +83,12 @@ export interface ViewerOptions {
     clouds?: boolean
     /** 是否启用大气天空和空气透视，默认 `true`。Enables atmospheric sky and aerial perspective. Defaults to `true`. */
     skyAtmosphere?: boolean
+    /** 是否启用星空，默认 `true`。Enables the star field. Defaults to `true`. */
+    stars?: boolean
+    /** 星空亮度缩放，默认 `1`。Star field brightness scale. Defaults to `1`. */
+    starsIntensity?: number
+    /** 星点大小（像素点），默认 `1`。Star point size in pixels. Defaults to `1`. */
+    starsPointSize?: number
     /**
      * 空气散射强度，范围 `0` 到 `1`，默认 `0.6`。
      *

@@ -5,6 +5,8 @@ import type { AtmosphereLightingMode, ViewerOptions } from './types'
 
 const FALLBACK_AMBIENT_LIGHT_MIN_HEIGHT = 8000
 const FALLBACK_AMBIENT_LIGHT_MAX_HEIGHT = 7600000
+const DEFAULT_CLOUD_LAYER_ALTITUDE = 1500
+const DEFAULT_CLOUD_LAYER_HEIGHT = 650
 
 class SceneToggle {
   private isShown: boolean
@@ -100,6 +102,12 @@ export class Scene {
    */
   skyAtmosphere: SceneToggle
   /**
+   * 星空可见性开关。
+   *
+   * Star field visibility toggle.
+   */
+  stars: SceneToggle
+  /**
    * 后处理阶段控制项。
    *
    * Post-processing stage controls.
@@ -132,11 +140,14 @@ export class Scene {
     this.currentAtmosphereInscatterIntensity = options.atmosphereInscatterIntensity
     this.isAtmosphereInscatterHorizonBlend = options.atmosphereInscatterHorizonBlend
     this.currentAtmosphereInscatterHorizonRange = options.atmosphereInscatterHorizonRange
-    const defaultLayer = this.getCloudsEffect()?.cloudLayers[0]
-    this.currentCloudLayerAltitude = defaultLayer?.altitude ?? 750
-    this.currentCloudLayerHeight = defaultLayer?.height ?? 650
+    this.currentCloudLayerAltitude = DEFAULT_CLOUD_LAYER_ALTITUDE
+    this.currentCloudLayerHeight = DEFAULT_CLOUD_LAYER_HEIGHT
     this.clouds = new SceneToggle(options.clouds, onEffectsChange)
     this.skyAtmosphere = new SceneToggle(options.skyAtmosphere, onEffectsChange)
+    this.stars = new SceneToggle(options.stars, () => {
+      const atmosphere = this.getAtmosphereControls()
+      if (atmosphere) atmosphere.starsVisible = this.stars.show
+    })
     this.postProcessStages = new PostProcessStages(options, onEffectsChange)
     this.fallbackAmbientLightSource = new THREE.AmbientLight(0xffffff, 0)
     this.currentFallbackAmbientLightIntensity = 0
@@ -535,6 +546,34 @@ export class Scene {
   set atmosphereShadowSampleCount(value: number) {
     const atmosphere = this.getAtmosphereControls()
     if (atmosphere) atmosphere.shadowSampleCount = value
+  }
+
+  /**
+   * 星空亮度缩放。
+   *
+   * Star field brightness scale.
+   */
+  get starsIntensity() {
+    return this.getAtmosphereControls()?.starsIntensity ?? 1
+  }
+
+  set starsIntensity(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.starsIntensity = value
+  }
+
+  /**
+   * 星点大小（像素点）。
+   *
+   * Star point size in pixels.
+   */
+  get starsPointSize() {
+    return this.getAtmosphereControls()?.starsPointSize ?? 1
+  }
+
+  set starsPointSize(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.starsPointSize = value
   }
 
   /**

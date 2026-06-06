@@ -40,6 +40,9 @@ function sanitizeStoredExampleSettings(
   const settings: Record<string, unknown> = {}
 
   copyBooleanSetting(value, settings, "skyAtmosphere")
+  copyBooleanSetting(value, settings, "stars")
+  copyNumberSetting(value, settings, "starsIntensity")
+  copyNumberSetting(value, settings, "starsPointSize")
   copyBooleanSetting(value, settings, "clockAnimate")
   copyNumberSetting(value, settings, "clockMultiplier")
   copyBooleanSetting(value, settings, "clouds")

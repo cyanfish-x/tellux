@@ -196,8 +196,8 @@ new Viewer(container, {
 
 ## 静态资源目录
 
-Tellux 默认会从上游资源地址加载云和 STBN 纹理。内网部署时，可以把
-`local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin` 和 `stbn.bin`
+Tellux 默认会从上游资源地址加载云、STBN 和星空资源。内网部署时，可以把
+`local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`
 放到自己的静态目录，并在创建 Viewer 前设置 `tellux.baseUrl`：
 
 ```ts
