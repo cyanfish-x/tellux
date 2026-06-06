@@ -224,6 +224,49 @@ export type ImageryLayerSourceOptions = CesiumIonResourceOptions | TemplateUrlRe
   | MVTResourceOptions | WMSResourceOptions
 
 /**
+ * 地形瓦片加载参数，用于调整地形 LOD 和影像贴图质量。
+ *
+ * Terrain tile loading options used to tune terrain LOD and imagery texture quality.
+ */
+export interface TerrainTileLoadingOptions {
+  /**
+   * 地形瓦片目标屏幕空间误差，默认 `1`。
+   *
+   * 值越小越倾向加载更高层级瓦片，但会增加请求、解析和渲染成本。
+   *
+   * Target screen-space error for terrain tiles. Defaults to `1`.
+   *
+   * Lower values prefer higher-detail tiles, but increase request, parsing, and
+   * rendering cost.
+   */
+  errorTarget?: number
+  /**
+   * 每个地形瓦片合成影像纹理的画布分辨率，默认 `256`。
+   *
+   * 提高该值可改善影像贴到较大地形瓦片时的清晰度，但会增加 GPU 内存和合成成本。
+   *
+   * Canvas resolution used to composite imagery textures for each terrain tile.
+   * Defaults to `256`.
+   *
+   * Higher values can improve imagery clarity on larger terrain tiles, but
+   * increase GPU memory and compositing cost.
+   */
+  imageryResolution?: number
+  /**
+   * 是否允许影像插件拆分地形瓦片以贴合影像瓦片边界，默认 `false`。
+   *
+   * 开启后可提升影像边界和高层级贴图清晰度，但会生成额外虚拟瓦片。
+   *
+   * Allows the imagery plugin to split terrain tiles so they better match imagery
+   * tile boundaries. Defaults to `false`.
+   *
+   * Enabling this can improve imagery boundary alignment and high-level texture
+   * clarity, but creates additional virtual tiles.
+   */
+  enableTileSplitting?: boolean
+}
+
+/**
  * Cesium quantized-mesh 地形配置，用于 {@link ViewerOptions.terrain}。
  *
  * Cesium quantized-mesh terrain options used by {@link ViewerOptions.terrain}.
@@ -235,6 +278,17 @@ export interface TerrainOptions {
    * Terrain root URL or `layer.json` URL.
    */
   url: string
+  /**
+   * 地形瓦片加载参数。
+   *
+   * 用于调节地形 LOD、地形上的影像合成分辨率和影像瓦片拆分。
+   *
+   * Terrain tile loading options.
+   *
+   * Tunes terrain LOD, imagery compositing resolution on terrain, and imagery
+   * tile splitting.
+   */
+  tileLoading?: TerrainTileLoadingOptions
   /**
    * 是否应用 3d-tiles-renderer 推荐的地形加载设置，默认 `true`。
    *

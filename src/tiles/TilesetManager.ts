@@ -68,10 +68,17 @@ type GeneratedSurfacePluginConstructor = new (options?: {
   applyOverlayTexture?: boolean
 }) => object
 
+type ImageryOverlayContextOptions = {
+  resolution?: number
+  enableTileSplitting?: boolean
+}
+
 type ImageryOverlayContext = {
   plugin: ImageOverlayPlugin
   overlays: Map<string, ImageOverlay>
 }
+
+const DEFAULT_TERRAIN_ERROR_TARGET = 1
 
 const { GeneratedSurfacePlugin, MVTOverlay } = TilesRendererPlugins as unknown as {
   GeneratedSurfacePlugin: GeneratedSurfacePluginConstructor
@@ -296,7 +303,7 @@ export class TilesetManager {
   ) {
     const tileset = new TilesRenderer(this.normalizeTerrainUrl(terrain.url))
     this.registerTerrainProvider(tileset, terrain)
-    this.registerTerrainImagery(tileset, layers)
+    this.registerTerrainImagery(tileset, terrain, layers)
     this.registerCommonTilesetPlugins(tileset)
     return tileset
   }
@@ -369,11 +376,15 @@ export class TilesetManager {
     }
 
     tileset.registerPlugin(new QuantizedMeshPlugin(terrainOptions))
+    tileset.errorTarget = terrain.tileLoading?.errorTarget ?? DEFAULT_TERRAIN_ERROR_TARGET
     tileset.registerPlugin(new TerrainFetchPlugin(terrain.url))
   }
 
-  private registerTerrainImagery(tileset: TilesRenderer, layers: ImageryLayer[]) {
-    const context = this.createImageryOverlayContext(layers)
+  private registerTerrainImagery(tileset: TilesRenderer, terrain: TerrainOptions, layers: ImageryLayer[]) {
+    const context = this.createImageryOverlayContext(layers, {
+      resolution: terrain.tileLoading?.imageryResolution,
+      enableTileSplitting: terrain.tileLoading?.enableTileSplitting
+    })
 
     this.imageryOverlayContexts.set(tileset, context)
     tileset.registerPlugin(context.plugin)
@@ -392,11 +403,15 @@ export class TilesetManager {
     tileset.registerPlugin(context.plugin)
   }
 
-  private createImageryOverlayContext(layers: ImageryLayer[]): ImageryOverlayContext {
+  private createImageryOverlayContext(
+    layers: ImageryLayer[],
+    options: ImageryOverlayContextOptions = {}
+  ): ImageryOverlayContext {
     const plugin = new ImageOverlayPlugin({
       renderer: this.options.renderer,
       overlays: [],
-      enableTileSplitting: false
+      resolution: options.resolution,
+      enableTileSplitting: options.enableTileSplitting ?? true
     })
     const overlays = new Map<string, ImageOverlay>()
 

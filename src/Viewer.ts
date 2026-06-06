@@ -59,6 +59,7 @@ export type {
   ScreenPosition,
   TemplateUrlResourceOptions,
   TerrainOptions,
+  TerrainTileLoadingOptions,
   TilesetLayer,
   Url3DTilesetOptions,
   ViewerClickEvent,

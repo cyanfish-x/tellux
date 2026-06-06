@@ -45,6 +45,7 @@ export {
   type ScreenPosition,
   type TemplateUrlResourceOptions,
   type TerrainOptions,
+  type TerrainTileLoadingOptions,
   type TelluxConfig,
   type TilesetLayer,
   type Url3DTilesetOptions,
