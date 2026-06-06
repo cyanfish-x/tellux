@@ -47,6 +47,7 @@ function sanitizeStoredExampleSettings(
   copyNumberSetting(value, settings, "clockMultiplier")
   copyBooleanSetting(value, settings, "clouds")
   copyNumberSetting(value, settings, "cloudCoverage")
+  copyNumberSetting(value, settings, "cloudSpeed")
   copyNumberSetting(value, settings, "cloudLayerAltitude")
   copyNumberSetting(value, settings, "cloudLayerHeight")
   copyNumberSetting(value, settings, "atmosphereInscatterIntensity")

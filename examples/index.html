@@ -136,45 +136,76 @@
               <li>开发示例从 <code>src</code> 直接引入，方便验证源码行为</li>
             </ul>
           </div>
-          <pre class="portal-code"><code>import tellux from 'tellux'
+          <div class="portal-code-window">
+            <div class="portal-code-window__header" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <pre class="portal-code"><code><span class="code-token code-token--keyword">import</span> tellux <span class="code-token code-token--keyword">from</span> <span class="code-token code-token--string">'tellux'</span>
 
-const viewer = new tellux.Viewer(container, {
-  terrain: { url: 'https://example.com/terrain/' },
-  layers: [{
-    source: tellux.TemplateUrlResource.fromUrl(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+<span class="code-token code-token--keyword">const</span> viewer = <span class="code-token code-token--keyword">new</span> tellux.<span class="code-token code-token--class">Viewer</span>(container, {
+  <span class="code-token code-token--property">terrain</span>: { <span class="code-token code-token--property">url</span>: <span class="code-token code-token--string">'https://example.com/terrain/'</span> },
+  <span class="code-token code-token--property">layers</span>: [{
+    <span class="code-token code-token--property">source</span>: tellux.<span class="code-token code-token--class">TemplateUrlResource</span>.<span class="code-token code-token--function">fromUrl</span>(
+      <span class="code-token code-token--string">'https://example.com/imagery/tiles/{z}/{y}/{x}'</span>
     )
   }],
-  camera: {
-    latitude: 31.2304,
-    longitude: 121.4737,
-    height: 1200,
-    pitch: -25
+  <span class="code-token code-token--property">camera</span>: {
+    <span class="code-token code-token--property">latitude</span>: <span class="code-token code-token--number">31.2304</span>,
+    <span class="code-token code-token--property">longitude</span>: <span class="code-token code-token--number">121.4737</span>,
+    <span class="code-token code-token--property">height</span>: <span class="code-token code-token--number">1200</span>,
+    <span class="code-token code-token--property">pitch</span>: <span class="code-token code-token--number">-25</span>
   }
 })
 
-viewer.layers.add({
-  name: 'Province boundary',
-  source: tellux.WMSResource.fromUrl(
-    'https://example.com/geoserver/wms',
-    'workspace:layer'
+viewer.<span class="code-token code-token--property">layers</span>.<span class="code-token code-token--function">add</span>({
+  <span class="code-token code-token--property">name</span>: <span class="code-token code-token--string">'Province boundary'</span>,
+  <span class="code-token code-token--property">source</span>: tellux.<span class="code-token code-token--class">WMSResource</span>.<span class="code-token code-token--function">fromUrl</span>(
+    <span class="code-token code-token--string">'https://example.com/geoserver/wms'</span>,
+    <span class="code-token code-token--string">'workspace:layer'</span>
   ),
-  style: { opacity: 0.72 }
+  <span class="code-token code-token--property">style</span>: { <span class="code-token code-token--property">opacity</span>: <span class="code-token code-token--number">0.72</span> }
 })</code></pre>
+          </div>
         </div>
       </section>
 
-      <section class="portal-section portal-band" aria-label="视觉资产预留说明">
+      <section class="portal-section portal-band" aria-label="真实地形与大气效果展示">
         <div class="portal-band__image">
-          <span>Image slot</span>
-          <strong>建议替换为 16:9 或 21:9 的应用截图</strong>
+          <img
+            src="https://picture.cyanfish.site/localhost_5173_terrain.html%20(1).png"
+            alt="Tellux 渲染的雪山地形、低角度太阳和预计算大气散射效果"
+          />
         </div>
         <div class="portal-band__content">
-          <p class="portal-eyebrow">Presentation</p>
-          <h2>暗色、克制、偏工程产品的视觉基调</h2>
+          <p class="portal-eyebrow">Terrain & Atmosphere</p>
+          <h2>真实地形和预计算大气一起进入工程视图</h2>
           <p>
-            当前主页刻意保留大面积图像区域，后续可以换成真实地球视角、城市 3D Tiles、地形剖面或业务系统截图。
-            页面结构会让图片成为第一视觉信号，而能力信息仍然保持清晰可读。
+            Tellux 可以在 Cesium quantized-mesh 地形上叠加影像纹理，并结合预计算大气 LUT、太阳光和天空光探针，
+            让远山雾化、低空暖光和雪线明暗关系保持稳定。它不是展示页滤镜，而是面向三维 GIS 场景的实时渲染基础。
+          </p>
+        </div>
+      </section>
+
+      <section class="portal-section portal-band portal-band--reverse" aria-label="体积云渲染效果展示">
+        <div class="portal-band__image">
+          <video
+            src="https://picture.cyanfish.site/a1965e781b03b7ca46c7055c3c8322ed.mp4"
+            aria-label="Tellux 渲染的体积云随视角推进和光照变化的效果"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="auto"
+          ></video>
+        </div>
+        <div class="portal-band__content">
+          <p class="portal-eyebrow">Volumetric Clouds</p>
+          <h2>把云层作为真实空间体积参与场景表达</h2>
+          <p>
+            Tellux 的体积云沿用物理光照和大气合成流程，云体会随相机高度、太阳方向和曝光设置呈现连续的层次变化。
+            从近地平线的厚重云墙到高空俯视的柔和云海，它都能和地形、天空、后处理保持统一的空间关系。
           </p>
         </div>
       </section>

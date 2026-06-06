@@ -32,6 +32,7 @@ export { Clock } from './Clock'
 export { ImageryLayer, LayerManager } from './LayerManager'
 export { MVTResource } from './resources/MVTResource'
 export { Scene } from './Scene'
+export { SpringControl, type SpringControlOptions } from './SpringControl'
 export { TemplateUrlResource } from './resources/TemplateUrlResource'
 export { WMSResource } from './resources/WMSResource'
 export { telluxConfig, type TelluxConfig } from './config'
@@ -266,6 +267,7 @@ export class Viewer {
     this.atmosphere.addLightSourcesTo(this.scene.threeScene)
     this.applyInitialAtmosphereOptions(sceneOptions)
     this.scene.cloudCoverage = this.scene.cloudCoverage
+    this.scene.cloudSpeed = this.scene.cloudSpeed
     this.scene.cloudLayerAltitude = this.scene.cloudLayerAltitude
     this.scene.cloudLayerHeight = this.scene.cloudLayerHeight
     this.clock = new Clock(() => this.atmosphere.updateSunDirection(this.clock.currentTime))
@@ -525,6 +527,7 @@ export class Viewer {
     this.previousTime = time
 
     this.clock.tick(deltaTime)
+    this.postProcessing.setDeltaTime(deltaTime)
     this.resize()
     this.controls.update()
     this.syncAtmosphereInscatter()
@@ -600,6 +603,7 @@ export class Viewer {
       dithering: options?.dithering ?? false,
       toneMappingExposure: options?.toneMappingExposure ?? 10,
       cloudCoverage: options?.cloudCoverage ?? 0.3,
+      cloudSpeed: options?.cloudSpeed ?? 0.001,
       atmosphereInscatterIntensity: options?.atmosphereInscatterIntensity ?? 0.6,
       atmosphereInscatterHorizonBlend: options?.atmosphereInscatterHorizonBlend ?? true,
       atmosphereInscatterHorizonRange: options?.atmosphereInscatterHorizonRange ?? [0, 0.6],

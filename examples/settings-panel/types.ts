@@ -11,6 +11,7 @@ export interface ExampleSettingsPanelOptions {
   dayOfYear?: number
   clouds?: boolean
   cloudCoverage?: number
+  cloudSpeed?: number
   cloudLayerAltitude?: number
   cloudLayerHeight?: number
   atmosphereInscatterIntensity?: number

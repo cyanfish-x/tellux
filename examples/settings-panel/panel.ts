@@ -1,5 +1,8 @@
 ﻿import type { AtmosphereLightingMode, Viewer } from "../../src"
 import {
+  SpringControl,
+} from "../../src"
+import {
   createGroup,
   createRangeControl,
   createSelectControl,
@@ -17,6 +20,9 @@ import {
   getUTCHour,
 } from "./time"
 import type { ExampleSettingsPanelOptions } from "./types"
+
+const MAX_CLOCK_MULTIPLIER = 86400
+const CLOCK_MULTIPLIER_SLIDER_MAX = Math.log2(MAX_CLOCK_MULTIPLIER + 1)
 
 export function mountExampleSettingsPanel(
   viewer: Viewer,
@@ -184,10 +190,12 @@ export function mountExampleSettingsPanel(
     id: "clock-multiplier",
     label: "时间倍率",
     min: 0,
-    max: 1000,
-    step: 1,
-    value: settings.clockMultiplier ?? viewer.clock.multiplier,
-    format: (value) => `${value.toFixed(0)}x`,
+    max: CLOCK_MULTIPLIER_SLIDER_MAX,
+    step: 0.01,
+    value: clockMultiplierToSliderValue(
+      settings.clockMultiplier ?? viewer.clock.multiplier
+    ),
+    format: (value) => `${sliderValueToClockMultiplier(value).toFixed(0)}x`,
   })
 
   const initialClockTime = viewer.clock.currentTime
@@ -231,6 +239,15 @@ export function mountExampleSettingsPanel(
     step: 0.01,
     value: settings.cloudCoverage ?? viewer.scene.cloudCoverage,
     format: (value) => value.toFixed(2),
+  })
+  const cloudSpeedControl = createRangeControl({
+    id: "cloud-speed",
+    label: "云速",
+    min: 0,
+    max: 0.05,
+    step: 0.0001,
+    value: settings.cloudSpeed ?? viewer.scene.cloudSpeed,
+    format: (value) => value.toFixed(4),
   })
   const cloudAltitudeControl = createRangeControl({
     id: "cloud-altitude",
@@ -522,6 +539,7 @@ export function mountExampleSettingsPanel(
       [
         cloudToggle.element,
         coverageControl.element,
+        cloudSpeedControl.element,
         cloudAltitudeControl.element,
         cloudHeightControl.element,
         shadowRadiusControl.element,
@@ -587,7 +605,93 @@ export function mountExampleSettingsPanel(
   let shouldApplyTimeControls = true
   let previousDayOfYearValue = Number(dayOfYearControl.input.value)
   let previousHourUTCValue = Number(utcControl.input.value)
+  let previousClockAnimateValue = clockAnimateToggle.input.checked
   let isSyncingAnimatedTime = false
+  let previousPanelTime = 0
+  const smooth = {
+    starsIntensity: createSpringControl(starsIntensityControl.input),
+    starsPointSize: createSpringControl(starsPointSizeControl.input),
+    atmosphereInscatterIntensity: createSpringControl(
+      inscatterIntensityControl.input
+    ),
+    horizonStart: createSpringControl(horizonStartControl.input),
+    horizonEnd: createSpringControl(horizonEndControl.input),
+    sunLightIntensity: createSpringControl(sunLightIntensityControl.input),
+    skyLightIntensity: createSpringControl(skyLightIntensityControl.input),
+    fallbackAmbientLightIntensity: createSpringControl(
+      fallbackAmbientLightIntensityControl.input
+    ),
+    solarIrradianceScale: createSpringControl(solarIrradianceControl.input),
+    rayleighScatteringScale: createSpringControl(rayleighControl.input),
+    mieScatteringScale: createSpringControl(mieScatteringControl.input),
+    mieExtinctionScale: createSpringControl(mieExtinctionControl.input),
+    miePhaseFunctionG: createSpringControl(miePhaseControl.input),
+    absorptionExtinctionScale: createSpringControl(absorptionControl.input),
+    groundAlbedo: createSpringControl(groundAlbedoControl.input),
+    albedoScale: createSpringControl(albedoScaleControl.input),
+    sunAngularRadius: createSpringControl(sunAngularRadiusControl.input),
+    moonAngularRadius: createSpringControl(moonAngularRadiusControl.input),
+    lunarRadianceScale: createSpringControl(lunarRadianceScaleControl.input),
+    shadowRadius: createSpringControl(shadowRadiusControl.input),
+    cloudCoverage: createSpringControl(coverageControl.input),
+    cloudSpeed: createSpringControl(cloudSpeedControl.input),
+    cloudLayerAltitude: createSpringControl(cloudAltitudeControl.input),
+    cloudLayerHeight: createSpringControl(cloudHeightControl.input),
+    toneMappingExposure: createSpringControl(exposureControl.input),
+    dayOfYear: createSpringControl(dayOfYearControl.input),
+    hourUTC: createSpringControl(utcControl.input),
+  }
+
+  function applySmoothedControls(deltaTime: number) {
+    viewer.scene.starsIntensity = smooth.starsIntensity.tick(deltaTime)
+    viewer.scene.starsPointSize = smooth.starsPointSize.tick(deltaTime)
+    viewer.scene.atmosphereInscatterIntensity =
+      smooth.atmosphereInscatterIntensity.tick(deltaTime)
+    viewer.scene.atmosphereInscatterHorizonRange = [
+      smooth.horizonStart.tick(deltaTime),
+      smooth.horizonEnd.tick(deltaTime),
+    ]
+    viewer.scene.atmosphereSunLightIntensity =
+      smooth.sunLightIntensity.tick(deltaTime)
+    viewer.scene.atmosphereSkyLightIntensity =
+      smooth.skyLightIntensity.tick(deltaTime)
+    viewer.scene.fallbackAmbientLightIntensity =
+      smooth.fallbackAmbientLightIntensity.tick(deltaTime)
+    viewer.scene.atmosphereSolarIrradianceScale =
+      smooth.solarIrradianceScale.tick(deltaTime)
+    viewer.scene.atmosphereRayleighScatteringScale =
+      smooth.rayleighScatteringScale.tick(deltaTime)
+    viewer.scene.atmosphereMieScatteringScale =
+      smooth.mieScatteringScale.tick(deltaTime)
+    viewer.scene.atmosphereMieExtinctionScale =
+      smooth.mieExtinctionScale.tick(deltaTime)
+    viewer.scene.atmosphereMiePhaseFunctionG =
+      smooth.miePhaseFunctionG.tick(deltaTime)
+    viewer.scene.atmosphereAbsorptionExtinctionScale =
+      smooth.absorptionExtinctionScale.tick(deltaTime)
+    viewer.scene.atmosphereGroundAlbedo = smooth.groundAlbedo.tick(deltaTime)
+    viewer.scene.atmosphereAlbedoScale = smooth.albedoScale.tick(deltaTime)
+    viewer.scene.atmosphereSunAngularRadius =
+      smooth.sunAngularRadius.tick(deltaTime)
+    viewer.scene.atmosphereMoonAngularRadius =
+      smooth.moonAngularRadius.tick(deltaTime)
+    viewer.scene.atmosphereLunarRadianceScale =
+      smooth.lunarRadianceScale.tick(deltaTime)
+    viewer.scene.atmosphereShadowRadius = smooth.shadowRadius.tick(deltaTime)
+    viewer.scene.cloudCoverage = smooth.cloudCoverage.tick(deltaTime)
+    viewer.scene.cloudSpeed = smooth.cloudSpeed.tick(deltaTime)
+    viewer.scene.cloudLayerAltitude = smooth.cloudLayerAltitude.tick(deltaTime)
+    viewer.scene.cloudLayerHeight = smooth.cloudLayerHeight.tick(deltaTime)
+    viewer.toneMappingExposure = smooth.toneMappingExposure.tick(deltaTime)
+
+    if (!viewer.clock.animate) {
+      viewer.clock.currentTime = createUTCDateFromSmoothedControls(
+        viewer.clock.currentTime.getUTCFullYear(),
+        smooth.dayOfYear.tick(deltaTime),
+        smooth.hourUTC.tick(deltaTime)
+      )
+    }
+  }
 
   function syncAnimatedTimeControls() {
     if (!viewer.clock.animate) return
@@ -614,37 +718,40 @@ export function mountExampleSettingsPanel(
 
     const dayOfYearValue = Number(dayOfYearControl.input.value)
     const hourUTCValue = Number(utcControl.input.value)
+    const clockMultiplierValue = sliderValueToClockMultiplier(
+      Number(clockMultiplierControl.input.value)
+    )
+    const clockAnimateValue = clockAnimateToggle.input.checked
+    const clockAnimateChanged = clockAnimateValue !== previousClockAnimateValue
     const timeControlsChanged =
       dayOfYearValue !== previousDayOfYearValue ||
       hourUTCValue !== previousHourUTCValue
 
     viewer.scene.skyAtmosphere.show = skyToggle.input.checked
     viewer.scene.stars.show = starsToggle.input.checked
-    viewer.scene.starsIntensity = Number(starsIntensityControl.input.value)
-    viewer.scene.starsPointSize = Number(starsPointSizeControl.input.value)
+    smooth.starsIntensity.target = Number(starsIntensityControl.input.value)
+    smooth.starsPointSize.target = Number(starsPointSizeControl.input.value)
     viewer.scene.atmosphereTransmittance = transmittanceToggle.input.checked
     viewer.scene.atmosphereInscatter = nativeInscatterToggle.input.checked
-    viewer.scene.atmosphereInscatterIntensity = Number(
+    smooth.atmosphereInscatterIntensity.target = Number(
       inscatterIntensityControl.input.value
     )
     viewer.scene.atmosphereInscatterHorizonBlend =
       inscatterHorizonToggle.input.checked
-    viewer.scene.atmosphereInscatterHorizonRange = [
-      Number(horizonStartControl.input.value),
-      Number(horizonEndControl.input.value),
-    ]
+    smooth.horizonStart.target = Number(horizonStartControl.input.value)
+    smooth.horizonEnd.target = Number(horizonEndControl.input.value)
     viewer.scene.atmosphereLightingMode =
       lightingModeControl.input.value as AtmosphereLightingMode
     viewer.scene.atmosphereSunLight = sunLightToggle.input.checked
     viewer.scene.atmosphereSkyLight = skyLightToggle.input.checked
-    viewer.scene.atmosphereSunLightIntensity = Number(
+    smooth.sunLightIntensity.target = Number(
       sunLightIntensityControl.input.value
     )
-    viewer.scene.atmosphereSkyLightIntensity = Number(
+    smooth.skyLightIntensity.target = Number(
       skyLightIntensityControl.input.value
     )
     viewer.scene.fallbackAmbientLight = fallbackAmbientLightToggle.input.checked
-    viewer.scene.fallbackAmbientLightIntensity = Number(
+    smooth.fallbackAmbientLightIntensity.target = Number(
       fallbackAmbientLightIntensityControl.input.value
     )
     viewer.scene.atmosphereSun = sunDiscToggle.input.checked
@@ -652,60 +759,63 @@ export function mountExampleSettingsPanel(
     viewer.scene.atmosphereCorrectAltitude = correctAltitudeToggle.input.checked
     viewer.scene.atmosphereCorrectGeometricError =
       correctGeometricToggle.input.checked
-    viewer.scene.atmosphereSolarIrradianceScale = Number(
+    smooth.solarIrradianceScale.target = Number(
       solarIrradianceControl.input.value
     )
-    viewer.scene.atmosphereRayleighScatteringScale = Number(
+    smooth.rayleighScatteringScale.target = Number(
       rayleighControl.input.value
     )
-    viewer.scene.atmosphereMieScatteringScale = Number(
+    smooth.mieScatteringScale.target = Number(
       mieScatteringControl.input.value
     )
-    viewer.scene.atmosphereMieExtinctionScale = Number(
+    smooth.mieExtinctionScale.target = Number(
       mieExtinctionControl.input.value
     )
-    viewer.scene.atmosphereMiePhaseFunctionG = Number(
+    smooth.miePhaseFunctionG.target = Number(
       miePhaseControl.input.value
     )
-    viewer.scene.atmosphereAbsorptionExtinctionScale = Number(
+    smooth.absorptionExtinctionScale.target = Number(
       absorptionControl.input.value
     )
-    viewer.scene.atmosphereGroundAlbedo = Number(
+    smooth.groundAlbedo.target = Number(
       groundAlbedoControl.input.value
     )
-    viewer.scene.atmosphereAlbedoScale = Number(albedoScaleControl.input.value)
-    viewer.scene.atmosphereSunAngularRadius = Number(
+    smooth.albedoScale.target = Number(albedoScaleControl.input.value)
+    smooth.sunAngularRadius.target = Number(
       sunAngularRadiusControl.input.value
     )
-    viewer.scene.atmosphereMoonAngularRadius = Number(
+    smooth.moonAngularRadius.target = Number(
       moonAngularRadiusControl.input.value
     )
-    viewer.scene.atmosphereLunarRadianceScale = Number(
+    smooth.lunarRadianceScale.target = Number(
       lunarRadianceScaleControl.input.value
     )
-    viewer.scene.atmosphereShadowRadius = Number(
+    smooth.shadowRadius.target = Number(
       shadowRadiusControl.input.value
     )
     viewer.scene.atmosphereShadowSampleCount = Number(
       shadowSampleCountControl.input.value
     )
     viewer.scene.clouds.show = cloudToggle.input.checked
-    viewer.clock.animate = clockAnimateToggle.input.checked
-    viewer.clock.multiplier = Number(clockMultiplierControl.input.value)
+    viewer.clock.animate = clockAnimateValue
+    viewer.clock.multiplier = clockMultiplierValue
     if (shouldApplyTimeControls || timeControlsChanged) {
-      viewer.clock.currentTime = createUTCDateFromControls(
-        viewer.clock.currentTime.getUTCFullYear(),
-        dayOfYearValue,
-        hourUTCValue
-      )
+      smooth.dayOfYear.target = dayOfYearValue
+      smooth.hourUTC.target = hourUTCValue
       previousDayOfYearValue = dayOfYearValue
       previousHourUTCValue = hourUTCValue
       shouldApplyTimeControls = false
     }
-    viewer.scene.cloudCoverage = Number(coverageControl.input.value)
-    viewer.scene.cloudLayerAltitude = Number(cloudAltitudeControl.input.value)
-    viewer.scene.cloudLayerHeight = Number(cloudHeightControl.input.value)
-    viewer.toneMappingExposure = Number(exposureControl.input.value)
+    if (clockAnimateChanged && !clockAnimateValue) {
+      smooth.dayOfYear.reset(dayOfYearValue)
+      smooth.hourUTC.reset(hourUTCValue)
+    }
+    previousClockAnimateValue = clockAnimateValue
+    smooth.cloudCoverage.target = Number(coverageControl.input.value)
+    smooth.cloudSpeed.target = Number(cloudSpeedControl.input.value)
+    smooth.cloudLayerAltitude.target = Number(cloudAltitudeControl.input.value)
+    smooth.cloudLayerHeight.target = Number(cloudHeightControl.input.value)
+    smooth.toneMappingExposure.target = Number(exposureControl.input.value)
     viewer.resolutionScale = Number(resolutionControl.input.value)
     viewer.scene.postProcessStages.lensFlare.enabled =
       lensFlareToggle.input.checked
@@ -719,11 +829,12 @@ export function mountExampleSettingsPanel(
       starsIntensity: Number(starsIntensityControl.input.value),
       starsPointSize: Number(starsPointSizeControl.input.value),
       clockAnimate: clockAnimateToggle.input.checked,
-      clockMultiplier: Number(clockMultiplierControl.input.value),
+      clockMultiplier: clockMultiplierValue,
       dayOfYear: dayOfYearValue,
       hourUTC: hourUTCValue,
       clouds: cloudToggle.input.checked,
       cloudCoverage: Number(coverageControl.input.value),
+      cloudSpeed: Number(cloudSpeedControl.input.value),
       cloudLayerAltitude: Number(cloudAltitudeControl.input.value),
       cloudLayerHeight: Number(cloudHeightControl.input.value),
       atmosphereInscatterIntensity: Number(
@@ -798,6 +909,9 @@ export function mountExampleSettingsPanel(
 
   applyControls()
   viewer.render = (time = performance.now()) => {
+    const panelDeltaTime = previousPanelTime === 0 ? 0 : (time - previousPanelTime) / 1000
+    previousPanelTime = time
+    applySmoothedControls(panelDeltaTime)
     const deltaTime = render(time)
     syncAnimatedTimeControls()
     return deltaTime
@@ -810,4 +924,35 @@ export function mountExampleSettingsPanel(
     fpsHud.dispose()
     destroy()
   }
+}
+
+function clockMultiplierToSliderValue(value: number) {
+  return Math.log2(Math.min(Math.max(toFinite(value, 1), 0), MAX_CLOCK_MULTIPLIER) + 1)
+}
+
+function createSpringControl(input: HTMLInputElement) {
+  return new SpringControl(Number(input.value))
+}
+
+function createUTCDateFromSmoothedControls(
+  year: number,
+  dayOfYear: number,
+  hourUTC: number
+) {
+  return createUTCDateFromControls(
+    year,
+    Math.round(dayOfYear),
+    hourUTC
+  )
+}
+
+function sliderValueToClockMultiplier(value: number) {
+  return Math.min(
+    Math.max(Math.pow(2, toFinite(value, 0)) - 1, 0),
+    MAX_CLOCK_MULTIPLIER
+  )
+}
+
+function toFinite(value: number, fallback: number) {
+  return Number.isFinite(value) ? value : fallback
 }

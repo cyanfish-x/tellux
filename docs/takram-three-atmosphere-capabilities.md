@@ -205,6 +205,11 @@ Tellux 当前用法：
 - 云开启且大气开启时，大气 effect 读取云层的 overlay / shadow / shadowLength。
 - 云关闭或大气关闭时清空引用，避免残留合成状态。
 
+光照模式限制：
+
+- 体积云云影对地表/瓦片的明暗影响依赖 `AerialPerspectiveEffect.sunLight` 的后处理光照分支，因此只有 `scene.atmosphereLightingMode = 'post-process'` 时生效。
+- `light-source` 模式下地表/瓦片走 Three.js 光源式照明；云层仍可渲染和合成，但 Three.js 普通光源不会采样 `CloudsEffect.atmosphereShadow`。
+
 ## 资源和部署注意点
 
 - 运行时生成大气 LUT 不需要额外静态资产，但需要 WebGL 渲染能力。
@@ -219,4 +224,3 @@ Tellux 当前用法：
 - 支持预计算纹理外部 URL 或本地资产注入。
 - 用 `LightingMaskPass` 区分地表、3D Tiles、自定义对象和透明对象的光照路径。
 - 为调试提供大气 LUT、太阳方向、月亮方向和云影合成状态输出。
-

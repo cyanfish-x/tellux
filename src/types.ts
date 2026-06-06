@@ -228,6 +228,18 @@ export interface ViewerOptions {
     /** 云覆盖率，范围 `0` 到 `1`，默认 `0.3`。Cloud coverage from `0` to `1`. Defaults to `0.3`. */
     cloudCoverage?: number
     /**
+     * 体积云天气纹理的水平运动速度，单位为 UV 偏移/秒，默认 `0.001`。
+     *
+     * 设为 `0` 可停止云的纹理位移动画。该值独立于 {@link Clock.multiplier}。
+     *
+     * Horizontal motion speed for the volumetric cloud weather texture in UV
+     * offset per second. Defaults to `0.001`.
+     *
+     * Set this to `0` to stop the cloud texture offset animation. This value is
+     * independent from {@link Clock.multiplier}.
+     */
+    cloudSpeed?: number
+    /**
      * 是否为 3D Tiles 网格重新生成折痕法线，默认 `false`。
      *
      * 该处理会改善部分瓦片的光照边缘，但会增加瓦片加载时的 CPU 和内存成本。

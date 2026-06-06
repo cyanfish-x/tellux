@@ -225,6 +225,7 @@ Tellux 当前用法：
   - `splitMode = 'practical'`
   - `splitLambda = 0.71`
 - 用户可通过 `scene.atmosphereShadowRadius` 和 `scene.atmosphereShadowSampleCount` 控制大气合成时的云影采样。
+- 云影只在 `scene.atmosphereLightingMode = 'post-process'` 时会影响地表/瓦片光照。`CloudsEffect` 产出的 `atmosphereShadow` 由 `AerialPerspectiveEffect` 的后处理光照分支采样；默认 `light-source` 模式使用 Three.js 太阳光/天空光照明，不会读取体积云 shadow map。
 
 ## 性能注意点
 
@@ -276,4 +277,3 @@ Tellux 对外说明建议：
 - 支持程序化云纹理生成和 seed。
 - 支持云影质量 preset。
 - 支持 debug 输出云层、云影级联、纹理加载状态和上游合成 buffer 状态。
-

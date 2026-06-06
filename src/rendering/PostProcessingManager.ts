@@ -59,6 +59,12 @@ export class PostProcessingManager {
     this.syncEffects(currentHeight, false)
   }
 
+  setDeltaTime(deltaTime: number) {
+    this.effectAdapters.forEach((adapter) => {
+      adapter.setDeltaTime?.(deltaTime)
+    })
+  }
+
   private syncEffects(currentHeight: number | null, forceRecompile: boolean) {
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.skyAtmosphere.show

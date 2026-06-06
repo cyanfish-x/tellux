@@ -50,6 +50,10 @@ export function applyInitialSettings(
     viewer.scene.cloudCoverage = settings.cloudCoverage
   }
 
+  if (settings.cloudSpeed !== undefined) {
+    viewer.scene.cloudSpeed = settings.cloudSpeed
+  }
+
   if (settings.cloudLayerAltitude !== undefined) {
     viewer.scene.cloudLayerAltitude = settings.cloudLayerAltitude
   }

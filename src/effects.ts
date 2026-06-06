@@ -4,6 +4,7 @@ import { EffectMaterial, EffectPass, NormalPass } from 'postprocessing'
 export type ThreeEffectPass = THREE.Effect & {
   dispose: () => void
   recompile?: () => void
+  setDeltaTime?: (deltaTime: number) => void
 }
 
 export interface ThreeRendererWithEffects extends THREE.WebGLRenderer {
@@ -14,6 +15,7 @@ export class EffectPassAdapter implements ThreeEffectPass {
   enabled = true
   needsSwap: boolean
   private isInitialized = false
+  private deltaTime = 0
 
   constructor(
     private readonly pass: EffectPass | NormalPass,
@@ -26,7 +28,7 @@ export class EffectPassAdapter implements ThreeEffectPass {
     webglRenderer: THREE.WebGLRenderer,
     writeBuffer: THREE.WebGLRenderTarget,
     readBuffer: THREE.WebGLRenderTarget,
-    deltaTime: number
+    deltaTime?: number
   ) {
     if (!this.isInitialized) {
       this.pass.initialize(webglRenderer, false, THREE.HalfFloatType)
@@ -49,7 +51,11 @@ export class EffectPassAdapter implements ThreeEffectPass {
       passWithMaterial.fullscreenMaterial.adoptCameraSettings(this.getCamera())
     }
 
-    this.pass.render(webglRenderer, readBuffer, writeBuffer, deltaTime)
+    this.pass.render(webglRenderer, readBuffer, writeBuffer, this.resolveDeltaTime(deltaTime))
+  }
+
+  setDeltaTime(deltaTime: number) {
+    this.deltaTime = toFiniteDeltaTime(deltaTime)
   }
 
   setSize(width: number, height: number) {
@@ -68,4 +74,12 @@ export class EffectPassAdapter implements ThreeEffectPass {
   dispose() {
     this.pass.dispose()
   }
+
+  private resolveDeltaTime(deltaTime?: number) {
+    return deltaTime === undefined ? this.deltaTime : toFiniteDeltaTime(deltaTime)
+  }
+}
+
+function toFiniteDeltaTime(deltaTime: number) {
+  return Number.isFinite(deltaTime) && deltaTime > 0 ? deltaTime : 0
 }

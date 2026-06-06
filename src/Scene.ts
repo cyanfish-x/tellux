@@ -5,6 +5,7 @@ import type { AtmosphereLightingMode, ViewerOptions } from './types'
 
 const FALLBACK_AMBIENT_LIGHT_MIN_HEIGHT = 8000
 const FALLBACK_AMBIENT_LIGHT_MAX_HEIGHT = 7600000
+const DEFAULT_CLOUD_SPEED = 0.001
 const DEFAULT_CLOUD_LAYER_ALTITUDE = 1500
 const DEFAULT_CLOUD_LAYER_HEIGHT = 650
 
@@ -116,6 +117,7 @@ export class Scene {
   private readonly fallbackAmbientLightSource: THREE.AmbientLight
   private currentFallbackAmbientLightIntensity: number
   private currentCloudCoverage: number
+  private currentCloudSpeed: number
   private currentCloudLayerAltitude: number
   private currentCloudLayerHeight: number
   private currentAtmosphereInscatterIntensity: number
@@ -137,6 +139,7 @@ export class Scene {
     this.getAtmosphereControls = getAtmosphereControls
     this.onEffectsChange = onEffectsChange
     this.currentCloudCoverage = options.cloudCoverage
+    this.currentCloudSpeed = toNonNegativeFinite(options.cloudSpeed, DEFAULT_CLOUD_SPEED)
     this.currentAtmosphereInscatterIntensity = options.atmosphereInscatterIntensity
     this.isAtmosphereInscatterHorizonBlend = options.atmosphereInscatterHorizonBlend
     this.currentAtmosphereInscatterHorizonRange = options.atmosphereInscatterHorizonRange
@@ -169,6 +172,26 @@ export class Scene {
     this.currentCloudCoverage = value
     const clouds = this.getCloudsEffect()
     if (clouds) clouds.coverage = value
+  }
+
+  /**
+   * 体积云天气纹理的水平运动速度，单位为 UV 偏移/秒。
+   *
+   * 设为 `0` 可停止云的纹理位移动画。
+   *
+   * Horizontal motion speed for the volumetric cloud weather texture in UV
+   * offset per second.
+   *
+   * Set this to `0` to stop the cloud texture offset animation.
+   */
+  get cloudSpeed() {
+    return this.currentCloudSpeed
+  }
+
+  set cloudSpeed(value: number) {
+    this.currentCloudSpeed = toNonNegativeFinite(value, DEFAULT_CLOUD_SPEED)
+    const clouds = this.getCloudsEffect()
+    if (clouds) clouds.localWeatherVelocity.set(this.currentCloudSpeed, 0)
   }
 
   /**
@@ -714,4 +737,8 @@ export class Scene {
       layer.height = this.currentCloudLayerHeight * this.cloudLayerHeightScales[index]
     })
   }
+}
+
+function toNonNegativeFinite(value: number, fallback: number) {
+  return Math.max(0, Number.isFinite(value) ? value : fallback)
 }
