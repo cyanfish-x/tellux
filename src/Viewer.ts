@@ -250,6 +250,8 @@ export class Viewer {
     atmosphere = this.atmosphere
     this.atmosphere.addLightSourcesTo(this.scene.threeScene)
     this.atmosphere.lightingMode = sceneOptions.atmosphereLightingMode
+    this.atmosphere.sunLightIntensity = sceneOptions.atmosphereSunLightIntensity
+    this.atmosphere.skyLightIntensity = sceneOptions.atmosphereSkyLightIntensity
     this.atmosphere.sunLight = sceneOptions.atmosphereSunLight
     this.atmosphere.skyLight = sceneOptions.atmosphereSkyLight
     this.scene.cloudCoverage = this.scene.cloudCoverage
@@ -575,7 +577,9 @@ export class Viewer {
       atmosphereInscatterIntensity: options?.atmosphereInscatterIntensity ?? 1,
       atmosphereInscatterHorizonBlend: options?.atmosphereInscatterHorizonBlend ?? false,
       atmosphereInscatterHorizonRange: options?.atmosphereInscatterHorizonRange ?? [0, 0.6],
-      atmosphereLightingMode: options?.atmosphereLightingMode ?? 'post-process',
+      atmosphereLightingMode: options?.atmosphereLightingMode ?? 'light-source',
+      atmosphereSunLightIntensity: options?.atmosphereSunLightIntensity ?? 1,
+      atmosphereSkyLightIntensity: options?.atmosphereSkyLightIntensity ?? 1,
       atmosphereSunLight: options?.atmosphereSunLight ?? true,
       atmosphereSkyLight: options?.atmosphereSkyLight ?? true,
       creasedNormals: options?.creasedNormals ?? false

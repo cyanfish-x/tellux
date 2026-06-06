@@ -22,6 +22,8 @@ export interface ExampleSettingsPanelOptions {
   atmosphereLightingMode?: AtmosphereLightingMode
   atmosphereSunLight?: boolean
   atmosphereSkyLight?: boolean
+  atmosphereSunLightIntensity?: number
+  atmosphereSkyLightIntensity?: number
   atmosphereSun?: boolean
   atmosphereMoon?: boolean
   atmosphereGround?: boolean
@@ -160,6 +162,16 @@ function applyInitialSettings(
     viewer.scene.atmosphereSkyLight = settings.atmosphereSkyLight
   }
 
+  if (settings.atmosphereSunLightIntensity !== undefined) {
+    viewer.scene.atmosphereSunLightIntensity =
+      settings.atmosphereSunLightIntensity
+  }
+
+  if (settings.atmosphereSkyLightIntensity !== undefined) {
+    viewer.scene.atmosphereSkyLightIntensity =
+      settings.atmosphereSkyLightIntensity
+  }
+
   if (settings.atmosphereSun !== undefined) {
     viewer.scene.atmosphereSun = settings.atmosphereSun
   }
@@ -283,7 +295,7 @@ function mountExampleSettingsPanel(
   )
   const lightingModeControl = createSelectControl({
     id: "atmosphere-lighting-mode",
-    label: "mode",
+    label: "光照模式",
     value:
       settings.atmosphereLightingMode ?? viewer.scene.atmosphereLightingMode,
     options: ["post-process", "light-source"] as const,
@@ -303,6 +315,28 @@ function mountExampleSettingsPanel(
     "天空光照",
     settings.atmosphereSkyLight ?? viewer.scene.atmosphereSkyLight
   )
+  const sunLightIntensityControl = createRangeControl({
+    id: "atmosphere-sun-light-intensity",
+    label: "太阳光强",
+    min: 0,
+    max: 8,
+    step: 0.05,
+    value:
+      settings.atmosphereSunLightIntensity ??
+      viewer.scene.atmosphereSunLightIntensity,
+    format: (value) => value.toFixed(2),
+  })
+  const skyLightIntensityControl = createRangeControl({
+    id: "atmosphere-sky-light-intensity",
+    label: "天空光强",
+    min: 0,
+    max: 8,
+    step: 0.05,
+    value:
+      settings.atmosphereSkyLightIntensity ??
+      viewer.scene.atmosphereSkyLightIntensity,
+    format: (value) => value.toFixed(2),
+  })
   const sunDiscToggle = createSwitchControl(
     "atmosphere-sun-disc",
     "太阳盘",
@@ -610,6 +644,8 @@ function mountExampleSettingsPanel(
         lightingModeControl.element,
         sunLightToggle.element,
         skyLightToggle.element,
+        sunLightIntensityControl.element,
+        skyLightIntensityControl.element,
         albedoScaleControl.element,
       ],
       false
@@ -710,6 +746,12 @@ function mountExampleSettingsPanel(
       lightingModeControl.input.value as AtmosphereLightingMode
     viewer.scene.atmosphereSunLight = sunLightToggle.input.checked
     viewer.scene.atmosphereSkyLight = skyLightToggle.input.checked
+    viewer.scene.atmosphereSunLightIntensity = Number(
+      sunLightIntensityControl.input.value
+    )
+    viewer.scene.atmosphereSkyLightIntensity = Number(
+      skyLightIntensityControl.input.value
+    )
     viewer.scene.atmosphereSun = sunDiscToggle.input.checked
     viewer.scene.atmosphereMoon = moonToggle.input.checked
     viewer.scene.atmosphereGround = groundToggle.input.checked

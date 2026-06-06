@@ -49,6 +49,8 @@ export interface AtmosphereRuntimeControls {
   lightingMode: AtmosphereLightingMode
   sunLight: boolean
   skyLight: boolean
+  sunLightIntensity: number
+  skyLightIntensity: number
   sun: boolean
   moon: boolean
   ground: boolean
@@ -88,7 +90,7 @@ export class AtmosphereManager {
   private readonly baseAbsorptionExtinction = new THREE.Vector3()
   private readonly lightPosition = new THREE.Vector3()
   private lightSourceScene: THREE.Scene | null = null
-  private currentLightingMode: AtmosphereLightingMode = 'post-process'
+  private currentLightingMode: AtmosphereLightingMode = 'light-source'
   private isSunLightEnabled = true
   private isSkyLightEnabled = true
   private isDisposed = false
@@ -266,6 +268,22 @@ export class AtmosphereManager {
     if (this.isSkyLightEnabled === value) return
     this.isSkyLightEnabled = value
     this.applyLightingMode()
+  }
+
+  get sunLightIntensity() {
+    return this.sunLightSource.intensity
+  }
+
+  set sunLightIntensity(value: number) {
+    this.sunLightSource.intensity = Math.max(0, this.toFinite(value, 1))
+  }
+
+  get skyLightIntensity() {
+    return this.skyLightSource.intensity
+  }
+
+  set skyLightIntensity(value: number) {
+    this.skyLightSource.intensity = Math.max(0, this.toFinite(value, 1))
   }
 
   get sun() {

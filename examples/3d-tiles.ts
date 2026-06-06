@@ -88,7 +88,8 @@ function loadUrlTileset() {
     viewer.load3DTileset({
       type: 'url',
       id: 'example-3d-tiles',
-      url
+      url,
+      // materialMode:'unlit' //光照模式为后处理时，需开启此项
     }),
     'URL 3D Tiles'
   )

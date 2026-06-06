@@ -134,6 +134,47 @@ viewer.layers.add({
 
 > WMS layers should request an image format such as `image/png`. `format=application/openlayers` is usually a GeoServer preview page format and is not suitable for imagery textures.
 
+## Lighting Modes
+
+Tellux provides two atmosphere lighting modes. The default is `light-source`:
+
+```ts
+const viewer = new tellux.Viewer(container, {
+  scene: {
+    atmosphereLightingMode: 'light-source'
+  }
+})
+```
+
+`light-source` uses Takram's sun directional light and sky light probe in the Three.js scene. It is the best default for most 3D GIS scenes: 3D Tiles, terrain, imagery overlays, custom Three.js objects, and PBR materials can all use the normal Three.js lighting path. You can tune the light source intensity with `atmosphereSunLightIntensity` and `atmosphereSkyLightIntensity`:
+
+```ts
+viewer.scene.atmosphereLightingMode = 'light-source'
+viewer.scene.atmosphereSunLight = true
+viewer.scene.atmosphereSkyLight = true
+viewer.scene.atmosphereSunLightIntensity = 1.2
+viewer.scene.atmosphereSkyLightIntensity = 0.8
+```
+
+`post-process` is Takram's native aerial-perspective post-process lighting path. It treats the rendered color buffer as surface albedo, then applies sun light, sky light, atmospheric transmittance, and in-scattering in `AerialPerspectiveEffect`. This mode is useful for advanced scenes that want a more unified atmospheric post-process look, but the input materials should be albedo materials unaffected by Three.js lights, such as `MeshBasicMaterial` or glTF `KHR_materials_unlit`.
+
+When loading 3D Tiles, if the source data is not already unlit but you want it to participate in `post-process` lighting, use `materialMode: 'unlit'` explicitly:
+
+```ts
+viewer.scene.atmosphereLightingMode = 'post-process'
+viewer.scene.atmosphereSunLight = true
+viewer.scene.atmosphereSkyLight = true
+viewer.scene.atmosphereAlbedoScale = 0.6
+
+const layer = viewer.load3DTileset({
+  type: 'url',
+  url: 'https://example.com/tileset.json',
+  materialMode: 'unlit'
+})
+```
+
+If PBR or other lit materials are used in `post-process` mode, the Three.js light sources are disabled and the tiles may already be dark or black before the post-process lighting runs. In that case, either use the default `light-source` mode or load the 3D Tiles that need post-process lighting with `materialMode: 'unlit'`.
+
 Make sure the container has a non-zero size:
 
 ```css

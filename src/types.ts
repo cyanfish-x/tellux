@@ -119,12 +119,12 @@ export interface ViewerOptions {
      */
     atmosphereInscatterHorizonRange?: [number, number]
     /**
-     * 大气光照模式，默认 `post-process`。
+     * 大气光照模式，默认 `light-source`。
      *
      * `post-process` 在空气透视后处理中应用太阳和天空光照；
      * `light-source` 在场景中使用 Takram 的太阳直射光和天空光探针。
      *
-     * Atmosphere lighting mode. Defaults to `post-process`.
+     * Atmosphere lighting mode. Defaults to `light-source`.
      *
      * `post-process` applies sun and sky lighting in the aerial-perspective
      * post-process; `light-source` uses Takram sun direct light and sky light
@@ -153,6 +153,26 @@ export interface ViewerOptions {
      * `light-source` mode this controls the Takram sky light probe.
      */
     atmosphereSkyLight?: boolean
+    /**
+     * 太阳光源辐射强度缩放，默认 `1`。
+     *
+     * 主要作用于 `light-source` 模式下的 Takram 太阳光源。
+     *
+     * Sun light source irradiance intensity scale. Defaults to `1`.
+     *
+     * Mainly affects the Takram sun light source in `light-source` mode.
+     */
+    atmosphereSunLightIntensity?: number
+    /**
+     * 天空光探针辐射强度缩放，默认 `1`。
+     *
+     * 主要作用于 `light-source` 模式下的 Takram 天空光探针。
+     *
+     * Sky light probe irradiance intensity scale. Defaults to `1`.
+     *
+     * Mainly affects the Takram sky light probe in `light-source` mode.
+     */
+    atmosphereSkyLightIntensity?: number
     /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
     lensFlare?: boolean
     /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */
@@ -390,6 +410,18 @@ export interface Url3DTilesetOptions {
    * URL of the `tileset.json`.
    */
   url: string
+  /**
+   * 3D Tiles 材质模式，默认保留数据源材质。
+   *
+   * `unlit` 会把瓦片网格转换为不受 Three.js 光源影响的材质，适合把瓦片颜色作为 Takram 后处理光照的 albedo 输入。
+   *
+   * 3D Tiles material mode. By default, source materials are preserved.
+   *
+   * `unlit` converts tile meshes to materials unaffected by Three.js light
+   * sources, suitable for using tile colors as albedo input for Takram
+   * post-process lighting.
+   */
+  materialMode?: 'unlit'
 }
 
 /**
@@ -412,6 +444,18 @@ export interface CesiumIon3DTilesetOptions {
   assetId: string | number
   /** 是否自动刷新 Cesium Ion endpoint 授权，默认 `true`。Refreshes Cesium Ion endpoint authorization automatically. Defaults to `true`. */
   autoRefreshToken?: boolean
+  /**
+   * 3D Tiles 材质模式，默认保留数据源材质。
+   *
+   * `unlit` 会把瓦片网格转换为不受 Three.js 光源影响的材质，适合把瓦片颜色作为 Takram 后处理光照的 albedo 输入。
+   *
+   * 3D Tiles material mode. By default, source materials are preserved.
+   *
+   * `unlit` converts tile meshes to materials unaffected by Three.js light
+   * sources, suitable for using tile colors as albedo input for Takram
+   * post-process lighting.
+   */
+  materialMode?: 'unlit'
 }
 
 /**

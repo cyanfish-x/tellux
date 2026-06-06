@@ -267,7 +267,7 @@ export class Scene {
    * Atmosphere lighting mode.
    */
   get atmosphereLightingMode() {
-    return this.getAtmosphereControls()?.lightingMode ?? 'post-process'
+    return this.getAtmosphereControls()?.lightingMode ?? 'light-source'
   }
 
   set atmosphereLightingMode(value: AtmosphereLightingMode) {
@@ -310,6 +310,34 @@ export class Scene {
       atmosphere.skyLight = value
       this.onEffectsChange()
     }
+  }
+
+  /**
+   * 太阳光源辐射强度缩放。
+   *
+   * Sun light source irradiance intensity scale.
+   */
+  get atmosphereSunLightIntensity() {
+    return this.getAtmosphereControls()?.sunLightIntensity ?? 1
+  }
+
+  set atmosphereSunLightIntensity(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.sunLightIntensity = value
+  }
+
+  /**
+   * 天空光探针辐射强度缩放。
+   *
+   * Sky light probe irradiance intensity scale.
+   */
+  get atmosphereSkyLightIntensity() {
+    return this.getAtmosphereControls()?.skyLightIntensity ?? 1
+  }
+
+  set atmosphereSkyLightIntensity(value: number) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere) atmosphere.skyLightIntensity = value
   }
 
   /**

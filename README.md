@@ -132,6 +132,47 @@ viewer.layers.add({
 
 > WMS 图层应请求图片格式，例如 `image/png`。`format=application/openlayers` 通常是 GeoServer 的预览页格式，不适合作为影像贴图。
 
+## 光照模式
+
+Tellux 提供两种大气光照模式，默认使用 `light-source`：
+
+```ts
+const viewer = new tellux.Viewer(container, {
+  scene: {
+    atmosphereLightingMode: 'light-source'
+  }
+})
+```
+
+`light-source` 会在 Three.js 场景中使用 Takram 的太阳方向光和天空光探针。它适合大多数 3D GIS 场景：3D Tiles、地形、overlay 影像、自定义 Three.js 模型和 PBR 材质都可以沿用 Three.js 的常规受光方式。可以通过 `atmosphereSunLightIntensity` 和 `atmosphereSkyLightIntensity` 调整光源强度：
+
+```ts
+viewer.scene.atmosphereLightingMode = 'light-source'
+viewer.scene.atmosphereSunLight = true
+viewer.scene.atmosphereSkyLight = true
+viewer.scene.atmosphereSunLightIntensity = 1.2
+viewer.scene.atmosphereSkyLightIntensity = 0.8
+```
+
+`post-process` 是 Takram 的原生空气透视后处理光照路径。它会把渲染结果当作表面反照率（albedo），再在 `AerialPerspectiveEffect` 中应用太阳光、天空光、大气透射和空气散射。这个模式适合想获得更统一的大气后处理效果的高级场景，但输入材质应是不受 Three.js 光源影响的 albedo 材质，例如 `MeshBasicMaterial` 或 glTF 的 `KHR_materials_unlit`。
+
+加载 3D Tiles 时，如果数据本身不是 unlit 材质，但希望它参与 `post-process` 光照，可以显式使用 `materialMode: 'unlit'`：
+
+```ts
+viewer.scene.atmosphereLightingMode = 'post-process'
+viewer.scene.atmosphereSunLight = true
+viewer.scene.atmosphereSkyLight = true
+viewer.scene.atmosphereAlbedoScale = 0.6
+
+const layer = viewer.load3DTileset({
+  type: 'url',
+  url: 'https://example.com/tileset.json',
+  materialMode: 'unlit'
+})
+```
+
+如果在 `post-process` 模式下仍使用 PBR 或其他受光材质，场景中的 Three.js 光源会被关闭，瓦片在进入后处理前可能已经变暗甚至变黑。此时要么改用默认的 `light-source`，要么为需要后处理光照的 3D Tiles 使用 `materialMode: 'unlit'`。
+
 请确保容器具有非零尺寸：
 
 ```css

@@ -30,6 +30,10 @@ import type {
 } from '../types'
 import type { ThreeRendererWithEffects } from '../effects'
 
+interface TileModelPlugin {
+  processTileModel: (scene: THREE.Object3D) => void
+}
+
 type MVTOverlayOptions = {
   url: string
   levels?: number
@@ -96,15 +100,13 @@ type UnlitCompatibilityPlugin = GLTFLoaderPlugin & {
 function createMaterialsUnlitCompatibilityPlugin(parser: GLTFParser): GLTFLoaderPlugin {
   const unlitExtension: UnlitCompatibilityPlugin = {
     name: KHR_MATERIALS_UNLIT,
-    getMaterialType: () => THREE.MeshStandardMaterial,
+    getMaterialType: () => THREE.MeshBasicMaterial,
     extendParams(materialParams, materialDef, gltfParser) {
       const pending: Promise<unknown>[] = []
       const metallicRoughness = materialDef.pbrMetallicRoughness
 
       materialParams.color = new THREE.Color(1, 1, 1)
       materialParams.opacity = 1
-      materialParams.metalness = 0
-      materialParams.roughness = 1
 
       if (metallicRoughness) {
         if (Array.isArray(metallicRoughness.baseColorFactor)) {
@@ -140,6 +142,53 @@ function createMaterialsUnlitCompatibilityPlugin(parser: GLTFParser): GLTFLoader
 
       return null
     }
+  }
+}
+
+class TileUnlitMaterialPlugin implements TileModelPlugin {
+  readonly priority = -10
+
+  processTileModel(tileScene: THREE.Object3D) {
+    tileScene.traverse((object) => {
+      const mesh = object as THREE.Mesh
+      if (!mesh.material) return
+
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map((material) => this.toUnlitMaterial(material))
+        : this.toUnlitMaterial(mesh.material)
+    })
+  }
+
+  private toUnlitMaterial(material: THREE.Material) {
+    if (material instanceof THREE.MeshBasicMaterial) return material
+
+    const source = material as THREE.MeshStandardMaterial
+    const unlit = new THREE.MeshBasicMaterial()
+    unlit.name = material.name
+    unlit.color.copy(source.color ?? new THREE.Color(1, 1, 1))
+    unlit.map = source.map ?? null
+    unlit.alphaMap = source.alphaMap ?? null
+    unlit.lightMap = source.lightMap ?? null
+    unlit.aoMap = source.aoMap ?? null
+    unlit.envMap = source.envMap ?? null
+    unlit.wireframe = 'wireframe' in source ? Boolean(source.wireframe) : false
+    unlit.transparent = material.transparent
+    unlit.opacity = material.opacity
+    unlit.alphaTest = material.alphaTest
+    unlit.side = material.side
+    unlit.depthTest = material.depthTest
+    unlit.depthWrite = material.depthWrite
+    unlit.colorWrite = material.colorWrite
+    unlit.blending = material.blending
+    unlit.blendSrc = material.blendSrc
+    unlit.blendDst = material.blendDst
+    unlit.blendEquation = material.blendEquation
+    unlit.polygonOffset = material.polygonOffset
+    unlit.polygonOffsetFactor = material.polygonOffsetFactor
+    unlit.polygonOffsetUnits = material.polygonOffsetUnits
+    unlit.toneMapped = material.toneMapped
+    unlit.userData = { ...material.userData }
+    return unlit
   }
 }
 
@@ -231,6 +280,7 @@ export class TilesetManager {
 
     const tileset = this.createSceneTileset(options)
     this.registerCommonTilesetPlugins(tileset)
+    this.registerSceneTilesetMaterialPlugins(tileset, options)
     this.sceneTilesets.set(id, tileset)
     this.options.scene.add(tileset.group)
 
@@ -321,6 +371,12 @@ export class TilesetManager {
     tileset.registerPlugin(new UpdateOnChangePlugin())
     tileset.setCamera(this.options.camera)
     tileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
+  }
+
+  private registerSceneTilesetMaterialPlugins(tileset: TilesRenderer, options: Load3DTilesetOptions) {
+    if (options.materialMode === 'unlit') {
+      tileset.registerPlugin(new TileUnlitMaterialPlugin())
+    }
   }
 
   private replaceSurfaceTileset(nextTileset: TilesRenderer) {
