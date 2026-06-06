@@ -29,7 +29,6 @@ if (tokenStatus) {
 }
 
 const viewer = createTelluxViewer(container, {
-  layers: [],
   camera: {
     latitude: 30.23008052218771,
     longitude: 102.79593627471901,
