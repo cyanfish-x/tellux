@@ -609,12 +609,20 @@ a {
   color: #c792ea;
 }
 
+.portal-showcase {
+  width: min(1332px, 100%);
+  margin: 0 auto;
+}
+
+.portal-showcase__inner {
+  display: grid;
+  gap: clamp(64px, 9vw, 108px);
+}
+
 .portal-band {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.55fr);
   gap: clamp(28px, 5vw, 64px);
-  width: min(1332px, 100%);
-  margin: 0 auto;
   align-items: center;
 }
 

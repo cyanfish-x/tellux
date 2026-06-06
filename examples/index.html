@@ -171,42 +171,46 @@ viewer.<span class="code-token code-token--property">layers</span>.<span class="
         </div>
       </section>
 
-      <section class="portal-section portal-band" aria-label="真实地形与大气效果展示">
-        <div class="portal-band__image">
-          <img
-            src="https://picture.cyanfish.site/localhost_5173_terrain.html%20(1).png"
-            alt="Tellux 渲染的雪山地形、低角度太阳和预计算大气散射效果"
-          />
-        </div>
-        <div class="portal-band__content">
-          <p class="portal-eyebrow">Terrain & Atmosphere</p>
-          <h2>真实地形和预计算大气一起进入工程视图</h2>
-          <p>
-            Tellux 可以在 Cesium quantized-mesh 地形上叠加影像纹理，并结合预计算大气 LUT、太阳光和天空光探针，
-            让远山雾化、低空暖光和雪线明暗关系保持稳定。它不是展示页滤镜，而是面向三维 GIS 场景的实时渲染基础。
-          </p>
-        </div>
-      </section>
+      <section class="portal-section portal-showcase" aria-label="真实地形、大气与体积云效果展示">
+        <div class="portal-showcase__inner">
+          <article class="portal-band" aria-label="真实地形与大气效果展示">
+            <div class="portal-band__image">
+              <img
+                src="https://picture.cyanfish.site/localhost_5173_terrain.html%20(1).png"
+                alt="Tellux 渲染的雪山地形、低角度太阳和预计算大气散射效果"
+              />
+            </div>
+            <div class="portal-band__content">
+              <p class="portal-eyebrow">Terrain & Atmosphere</p>
+              <h2>真实地形和预计算大气一起进入工程视图</h2>
+              <p>
+                Tellux 可以在 Cesium quantized-mesh 地形上叠加影像纹理，并结合预计算大气 LUT、太阳光和天空光探针，
+                让远山雾化、低空暖光和雪线明暗关系保持稳定。它不是展示页滤镜，而是面向三维 GIS 场景的实时渲染基础。
+              </p>
+            </div>
+          </article>
 
-      <section class="portal-section portal-band portal-band--reverse" aria-label="体积云渲染效果展示">
-        <div class="portal-band__image">
-          <video
-            src="https://picture.cyanfish.site/a1965e781b03b7ca46c7055c3c8322ed.mp4"
-            aria-label="Tellux 渲染的体积云随视角推进和光照变化的效果"
-            autoplay
-            muted
-            loop
-            playsinline
-            preload="auto"
-          ></video>
-        </div>
-        <div class="portal-band__content">
-          <p class="portal-eyebrow">Volumetric Clouds</p>
-          <h2>把云层作为真实空间体积参与场景表达</h2>
-          <p>
-            Tellux 的体积云沿用物理光照和大气合成流程，云体会随相机高度、太阳方向和曝光设置呈现连续的层次变化。
-            从近地平线的厚重云墙到高空俯视的柔和云海，它都能和地形、天空、后处理保持统一的空间关系。
-          </p>
+          <article class="portal-band portal-band--reverse" aria-label="体积云渲染效果展示">
+            <div class="portal-band__image">
+              <video
+                src="https://picture.cyanfish.site/a1965e781b03b7ca46c7055c3c8322ed.mp4"
+                aria-label="Tellux 渲染的体积云随视角推进和光照变化的效果"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="auto"
+              ></video>
+            </div>
+            <div class="portal-band__content">
+              <p class="portal-eyebrow">Volumetric Clouds</p>
+              <h2>把云层作为真实空间体积参与场景表达</h2>
+              <p>
+                Tellux 的体积云沿用物理光照和大气合成流程，云体会随相机高度、太阳方向和曝光设置呈现连续的层次变化。
+                从近地平线的厚重云墙到高空俯视的柔和云海，它都能和地形、天空、后处理保持统一的空间关系。
+              </p>
+            </div>
+          </article>
         </div>
       </section>
 
