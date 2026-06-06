@@ -84,23 +84,23 @@ export interface ViewerOptions {
     /** 是否启用大气天空和空气透视，默认 `true`。Enables atmospheric sky and aerial perspective. Defaults to `true`. */
     skyAtmosphere?: boolean
     /**
-     * 空气散射强度，范围 `0` 到 `1`，默认 `1`。
+     * 空气散射强度，范围 `0` 到 `1`，默认 `0.6`。
      *
      * 控制空气透视中沿视线进入镜头的散射光强度。降低后远景会更通透。
      *
-     * Atmospheric in-scattering intensity from `0` to `1`. Defaults to `1`.
+     * Atmospheric in-scattering intensity from `0` to `1`. Defaults to `0.6`.
      *
      * Controls the light scattered into the view ray by aerial perspective.
      * Lower values make distant imagery clearer.
      */
     atmosphereInscatterIntensity?: number
     /**
-     * 是否按地平线和球体边缘混合空气散射，默认 `false`。
+     * 是否按地平线和球体边缘混合空气散射，默认 `true`。
      *
      * 开启后，正俯视区域会减弱散射，越接近地平线或球体边缘散射越强。
      *
      * Blends atmospheric in-scattering by horizon and globe edge. Defaults to
-     * `false`.
+     * `true`.
      *
      * When enabled, in-scattering is reduced in top-down areas and strengthened
      * toward the horizon or globe edge.
@@ -118,6 +118,20 @@ export interface ViewerOptions {
      * the second value, in-scattering approaches zero.
      */
     atmosphereInscatterHorizonRange?: [number, number]
+    /**
+     * 是否修正相机高度和椭球高度误差，默认 `true`。
+     *
+     * Corrects camera altitude against the ellipsoid used by the atmosphere.
+     * Defaults to `true`.
+     */
+    atmosphereCorrectAltitude?: boolean
+    /**
+     * 是否修正地表瓦片几何误差导致的光照伪影，默认 `true`。
+     *
+     * Corrects lighting artifacts caused by surface tile geometric error.
+     * Defaults to `true`.
+     */
+    atmosphereCorrectGeometricError?: boolean
     /**
      * 大气光照模式，默认 `light-source`。
      *
@@ -173,6 +187,30 @@ export interface ViewerOptions {
      * Mainly affects the Takram sky light probe in `light-source` mode.
      */
     atmosphereSkyLightIntensity?: number
+    /**
+     * 是否启用夜间兜底环境光，默认 `true`。
+     *
+     * 该全局漫反射光用于避免太阳和天空光过弱时场景完全变黑。
+     *
+     * Enables the nighttime fallback ambient light. Defaults to `true`.
+     *
+     * This global diffuse light prevents the scene from becoming fully black
+     * when sun and sky lighting are too weak.
+     */
+    fallbackAmbientLight?: boolean
+    /**
+     * 夜间兜底环境光强度，默认 `0.5`。
+     *
+     * 表示相机高度低于 `8000` 米时的最大强度；高度从 `7600000`
+     * 米下降到 `8000` 米时，实际光强从 `0` 线性增强到该值。
+     *
+     * Nighttime fallback ambient light intensity. Defaults to `0.5`.
+     *
+     * This is the maximum intensity below `8000` meters. As the camera descends
+     * from `7600000` meters to `8000` meters, the actual light intensity
+     * linearly increases from `0` to this value.
+     */
+    fallbackAmbientLightIntensity?: number
     /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
     lensFlare?: boolean
     /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */

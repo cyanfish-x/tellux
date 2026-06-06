@@ -3,6 +3,9 @@ import type { CloudsEffect } from '@takram/three-clouds'
 import type { AtmosphereRuntimeControls } from './rendering/AtmosphereManager'
 import type { AtmosphereLightingMode, ViewerOptions } from './types'
 
+const FALLBACK_AMBIENT_LIGHT_MIN_HEIGHT = 8000
+const FALLBACK_AMBIENT_LIGHT_MAX_HEIGHT = 7600000
+
 class SceneToggle {
   private isShown: boolean
   private readonly onChange: () => void
@@ -102,6 +105,8 @@ export class Scene {
    * Post-processing stage controls.
    */
   postProcessStages: PostProcessStages
+  private readonly fallbackAmbientLightSource: THREE.AmbientLight
+  private currentFallbackAmbientLightIntensity: number
   private currentCloudCoverage: number
   private currentCloudLayerAltitude: number
   private currentCloudLayerHeight: number
@@ -133,6 +138,11 @@ export class Scene {
     this.clouds = new SceneToggle(options.clouds, onEffectsChange)
     this.skyAtmosphere = new SceneToggle(options.skyAtmosphere, onEffectsChange)
     this.postProcessStages = new PostProcessStages(options, onEffectsChange)
+    this.fallbackAmbientLightSource = new THREE.AmbientLight(0xffffff, 0)
+    this.currentFallbackAmbientLightIntensity = 0
+    this.fallbackAmbientLightIntensity = options.fallbackAmbientLightIntensity
+    this.fallbackAmbientLight = options.fallbackAmbientLight
+    this.threeScene.add(this.fallbackAmbientLightSource)
   }
 
   /**
@@ -338,6 +348,67 @@ export class Scene {
   set atmosphereSkyLightIntensity(value: number) {
     const atmosphere = this.getAtmosphereControls()
     if (atmosphere) atmosphere.skyLightIntensity = value
+  }
+
+  /**
+   * 是否启用夜间兜底环境光。
+   *
+   * 该全局漫反射光用于避免太阳和天空光过弱时场景完全变黑。
+   *
+   * Enables the nighttime fallback ambient light.
+   *
+   * This global diffuse light prevents the scene from becoming fully black
+   * when sun and sky lighting are too weak.
+   */
+  get fallbackAmbientLight() {
+    return this.fallbackAmbientLightSource.visible
+  }
+
+  set fallbackAmbientLight(value: boolean) {
+    this.fallbackAmbientLightSource.visible = value
+  }
+
+  /**
+   * 夜间兜底环境光强度。
+   *
+   * 表示相机高度低于 `8000` 米时的最大强度；高度从 `7600000`
+   * 米下降到 `8000` 米时，实际光强从 `0` 线性增强到该值。
+   *
+   * Nighttime fallback ambient light intensity.
+   *
+   * This is the maximum intensity below `8000` meters. As the camera descends
+   * from `7600000` meters to `8000` meters, the actual light intensity linearly
+   * increases from `0` to this value.
+   */
+  get fallbackAmbientLightIntensity() {
+    return this.currentFallbackAmbientLightIntensity
+  }
+
+  set fallbackAmbientLightIntensity(value: number) {
+    this.currentFallbackAmbientLightIntensity = Math.max(0, Number.isFinite(value) ? value : 0.5)
+  }
+
+  /**
+   * 根据当前相机高度更新夜间兜底环境光的实际强度。
+   *
+   * Updates the actual nighttime fallback ambient light intensity from the
+   * current camera height.
+   */
+  updateFallbackAmbientLight(currentHeight: number) {
+    if (!this.fallbackAmbientLightSource.visible) return
+
+    if (!Number.isFinite(currentHeight)) {
+      this.fallbackAmbientLightSource.intensity = 0
+      return
+    }
+
+    const t = THREE.MathUtils.clamp(
+      (FALLBACK_AMBIENT_LIGHT_MAX_HEIGHT - currentHeight) /
+        (FALLBACK_AMBIENT_LIGHT_MAX_HEIGHT - FALLBACK_AMBIENT_LIGHT_MIN_HEIGHT),
+      0,
+      1
+    )
+    this.fallbackAmbientLightSource.intensity = this.currentFallbackAmbientLightIntensity * t
   }
 
   /**

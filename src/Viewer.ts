@@ -153,6 +153,7 @@ export class Viewer {
   private readonly flyToTargetNorth = new THREE.Vector3()
   private readonly flyToTargetUp = new THREE.Vector3()
   private readonly flyToTargetCamera = new THREE.PerspectiveCamera()
+  private readonly cameraCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly flyToTargetCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly pickCoords = new THREE.Vector2()
   private readonly pickRaycaster = new THREE.Raycaster()
@@ -249,11 +250,7 @@ export class Viewer {
     this.atmosphere = new AtmosphereManager(this.renderer, this.threeCamera, () => this.postProcessing.applyEffects())
     atmosphere = this.atmosphere
     this.atmosphere.addLightSourcesTo(this.scene.threeScene)
-    this.atmosphere.lightingMode = sceneOptions.atmosphereLightingMode
-    this.atmosphere.sunLightIntensity = sceneOptions.atmosphereSunLightIntensity
-    this.atmosphere.skyLightIntensity = sceneOptions.atmosphereSkyLightIntensity
-    this.atmosphere.sunLight = sceneOptions.atmosphereSunLight
-    this.atmosphere.skyLight = sceneOptions.atmosphereSkyLight
+    this.applyInitialAtmosphereOptions(sceneOptions)
     this.scene.cloudCoverage = this.scene.cloudCoverage
     this.clock = new Clock(() => this.atmosphere.updateSunDirection(this.clock.currentTime))
 
@@ -507,6 +504,7 @@ export class Viewer {
     this.resize()
     this.controls.update()
     this.syncAtmosphereInscatter()
+    this.syncFallbackAmbientLight()
     this.tilesets.update()
     this.atmosphere.updateLightSources()
     this.renderer.render(this.scene.threeScene, this.threeCamera)
@@ -574,16 +572,33 @@ export class Viewer {
       dithering: options?.dithering ?? false,
       toneMappingExposure: options?.toneMappingExposure ?? 10,
       cloudCoverage: options?.cloudCoverage ?? 0.3,
-      atmosphereInscatterIntensity: options?.atmosphereInscatterIntensity ?? 1,
-      atmosphereInscatterHorizonBlend: options?.atmosphereInscatterHorizonBlend ?? false,
+      atmosphereInscatterIntensity: options?.atmosphereInscatterIntensity ?? 0.6,
+      atmosphereInscatterHorizonBlend: options?.atmosphereInscatterHorizonBlend ?? true,
       atmosphereInscatterHorizonRange: options?.atmosphereInscatterHorizonRange ?? [0, 0.6],
+      atmosphereCorrectAltitude: options?.atmosphereCorrectAltitude ?? true,
+      atmosphereCorrectGeometricError: options?.atmosphereCorrectGeometricError ?? true,
       atmosphereLightingMode: options?.atmosphereLightingMode ?? 'light-source',
       atmosphereSunLightIntensity: options?.atmosphereSunLightIntensity ?? 1,
       atmosphereSkyLightIntensity: options?.atmosphereSkyLightIntensity ?? 1,
       atmosphereSunLight: options?.atmosphereSunLight ?? true,
       atmosphereSkyLight: options?.atmosphereSkyLight ?? true,
+      fallbackAmbientLight: options?.fallbackAmbientLight ?? true,
+      fallbackAmbientLightIntensity: options?.fallbackAmbientLightIntensity ?? 0.5,
       creasedNormals: options?.creasedNormals ?? false
     }
+  }
+
+  private applyInitialAtmosphereOptions(options: Required<NonNullable<ViewerOptions['scene']>>) {
+    this.atmosphere.inscatterIntensity = options.atmosphereInscatterIntensity
+    this.atmosphere.inscatterHorizonBlend = options.atmosphereInscatterHorizonBlend
+    this.atmosphere.inscatterHorizonRange = options.atmosphereInscatterHorizonRange
+    this.atmosphere.correctAltitude = options.atmosphereCorrectAltitude
+    this.atmosphere.correctGeometricError = options.atmosphereCorrectGeometricError
+    this.atmosphere.lightingMode = options.atmosphereLightingMode
+    this.atmosphere.sunLightIntensity = options.atmosphereSunLightIntensity
+    this.atmosphere.skyLightIntensity = options.atmosphereSkyLightIntensity
+    this.atmosphere.sunLight = options.atmosphereSunLight
+    this.atmosphere.skyLight = options.atmosphereSkyLight
   }
 
   private createTransparentOverlayTexture() {
@@ -604,6 +619,16 @@ export class Viewer {
     this.atmosphere.inscatterIntensity = this.scene.atmosphereInscatterIntensity
     this.atmosphere.inscatterHorizonBlend = this.scene.atmosphereInscatterHorizonBlend
     this.atmosphere.inscatterHorizonRange = this.scene.atmosphereInscatterHorizonRange
+  }
+
+  private syncFallbackAmbientLight() {
+    this.threeCamera.updateMatrix()
+    const cartographic = this.tilesets.tileset.ellipsoid.getCartographicFromObjectFrame(
+      this.threeCamera.matrix,
+      this.cameraCartographicScratch,
+      CAMERA_FRAME
+    )
+    this.scene.updateFallbackAmbientLight(cartographic.height)
   }
 
   private applyTargetFlight(target: FlyToTargetTarget, options: FlyToTargetOptions) {
