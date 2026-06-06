@@ -6,9 +6,38 @@
 export class Clock {
   private currentDate = new Date()
   private readonly onChange: () => void
+  private isAnimating = false
+  private currentMultiplier = 1
 
   constructor(onChange: () => void) {
     this.onChange = onChange
+  }
+
+  /**
+   * 是否随渲染循环自动推进时间，默认 `false`。
+   *
+   * Whether time advances automatically with the render loop. Defaults to
+   * `false`.
+   */
+  get animate() {
+    return this.isAnimating
+  }
+
+  set animate(value: boolean) {
+    this.isAnimating = value
+  }
+
+  /**
+   * 自动推进时间的倍率，默认 `1`。
+   *
+   * Time multiplier used while animating. Defaults to `1`.
+   */
+  get multiplier() {
+    return this.currentMultiplier
+  }
+
+  set multiplier(value: number) {
+    this.currentMultiplier = Math.max(0, toFinite(value, 1))
   }
 
   /**
@@ -62,6 +91,22 @@ export class Clock {
    */
   setCurrentTime(value: Date) {
     this.currentDate = new Date(value)
+    this.onChange()
+  }
+
+  /**
+   * 按秒推进时钟。通常由 {@link Viewer.render} 在 `animate` 为 `true` 时调用。
+   *
+   * Advances the clock by seconds. Usually called by {@link Viewer.render} when
+   * `animate` is `true`.
+   */
+  tick(deltaTime: number) {
+    if (!this.animate || this.multiplier === 0) return
+
+    const deltaMilliseconds = toFinite(deltaTime, 0) * this.multiplier * 1000
+    if (deltaMilliseconds === 0) return
+
+    this.currentDate = new Date(this.currentDate.getTime() + deltaMilliseconds)
     this.onChange()
   }
 }

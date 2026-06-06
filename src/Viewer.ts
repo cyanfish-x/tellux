@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
-import { TilesRenderer, GlobeControls } from '3d-tiles-renderer'
+import { EnvironmentControls, TilesRenderer, GlobeControls as BaseGlobeControls } from '3d-tiles-renderer'
 import { Camera } from './Camera'
 import { Clock } from './Clock'
 import { CAMERA_FRAME, DEFAULT_CAMERA, DEG2RAD, RAD2DEG } from './constants'
@@ -24,6 +24,7 @@ import type {
   ViewerMouseEvent,
   ViewerOptions
 } from './types'
+import type { GlobeControls } from '3d-tiles-renderer'
 
 export { Camera } from './Camera'
 export { CesiumIonResource } from './resources/CesiumIonResource'
@@ -72,6 +73,16 @@ export type {
   ViewerOptions,
   WMSResourceOptions
 } from './types'
+
+class TelluxGlobeControls extends BaseGlobeControls {
+  _updateRotation(deltaTime: number) {
+    ;(
+      EnvironmentControls.prototype as unknown as {
+        _updateRotation(this: TelluxGlobeControls, deltaTime: number): void
+      }
+    )._updateRotation.call(this, deltaTime)
+  }
+}
 
 /**
  * Tellux 主视图类。
@@ -232,7 +243,10 @@ export class Viewer {
 
     this.threeCamera = new THREE.PerspectiveCamera(cameraOptions.fov, width / height, cameraOptions.near, cameraOptions.far)
     this.camera = new Camera(this.threeCamera)
-    this.renderer = new THREE.WebGLRenderer({ outputBufferType: THREE.HalfFloatType }) as ThreeRendererWithEffects
+    this.renderer = new THREE.WebGLRenderer({
+      alpha: options.transparent ?? false,
+      outputBufferType: THREE.HalfFloatType
+    }) as ThreeRendererWithEffects
     this.renderer.setPixelRatio(this.currentResolutionScale)
     this.renderer.setSize(width, height)
     this.renderer.toneMapping = THREE.AgXToneMapping
@@ -268,7 +282,7 @@ export class Viewer {
     })
     this.camera.setView(cameraOptions)
 
-    this.controls = new GlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
+    this.controls = new TelluxGlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
     this.syncControlsEllipsoid()
     this.layers = new LayerManager(options.layers, (layers, change) => {
       if (change.type === 'structure') {
@@ -498,9 +512,10 @@ export class Viewer {
    * Call this manually when {@link Viewer.useDefaultRenderLoop} is `false`.
    */
   render(time = performance.now()) {
-    const deltaTime = (time - this.previousTime) / 1000
+    const deltaTime = this.previousTime === 0 ? 0 : (time - this.previousTime) / 1000
     this.previousTime = time
 
+    this.clock.tick(deltaTime)
     this.resize()
     this.controls.update()
     this.syncAtmosphereInscatter()

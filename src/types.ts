@@ -251,6 +251,17 @@ export interface ViewerOptions {
    */
   resolutionScale?: number
   /**
+   * 是否启用透明渲染背景，默认 `false`。
+   *
+   * 开启后 WebGL canvas 会透出页面背景，适合嵌入门户页或自定义背景。
+   *
+   * Enables a transparent rendering background. Defaults to `false`.
+   *
+   * When enabled, the WebGL canvas shows the page background, which is useful
+   * for embedded portal heroes or custom backdrops.
+   */
+  transparent?: boolean
+  /**
    * Draco 解码器文件的公开 URL 路径。
    *
    * 默认 `/draco/gltf/`。

@@ -2,6 +2,8 @@ import type { AtmosphereLightingMode } from "../../src"
 
 export interface ExampleSettingsPanelOptions {
   skyAtmosphere?: boolean
+  clockAnimate?: boolean
+  clockMultiplier?: number
   hourUTC?: number
   dayOfYear?: number
   clouds?: boolean

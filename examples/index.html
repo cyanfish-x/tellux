@@ -1,49 +1,210 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="portal-page">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tellux Examples</title>
+    <title>Tellux 开发者门户</title>
     <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./index.ts"></script>
   </head>
-  <body>
-    <main class="example-home">
-      <div class="example-home__content">
-        <h1>Tellux Examples</h1>
-        <p>
-          这些示例从本仓库的 <code>src</code> 直接引入 Tellux，覆盖基础场景、相机控制、事件读数、影像图层、3D Tiles、地形和大气云层。
-        </p>
-        <div class="example-list" aria-label="Tellux examples">
-          <a class="example-link" href="./basic.html">
-            <strong>基础场景渲染</strong>
-            <span>创建 Viewer，加载 ArcGIS 影像瓦片，启用默认大气、云层和后处理，并提供东京、上海视角按钮。</span>
+  <body class="portal-page">
+    <main class="portal">
+      <header class="portal-hero">
+        <nav class="portal-nav" aria-label="Tellux 门户导航" data-i18n-aria-label="navLabel">
+          <a class="portal-brand" href="./index.html">
+            <span class="portal-brand__mark" aria-hidden="true">T</span>
+            <span>Tellux</span>
           </a>
-          <a class="example-link" href="./fly-to.html">
-            <strong>相机飞行</strong>
-            <span>使用 Cesium 风格的 viewer.camera.flyTo 在东京、上海、新加坡之间平滑飞行，并支持取消飞行。</span>
+          <div class="portal-nav__actions">
+            <div class="portal-nav__links">
+              <a href="#examples" data-i18n="navExamples">示例</a>
+              <a href="#guides" data-i18n="navGuides">指南</a>
+              <a href="#api" data-i18n="navApi">接口文档</a>
+            </div>
+            <button
+              class="portal-language"
+              type="button"
+              data-language-toggle
+              data-i18n="languageToggle"
+              data-i18n-aria-label="languageToggleLabel"
+              aria-label="切换到英文"
+            >
+              EN
+            </button>
+          </div>
+        </nav>
+
+        <div class="portal-hero__layout">
+          <div class="portal-hero__content">
+            <p class="portal-eyebrow" data-i18n="heroEyebrow">Three.js GIS 查看器工具包</p>
+            <h1 data-i18n="heroTitle">Tellux 开发者门户</h1>
+            <p data-i18n="heroCopy">
+              从可运行示例开始探索 Tellux：地球视图、相机飞行、点击读数、影像图层、三维瓦片、地形以及大气云层。后续这里也会承载指南和接口文档入口。
+            </p>
+            <div class="portal-actions" aria-label="主要门户操作" data-i18n-aria-label="primaryActionsLabel">
+              <a class="portal-button portal-button--primary" href="#examples" data-i18n="browseExamples">浏览示例</a>
+              <a class="portal-button" href="./README.md" data-i18n="readmeAction" data-i18n-href="readmeHref">阅读说明文档</a>
+            </div>
+            <dl class="portal-hero__stats" aria-label="Tellux 门户亮点" data-i18n-aria-label="statsLabel">
+              <div>
+                <dt data-i18n="statRenderer">渲染器</dt>
+                <dd>Three.js</dd>
+              </div>
+              <div>
+                <dt data-i18n="statFormat">格式</dt>
+                <dd data-i18n="statFormatValue">三维瓦片</dd>
+              </div>
+              <div>
+                <dt data-i18n="statPipeline">渲染管线</dt>
+                <dd data-i18n="statPipelineValue">大气 / 云层 / 后处理</dd>
+              </div>
+            </dl>
+          </div>
+          <aside class="portal-globe" aria-label="Tellux 查看器地球预览" data-i18n-aria-label="globeLabel">
+            <div id="portal-globe-viewer" class="portal-globe__viewer">
+              <span class="portal-globe__fallback" data-i18n="globeFallback">正在初始化 Tellux 查看器</span>
+            </div>
+            <div class="portal-globe__caption">
+              <span data-i18n="globeCaptionLabel">实时预览</span>
+              <strong data-i18n="globeCaption">ArcGIS 影像 + 大气</strong>
+            </div>
+          </aside>
+        </div>
+      </header>
+
+      <section class="portal-section portal-section--overview" aria-label="门户概览" data-i18n-aria-label="overviewLabel">
+        <a class="portal-overview-item" href="#examples">
+          <span>01</span>
+          <strong data-i18n="overviewExamplesTitle">示例</strong>
+          <em data-i18n="overviewExamplesCopy">运行中的功能切片</em>
+        </a>
+        <a class="portal-overview-item" href="#guides">
+          <span>02</span>
+          <strong data-i18n="overviewGuidesTitle">指南</strong>
+          <em data-i18n="overviewGuidesCopy">即将加入接入指南</em>
+        </a>
+        <a class="portal-overview-item" href="#api">
+          <span>03</span>
+          <strong data-i18n="overviewApiTitle">接口文档</strong>
+          <em data-i18n="overviewApiCopy">预留类型与接口文档</em>
+        </a>
+      </section>
+
+      <section id="examples" class="portal-section">
+        <div class="portal-section__header">
+          <p class="portal-eyebrow" data-i18n="examplesEyebrow">示例</p>
+          <h2 data-i18n="examplesTitle">示例入口</h2>
+          <p data-i18n="examplesCopy">这些页面通过 Vite 从仓库源码直接引入 Tellux，适合开发时验证 API 行为和渲染效果。</p>
+        </div>
+        <div class="portal-grid" aria-label="Tellux 示例" data-i18n-aria-label="examplesGridLabel">
+          <a class="portal-card" href="./basic.html">
+            <span class="portal-card__top">
+              <span class="portal-card__tag" data-i18n="tagViewer">查看器</span>
+              <span class="portal-card__arrow" aria-hidden="true">→</span>
+            </span>
+            <strong data-i18n="cardBasicTitle">基础场景渲染</strong>
+            <span data-i18n="cardBasicCopy">创建查看器，加载 ArcGIS 影像瓦片，启用默认大气、云层和后处理，并提供东京、上海视角按钮。</span>
           </a>
-          <a class="example-link" href="./click.html">
-            <strong>点击与鼠标读数</strong>
-            <span>监听 Viewer 点击和鼠标移动事件，显示 canvas 像素坐标以及经度、纬度和高度。</span>
+          <a class="portal-card" href="./fly-to.html">
+            <span class="portal-card__top">
+              <span class="portal-card__tag" data-i18n="tagCamera">相机</span>
+              <span class="portal-card__arrow" aria-hidden="true">→</span>
+            </span>
+            <strong data-i18n="cardFlyTitle">相机飞行</strong>
+            <span data-i18n="cardFlyCopy">使用 Cesium 风格的相机飞行 API 在东京、上海、新加坡之间平滑飞行，并支持取消飞行。</span>
           </a>
-          <a class="example-link" href="./data-sources.html">
-            <strong>影像图层管理器</strong>
-            <span>管理 ArcGIS XYZ、NASA GIBS WMS 和 OpenInfraMap MVT 图层，支持显隐、透明度和拖拽排序。</span>
+          <a class="portal-card" href="./click.html">
+            <span class="portal-card__top">
+              <span class="portal-card__tag" data-i18n="tagEvents">事件</span>
+              <span class="portal-card__arrow" aria-hidden="true">→</span>
+            </span>
+            <strong data-i18n="cardClickTitle">点击与鼠标读数</strong>
+            <span data-i18n="cardClickCopy">监听查看器点击和鼠标移动事件，显示画布像素坐标以及经度、纬度和高度。</span>
           </a>
-          <a class="example-link" href="./3d-tiles.html">
-            <strong>3D Tiles 加载</strong>
-            <span>通过 tileset.json URL 或 Cesium Ion asset 加载独立场景 3D Tiles，并支持飞行定位、显隐和移除。</span>
+          <a class="portal-card" href="./data-sources.html">
+            <span class="portal-card__top">
+              <span class="portal-card__tag" data-i18n="tagLayers">图层</span>
+              <span class="portal-card__arrow" aria-hidden="true">→</span>
+            </span>
+            <strong data-i18n="cardLayersTitle">影像图层管理器</strong>
+            <span data-i18n="cardLayersCopy">管理 ArcGIS XYZ、NASA GIBS WMS 和 OpenInfraMap MVT 图层，支持显隐、透明度和拖拽排序。</span>
           </a>
-          <a class="example-link" href="./terrain.html">
-            <strong>Cesium 地形热切换</strong>
-            <span>输入 quantized-mesh 地形 URL，通过左上角面板开启、关闭并热切换地形。</span>
+          <a class="portal-card" href="./3d-tiles.html">
+            <span class="portal-card__top">
+              <span class="portal-card__tag" data-i18n="tagTiles">三维瓦片</span>
+              <span class="portal-card__arrow" aria-hidden="true">→</span>
+            </span>
+            <strong data-i18n="cardTilesTitle">三维瓦片加载</strong>
+            <span data-i18n="cardTilesCopy">通过 tileset.json 地址或 Cesium Ion 资产加载独立场景三维瓦片，并支持飞行定位、显隐和移除。</span>
           </a>
-          <a class="example-link" href="./atmosphere.html">
-            <strong>体积云与大气</strong>
-            <span>切换太平洋和喜马拉雅视角，并通过公共设置面板调整大气、体积云、UTC 时间、光照和曝光。</span>
+          <a class="portal-card" href="./terrain.html">
+            <span class="portal-card__top">
+              <span class="portal-card__tag" data-i18n="tagTerrain">地形</span>
+              <span class="portal-card__arrow" aria-hidden="true">→</span>
+            </span>
+            <strong data-i18n="cardTerrainTitle">Cesium 地形热切换</strong>
+            <span data-i18n="cardTerrainCopy">输入量化网格地形地址，通过左上角面板开启、关闭并热切换地形。</span>
+          </a>
+          <a class="portal-card" href="./atmosphere.html">
+            <span class="portal-card__top">
+              <span class="portal-card__tag" data-i18n="tagAtmosphere">大气</span>
+              <span class="portal-card__arrow" aria-hidden="true">→</span>
+            </span>
+            <strong data-i18n="cardAtmosphereTitle">体积云与大气</strong>
+            <span data-i18n="cardAtmosphereCopy">切换太平洋和喜马拉雅视角，并通过公共设置面板调整大气、体积云、UTC 时间、光照和曝光。</span>
           </a>
         </div>
-      </div>
+      </section>
+
+      <section id="guides" class="portal-section portal-section--split">
+        <div class="portal-section__header">
+          <p class="portal-eyebrow" data-i18n="guidesEyebrow">指南</p>
+          <h2 data-i18n="guidesTitle">指南页占位</h2>
+          <p data-i18n="guidesCopy">未来可以把入门安装、查看器生命周期、图层接入、Cesium Ion 资源、部署资源路径等内容放在这里。</p>
+        </div>
+        <div class="portal-doc-list" aria-label="规划中的指南" data-i18n-aria-label="guidesListLabel">
+          <div class="portal-doc-item">
+            <span class="portal-doc-item__index" data-i18n="guideIndex01">指南 01</span>
+            <strong data-i18n="guideStartTitle">快速开始</strong>
+            <span data-i18n="guideStartCopy">安装、资源目录、创建第一个查看器。</span>
+          </div>
+          <div class="portal-doc-item">
+            <span class="portal-doc-item__index" data-i18n="guideIndex02">指南 02</span>
+            <strong data-i18n="guideDataTitle">数据与图层</strong>
+            <span data-i18n="guideDataCopy">XYZ、WMS、MVT、地形和三维瓦片的接入模式。</span>
+          </div>
+          <div class="portal-doc-item">
+            <span class="portal-doc-item__index" data-i18n="guideIndex03">指南 03</span>
+            <strong data-i18n="guideRenderingTitle">渲染效果</strong>
+            <span data-i18n="guideRenderingCopy">大气、云层、后处理、曝光与性能调优。</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="api" class="portal-section portal-section--split">
+        <div class="portal-section__header">
+          <p class="portal-eyebrow" data-i18n="apiEyebrow">接口文档</p>
+          <h2 data-i18n="apiTitle">接口文档占位</h2>
+          <p data-i18n="apiCopy">等声明产物或文档生成流程接入后，可以把查看器、相机、图层管理器、资源类型等入口汇总到这里。</p>
+        </div>
+        <div class="portal-doc-list" aria-label="规划中的 API 文档" data-i18n-aria-label="apiListLabel">
+          <div class="portal-doc-item">
+            <span class="portal-doc-item__index">API 01</span>
+            <strong data-i18n="apiViewerTitle">查看器</strong>
+            <span data-i18n="apiViewerCopy">初始化选项、场景控制、资源加载和销毁流程。</span>
+          </div>
+          <div class="portal-doc-item">
+            <span class="portal-doc-item__index">API 02</span>
+            <strong data-i18n="apiCameraTitle">相机</strong>
+            <span data-i18n="apiCameraCopy">飞行、设置视角、坐标与相机状态。</span>
+          </div>
+          <div class="portal-doc-item">
+            <span class="portal-doc-item__index">API 03</span>
+            <strong data-i18n="apiResourcesTitle">资源</strong>
+            <span data-i18n="apiResourcesCopy">Cesium Ion 资源、模板地址资源、WMS 资源、MVT 资源。</span>
+          </div>
+        </div>
+      </section>
     </main>
   </body>
 </html>

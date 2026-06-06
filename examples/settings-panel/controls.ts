@@ -101,7 +101,14 @@ export function createRangeControl(options: RangeControlOptions) {
   header.append(label, value)
   wrapper.append(header, input)
 
-  return { element: wrapper, input }
+  return {
+    element: wrapper,
+    input,
+    setValue(nextValue: number) {
+      input.value = String(nextValue)
+      value.textContent = options.format(nextValue)
+    },
+  }
 }
 
 export function createSelectControl<T extends string>(

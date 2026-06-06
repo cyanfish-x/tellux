@@ -14,6 +14,14 @@ export function applyInitialSettings(
     viewer.scene.skyAtmosphere.show = settings.skyAtmosphere
   }
 
+  if (settings.clockAnimate !== undefined) {
+    viewer.clock.animate = settings.clockAnimate
+  }
+
+  if (settings.clockMultiplier !== undefined) {
+    viewer.clock.multiplier = settings.clockMultiplier
+  }
+
   if (settings.dayOfYear !== undefined || settings.hourUTC !== undefined) {
     viewer.clock.currentTime = createUTCDateFromControls(
       viewer.clock.currentTime.getUTCFullYear(),

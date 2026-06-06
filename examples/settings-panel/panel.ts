@@ -170,6 +170,20 @@ export function mountExampleSettingsPanel(
     "显示帧率",
     settings.showFps ?? true
   )
+  const clockAnimateToggle = createSwitchControl(
+    "clock-animate",
+    "时间流动",
+    settings.clockAnimate ?? viewer.clock.animate
+  )
+  const clockMultiplierControl = createRangeControl({
+    id: "clock-multiplier",
+    label: "时间倍率",
+    min: 0,
+    max: 1000,
+    step: 1,
+    value: settings.clockMultiplier ?? viewer.clock.multiplier,
+    format: (value) => `${value.toFixed(0)}x`,
+  })
 
   const initialClockTime = viewer.clock.currentTime
   const initialYearUTC = initialClockTime.getUTCFullYear()
@@ -196,7 +210,12 @@ export function mountExampleSettingsPanel(
   })
 
   content.appendChild(
-    createGroup("日期和时间", [dayOfYearControl.element, utcControl.element])
+    createGroup("日期和时间", [
+      clockAnimateToggle.element,
+      clockMultiplierControl.element,
+      dayOfYearControl.element,
+      utcControl.element,
+    ])
   )
 
   const coverageControl = createRangeControl({
@@ -538,8 +557,41 @@ export function mountExampleSettingsPanel(
   panel.append(toggle, body)
   shell.appendChild(panel)
   const fpsHud = mountFpsHud(viewer, shell, fpsToggle.input.checked)
+  const render = viewer.render.bind(viewer)
+  let shouldApplyTimeControls = true
+  let previousDayOfYearValue = Number(dayOfYearControl.input.value)
+  let previousHourUTCValue = Number(utcControl.input.value)
+  let isSyncingAnimatedTime = false
+
+  function syncAnimatedTimeControls() {
+    if (!viewer.clock.animate) return
+
+    const currentTime = viewer.clock.currentTime
+    const dayOfYearValue = getUTCDayOfYear(currentTime)
+    const hourUTCValue = getUTCHour(currentTime)
+    isSyncingAnimatedTime = true
+    dayOfYearControl.setValue(dayOfYearValue)
+    utcControl.setValue(hourUTCValue)
+    isSyncingAnimatedTime = false
+    previousDayOfYearValue = dayOfYearValue
+    previousHourUTCValue = hourUTCValue
+    status.textContent =
+      `第 ${dayOfYearValue} 日 UTC ${formatHour(hourUTCValue)} / ` +
+      `云量 ${viewer.scene.cloudCoverage.toFixed(2)} / ` +
+      `散射 ${viewer.scene.atmosphereInscatterIntensity.toFixed(
+        2
+      )} / 曝光 ${viewer.toneMappingExposure.toFixed(1)}`
+  }
 
   function applyControls() {
+    if (isSyncingAnimatedTime) return
+
+    const dayOfYearValue = Number(dayOfYearControl.input.value)
+    const hourUTCValue = Number(utcControl.input.value)
+    const timeControlsChanged =
+      dayOfYearValue !== previousDayOfYearValue ||
+      hourUTCValue !== previousHourUTCValue
+
     viewer.scene.skyAtmosphere.show = skyToggle.input.checked
     viewer.scene.atmosphereTransmittance = transmittanceToggle.input.checked
     viewer.scene.atmosphereInscatter = nativeInscatterToggle.input.checked
@@ -609,11 +661,18 @@ export function mountExampleSettingsPanel(
       shadowSampleCountControl.input.value
     )
     viewer.scene.clouds.show = cloudToggle.input.checked
-    viewer.clock.currentTime = createUTCDateFromControls(
-      viewer.clock.currentTime.getUTCFullYear(),
-      Number(dayOfYearControl.input.value),
-      Number(utcControl.input.value)
-    )
+    viewer.clock.animate = clockAnimateToggle.input.checked
+    viewer.clock.multiplier = Number(clockMultiplierControl.input.value)
+    if (shouldApplyTimeControls || timeControlsChanged) {
+      viewer.clock.currentTime = createUTCDateFromControls(
+        viewer.clock.currentTime.getUTCFullYear(),
+        dayOfYearValue,
+        hourUTCValue
+      )
+      previousDayOfYearValue = dayOfYearValue
+      previousHourUTCValue = hourUTCValue
+      shouldApplyTimeControls = false
+    }
     viewer.scene.cloudCoverage = Number(coverageControl.input.value)
     viewer.scene.cloudLayerAltitude = Number(cloudAltitudeControl.input.value)
     viewer.scene.cloudLayerHeight = Number(cloudHeightControl.input.value)
@@ -627,8 +686,10 @@ export function mountExampleSettingsPanel(
     fpsHud.setVisible(fpsToggle.input.checked)
     saveStoredExampleSettings({
       skyAtmosphere: skyToggle.input.checked,
-      dayOfYear: Number(dayOfYearControl.input.value),
-      hourUTC: Number(utcControl.input.value),
+      clockAnimate: clockAnimateToggle.input.checked,
+      clockMultiplier: Number(clockMultiplierControl.input.value),
+      dayOfYear: dayOfYearValue,
+      hourUTC: hourUTCValue,
       clouds: cloudToggle.input.checked,
       cloudCoverage: Number(coverageControl.input.value),
       cloudLayerAltitude: Number(cloudAltitudeControl.input.value),
@@ -704,9 +765,15 @@ export function mountExampleSettingsPanel(
     })
 
   applyControls()
+  viewer.render = (time = performance.now()) => {
+    const deltaTime = render(time)
+    syncAnimatedTimeControls()
+    return deltaTime
+  }
 
   const destroy = viewer.destroy.bind(viewer)
   viewer.destroy = () => {
+    viewer.render = render
     panel.remove()
     fpsHud.dispose()
     destroy()
