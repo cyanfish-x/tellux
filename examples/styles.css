@@ -692,6 +692,29 @@ a {
   accent-color: #7dd3fc;
 }
 
+.example-settings__select {
+  display: grid;
+  gap: 6px;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.example-settings__select select {
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(148, 163, 184, 0.48);
+  border-radius: 6px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.72);
+  font: inherit;
+}
+
+.example-settings__select select:focus {
+  border-color: rgba(125, 211, 252, 0.96);
+  outline: none;
+}
+
 .example-settings__range {
   display: grid;
   gap: 6px;

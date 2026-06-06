@@ -4,6 +4,19 @@ import type { CameraFlightEasingFunction } from './Camera'
 import type { Viewer } from './Viewer'
 
 /**
+ * 大气光照模式。
+ *
+ * `post-process` 使用 Takram 的空气透视后处理光照；`light-source` 使用
+ * Takram 的 Three.js 光源近似光照。
+ *
+ * Atmosphere lighting mode.
+ *
+ * `post-process` uses Takram aerial-perspective post-process lighting;
+ * `light-source` uses Takram Three.js light sources as an approximation.
+ */
+export type AtmosphereLightingMode = 'post-process' | 'light-source'
+
+/**
  * 创建 {@link Viewer} 时使用的配置项。
  *
  * Options used to create a {@link Viewer}.
@@ -82,12 +95,12 @@ export interface ViewerOptions {
      */
     atmosphereInscatterIntensity?: number
     /**
-     * 是否按地平线和球体边缘混合空气散射，默认 `true`。
+     * 是否按地平线和球体边缘混合空气散射，默认 `false`。
      *
      * 开启后，正俯视区域会减弱散射，越接近地平线或球体边缘散射越强。
      *
      * Blends atmospheric in-scattering by horizon and globe edge. Defaults to
-     * `true`.
+     * `false`.
      *
      * When enabled, in-scattering is reduced in top-down areas and strengthened
      * toward the horizon or globe edge.
@@ -105,6 +118,41 @@ export interface ViewerOptions {
      * the second value, in-scattering approaches zero.
      */
     atmosphereInscatterHorizonRange?: [number, number]
+    /**
+     * 大气光照模式，默认 `post-process`。
+     *
+     * `post-process` 在空气透视后处理中应用太阳和天空光照；
+     * `light-source` 在场景中使用 Takram 的太阳直射光和天空光探针。
+     *
+     * Atmosphere lighting mode. Defaults to `post-process`.
+     *
+     * `post-process` applies sun and sky lighting in the aerial-perspective
+     * post-process; `light-source` uses Takram sun direct light and sky light
+     * probe in the scene.
+     */
+    atmosphereLightingMode?: AtmosphereLightingMode
+    /**
+     * 是否应用太阳直射光照，默认 `true`。
+     *
+     * 在 `post-process` 模式下作用于后处理光照；在 `light-source` 模式下作用于 Takram 太阳光源。
+     *
+     * Applies direct sun irradiance. Defaults to `true`.
+     *
+     * In `post-process` mode this controls post-process lighting; in
+     * `light-source` mode this controls the Takram sun light source.
+     */
+    atmosphereSunLight?: boolean
+    /**
+     * 是否应用天空环境光照，默认 `true`。
+     *
+     * 在 `post-process` 模式下作用于后处理光照；在 `light-source` 模式下作用于 Takram 天空光探针。
+     *
+     * Applies sky irradiance. Defaults to `true`.
+     *
+     * In `post-process` mode this controls post-process lighting; in
+     * `light-source` mode this controls the Takram sky light probe.
+     */
+    atmosphereSkyLight?: boolean
     /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
     lensFlare?: boolean
     /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */

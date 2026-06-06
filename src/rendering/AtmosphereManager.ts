@@ -12,11 +12,14 @@ import {
 import {
   AerialPerspectiveEffect,
   PrecomputedTexturesGenerator,
+  SkyLightProbe,
+  SunDirectionalLight,
   getMoonDirectionECEF,
   getSunDirectionECEF
 } from '@takram/three-atmosphere'
 import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
 import { getTelluxAssetUrl } from '../config'
+import type { AtmosphereLightingMode } from '../types'
 
 type TextureApplyCallback<T extends THREE.Texture> = (texture: T) => void
 
@@ -43,8 +46,9 @@ export interface AtmosphereRuntimeControls {
   correctGeometricError: boolean
   transmittance: boolean
   inscatter: boolean
-  postProcessSunLight: boolean
-  postProcessSkyLight: boolean
+  lightingMode: AtmosphereLightingMode
+  sunLight: boolean
+  skyLight: boolean
   sun: boolean
   moon: boolean
   ground: boolean
@@ -69,10 +73,10 @@ const INSCATTER_HORIZON_BLEND_UNIFORM = 'telluxInscatterHorizonBlend'
 const INSCATTER_HORIZON_RANGE_UNIFORM = 'telluxInscatterHorizonRange'
 
 export class AtmosphereManager {
-  readonly sunLight = new THREE.DirectionalLight(0xffffff, 3)
-  readonly skyLight = new THREE.HemisphereLight(0xffffff, 0x1f2937, 0.8)
   readonly aerialPerspectiveEffect: AerialPerspectiveEffect
   readonly cloudsEffect: CloudsEffect
+  readonly sunLightSource: SunDirectionalLight
+  readonly skyLightSource: SkyLightProbe
 
   private readonly loadedTextures: THREE.Texture[] = []
   private readonly texturesGenerator: PrecomputedTexturesGenerator
@@ -82,6 +86,11 @@ export class AtmosphereManager {
   private readonly baseMieScattering = new THREE.Vector3()
   private readonly baseMieExtinction = new THREE.Vector3()
   private readonly baseAbsorptionExtinction = new THREE.Vector3()
+  private readonly lightPosition = new THREE.Vector3()
+  private lightSourceScene: THREE.Scene | null = null
+  private currentLightingMode: AtmosphereLightingMode = 'post-process'
+  private isSunLightEnabled = true
+  private isSkyLightEnabled = true
   private isDisposed = false
 
   constructor(
@@ -91,10 +100,14 @@ export class AtmosphereManager {
   ) {
     this.aerialPerspectiveEffect = new AerialPerspectiveEffect(this.camera)
     this.aerialPerspectiveEffect.sky = true
-    this.aerialPerspectiveEffect.sunLight = true
-    this.aerialPerspectiveEffect.skyLight = true
     this.patchInscatterIntensity()
     this.captureAtmosphereDefaults()
+
+    this.sunLightSource = new SunDirectionalLight()
+    this.sunLightSource.visible = false
+    this.skyLightSource = new SkyLightProbe()
+    this.skyLightSource.visible = false
+    this.applyLightingMode()
 
     this.cloudsEffect = new CloudsEffect(this.camera)
     this.cloudsEffect.localWeatherVelocity.set(0.001, 0)
@@ -109,8 +122,14 @@ export class AtmosphereManager {
     this.texturesGenerator = new PrecomputedTexturesGenerator(renderer)
   }
 
-  addLightsTo(scene: THREE.Scene) {
-    scene.add(this.sunLight, this.skyLight)
+  addLightSourcesTo(scene: THREE.Scene) {
+    if (this.lightSourceScene === scene) return
+
+    this.removeLightSourcesFromScene()
+    this.lightSourceScene = scene
+    scene.add(this.sunLightSource)
+    scene.add(this.sunLightSource.target)
+    scene.add(this.skyLightSource)
   }
 
   syncCloudAtmosphereComposition(cloudsVisible: boolean, atmosphereVisible: boolean) {
@@ -134,7 +153,20 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.sunDirection.copy(sunDirection)
     this.aerialPerspectiveEffect.moonDirection.copy(moonDirection)
     this.cloudsEffect.sunDirection.copy(sunDirection)
-    this.sunLight.position.copy(sunDirection).multiplyScalar(10000000)
+    this.sunLightSource.sunDirection.copy(sunDirection)
+    this.skyLightSource.sunDirection.copy(sunDirection)
+  }
+
+  updateLightSources() {
+    this.camera.getWorldPosition(this.lightPosition)
+    this.sunLightSource.target.position.copy(this.lightPosition)
+    this.skyLightSource.position.copy(this.lightPosition)
+    this.sunLightSource.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
+    this.skyLightSource.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
+    this.sunLightSource.target.updateMatrixWorld(true)
+    this.skyLightSource.updateMatrixWorld(true)
+    this.sunLightSource.update()
+    this.skyLightSource.update()
   }
 
   get inscatterIntensity() {
@@ -178,6 +210,8 @@ export class AtmosphereManager {
 
   set correctAltitude(value: boolean) {
     this.aerialPerspectiveEffect.correctAltitude = value
+    this.sunLightSource.correctAltitude = value
+    this.skyLightSource.correctAltitude = value
   }
 
   get correctGeometricError() {
@@ -204,20 +238,34 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.inscatter = value
   }
 
-  get postProcessSunLight() {
-    return this.aerialPerspectiveEffect.sunLight
+  get lightingMode() {
+    return this.currentLightingMode
   }
 
-  set postProcessSunLight(value: boolean) {
-    this.aerialPerspectiveEffect.sunLight = value
+  set lightingMode(value: AtmosphereLightingMode) {
+    if (this.currentLightingMode === value) return
+    this.currentLightingMode = value
+    this.applyLightingMode()
   }
 
-  get postProcessSkyLight() {
-    return this.aerialPerspectiveEffect.skyLight
+  get sunLight() {
+    return this.isSunLightEnabled
   }
 
-  set postProcessSkyLight(value: boolean) {
-    this.aerialPerspectiveEffect.skyLight = value
+  set sunLight(value: boolean) {
+    if (this.isSunLightEnabled === value) return
+    this.isSunLightEnabled = value
+    this.applyLightingMode()
+  }
+
+  get skyLight() {
+    return this.isSkyLightEnabled
+  }
+
+  set skyLight(value: boolean) {
+    if (this.isSkyLightEnabled === value) return
+    this.isSkyLightEnabled = value
+    this.applyLightingMode()
   }
 
   get sun() {
@@ -356,6 +404,8 @@ export class AtmosphereManager {
 
       Object.assign(this.aerialPerspectiveEffect, textures)
       Object.assign(this.cloudsEffect, textures)
+      this.sunLightSource.transmittanceTexture = textures.transmittanceTexture
+      this.skyLightSource.irradianceTexture = textures.irradianceTexture
 
       this.loadCloudTexture(getTelluxAssetUrl(DEFAULT_LOCAL_WEATHER_URL), (texture) => {
         this.cloudsEffect.localWeatherTexture = texture
@@ -381,8 +431,26 @@ export class AtmosphereManager {
     this.isDisposed = true
     this.textureAbortController.abort()
     this.cloudsEffect.events.removeEventListener('change', this.handleCloudsChange)
+    this.removeLightSourcesFromScene()
     this.texturesGenerator.dispose({ textures: true })
     this.loadedTextures.forEach((texture) => texture.dispose())
+  }
+
+  private applyLightingMode() {
+    const usePostProcessLighting = this.currentLightingMode === 'post-process'
+    this.aerialPerspectiveEffect.sunLight = usePostProcessLighting && this.isSunLightEnabled
+    this.aerialPerspectiveEffect.skyLight = usePostProcessLighting && this.isSkyLightEnabled
+    this.sunLightSource.visible = !usePostProcessLighting && this.isSunLightEnabled
+    this.skyLightSource.visible = !usePostProcessLighting && this.isSkyLightEnabled
+  }
+
+  private removeLightSourcesFromScene() {
+    if (!this.lightSourceScene) return
+
+    this.lightSourceScene.remove(this.sunLightSource)
+    this.lightSourceScene.remove(this.sunLightSource.target)
+    this.lightSourceScene.remove(this.skyLightSource)
+    this.lightSourceScene = null
   }
 
   private readonly handleCloudsChange = (event: CloudsEffectChangeEvent) => {

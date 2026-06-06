@@ -49,6 +49,8 @@ export class PostProcessingManager {
 
   applyEffects() {
     this.atmosphere.syncCloudAtmosphereComposition(this.scene.clouds.show, this.scene.skyAtmosphere.show)
+    this.cloudAtmosphereAdapter.recompile?.()
+    this.atmosphereAdapter.recompile?.()
 
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.skyAtmosphere.show

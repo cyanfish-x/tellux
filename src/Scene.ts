@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { CloudsEffect } from '@takram/three-clouds'
 import type { AtmosphereRuntimeControls } from './rendering/AtmosphereManager'
-import type { ViewerOptions } from './types'
+import type { AtmosphereLightingMode, ViewerOptions } from './types'
 
 class SceneToggle {
   private isShown: boolean
@@ -112,6 +112,7 @@ export class Scene {
   private readonly cloudLayerHeightScales = [1, 1200 / 650]
   private readonly getCloudsEffect: () => CloudsEffect | null
   private readonly getAtmosphereControls: () => AtmosphereRuntimeControls | null
+  private readonly onEffectsChange: () => void
 
   constructor(
     options: Required<NonNullable<ViewerOptions['scene']>>,
@@ -121,6 +122,7 @@ export class Scene {
   ) {
     this.getCloudsEffect = getCloudsEffect
     this.getAtmosphereControls = getAtmosphereControls
+    this.onEffectsChange = onEffectsChange
     this.currentCloudCoverage = options.cloudCoverage
     this.currentAtmosphereInscatterIntensity = options.atmosphereInscatterIntensity
     this.isAtmosphereInscatterHorizonBlend = options.atmosphereInscatterHorizonBlend
@@ -260,31 +262,54 @@ export class Scene {
   }
 
   /**
-   * 是否在后处理中应用太阳直射光照。
+   * 大气光照模式。
    *
-   * Applies direct sun irradiance in post-processing.
+   * Atmosphere lighting mode.
+   */
+  get atmosphereLightingMode() {
+    return this.getAtmosphereControls()?.lightingMode ?? 'post-process'
+  }
+
+  set atmosphereLightingMode(value: AtmosphereLightingMode) {
+    const atmosphere = this.getAtmosphereControls()
+    if (atmosphere && atmosphere.lightingMode !== value) {
+      atmosphere.lightingMode = value
+      this.onEffectsChange()
+    }
+  }
+
+  /**
+   * 是否应用太阳直射光照。
+   *
+   * Applies direct sun irradiance.
    */
   get atmosphereSunLight() {
-    return this.getAtmosphereControls()?.postProcessSunLight ?? true
+    return this.getAtmosphereControls()?.sunLight ?? true
   }
 
   set atmosphereSunLight(value: boolean) {
     const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.postProcessSunLight = value
+    if (atmosphere && atmosphere.sunLight !== value) {
+      atmosphere.sunLight = value
+      this.onEffectsChange()
+    }
   }
 
   /**
-   * 是否在后处理中应用天空环境光照。
+   * 是否应用天空环境光照。
    *
-   * Applies sky irradiance in post-processing.
+   * Applies sky irradiance.
    */
   get atmosphereSkyLight() {
-    return this.getAtmosphereControls()?.postProcessSkyLight ?? true
+    return this.getAtmosphereControls()?.skyLight ?? true
   }
 
   set atmosphereSkyLight(value: boolean) {
     const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.postProcessSkyLight = value
+    if (atmosphere && atmosphere.skyLight !== value) {
+      atmosphere.skyLight = value
+      this.onEffectsChange()
+    }
   }
 
   /**

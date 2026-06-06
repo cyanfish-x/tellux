@@ -3,6 +3,7 @@ import { EffectMaterial, EffectPass, NormalPass } from 'postprocessing'
 
 export type ThreeEffectPass = THREE.Effect & {
   dispose: () => void
+  recompile?: () => void
 }
 
 export interface ThreeRendererWithEffects extends THREE.WebGLRenderer {
@@ -55,6 +56,13 @@ export class EffectPassAdapter implements ThreeEffectPass {
     if (this.isInitialized) {
       this.pass.setSize(width, height)
     }
+  }
+
+  recompile() {
+    const pass = this.pass as EffectPass & {
+      recompile?: () => void
+    }
+    pass.recompile?.()
   }
 
   dispose() {

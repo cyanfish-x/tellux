@@ -23,6 +23,12 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 能力实现需要参考 /docs/3d-tiles-renderer-capabilities.md 文档中的能力描述；本库主要做API使用侧的易用性封装。
 
+## 参考仓库
+
++ https://github.com/takram-design-engineering/three-geospatial
++ https://github.com/NASA-AMMOS/3DTilesRendererJS
++ takram仓库源码：D:\dev_work\three-geospatial
+
 ## 常用命令
 
 - `pnpm build`：构建库产物和声明文件。

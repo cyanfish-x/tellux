@@ -23,6 +23,7 @@ export {
   TemplateUrlResource,
   WMSResource,
   Viewer,
+  type AtmosphereLightingMode,
   type CameraFlyToDestination,
   type CameraFlyToOptions,
   type CameraFlightEasingFunction,

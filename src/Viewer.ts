@@ -42,6 +42,7 @@ export type {
   CameraSetViewOptions
 } from './Camera'
 export type {
+  AtmosphereLightingMode,
   CartographicCoordinates,
   CesiumIon3DTilesetOptions,
   CesiumIonResourceOptions,
@@ -247,7 +248,10 @@ export class Viewer {
     )
     this.atmosphere = new AtmosphereManager(this.renderer, this.threeCamera, () => this.postProcessing.applyEffects())
     atmosphere = this.atmosphere
-    this.atmosphere.addLightsTo(this.scene.threeScene)
+    this.atmosphere.addLightSourcesTo(this.scene.threeScene)
+    this.atmosphere.lightingMode = sceneOptions.atmosphereLightingMode
+    this.atmosphere.sunLight = sceneOptions.atmosphereSunLight
+    this.atmosphere.skyLight = sceneOptions.atmosphereSkyLight
     this.scene.cloudCoverage = this.scene.cloudCoverage
     this.clock = new Clock(() => this.atmosphere.updateSunDirection(this.clock.currentTime))
 
@@ -502,6 +506,7 @@ export class Viewer {
     this.controls.update()
     this.syncAtmosphereInscatter()
     this.tilesets.update()
+    this.atmosphere.updateLightSources()
     this.renderer.render(this.scene.threeScene, this.threeCamera)
     return deltaTime
   }
@@ -568,8 +573,11 @@ export class Viewer {
       toneMappingExposure: options?.toneMappingExposure ?? 10,
       cloudCoverage: options?.cloudCoverage ?? 0.3,
       atmosphereInscatterIntensity: options?.atmosphereInscatterIntensity ?? 1,
-      atmosphereInscatterHorizonBlend: options?.atmosphereInscatterHorizonBlend ?? true,
+      atmosphereInscatterHorizonBlend: options?.atmosphereInscatterHorizonBlend ?? false,
       atmosphereInscatterHorizonRange: options?.atmosphereInscatterHorizonRange ?? [0, 0.6],
+      atmosphereLightingMode: options?.atmosphereLightingMode ?? 'post-process',
+      atmosphereSunLight: options?.atmosphereSunLight ?? true,
+      atmosphereSkyLight: options?.atmosphereSkyLight ?? true,
       creasedNormals: options?.creasedNormals ?? false
     }
   }

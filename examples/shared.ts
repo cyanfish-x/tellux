@@ -1,5 +1,8 @@
-import * as THREE from "three"
-import tellux, { type Viewer, type ViewerOptions } from "../src"
+import tellux, {
+  type AtmosphereLightingMode,
+  type Viewer,
+  type ViewerOptions,
+} from "../src"
 const DEFAULT_TERRAIN_URL = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ""
 
 tellux.baseUrl = "/tellux/"
@@ -16,6 +19,7 @@ export interface ExampleSettingsPanelOptions {
   atmosphereCorrectGeometricError?: boolean
   atmosphereTransmittance?: boolean
   atmosphereInscatter?: boolean
+  atmosphereLightingMode?: AtmosphereLightingMode
   atmosphereSunLight?: boolean
   atmosphereSkyLight?: boolean
   atmosphereSun?: boolean
@@ -34,8 +38,6 @@ export interface ExampleSettingsPanelOptions {
   atmosphereMiePhaseFunctionG?: number
   atmosphereAbsorptionExtinctionScale?: number
   atmosphereGroundAlbedo?: number
-  sunIntensity?: number
-  skyIntensity?: number
   showFps?: boolean
 }
 
@@ -47,6 +49,13 @@ interface RangeControlOptions {
   step: number
   value: number
   format: (value: number) => string
+}
+
+interface SelectControlOptions<T extends string> {
+  id: string
+  label: string
+  value: T
+  options: readonly T[]
 }
 
 export const arcgisWorldImageryUrl =
@@ -91,8 +100,6 @@ function applyInitialSettings(
   viewer: Viewer,
   settings: ExampleSettingsPanelOptions
 ) {
-  const lights = getSceneLights(viewer)
-
   if (settings.dayOfYear !== undefined || settings.hourUTC !== undefined) {
     viewer.clock.currentTime = createUTCDateFromControls(
       viewer.clock.currentTime.getUTCFullYear(),
@@ -139,6 +146,10 @@ function applyInitialSettings(
 
   if (settings.atmosphereInscatter !== undefined) {
     viewer.scene.atmosphereInscatter = settings.atmosphereInscatter
+  }
+
+  if (settings.atmosphereLightingMode !== undefined) {
+    viewer.scene.atmosphereLightingMode = settings.atmosphereLightingMode
   }
 
   if (settings.atmosphereSunLight !== undefined) {
@@ -222,14 +233,6 @@ function applyInitialSettings(
   if (settings.atmosphereGroundAlbedo !== undefined) {
     viewer.scene.atmosphereGroundAlbedo = settings.atmosphereGroundAlbedo
   }
-
-  if (settings.sunIntensity !== undefined && lights.sunLight) {
-    lights.sunLight.intensity = settings.sunIntensity
-  }
-
-  if (settings.skyIntensity !== undefined && lights.skyLight) {
-    lights.skyLight.intensity = settings.skyIntensity
-  }
 }
 
 function mountExampleSettingsPanel(
@@ -240,7 +243,6 @@ function mountExampleSettingsPanel(
   const existingPanel = shell.querySelector(".example-settings")
   existingPanel?.remove()
 
-  const lights = getSceneLights(viewer)
   const panel = document.createElement("section")
   panel.className = "example-settings"
   panel.setAttribute("aria-label", "公共场景设置")
@@ -279,6 +281,13 @@ function mountExampleSettingsPanel(
     "原生散射",
     settings.atmosphereInscatter ?? viewer.scene.atmosphereInscatter
   )
+  const lightingModeControl = createSelectControl({
+    id: "atmosphere-lighting-mode",
+    label: "mode",
+    value:
+      settings.atmosphereLightingMode ?? viewer.scene.atmosphereLightingMode,
+    options: ["post-process", "light-source"] as const,
+  })
   const inscatterHorizonToggle = createSwitchControl(
     "atmosphere-inscatter-horizon",
     "地平线散射",
@@ -372,40 +381,6 @@ function mountExampleSettingsPanel(
 
   content.appendChild(
     createGroup("日期和时间", [dayOfYearControl.element, utcControl.element])
-  )
-
-  content.appendChild(
-    createGroup(
-      "光照",
-      [
-        createRangeControl({
-          id: "sun-intensity",
-          label: "太阳强度",
-          min: 0,
-          max: 8,
-          step: 0.1,
-          value: settings.sunIntensity ?? lights.sunLight?.intensity ?? 3,
-          format: (value) => value.toFixed(1),
-        }).element,
-        createRangeControl({
-          id: "sky-intensity",
-          label: "天空补光",
-          min: 0,
-          max: 3,
-          step: 0.05,
-          value: settings.skyIntensity ?? lights.skyLight?.intensity ?? 0.8,
-          format: (value) => value.toFixed(2),
-        }).element,
-      ],
-      false
-    )
-  )
-
-  const sunIntensityRange = content.querySelector<HTMLInputElement>(
-    "#example-settings-sun-intensity"
-  )
-  const skyIntensityRange = content.querySelector<HTMLInputElement>(
-    "#example-settings-sky-intensity"
   )
 
   const coverageControl = createRangeControl({
@@ -618,13 +593,24 @@ function mountExampleSettingsPanel(
         inscatterHorizonToggle.element,
         horizonStartControl.element,
         horizonEndControl.element,
-        sunLightToggle.element,
-        skyLightToggle.element,
         sunDiscToggle.element,
         moonToggle.element,
         groundToggle.element,
         correctAltitudeToggle.element,
         correctGeometricToggle.element,
+      ],
+      false
+    )
+  )
+
+  content.appendChild(
+    createGroup(
+      "光照",
+      [
+        lightingModeControl.element,
+        sunLightToggle.element,
+        skyLightToggle.element,
+        albedoScaleControl.element,
       ],
       false
     )
@@ -641,7 +627,6 @@ function mountExampleSettingsPanel(
         miePhaseControl.element,
         absorptionControl.element,
         groundAlbedoControl.element,
-        albedoScaleControl.element,
         sunAngularRadiusControl.element,
         moonAngularRadiusControl.element,
         lunarRadianceScaleControl.element,
@@ -709,8 +694,6 @@ function mountExampleSettingsPanel(
   const fpsHud = mountFpsHud(viewer, shell, fpsToggle.input.checked)
 
   function applyControls() {
-    const currentLights = getSceneLights(viewer)
-
     viewer.scene.skyAtmosphere.show = skyToggle.input.checked
     viewer.scene.atmosphereTransmittance = transmittanceToggle.input.checked
     viewer.scene.atmosphereInscatter = nativeInscatterToggle.input.checked
@@ -723,6 +706,8 @@ function mountExampleSettingsPanel(
       Number(horizonStartControl.input.value),
       Number(horizonEndControl.input.value),
     ]
+    viewer.scene.atmosphereLightingMode =
+      lightingModeControl.input.value as AtmosphereLightingMode
     viewer.scene.atmosphereSunLight = sunLightToggle.input.checked
     viewer.scene.atmosphereSkyLight = skyLightToggle.input.checked
     viewer.scene.atmosphereSun = sunDiscToggle.input.checked
@@ -786,14 +771,6 @@ function mountExampleSettingsPanel(
       ditheringToggle.input.checked
     fpsHud.setVisible(fpsToggle.input.checked)
 
-    if (currentLights.sunLight && sunIntensityRange) {
-      currentLights.sunLight.intensity = Number(sunIntensityRange.value)
-    }
-
-    if (currentLights.skyLight && skyIntensityRange) {
-      currentLights.skyLight.intensity = Number(skyIntensityRange.value)
-    }
-
     const currentTime = viewer.clock.currentTime
     status.textContent =
       `第 ${getUTCDayOfYear(currentTime)} 日 UTC ${formatHour(
@@ -810,10 +787,12 @@ function mountExampleSettingsPanel(
     toggle.setAttribute("aria-expanded", String(isOpen))
   })
 
-  content.querySelectorAll("input").forEach((input) => {
-    const eventType = input.type === "range" ? "input" : "change"
-    input.addEventListener(eventType, applyControls)
-  })
+  content
+    .querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")
+    .forEach((input) => {
+      const eventType = input.type === "range" ? "input" : "change"
+      input.addEventListener(eventType, applyControls)
+    })
 
   applyControls()
 
@@ -942,21 +921,26 @@ function createRangeControl(options: RangeControlOptions) {
   return { element: wrapper, input }
 }
 
-function getSceneLights(viewer: Viewer) {
-  let sunLight: THREE.DirectionalLight | null = null
-  let skyLight: THREE.HemisphereLight | null = null
+function createSelectControl<T extends string>(options: SelectControlOptions<T>) {
+  const wrapper = document.createElement("label")
+  wrapper.className = "example-settings__select"
 
-  viewer.scene.threeScene.traverse((object) => {
-    if (!sunLight && object instanceof THREE.DirectionalLight) {
-      sunLight = object
-    }
+  const label = document.createElement("span")
+  label.textContent = options.label
 
-    if (!skyLight && object instanceof THREE.HemisphereLight) {
-      skyLight = object
-    }
+  const input = document.createElement("select")
+  input.id = `example-settings-${options.id}`
+  options.options.forEach((optionValue) => {
+    const option = document.createElement("option")
+    option.value = optionValue
+    option.textContent = optionValue
+    input.appendChild(option)
   })
+  input.value = options.value
 
-  return { sunLight, skyLight }
+  wrapper.append(label, input)
+
+  return { element: wrapper, input }
 }
 
 function formatHour(value: number) {
