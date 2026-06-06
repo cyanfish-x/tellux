@@ -130,15 +130,30 @@ a {
 }
 
 .portal-nav__links a {
+  display: inline-grid;
   min-height: 34px;
+  place-items: center;
   padding: 8px 11px;
   border-radius: 6px;
   text-decoration: none;
 }
 
-.portal-nav__links a:hover {
+.portal-nav__links a:hover,
+.portal-nav__links a:focus-visible {
   color: #ffffff;
   background: rgba(214, 225, 239, 0.09);
+  outline: none;
+}
+
+.portal-nav__github {
+  width: 34px;
+  padding: 0;
+}
+
+.portal-nav__github svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .portal-language {
@@ -550,53 +565,11 @@ a {
   overflow-wrap: anywhere;
 }
 
-.portal-card > span:not(.portal-card__top):not(.portal-card__tag),
-.portal-doc-item > span:not(.portal-doc-item__index) {
+.portal-card > span:not(.portal-card__top):not(.portal-card__tag) {
   position: relative;
   z-index: 1;
   color: #bcc6d2;
   line-height: 1.6;
-}
-
-.portal-section--split {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1fr);
-  gap: 42px;
-  align-items: start;
-  border-top: 1px solid rgba(214, 225, 239, 0.1);
-}
-
-.portal-doc-list {
-  display: grid;
-  gap: 10px;
-}
-
-.portal-doc-item {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(74px, auto) minmax(0, 1fr);
-  gap: 5px 16px;
-  align-items: start;
-  padding: 18px;
-  border: 1px solid rgba(214, 225, 239, 0.12);
-  border-radius: 8px;
-  background:
-    linear-gradient(90deg, rgba(216, 222, 114, 0.055), rgba(214, 225, 239, 0.035)),
-    #0d131d;
-}
-
-.portal-doc-item__index {
-  grid-row: span 2;
-  color: #d8de72;
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.portal-doc-item strong {
-  color: #ffffff;
-  font-size: 17px;
-  overflow-wrap: anywhere;
 }
 
 .viewer-shell {
@@ -1390,11 +1363,6 @@ a {
   .portal-overview-item {
     min-height: 112px;
     padding: 20px;
-  }
-
-  .portal-section--split {
-    grid-template-columns: 1fr;
-    gap: 18px;
   }
 
   .toolbar {

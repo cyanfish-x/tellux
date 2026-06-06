@@ -6,7 +6,9 @@ type PortalTextKey =
   | 'navLabel'
   | 'navExamples'
   | 'navGuides'
+  | 'navGuidesHref'
   | 'navApi'
+  | 'navApiHref'
   | 'languageToggle'
   | 'languageToggleLabel'
   | 'heroEyebrow'
@@ -14,25 +16,24 @@ type PortalTextKey =
   | 'heroCopy'
   | 'primaryActionsLabel'
   | 'browseExamples'
-  | 'readmeAction'
-  | 'readmeHref'
   | 'statsLabel'
-  | 'statRenderer'
-  | 'statFormat'
-  | 'statFormatValue'
-  | 'statPipeline'
-  | 'statPipelineValue'
+  | 'statBase'
+  | 'statBaseValue'
+  | 'statData'
+  | 'statDataValue'
+  | 'statEffects'
+  | 'statEffectsValue'
   | 'globeLabel'
   | 'globeFallback'
   | 'globeCaptionLabel'
   | 'globeCaption'
   | 'overviewLabel'
-  | 'overviewExamplesTitle'
-  | 'overviewExamplesCopy'
-  | 'overviewGuidesTitle'
-  | 'overviewGuidesCopy'
-  | 'overviewApiTitle'
-  | 'overviewApiCopy'
+  | 'overviewCapabilityTitle'
+  | 'overviewCapabilityCopy'
+  | 'overviewBaseTitle'
+  | 'overviewBaseCopy'
+  | 'overviewFeaturesTitle'
+  | 'overviewFeaturesCopy'
   | 'examplesEyebrow'
   | 'examplesTitle'
   | 'examplesCopy'
@@ -58,29 +59,6 @@ type PortalTextKey =
   | 'cardTerrainCopy'
   | 'cardAtmosphereTitle'
   | 'cardAtmosphereCopy'
-  | 'guidesEyebrow'
-  | 'guidesTitle'
-  | 'guidesCopy'
-  | 'guidesListLabel'
-  | 'guideIndex01'
-  | 'guideIndex02'
-  | 'guideIndex03'
-  | 'guideStartTitle'
-  | 'guideStartCopy'
-  | 'guideDataTitle'
-  | 'guideDataCopy'
-  | 'guideRenderingTitle'
-  | 'guideRenderingCopy'
-  | 'apiEyebrow'
-  | 'apiTitle'
-  | 'apiCopy'
-  | 'apiListLabel'
-  | 'apiViewerTitle'
-  | 'apiViewerCopy'
-  | 'apiCameraTitle'
-  | 'apiCameraCopy'
-  | 'apiResourcesTitle'
-  | 'apiResourcesCopy'
 
 declare global {
   interface Window {
@@ -90,41 +68,42 @@ declare global {
 
 const portalText: Record<PortalLanguage, Record<PortalTextKey, string>> = {
   zh: {
-    title: 'Tellux 开发者门户',
+    title: 'Tellux',
     navLabel: 'Tellux 门户导航',
     navExamples: '示例',
     navGuides: '指南',
+    navGuidesHref: 'https://github.com/Bro-B/tellux/blob/main/README.md#使用',
     navApi: '接口文档',
+    navApiHref: 'https://github.com/Bro-B/tellux/blob/main/README.md#api',
     languageToggle: 'EN',
     languageToggleLabel: '切换到英文',
     heroEyebrow: 'Three.js GIS 查看器工具包',
-    heroTitle: 'Tellux 开发者门户',
+    heroTitle: 'Tellux',
     heroCopy:
-      '从可运行示例开始探索 Tellux：地球视图、相机飞行、点击读数、影像图层、三维瓦片、地形以及大气云层。后续这里也会承载指南和 API 文档入口。',
+      '基于 Three.js 的 GIS viewer，用熟悉的地图 API 组织数字地球、地形、影像、3D Tiles、大气、体积云和后处理效果。',
     primaryActionsLabel: '主要门户操作',
     browseExamples: '浏览示例',
-    readmeAction: '阅读说明文档',
-    readmeHref: './README.md',
-    statsLabel: 'Tellux 门户亮点',
-    statRenderer: '渲染器',
-    statFormat: '格式',
-    statFormatValue: '三维瓦片',
-    statPipeline: '渲染管线',
-    statPipelineValue: '大气 / 云层 / 后处理',
+    statsLabel: 'Tellux 能力亮点',
+    statBase: 'Base',
+    statBaseValue: 'Three.js / ESM',
+    statData: '数据',
+    statDataValue: '3D Tiles / 地形 / 影像',
+    statEffects: '效果',
+    statEffectsValue: '大气 / 云层 / 后处理',
     globeLabel: 'Tellux 查看器地球预览',
     globeFallback: '正在初始化 Tellux 查看器',
     globeCaptionLabel: '实时预览',
     globeCaption: 'ArcGIS 影像 + 大气',
-    overviewLabel: '门户概览',
-    overviewExamplesTitle: '示例',
-    overviewExamplesCopy: '运行中的功能切片',
-    overviewGuidesTitle: '指南',
-    overviewGuidesCopy: '即将加入接入指南',
-    overviewApiTitle: '接口文档',
-    overviewApiCopy: '预留类型与接口文档',
+    overviewLabel: 'Tellux 能力概览',
+    overviewCapabilityTitle: 'GIS 能力',
+    overviewCapabilityCopy: '地球、相机、拾取和图层',
+    overviewBaseTitle: '技术底座',
+    overviewBaseCopy: 'Three.js + 3d-tiles-renderer',
+    overviewFeaturesTitle: '渲染特性',
+    overviewFeaturesCopy: '大气、云、镜头光晕和抗锯齿',
     examplesEyebrow: '示例',
     examplesTitle: '示例入口',
-    examplesCopy: '这些页面通过 Vite 从仓库源码直接引入 Tellux，适合开发时验证 API 行为和渲染效果。',
+    examplesCopy: '从这些可运行切片查看 Tellux 的核心能力：Viewer 初始化、相机飞行、鼠标拾取、图层管理、3D Tiles、Cesium 地形以及大气云层。',
     examplesGridLabel: 'Tellux 示例',
     tagViewer: '查看器',
     tagCamera: '相机',
@@ -146,67 +125,45 @@ const portalText: Record<PortalLanguage, Record<PortalTextKey, string>> = {
     cardTerrainTitle: 'Cesium 地形热切换',
     cardTerrainCopy: '输入量化网格地形地址，通过左上角面板开启、关闭并热切换地形。',
     cardAtmosphereTitle: '体积云与大气',
-    cardAtmosphereCopy: '切换太平洋和喜马拉雅视角，并通过公共设置面板调整大气、体积云、UTC 时间、光照和曝光。',
-    guidesEyebrow: '指南',
-    guidesTitle: '指南页占位',
-    guidesCopy: '未来可以把入门安装、查看器生命周期、图层接入、Cesium Ion 资源、部署资源路径等内容放在这里。',
-    guidesListLabel: '规划中的指南',
-    guideIndex01: '指南 01',
-    guideIndex02: '指南 02',
-    guideIndex03: '指南 03',
-    guideStartTitle: '快速开始',
-    guideStartCopy: '安装、资源目录、创建第一个查看器。',
-    guideDataTitle: '数据与图层',
-    guideDataCopy: 'XYZ、WMS、MVT、地形和三维瓦片的接入模式。',
-    guideRenderingTitle: '渲染效果',
-    guideRenderingCopy: '大气、云层、后处理、曝光与性能调优。',
-    apiEyebrow: '接口文档',
-    apiTitle: '接口文档占位',
-    apiCopy: '等声明产物或文档生成流程接入后，可以把查看器、相机、图层管理器、资源类型等入口汇总到这里。',
-    apiListLabel: '规划中的 API 文档',
-    apiViewerTitle: '查看器',
-    apiViewerCopy: '初始化选项、场景控制、资源加载和销毁流程。',
-    apiCameraTitle: '相机',
-    apiCameraCopy: '飞行、设置视角、坐标与相机状态。',
-    apiResourcesTitle: '资源',
-    apiResourcesCopy: 'Cesium Ion 资源、模板地址资源、WMS 资源、MVT 资源。'
+    cardAtmosphereCopy: '切换太平洋和喜马拉雅视角，并通过公共设置面板调整大气、体积云、UTC 时间、光照和曝光。'
   },
   en: {
-    title: 'Tellux Developer Portal',
+    title: 'Tellux',
     navLabel: 'Tellux portal navigation',
     navExamples: 'Examples',
     navGuides: 'Guides',
+    navGuidesHref: 'https://github.com/Bro-B/tellux/blob/main/README.en.md#usage',
     navApi: 'API Docs',
+    navApiHref: 'https://github.com/Bro-B/tellux/blob/main/README.en.md#api',
     languageToggle: '中文',
     languageToggleLabel: 'Switch to Chinese',
     heroEyebrow: 'Three.js GIS Viewer Toolkit',
-    heroTitle: 'Tellux Developer Portal',
+    heroTitle: 'Tellux',
     heroCopy:
-      'Explore Tellux through runnable examples: globe views, camera flights, click readouts, imagery layers, 3D Tiles, terrain, atmosphere, and clouds. Guides and API documentation will land here as the project grows.',
+      'A Three.js-based GIS viewer that wraps globe, terrain, imagery, 3D Tiles, atmosphere, volumetric clouds, and post effects behind map-friendly APIs.',
     primaryActionsLabel: 'Primary portal actions',
     browseExamples: 'Browse Examples',
-    readmeAction: 'Read README',
-    readmeHref: './README.en.md',
-    statsLabel: 'Tellux portal highlights',
-    statRenderer: 'Renderer',
-    statFormat: 'Format',
-    statFormatValue: '3D Tiles',
-    statPipeline: 'Pipeline',
-    statPipelineValue: 'Atmosphere / Clouds / Post FX',
+    statsLabel: 'Tellux capability highlights',
+    statBase: 'Base',
+    statBaseValue: 'Three.js / ESM',
+    statData: 'Data',
+    statDataValue: '3D Tiles / Terrain / Imagery',
+    statEffects: 'Effects',
+    statEffectsValue: 'Atmosphere / Clouds / Post FX',
     globeLabel: 'Tellux Viewer globe preview',
     globeFallback: 'Initializing Tellux Viewer',
     globeCaptionLabel: 'Live Viewer',
     globeCaption: 'ArcGIS imagery + atmosphere',
-    overviewLabel: 'Portal overview',
-    overviewExamplesTitle: 'Examples',
-    overviewExamplesCopy: 'Runnable feature slices',
-    overviewGuidesTitle: 'Guides',
-    overviewGuidesCopy: 'Integration guides coming soon',
-    overviewApiTitle: 'API Docs',
-    overviewApiCopy: 'Reserved for typed API references',
+    overviewLabel: 'Tellux capability overview',
+    overviewCapabilityTitle: 'GIS APIs',
+    overviewCapabilityCopy: 'Globe, camera, picking, and layers',
+    overviewBaseTitle: 'Foundation',
+    overviewBaseCopy: 'Three.js + 3d-tiles-renderer',
+    overviewFeaturesTitle: 'Rendering',
+    overviewFeaturesCopy: 'Atmosphere, clouds, lens flare, and SMAA',
     examplesEyebrow: 'Examples',
     examplesTitle: 'Example Entry Points',
-    examplesCopy: 'These pages import Tellux from the repository source through Vite, making them useful for API and rendering checks during development.',
+    examplesCopy: 'Use these runnable slices to inspect Tellux fundamentals: Viewer setup, camera flights, mouse picking, layer management, 3D Tiles, Cesium terrain, atmosphere, and clouds.',
     examplesGridLabel: 'Tellux examples',
     tagViewer: 'Viewer',
     tagCamera: 'Camera',
@@ -228,30 +185,7 @@ const portalText: Record<PortalLanguage, Record<PortalTextKey, string>> = {
     cardTerrainTitle: 'Cesium Terrain Hot Swap',
     cardTerrainCopy: 'Enter a quantized-mesh terrain URL and use the upper-left panel to enable, disable, and hot-swap terrain.',
     cardAtmosphereTitle: 'Volumetric Clouds and Atmosphere',
-    cardAtmosphereCopy: 'Switch between Pacific and Himalayan views while tuning atmosphere, volumetric clouds, UTC time, lighting, and exposure in the shared settings panel.',
-    guidesEyebrow: 'Guides',
-    guidesTitle: 'Guide Placeholder',
-    guidesCopy: 'Future guides can cover installation, viewer lifecycle, layer integration, Cesium Ion resources, and deployment asset paths.',
-    guidesListLabel: 'Planned guides',
-    guideIndex01: 'Guide 01',
-    guideIndex02: 'Guide 02',
-    guideIndex03: 'Guide 03',
-    guideStartTitle: 'Getting Started',
-    guideStartCopy: 'Installation, asset directories, and creating your first Viewer.',
-    guideDataTitle: 'Data and Layers',
-    guideDataCopy: 'Integration patterns for XYZ, WMS, MVT, terrain, and 3D Tiles.',
-    guideRenderingTitle: 'Rendering',
-    guideRenderingCopy: 'Atmosphere, clouds, post-processing, exposure, and performance tuning.',
-    apiEyebrow: 'API Docs',
-    apiTitle: 'API Docs Placeholder',
-    apiCopy: 'Once declaration or documentation generation is wired up, this area can collect Viewer, Camera, LayerManager, and resource type references.',
-    apiListLabel: 'Planned API docs',
-    apiViewerTitle: 'Viewer',
-    apiViewerCopy: 'Initialization options, scene controls, resource loading, and teardown flow.',
-    apiCameraTitle: 'Camera',
-    apiCameraCopy: 'flyTo, setView, coordinates, and camera state.',
-    apiResourcesTitle: 'Resources',
-    apiResourcesCopy: 'CesiumIonResource, TemplateUrlResource, WMSResource, and MVTResource.'
+    cardAtmosphereCopy: 'Switch between Pacific and Himalayan views while tuning atmosphere, volumetric clouds, UTC time, lighting, and exposure in the shared settings panel.'
   }
 }
 
