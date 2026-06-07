@@ -59,12 +59,12 @@ if (!flyToButton || !toggleAnimationButton || !regenerateButton) {
 
 const viewer = createTelluxViewer(container, {
   camera: {
-    latitude: ZOIGE_GRASSLAND_LATITUDE,
-    longitude: ZOIGE_GRASSLAND_LONGITUDE,
-    height: 2600,
-    heading: -22,
-    pitch: -26,
-    far: 40000000,
+    latitude: 33.54814875712769,
+    longitude: 102.44504184115536,
+    height: 4348.650119598099,
+    heading: -23.80650527077907,
+    pitch: -16.634341482316092,
+    roll: 0.00005099704147283671,
   },
   scene: {
     clouds: false,
@@ -98,7 +98,9 @@ function setAnimationStatus(message: string) {
 }
 
 function updateAnimationButton() {
-  toggleAnimationButton.textContent = isAnimationPlaying ? "暂停动画" : "播放动画"
+  toggleAnimationButton.textContent = isAnimationPlaying
+    ? "暂停动画"
+    : "播放动画"
 }
 
 async function createHorseHerd() {
@@ -124,7 +126,9 @@ async function createHorseHerd() {
 
   setStatus(`已生成 ${placements.length} 个候选点，正在离屏采样地形高度...`)
 
-  let sampledPositions: Awaited<ReturnType<typeof viewer.sampleHeightMostDetailed>>
+  let sampledPositions: Awaited<
+    ReturnType<typeof viewer.sampleHeightMostDetailed>
+  >
   try {
     sampledPositions = await viewer.sampleHeightMostDetailed(
       placements.map((point) => [point.longitude, point.latitude]),
@@ -135,7 +139,10 @@ async function createHorseHerd() {
       }
     )
   } catch (error) {
-    console.error("Failed to sample terrain height for instanced horses.", error)
+    console.error(
+      "Failed to sample terrain height for instanced horses.",
+      error
+    )
     setStatus("地形高度采样失败，请检查地形数据源是否可用。")
     regenerateButton.disabled = false
     return
@@ -330,11 +337,14 @@ function generatePlacementPoints(options: {
 }) {
   const random = createSeededRandom(options.seed)
   const points: PlacementPoint[] = []
-  const minSpacingSquared =
-    options.minSpacingMeters * options.minSpacingMeters
+  const minSpacingSquared = options.minSpacingMeters * options.minSpacingMeters
   const maxAttempts = options.count * 180
 
-  for (let attempt = 0; attempt < maxAttempts && points.length < options.count; attempt += 1) {
+  for (
+    let attempt = 0;
+    attempt < maxAttempts && points.length < options.count;
+    attempt += 1
+  ) {
     const radius = Math.sqrt(random()) * options.radiusMeters
     const angle = random() * Math.PI * 2
     const east = Math.cos(angle) * radius
@@ -385,8 +395,7 @@ function offsetToCartographic(
     centerLatitude + (northMeters / EARTH_RADIUS_METERS) * RAD2DEG
   const longitude =
     centerLongitude +
-    (eastMeters /
-      (EARTH_RADIUS_METERS * Math.cos(centerLatitude * DEG2RAD))) *
+    (eastMeters / (EARTH_RADIUS_METERS * Math.cos(centerLatitude * DEG2RAD))) *
       RAD2DEG
 
   return { longitude, latitude }

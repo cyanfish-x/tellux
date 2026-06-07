@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { LoadRegionPlugin, RayRegion } from '3d-tiles-renderer/plugins'
 import type { TilesRenderer } from '3d-tiles-renderer'
 import { DEG2RAD } from '../constants'
-import type { TilesetManager } from '../tiles/TilesetManager'
+import type { HeightSamplingTilesetEntry, TilesetManager } from '../tiles/TilesetManager'
 import type {
   CartographicCoordinateTuple,
   CartographicCoordinates,
@@ -16,7 +16,8 @@ const DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT = -10000
 const DEFAULT_SAMPLE_HEIGHT_MAXIMUM_HEIGHT = 100000
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION = 256
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES = 120
-const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE = 64
+const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_PASSES_PER_FRAME = 1
+const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE = 8
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_BATCH_SPAN_DEGREES = 0.25
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_REGION_ERROR_TARGET = 0
 const TILE_LOADING_STATE_FAILED = -1
@@ -74,6 +75,25 @@ type HeightSamplingTask = {
   surfacePoint: THREE.Vector3
 }
 
+type HeightSamplingBatchState = {
+  tasks: HeightSamplingTask[]
+  camera: THREE.OrthographicCamera
+  loadRegions: HeightSamplingLoadRegion[]
+  frames: number
+  stableFrames: number
+}
+
+type HeightSamplingJob = {
+  options: SampleHeightMostDetailedOptions
+  results: SampleHeightMostDetailedResult[]
+  batches: HeightSamplingTask[][]
+  currentBatchIndex: number
+  maxFrames: number
+  entries: HeightSamplingTilesetEntry[]
+  activeBatch: HeightSamplingBatchState | null
+  resolve: (results: SampleHeightMostDetailedResult[]) => void
+}
+
 export class HeightSampler {
   private readonly sampleRaycaster = new THREE.Raycaster()
   private readonly sampleRay = new THREE.Ray()
@@ -86,9 +106,13 @@ export class HeightSampler {
   private readonly sampleTilesetRayOrigin = new THREE.Vector3()
   private readonly sampleTilesetRayTarget = new THREE.Vector3()
   private readonly sampleTarget = new THREE.Vector3()
-  private readonly sampleOffscreenCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 1)
   private readonly sampleCartographicScratch = { lat: 0, lon: 0, height: 0 }
   private readonly heightSamplingLoadRegionPlugins = new WeakMap<TilesRenderer, InstanceType<typeof LoadRegionPlugin>>()
+  private readonly heightSamplingJobs: HeightSamplingJob[] = []
+
+  get hasPendingMostDetailedSampling() {
+    return this.heightSamplingJobs.length > 0
+  }
 
   constructor(
     private readonly tilesets: TilesetManager,
@@ -106,9 +130,8 @@ export class HeightSampler {
     const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
     if (positions.length === 0) return results
 
-    const tilesets = this.getHeightSamplingTilesets(options.source)
-    const offscreenTilesets = tilesets.filter((tileset) => tileset !== this.tilesets.surfaceTileset)
-    if (offscreenTilesets.length === 0) {
+    const entries = this.tilesets.createHeightSamplingTilesets(options.source)
+    if (entries.length === 0) {
       positions.forEach((position, index) => {
         const height = this.sampleHeightFromLoadedTiles(position, options)
         results[index] = height === undefined ? undefined : [position[0], position[1], height]
@@ -120,11 +143,38 @@ export class HeightSampler {
     const batches = this.createHeightSamplingBatches(tasks)
     const maxFrames = Math.max(0, options.maxFrames ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES)
 
-    for (const batch of batches) {
-      await this.sampleHeightMostDetailedBatch(batch, options, offscreenTilesets, maxFrames, results)
+    return new Promise((resolve) => {
+      this.heightSamplingJobs.push({
+        options,
+        results,
+        batches,
+        currentBatchIndex: 0,
+        maxFrames,
+        entries,
+        activeBatch: null,
+        resolve
+      })
+    })
+  }
+
+  updateMostDetailedSampling(maxPasses = DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_PASSES_PER_FRAME) {
+    const passCount = Math.max(0, maxPasses)
+    for (let pass = 0; pass < passCount && this.heightSamplingJobs.length > 0; pass += 1) {
+      const job = this.heightSamplingJobs[0]
+      const isComplete = this.updateHeightSamplingJob(job)
+      if (!isComplete && this.heightSamplingJobs[0] === job && this.heightSamplingJobs.length > 1) {
+        this.heightSamplingJobs.shift()
+        this.heightSamplingJobs.push(job)
+      }
     }
 
-    return results
+    return this.hasPendingMostDetailedSampling
+  }
+
+  dispose() {
+    while (this.heightSamplingJobs.length > 0) {
+      this.cancelHeightSamplingJob(this.heightSamplingJobs[0])
+    }
   }
 
   private sampleHeightFromLoadedTiles(input: CartographicInput, options: SampleHeightOptions) {
@@ -282,7 +332,7 @@ export class HeightSampler {
     const minimumHeight = options.minimumHeight ?? DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT
     const maximumHeight = options.maximumHeight ?? DEFAULT_SAMPLE_HEIGHT_MAXIMUM_HEIGHT
     const heightRange = Math.max(maximumHeight - minimumHeight, 1)
-    const camera = this.sampleOffscreenCamera
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 1)
     const center = this.sampleSurfacePoint.set(0, 0, 0)
     const up = this.sampleDirection.set(0, 0, 0)
     const cameraOrigin = this.sampleOrigin.set(0, 0, 0)
@@ -376,41 +426,6 @@ export class HeightSampler {
     return indexStart >= surfaceGroup.start && indexStart < surfaceGroup.start + surfaceGroup.count
   }
 
-  private async sampleHeightMostDetailedBatch(
-    tasks: HeightSamplingTask[],
-    options: SampleHeightMostDetailedOptions,
-    tilesets: TilesRenderer[],
-    maxFrames: number,
-    results: SampleHeightMostDetailedResult[]
-  ) {
-    const camera = this.configureSampleOffscreenCamera(tasks, options)
-    const resolution = Math.max(1, options.resolution ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION)
-    const loadRegions = tilesets.flatMap((tileset) => this.addHeightSamplingLoadRegions(tileset, tasks))
-
-    tilesets.forEach((tileset) => {
-      tileset.setCamera(camera)
-      tileset.setResolution(camera, resolution, resolution)
-    })
-
-    try {
-      await this.updateHeightSamplingTilesets(tasks, options, tilesets, maxFrames, results)
-    } finally {
-      loadRegions.forEach((loadRegion) => {
-        loadRegion.plugin.removeRegion(loadRegion.region)
-      })
-      tilesets.forEach((tileset) => {
-        tileset.deleteCamera(camera)
-      })
-    }
-
-    tasks.forEach((task) => {
-      if (results[task.index] !== undefined) return
-
-      const height = this.sampleHeightFromLoadedTilesForTask(task, options)
-      results[task.index] = height === undefined ? undefined : [task.position[0], task.position[1], height]
-    })
-  }
-
   private addHeightSamplingLoadRegions(tileset: TilesRenderer, tasks: HeightSamplingTask[]): HeightSamplingLoadRegion[] {
     const plugin = this.getHeightSamplingLoadRegionPlugin(tileset)
     return tasks.map((task) => {
@@ -458,52 +473,150 @@ export class HeightSampler {
     return this.sampleTilesetRay
   }
 
-  private async updateHeightSamplingTilesets(
-    tasks: HeightSamplingTask[],
-    options: SampleHeightMostDetailedOptions,
-    tilesets: TilesRenderer[],
-    maxFrames: number,
-    results: SampleHeightMostDetailedResult[]
-  ) {
-    let stableFrames = 0
+  private updateHeightSamplingJob(job: HeightSamplingJob) {
+    if (!job.activeBatch) {
+      this.beginHeightSamplingBatch(job)
+    }
 
-    for (let frame = 0; frame < maxFrames; frame += 1) {
-      let loading = false
-      for (const tileset of tilesets) {
-        tileset.update()
-        loading = this.isTilesetLoading(tileset) || loading
-      }
-      const hasRenderableTiles = tilesets.some((tileset) => this.hasTilesetRenderableTiles(tileset))
-      const isMostDetailed = tilesets.every((tileset) => this.isHeightSamplingBatchMostDetailed(tileset, tasks))
+    const batch = job.activeBatch
+    if (!batch) {
+      return this.finishHeightSamplingJob(job)
+    }
 
-      this.sampleHeightTasksFromLoadedTiles(tasks, options, results)
+    if (batch.frames >= job.maxFrames) {
+      this.completeHeightSamplingBatch(job)
+      return job.currentBatchIndex >= job.batches.length
+        ? this.finishHeightSamplingJob(job)
+        : false
+    }
 
-      if (!loading && hasRenderableTiles && isMostDetailed) {
-        stableFrames += 1
-        if (stableFrames >= 2) {
-          return
-        }
-      } else {
-        stableFrames = 0
-      }
+    let loading = false
+    for (const entry of job.entries) {
+      entry.tileset.update()
+      loading = this.isTilesetLoading(entry.tileset) || loading
+    }
 
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => resolve())
-      })
+    const hasRenderableTiles = job.entries.some((entry) => this.hasTilesetRenderableTiles(entry.tileset))
+    const isMostDetailed =
+      !loading &&
+      hasRenderableTiles &&
+      job.entries.every((entry) => this.isHeightSamplingBatchMostDetailed(entry.tileset, batch.tasks))
+
+    if (isMostDetailed) {
+      batch.stableFrames += 1
+    } else {
+      batch.stableFrames = 0
+    }
+
+    batch.frames += 1
+
+    if (batch.stableFrames >= 2 || batch.frames >= job.maxFrames) {
+      this.completeHeightSamplingBatch(job)
+      return job.currentBatchIndex >= job.batches.length
+        ? this.finishHeightSamplingJob(job)
+        : false
+    }
+
+    return false
+  }
+
+  private beginHeightSamplingBatch(job: HeightSamplingJob) {
+    const tasks = job.batches[job.currentBatchIndex]
+    if (!tasks) return
+
+    const camera = this.configureSampleOffscreenCamera(tasks, job.options)
+    const resolution = Math.max(1, job.options.resolution ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION)
+    const loadRegions = job.entries.flatMap((entry) => this.addHeightSamplingLoadRegions(entry.tileset, tasks))
+
+    job.entries.forEach((entry) => {
+      entry.tileset.setCamera(camera)
+      entry.tileset.setResolution(camera, resolution, resolution)
+    })
+
+    job.activeBatch = {
+      tasks,
+      camera,
+      loadRegions,
+      frames: 0,
+      stableFrames: 0
     }
   }
 
-  private sampleHeightTasksFromLoadedTiles(
+  private completeHeightSamplingBatch(job: HeightSamplingJob) {
+    const batch = job.activeBatch
+    if (!batch) return
+
+    this.sampleHeightTasksFromSamplingTilesets(batch.tasks, job.entries, job.results)
+    batch.tasks.forEach((task) => {
+      if (job.results[task.index] !== undefined) return
+
+      const height = this.sampleHeightFromLoadedTilesForTask(task, job.options)
+      job.results[task.index] = height === undefined ? undefined : [task.position[0], task.position[1], height]
+    })
+
+    this.disposeHeightSamplingBatch(job)
+    job.currentBatchIndex += 1
+  }
+
+  private disposeHeightSamplingBatch(job: HeightSamplingJob) {
+    const batch = job.activeBatch
+    if (!batch) return
+
+    batch.loadRegions.forEach((loadRegion) => {
+      loadRegion.plugin.removeRegion(loadRegion.region)
+    })
+    job.entries.forEach((entry) => {
+      entry.tileset.deleteCamera(batch.camera)
+    })
+    job.activeBatch = null
+  }
+
+  private finishHeightSamplingJob(job: HeightSamplingJob) {
+    this.disposeHeightSamplingBatch(job)
+    this.tilesets.disposeHeightSamplingTilesets(job.entries)
+    this.removeHeightSamplingJob(job)
+    job.resolve(job.results)
+    return true
+  }
+
+  private cancelHeightSamplingJob(job: HeightSamplingJob) {
+    this.disposeHeightSamplingBatch(job)
+    this.tilesets.disposeHeightSamplingTilesets(job.entries)
+    this.removeHeightSamplingJob(job)
+    job.resolve(job.results)
+  }
+
+  private removeHeightSamplingJob(job: HeightSamplingJob) {
+    const index = this.heightSamplingJobs.indexOf(job)
+    if (index !== -1) {
+      this.heightSamplingJobs.splice(index, 1)
+    }
+  }
+
+  private sampleHeightTasksFromSamplingTilesets(
     tasks: HeightSamplingTask[],
-    options: SampleHeightOptions,
+    entries: HeightSamplingTilesetEntry[],
     results: SampleHeightMostDetailedResult[]
   ) {
     tasks.forEach((task) => {
-      const height = this.sampleHeightFromLoadedTilesForTask(task, options)
+      const height = this.sampleHeightFromSamplingTilesetsForTask(task, entries)
       if (height !== undefined) {
         results[task.index] = [task.position[0], task.position[1], height]
       }
     })
+  }
+
+  private sampleHeightFromSamplingTilesetsForTask(task: HeightSamplingTask, entries: HeightSamplingTilesetEntry[]) {
+    let closestHit: { height: number; distance: number } | null = null
+
+    for (const entry of entries) {
+      const hit = this.sampleHeightFromTileset(entry.tileset, task.raycaster)
+      if (hit && (!closestHit || hit.distance < closestHit.distance)) {
+        closestHit = hit
+      }
+    }
+
+    return closestHit?.height
   }
 
   private hasTilesetRenderableTiles(tileset: TilesRenderer) {
