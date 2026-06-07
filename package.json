@@ -27,7 +27,9 @@
     "clean": "rimraf dist",
     "dev": "vite examples --host 127.0.0.1 --port 5173 --strictPort",
     "deploy": "npm run build:examples && node actions/deploy.js",
-    "prepublishOnly": "pnpm type-check && pnpm build"
+    "prepublishOnly": "pnpm type-check && pnpm build",
+    "release:check": "pnpm type-check && pnpm build && npm pack --dry-run",
+    "release": "pnpm release:check && npm version patch -m \"发布 v%s\" && npm publish && git push --follow-tags"
   },
   "peerDependencies": {
     "3d-tiles-renderer": "^0.4.27",
