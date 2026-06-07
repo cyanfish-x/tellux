@@ -26,7 +26,7 @@ const viewer = new tellux.Viewer(container, {
   layers: [
     {
       source: tellux.TemplateUrlResource.fromUrl(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        'https://example.com/imagery/{z}/{y}/{x}.png'
       )
     }
   ],
@@ -68,7 +68,7 @@ new tellux.Viewer(container, {
 const imageryLayer = viewer.layers.add({
   name: 'World Imagery',
   source: tellux.TemplateUrlResource.fromUrl(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    'https://example.com/imagery/{z}/{y}/{x}.png'
   )
 })
 
@@ -116,7 +116,7 @@ viewer.layers.add({
 ```ts
 viewer.layers.add({
   name: '中国省界 WMS',
-  source: tellux.WMSResource.fromUrl('http://localhost:8080/geoserver/YX_yimin/wms', 'YX_yimin:china_province', {
+  source: tellux.WMSResource.fromUrl('https://example.com/geoserver/wms', 'workspace:province_boundary', {
     version: '1.1.0',
     crs: 'EPSG:4326',
     styles: '',

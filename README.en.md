@@ -28,7 +28,7 @@ const viewer = new tellux.Viewer(container, {
   layers: [
     {
       source: tellux.TemplateUrlResource.fromUrl(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        'https://example.com/imagery/{z}/{y}/{x}.png'
       )
     }
   ],
@@ -70,7 +70,7 @@ Imagery layers are managed through `viewer.layers`. Layers are drawn from bottom
 const imageryLayer = viewer.layers.add({
   name: 'World Imagery',
   source: tellux.TemplateUrlResource.fromUrl(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+    'https://example.com/imagery/{z}/{y}/{x}.png'
   )
 })
 
@@ -118,7 +118,7 @@ For example, a GeoServer WMS 1.1.0 service:
 ```ts
 viewer.layers.add({
   name: 'China Province WMS',
-  source: tellux.WMSResource.fromUrl('http://localhost:8080/geoserver/YX_yimin/wms', 'YX_yimin:china_province', {
+  source: tellux.WMSResource.fromUrl('https://example.com/geoserver/wms', 'workspace:province_boundary', {
     version: '1.1.0',
     crs: 'EPSG:4326',
     styles: '',
