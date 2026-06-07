@@ -1029,6 +1029,12 @@ a {
   background: rgba(22, 101, 52, 0.34);
 }
 
+.layer-manager__tag--geojson {
+  border-color: rgba(94, 234, 212, 0.42);
+  color: #ccfbf1;
+  background: rgba(15, 118, 110, 0.34);
+}
+
 .layer-manager__status {
   margin: 0;
   color: #fde68a;

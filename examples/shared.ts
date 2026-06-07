@@ -24,9 +24,11 @@ export function createTelluxViewer(
 ) {
   const layers = options.layers ?? [
     {
-      source: tellux.TemplateUrlResource.fromUrl(arcgisWorldImageryUrl, {
+      source: {
+        type: "xyz",
+        url: arcgisWorldImageryUrl,
         levels: 19,
-      }),
+      },
     },
   ]
   const viewer = new tellux.Viewer(container, {
@@ -53,5 +55,5 @@ export function showTokenNotice(element: HTMLElement | null) {
   if (!element) return
 
   element.textContent =
-    "当前示例使用 TemplateUrlResource 加载 ArcGIS World Imagery。"
+    "当前示例使用 XYZ 影像数据源加载 ArcGIS World Imagery。"
 }

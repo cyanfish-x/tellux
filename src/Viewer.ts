@@ -27,14 +27,10 @@ import type {
 import type { GlobeControls } from '3d-tiles-renderer'
 
 export { Camera } from './Camera'
-export { CesiumIonResource } from './resources/CesiumIonResource'
 export { Clock } from './Clock'
 export { ImageryLayer, LayerManager } from './LayerManager'
-export { MVTResource } from './resources/MVTResource'
 export { Scene } from './Scene'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
-export { TemplateUrlResource } from './resources/TemplateUrlResource'
-export { WMSResource } from './resources/WMSResource'
 export { telluxConfig, type TelluxConfig } from './config'
 export type {
   CameraFlyToDestination,
@@ -47,20 +43,27 @@ export type {
   AtmosphereLightingMode,
   CartographicCoordinates,
   CesiumIon3DTilesetOptions,
-  CesiumIonResourceOptions,
+  CesiumIonImagerySourceOptions,
   FlyToTargetOffset,
   FlyToTargetOptions,
   FlyToTargetTarget,
+  GeoJSONData,
+  GeoJSONFeature,
+  GeoJSONFeatureCollection,
+  GeoJSONFeatureProperties,
+  GeoJSONFeatureStyle,
+  GeoJSONGeometry,
+  GeoJSONGetStyleCallback,
+  GeoJSONImagerySourceOptions,
   ImageryLayerOptions,
   ImageryLayerSourceOptions,
   ImageryLayerStyleOptions,
   Load3DTilesetOptions,
+  MVTImagerySourceOptions,
   MVTFeatureProperties,
   MVTFeatureStyle,
   MVTGetStyleCallback,
-  MVTResourceOptions,
   ScreenPosition,
-  TemplateUrlResourceOptions,
   TerrainOptions,
   TerrainTileLoadingOptions,
   TilesetLayer,
@@ -72,7 +75,8 @@ export type {
   ViewerMouseEvent,
   ViewerMouseMoveEvent,
   ViewerOptions,
-  WMSResourceOptions
+  WMSImagerySourceOptions,
+  XYZImagerySourceOptions
 } from './types'
 
 class TelluxGlobeControls extends BaseGlobeControls {

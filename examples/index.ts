@@ -49,9 +49,11 @@ if (globeContainer instanceof HTMLElement) {
       : undefined,
     layers: [
       {
-        source: tellux.TemplateUrlResource.fromUrl(arcgisWorldImageryUrl, {
+        source: {
+          type: 'xyz',
+          url: arcgisWorldImageryUrl,
           levels: 19
-        })
+        }
       }
     ],
     camera: {
