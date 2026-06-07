@@ -147,9 +147,10 @@
 <span class="code-token code-token--keyword">const</span> viewer = <span class="code-token code-token--keyword">new</span> tellux.<span class="code-token code-token--class">Viewer</span>(container, {
   <span class="code-token code-token--property">terrain</span>: { <span class="code-token code-token--property">url</span>: <span class="code-token code-token--string">'https://example.com/terrain/'</span> },
   <span class="code-token code-token--property">layers</span>: [{
-    <span class="code-token code-token--property">source</span>: tellux.<span class="code-token code-token--class">TemplateUrlResource</span>.<span class="code-token code-token--function">fromUrl</span>(
-      <span class="code-token code-token--string">'https://example.com/imagery/tiles/{z}/{y}/{x}'</span>
-    )
+    <span class="code-token code-token--property">source</span>: {
+      <span class="code-token code-token--property">type</span>: <span class="code-token code-token--string">'xyz'</span>,
+      <span class="code-token code-token--property">url</span>: <span class="code-token code-token--string">'https://example.com/imagery/tiles/{z}/{y}/{x}'</span>
+    }
   }],
   <span class="code-token code-token--property">camera</span>: {
     <span class="code-token code-token--property">latitude</span>: <span class="code-token code-token--number">31.2304</span>,
@@ -161,10 +162,11 @@
 
 viewer.<span class="code-token code-token--property">layers</span>.<span class="code-token code-token--function">add</span>({
   <span class="code-token code-token--property">name</span>: <span class="code-token code-token--string">'Province boundary'</span>,
-  <span class="code-token code-token--property">source</span>: tellux.<span class="code-token code-token--class">WMSResource</span>.<span class="code-token code-token--function">fromUrl</span>(
-    <span class="code-token code-token--string">'https://example.com/geoserver/wms'</span>,
-    <span class="code-token code-token--string">'workspace:layer'</span>
-  ),
+  <span class="code-token code-token--property">source</span>: {
+    <span class="code-token code-token--property">type</span>: <span class="code-token code-token--string">'wms'</span>,
+    <span class="code-token code-token--property">url</span>: <span class="code-token code-token--string">'https://example.com/geoserver/wms'</span>,
+    <span class="code-token code-token--property">layer</span>: <span class="code-token code-token--string">'workspace:layer'</span>
+  },
   <span class="code-token code-token--property">style</span>: { <span class="code-token code-token--property">opacity</span>: <span class="code-token code-token--number">0.72</span> }
 })</code></pre>
           </div>

@@ -68,9 +68,8 @@ Overlay 的优势是可以被复用到不同表面：同一个 overlay 可以贴
 
 Tellux 当前用法：
 
-- `CesiumIonResource.fromAssetId(...)` 生成资源配置。
 - 3D Tiles 场景数据通过 `CesiumIonAuthPlugin` 加载。
-- imagery layer 通过 `CesiumIonOverlay` 贴到裸球或地形表面。
+- `type: 'cesium-ion'` imagery layer 通过 `CesiumIonOverlay` 贴到裸球或地形表面。
 
 能力重点：
 
@@ -169,7 +168,7 @@ Tellux 当前用法：
 
 Tellux 当前用法：
 
-- 当前不再把 `XYZTilesPlugin` 作为公开影像入口，template-url 统一走 `XYZTilesOverlay`。
+- 当前不再把 `XYZTilesPlugin` 作为公开影像入口，`type: 'xyz'` 统一走 `XYZTilesOverlay`。
 - 裸球表面统一由 `GeneratedSurfacePlugin({ shape: 'ellipsoid' })` 生成。
 
 与 overlay 的区别：
@@ -327,7 +326,7 @@ viewer.debug.colorMode = 'geometricError'
 
 Tellux 当前已使用：
 
-- `XYZTilesOverlay`：template-url imagery layer 使用。
+- `XYZTilesOverlay`：xyz imagery layer 使用。
 - `WMSTilesOverlay`：WMS imagery layer 使用。
 
 ### 平台影像 overlays
@@ -358,8 +357,8 @@ Tellux 当前已使用：
 
 后续接入建议：
 
-- 新增 `GeoJsonResource`。
-- 设计 style callback。
+- 新增 `type: 'geojson'` source 配置。
+- 设计 layer `style.getStyle` callback。
 - 明确大数据量时的性能边界。
 
 #### MVTOverlay
@@ -368,7 +367,7 @@ Tellux 当前已使用：
 
 Tellux 当前已使用：
 
-- `MVTResource.fromUrl(...)` 创建资源配置。
+- `type: 'mvt'` source 创建数据源配置。
 - `TilesetManager.createMVTOverlay()` 创建 overlay。
 - 支持 `getStyle(layerName, properties)` 样式回调。
 
@@ -396,7 +395,7 @@ Tellux 当前已使用：
 
 后续接入建议：
 
-- 新增 `PMTilesResource`。
+- 新增 `type: 'pmtiles'` source 配置。
 - 明确 optional peer dependency。
 - 和 MVT 样式回调尽量复用。
 
@@ -406,7 +405,7 @@ Tellux 当前已使用：
 
 ```mermaid
 flowchart LR
-  TemplateUrlResource --> XYZTilesOverlay
+  XYZSource["type: 'xyz' source"] --> XYZTilesOverlay
   GeneratedSurfacePlugin --> SurfaceTileset["surface TilesRenderer"]
   XYZTilesOverlay --> ImageOverlayPlugin
   ImageOverlayPlugin --> SurfaceTileset
@@ -445,7 +444,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  CesiumIonResource --> CesiumIonAuthPlugin
+  CesiumIon3DTiles["type: 'cesium-ion' 3D Tiles options"] --> CesiumIonAuthPlugin
   CesiumIonAuthPlugin --> TilesRenderer
   GLTFExtensionsPlugin --> TilesRenderer
   TilesRenderer --> Scene
@@ -486,20 +485,20 @@ flowchart LR
 
 ## 对 Tellux API 设计的建议
 
-1. 面向用户继续使用 resource helper。
-   - `TemplateUrlResource`
-   - `CesiumIonResource`
-   - `MVTResource`
-   - `WMSResource`
-   - 后续 `GeoJsonResource`、`PMTilesResource`
+1. 面向用户使用纯配置 source 对象。
+   - `type: 'xyz'`
+   - `type: 'cesium-ion'`
+   - `type: 'mvt'`
+   - `type: 'wms'`
+   - 后续 `type: 'tms'`、`type: 'wmts'`、`type: 'pmtiles'`
 
 2. 不直接暴露上游 plugin 类作为首选 API。
    - 上游插件很强，但配置细节偏底层。
-   - Tellux 应优先包装成 GIS 用户熟悉的 resource / layer API。
+   - Tellux 应优先包装成 GIS 用户熟悉的 source / layer API。
 
 3. 把 overlay 能力设计成图层。
    - 当前通过 `viewer.layers.add(...)`、`viewer.layers.remove(...)`、`viewer.layers.move(...)` 管理 imagery layer。
-   - 每个 imagery layer 包含资源、样式、透明度、顺序、可见性。
+   - 每个 imagery layer 包含 source、style、顺序和可见性。
 
 4. 性能敏感插件先做可选项。
    - `TileCreasedNormalsPlugin` 当前已默认关闭。

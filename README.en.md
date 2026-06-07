@@ -27,9 +27,10 @@ const viewer = new tellux.Viewer(container, {
   },
   layers: [
     {
-      source: tellux.TemplateUrlResource.fromUrl(
-        'https://example.com/imagery/{z}/{y}/{x}.png'
-      )
+      source: {
+        type: 'xyz',
+        url: 'https://example.com/imagery/{z}/{y}/{x}.png'
+      }
     }
   ],
   camera: {
@@ -50,15 +51,17 @@ viewer.setTerrain({
 viewer.setTerrain(null)
 ```
 
-You can still use Cesium Ion resources:
+You can also use Cesium Ion imagery sources:
 
 ```ts
 new tellux.Viewer(container, {
   layers: [
     {
-      source: tellux.CesiumIonResource.fromAssetId(2275207, {
+      source: {
+        type: 'cesium-ion',
+        assetId: 2275207,
         apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-      })
+      }
     }
   ]
 })
@@ -69,9 +72,10 @@ Imagery layers are managed through `viewer.layers`. Layers are drawn from bottom
 ```ts
 const imageryLayer = viewer.layers.add({
   name: 'World Imagery',
-  source: tellux.TemplateUrlResource.fromUrl(
-    'https://example.com/imagery/{z}/{y}/{x}.png'
-  )
+  source: {
+    type: 'xyz',
+    url: 'https://example.com/imagery/{z}/{y}/{x}.png'
+  }
 })
 
 imageryLayer.setVisible(false)
@@ -80,33 +84,73 @@ imageryLayer.moveTo(0)
 imageryLayer.remove()
 ```
 
-MVT vector tiles can be used as imagery layers with `MVTResource`:
+MVT vector tiles can be used as imagery layers:
 
 ```ts
 viewer.layers.add({
   name: 'Water and roads',
-  source: tellux.MVTResource.fromUrl('https://example.com/tiles/{z}/{x}/{y}.pbf', {
+  source: {
+    type: 'mvt',
+    url: 'https://example.com/tiles/{z}/{x}/{y}.pbf'
+  },
+  style: {
     getStyle(layerName) {
       if (layerName.includes('water')) return { fill: '#38bdf8', order: 10 }
       if (layerName.includes('transportation')) return { stroke: '#facc15', strokeWidth: 1.4, order: 30 }
       return null
     }
-  })
+  }
 })
 ```
 
-`MVTResource` uses the `3d-tiles-renderer` MVT overlay and requires `@mapbox/vector-tile` and `pbf` at runtime.
+MVT layers use the `3d-tiles-renderer` MVT overlay and require `@mapbox/vector-tile` and `pbf` at runtime.
 
-WMS services can be used as imagery layers with `WMSResource`:
+GeoJSON can be used as a draped vector overlay:
+
+```ts
+viewer.layers.add({
+  name: 'Area boundary',
+  source: {
+    type: 'geojson',
+    url: '/data/boundary.geojson'
+  },
+  style: {
+    opacity: 0.85,
+    fill: 'rgba(20, 184, 166, 0.28)',
+    stroke: '#14b8a6',
+    strokeWidth: 2,
+    getStyle(feature, properties) {
+      if (properties?.kind === 'restricted') return { fill: 'rgba(244, 63, 94, 0.32)', stroke: '#f43f5e' }
+      return {}
+    }
+  }
+})
+```
+
+You can also pass a GeoJSON object directly:
+
+```ts
+viewer.layers.add({
+  source: {
+    type: 'geojson',
+    geojson
+  }
+})
+```
+
+WMS services can be used as imagery layers:
 
 ```ts
 viewer.layers.add({
   name: 'Province boundary',
-  source: tellux.WMSResource.fromUrl('https://example.com/geoserver/wms', 'workspace:layer', {
+  source: {
+    type: 'wms',
+    url: 'https://example.com/geoserver/wms',
+    layer: 'workspace:layer',
     crs: 'EPSG:4326',
     format: 'image/png',
     transparent: true
-  }),
+  },
   style: {
     opacity: 0.7
   }
@@ -118,14 +162,17 @@ For example, a GeoServer WMS 1.1.0 service:
 ```ts
 viewer.layers.add({
   name: 'China Province WMS',
-  source: tellux.WMSResource.fromUrl('https://example.com/geoserver/wms', 'workspace:province_boundary', {
+  source: {
+    type: 'wms',
+    url: 'https://example.com/geoserver/wms',
+    layer: 'workspace:province_boundary',
     version: '1.1.0',
     crs: 'EPSG:4326',
     styles: '',
     format: 'image/png',
     transparent: true,
     contentBoundingBox: [73.501142, 3.397162, 135.088511, 53.560901]
-  }),
+  },
   style: {
     opacity: 0.72
   }

@@ -135,7 +135,7 @@ Tellux 当前使用 `GlobeControls`，并在 Tellux 自己的 `Camera` 包装类
 - `GoogleCloudAuthPlugin`
   - 面向 Google Photorealistic Tiles / Google Tiles API 场景。
 
-Tellux 当前已经支持通过 `CesiumIonResource.fromAssetId(...)` 创建 Cesium Ion 资源配置，并注册 `CesiumIonAuthPlugin`。
+Tellux 当前已经支持通过 `type: 'cesium-ion'` 数据源配置创建 Cesium Ion 影像图层，并通过 `CesiumIonAuthPlugin` 加载 Cesium Ion 3D Tiles 资源。
 
 ## glTF 扩展能力
 
@@ -212,7 +212,7 @@ Tellux 当前不再通过影像瓦片插件作为公开入口；裸球由 `Gener
 
 当前接入和后续可扩展方向：
 
-- 已通过 `viewer.layers` 支持 template-url、Cesium Ion imagery、MVT 和 WMS imagery layer。
+- 已通过 `viewer.layers` 支持 xyz、Cesium Ion imagery、MVT、GeoJSON 和 WMS imagery layer。
 - 后续支持 WMTS / TMS。
 - 后续支持 GeoJSON / PMTiles 叠加。
 - 继续增强多图层叠加、透明度和顺序控制。
@@ -309,7 +309,7 @@ Tellux 当前已使用：
 - `ImageOverlayPlugin`
   - 将 imagery layer stack 贴到裸球或地形表面。
 - `XYZTilesOverlay`
-  - template-url imagery layer。
+  - xyz imagery layer。
 - `WMSTilesOverlay`
   - WMS imagery layer。
 - `CesiumIonOverlay`
@@ -317,7 +317,7 @@ Tellux 当前已使用：
 - `CesiumIonAuthPlugin`
   - Cesium Ion 3D Tiles asset 加载。
 - `MVTOverlay`
-  - 通过 `MVTResource` 接入 Mapbox Vector Tile 数据源，并支持 feature 样式回调。
+  - 通过 `type: 'mvt'` 接入 Mapbox Vector Tile 数据源，并支持 feature 样式回调。
 - `GlobeControls`
   - 地球控制。
 - `Ellipsoid`

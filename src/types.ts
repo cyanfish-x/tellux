@@ -348,6 +348,44 @@ export interface ImageryLayerStyleOptions {
    * Layer color tint.
    */
   color?: number | string
+  /**
+   * 面填充颜色，适用于 GeoJSON 和 MVT 图层。
+   *
+   * Polygon fill color for GeoJSON and MVT layers.
+   */
+  fill?: string
+  /**
+   * 线描边颜色，适用于 GeoJSON 和 MVT 图层。
+   *
+   * Line stroke color for GeoJSON and MVT layers.
+   */
+  stroke?: string
+  /**
+   * 描边宽度（像素），适用于 GeoJSON 和 MVT 图层。
+   *
+   * Stroke width in pixels for GeoJSON and MVT layers.
+   */
+  strokeWidth?: number
+  /**
+   * 点半径（像素），适用于 GeoJSON 和 MVT 图层。
+   *
+   * Point radius in pixels for GeoJSON and MVT layers.
+   */
+  pointRadius?: number
+  /**
+   * 按矢量 feature 返回样式。
+   *
+   * GeoJSON 图层接收 `(feature, properties)`；MVT 图层接收
+   * `(layerName, properties)`，当 `properties` 为 `null` 时仅用于获取
+   * MVT 图层绘制顺序。
+   *
+   * Returns per-feature vector styling.
+   *
+   * GeoJSON layers receive `(feature, properties)`. MVT layers receive
+   * `(layerName, properties)`; when `properties` is `null`, the callback is
+   * queried only for MVT layer draw order.
+   */
+  getStyle?: GeoJSONGetStyleCallback | MVTGetStyleCallback
 }
 
 /**
@@ -355,8 +393,12 @@ export interface ImageryLayerStyleOptions {
  *
  * Imagery layer source options supported by Viewer.
  */
-export type ImageryLayerSourceOptions = CesiumIonResourceOptions | TemplateUrlResourceOptions
-  | MVTResourceOptions | WMSResourceOptions
+export type ImageryLayerSourceOptions =
+  | CesiumIonImagerySourceOptions
+  | XYZImagerySourceOptions
+  | WMSImagerySourceOptions
+  | GeoJSONImagerySourceOptions
+  | MVTImagerySourceOptions
 
 /**
  * 地形瓦片加载参数，用于调整地形 LOD 和影像贴图质量。
@@ -614,12 +656,12 @@ export interface TilesetLayer {
 }
 
 /**
- * Cesium Ion 影像资源配置，用于影像图层。
+ * Cesium Ion 影像数据源配置，用于影像图层。
  *
- * Cesium Ion imagery resource options used by imagery layers.
+ * Cesium Ion imagery source options used by imagery layers.
  */
-export interface CesiumIonResourceOptions {
-  /** 资源类型。Resource type. */
+export interface CesiumIonImagerySourceOptions {
+  /** 数据源类型。Source type. */
   type: 'cesium-ion'
   /** Cesium Ion 访问令牌。Cesium Ion access token. */
   apiToken: string
@@ -630,13 +672,13 @@ export interface CesiumIonResourceOptions {
 }
 
 /**
- * 模板 URL 影像资源配置，用于影像图层。
+ * XYZ 瓦片影像数据源配置，用于影像图层。
  *
- * Template URL imagery resource options used by imagery layers.
+ * XYZ tile imagery source options used by imagery layers.
  */
-export interface TemplateUrlResourceOptions {
-  /** 资源类型。Resource type. */
-  type: 'template-url'
+export interface XYZImagerySourceOptions {
+  /** 数据源类型。Source type. */
+  type: 'xyz'
   /**
    * 瓦片 URL 模板，支持 `{x}`、`{y}`、`{z}` 占位符。
    *
@@ -664,12 +706,12 @@ export interface TemplateUrlResourceOptions {
 }
 
 /**
- * WMS 影像资源配置，用于影像图层。
+ * WMS 影像数据源配置，用于影像图层。
  *
- * WMS imagery resource options used by imagery layers.
+ * WMS imagery source options used by imagery layers.
  */
-export interface WMSResourceOptions {
-  /** 资源类型。Resource type. */
+export interface WMSImagerySourceOptions {
+  /** 数据源类型。Source type. */
   type: 'wms'
   /**
    * WMS 服务基础 URL。
@@ -746,6 +788,134 @@ export interface WMSResourceOptions {
 }
 
 /**
+ * GeoJSON 几何对象。
+ *
+ * GeoJSON geometry object.
+ */
+export interface GeoJSONGeometry {
+  /** GeoJSON 几何类型。GeoJSON geometry type. */
+  type: string
+  /** 几何坐标。Geometry coordinates. */
+  coordinates?: unknown
+  /** GeometryCollection 中的子几何。Child geometries in a GeometryCollection. */
+  geometries?: GeoJSONGeometry[]
+  /** 允许应用携带额外 GeoJSON 成员。Allows applications to carry extra GeoJSON members. */
+  [key: string]: unknown
+}
+
+/**
+ * GeoJSON feature 属性。
+ *
+ * GeoJSON feature properties.
+ */
+export type GeoJSONFeatureProperties = Record<string, unknown>
+
+/**
+ * GeoJSON feature 对象。
+ *
+ * GeoJSON feature object.
+ */
+export interface GeoJSONFeature {
+  /** GeoJSON 对象类型。GeoJSON object type. */
+  type: 'Feature'
+  /** Feature 几何。Feature geometry. */
+  geometry: GeoJSONGeometry | null
+  /** Feature 属性。Feature properties. */
+  properties?: GeoJSONFeatureProperties | null
+  /** 允许应用携带额外 GeoJSON 成员。Allows applications to carry extra GeoJSON members. */
+  [key: string]: unknown
+}
+
+/**
+ * GeoJSON feature collection 对象。
+ *
+ * GeoJSON feature collection object.
+ */
+export interface GeoJSONFeatureCollection {
+  /** GeoJSON 对象类型。GeoJSON object type. */
+  type: 'FeatureCollection'
+  /** Feature 列表。Feature list. */
+  features: GeoJSONFeature[]
+  /** 允许应用携带额外 GeoJSON 成员。Allows applications to carry extra GeoJSON members. */
+  [key: string]: unknown
+}
+
+/**
+ * 可作为 GeoJSON 图层输入的数据。
+ *
+ * GeoJSON data accepted by a GeoJSON layer.
+ */
+export type GeoJSONData = GeoJSONFeatureCollection | GeoJSONFeature | GeoJSONGeometry
+
+/**
+ * GeoJSON feature 样式。
+ *
+ * GeoJSON feature style.
+ */
+export interface GeoJSONFeatureStyle {
+  /** 面填充颜色，使用 CSS 颜色字符串。Polygon fill color as a CSS color string. */
+  fill?: string
+  /** 线描边颜色，使用 CSS 颜色字符串。Line stroke color as a CSS color string. */
+  stroke?: string
+  /** 描边宽度（像素）。Stroke width in pixels. */
+  strokeWidth?: number
+  /** 点半径（像素）。Point radius in pixels. */
+  radius?: number
+  /** 是否渲染该 feature。Whether the feature is rendered. */
+  visible?: boolean
+}
+
+/**
+ * GeoJSON feature 样式回调。
+ *
+ * GeoJSON feature style callback.
+ */
+export type GeoJSONGetStyleCallback = (
+  feature: GeoJSONFeature,
+  properties: GeoJSONFeatureProperties | null
+) => GeoJSONFeatureStyle | null
+
+/**
+ * GeoJSON 数据源配置，用于影像图层。
+ *
+ * GeoJSON source options used by imagery layers.
+ */
+export interface GeoJSONImagerySourceOptions {
+  /** 数据源类型。Source type. */
+  type: 'geojson'
+  /**
+   * GeoJSON 数据对象。
+   *
+   * GeoJSON data object.
+   */
+  geojson?: GeoJSONData
+  /**
+   * GeoJSON 文件 URL。未传 `geojson` 时会在初始化时请求该 URL。
+   *
+   * GeoJSON file URL. When `geojson` is omitted, this URL is fetched on init.
+   */
+  url?: string
+  /**
+   * 生成 GeoJSON 纹理的画布分辨率，默认 `256`。
+   *
+   * Canvas resolution used to rasterize GeoJSON textures. Defaults to `256`.
+   */
+  resolution?: number
+  /**
+   * 请求 URL 预处理函数，可用于追加 token 或签名参数。
+   *
+   * Preprocesses request URLs, useful for appending tokens or signatures.
+   */
+  preprocessURL?: (url: string) => string | null
+  /**
+   * GeoJSON 请求配置。
+   *
+   * GeoJSON request options.
+   */
+  fetchOptions?: RequestInit
+}
+
+/**
  * MVT feature 样式。
  *
  * MVT feature style.
@@ -783,12 +953,12 @@ export type MVTGetStyleCallback = (
 ) => MVTFeatureStyle | null
 
 /**
- * Mapbox Vector Tile 资源配置，用于影像图层。
+ * Mapbox Vector Tile 数据源配置，用于影像图层。
  *
- * Mapbox Vector Tile resource options used by imagery layers.
+ * Mapbox Vector Tile source options used by imagery layers.
  */
-export interface MVTResourceOptions {
-  /** 资源类型。Resource type. */
+export interface MVTImagerySourceOptions {
+  /** 数据源类型。Source type. */
   type: 'mvt'
   /**
    * MVT 瓦片 URL 模板，支持 `{x}`、`{y}`、`{z}` 占位符。
@@ -820,18 +990,6 @@ export interface MVTResourceOptions {
    * Tile request options.
    */
   fetchOptions?: RequestInit
-  /**
-   * 按 MVT 图层名和 feature 属性返回样式；当 `properties` 为 `null` 时只用于获取图层绘制顺序。
-   *
-   * 返回 `{}` 使用默认样式；返回 `null` 或 `{ visible: false }` 不渲染该 feature。
-   *
-   * Returns a style from the MVT layer name and feature properties. When
-   * `properties` is `null`, the callback is queried only for layer draw order.
-   *
-   * Return `{}` to use the default style. Return `null` or `{ visible: false }`
-   * to skip rendering the feature.
-   */
-  getStyle?: MVTGetStyleCallback
 }
 
 /**

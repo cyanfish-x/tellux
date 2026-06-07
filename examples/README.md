@@ -6,7 +6,7 @@
 作为开发服务器的静态资源根目录，示例会通过 `tellux.baseUrl = '/tellux/'`
 加载本地的云、STBN 和星空资源。
 
-示例默认使用 `TemplateUrlResource` 加载 ArcGIS World Imagery：
+示例默认使用 `type: 'xyz'` 影像数据源加载 ArcGIS World Imagery：
 
 ```txt
 https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}

@@ -29,14 +29,19 @@ interface OverlayLayerExample {
   key: string
   label: string
   description: string
-  type: "xyz" | "wms" | "mvt"
+  type: "xyz" | "wms" | "geojson" | "mvt"
   initialVisible: boolean
   layer?: ImageryLayer
 }
 
-const openInfraMapOverlay = tellux.MVTResource.fromUrl(openInfraMapUrl, {
+const openInfraMapOverlay: ImageryLayerOptions["source"] = {
+  type: "mvt",
+  url: openInfraMapUrl,
   levels: 15,
   resolution: 1024,
+}
+
+const openInfraMapStyle: ImageryLayerOptions["style"] = {
   getStyle(layerName, properties) {
     if (properties === null) {
       if (
@@ -113,31 +118,62 @@ const openInfraMapOverlay = tellux.MVTResource.fromUrl(openInfraMapUrl, {
 
     return { visible: false }
   },
-})
+}
 
-const arcgisWorldImageryLayer = tellux.TemplateUrlResource.fromUrl(
-  arcgisWorldImageryUrl
-)
+const arcgisWorldImageryLayer: ImageryLayerOptions["source"] = {
+  type: "xyz",
+  url: arcgisWorldImageryUrl,
+}
 
-const nasaGIBSLandCoverOverlay = tellux.WMSResource.fromUrl(
-  nasaGIBSWMSUrl,
-  "MODIS_Combined_L3_IGBP_Land_Cover_Type_Annual",
-  {
-    version: "1.1.1",
-    crs: "EPSG:4326",
-    styles: "default",
-    format: "image/png",
-    transparent: true,
-    levels: 10,
-    tileDimension: 512,
-    contentBoundingBox: [-180, -90, 180, 90],
-    preprocessURL(url) {
-      const nextUrl = new URL(url)
-      nextUrl.searchParams.set("TIME", nasaGIBSLandCoverTime)
-      return nextUrl.toString()
-    },
+const nasaGIBSLandCoverOverlay: ImageryLayerOptions["source"] = {
+  type: "wms",
+  url: nasaGIBSWMSUrl,
+  layer: "MODIS_Combined_L3_IGBP_Land_Cover_Type_Annual",
+  version: "1.1.1",
+  crs: "EPSG:4326",
+  styles: "default",
+  format: "image/png",
+  transparent: true,
+  levels: 10,
+  tileDimension: 512,
+  contentBoundingBox: [-180, -90, 180, 90],
+  preprocessURL(url) {
+    const nextUrl = new URL(url)
+    nextUrl.searchParams.set("TIME", nasaGIBSLandCoverTime)
+    return nextUrl.toString()
+  },
+}
+
+const chinaProvinceOverlay: ImageryLayerOptions["source"] = {
+  type: "geojson",
+  url: "/中国省级行政区划.geojson",
+  resolution: 1024,
+}
+
+const chinaProvinceStyle: ImageryLayerOptions["style"] = {
+  fill: "rgba(20, 184, 166, 0.14)",
+  stroke: "#5eead4",
+  strokeWidth: 1.4,
+  getStyle(_feature, properties) {
+    if (properties?.province_type === "直辖市") {
+      return {
+        fill: "rgba(244, 114, 182, 0.2)",
+        stroke: "#f9a8d4",
+        strokeWidth: 1.8,
+      }
+    }
+
+    if (properties?.province_type === "自治区") {
+      return {
+        fill: "rgba(96, 165, 250, 0.18)",
+        stroke: "#93c5fd",
+        strokeWidth: 1.5,
+      }
+    }
+
+    return {}
   }
-)
+}
 
 const chinaCamera: CameraSetViewOptions = {
   latitude: 35.2,
@@ -151,7 +187,7 @@ const overlayLayers: OverlayLayerExample[] = [
   {
     key: "arcgis-world-imagery",
     label: "ArcGIS XYZ 影像",
-    description: "TemplateUrlResource / World Imagery",
+    description: "XYZ / World Imagery",
     type: "xyz",
     initialVisible: true,
   },
@@ -168,6 +204,13 @@ const overlayLayers: OverlayLayerExample[] = [
     description: "Mapbox Vector Tile",
     type: "mvt",
     initialVisible: false,
+  },
+  {
+    key: "china-province-geojson",
+    label: "中国省级行政区划",
+    description: "GeoJSONOverlay / public GeoJSON",
+    type: "geojson",
+    initialVisible: true,
   },
 ]
 
@@ -192,6 +235,17 @@ const initialLayers: ImageryLayerOptions[] = [
     name: "OpenInfraMap 电力设施",
     source: openInfraMapOverlay,
     visible: false,
+    style: openInfraMapStyle,
+  },
+  {
+    id: "china-province-geojson",
+    name: "中国省级行政区划",
+    source: chinaProvinceOverlay,
+    visible: true,
+    style: {
+      ...chinaProvinceStyle,
+      opacity: 0.92,
+    },
   },
 ]
 
@@ -203,17 +257,6 @@ const viewer = createTelluxViewer(container, {
   },
   terrain: undefined,
 })
-
-setTimeout(() => {
-  viewer.camera.setView({
-    latitude: 28.24955872562373,
-    longitude: 112.58837123212457,
-    height: 5752668.878183253,
-    heading: -39.57750042099313,
-    pitch: -89.06082079312655,
-    roll: 16.681284373547793,
-  })
-}, 500)
 
 overlayLayers.forEach((item) => {
   const layer = viewer.layers.get(item.key)

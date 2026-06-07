@@ -6,6 +6,7 @@ import * as TilesRendererPlugins from '3d-tiles-renderer/plugins'
 import {
   CesiumIonAuthPlugin,
   CesiumIonOverlay,
+  GeoJSONOverlay,
   GLTFExtensionsPlugin,
   ImageOverlayPlugin,
   QuantizedMeshPlugin,
@@ -22,11 +23,13 @@ import type {
   ImageryLayerSourceOptions,
   ImageryLayerStyleOptions,
   Load3DTilesetOptions,
+  GeoJSONGetStyleCallback,
+  GeoJSONImagerySourceOptions,
   MVTGetStyleCallback,
-  MVTResourceOptions,
+  MVTImagerySourceOptions,
   TerrainOptions,
   TilesetLayer,
-  WMSResourceOptions
+  WMSImagerySourceOptions
 } from '../types'
 import type { ThreeRendererWithEffects } from '../effects'
 
@@ -51,6 +54,33 @@ type MVTOverlayInstance = ImageOverlay & {
 }
 
 type MVTOverlayConstructor = new (options: MVTOverlayOptions) => MVTOverlayInstance
+
+type GeoJSONOverlayOptions = {
+  geojson?: GeoJSONImagerySourceOptions['geojson']
+  url?: string
+  resolution?: number
+  pointRadius?: number
+  strokeStyle?: string
+  strokeWidth?: number
+  fillStyle?: string
+  opacity?: number
+  color?: THREE.ColorRepresentation
+  getStyle?: GeoJSONGetStyleCallback
+  preprocessURL?: (url: string) => string | null
+}
+
+type FetchableImageSource = {
+  fetchData(url: string, options?: RequestInit): Promise<Response>
+}
+
+type GeoJSONOverlayInstance = ImageOverlay & {
+  imageSource?: FetchableImageSource
+  getTexture(range: number[]): THREE.Texture | null
+  lockTexture(range: number[]): Promise<THREE.Texture | null>
+  fetch(url: string, options?: RequestInit): Promise<Response>
+}
+
+type GeoJSONOverlayConstructor = new (options: GeoJSONOverlayOptions) => GeoJSONOverlayInstance
 
 type ReleasableImageSource = {
   release(...args: number[]): void
@@ -88,6 +118,8 @@ const { GeneratedSurfacePlugin, MVTOverlay } = TilesRendererPlugins as unknown a
   GeneratedSurfacePlugin: GeneratedSurfacePluginConstructor
   MVTOverlay: MVTOverlayConstructor
 }
+
+const TelluxGeoJSONOverlay = GeoJSONOverlay as unknown as GeoJSONOverlayConstructor
 
 const KHR_MATERIALS_UNLIT = 'KHR_materials_unlit'
 
@@ -552,7 +584,7 @@ export class TilesetManager {
     let overlay: ImageOverlay
 
     switch (source.type) {
-      case 'template-url':
+      case 'xyz':
         overlay = new XYZTilesOverlay({
           url: source.url,
           levels: source.levels,
@@ -570,6 +602,9 @@ export class TilesetManager {
           opacity: style.opacity,
           color: style.color === undefined ? undefined : new THREE.Color(style.color)
         })
+        break
+      case 'geojson':
+        overlay = this.createGeoJSONOverlay(source, style)
         break
       case 'mvt':
         overlay = this.createMVTOverlay(source, style)
@@ -612,7 +647,72 @@ export class TilesetManager {
     return `tileset-${this.sceneTilesetId}`
   }
 
-  private createMVTOverlay(resource: MVTResourceOptions, style: ImageryLayerStyleOptions = {}) {
+  private createGeoJSONOverlay(resource: GeoJSONImagerySourceOptions, style: ImageryLayerStyleOptions = {}) {
+    const overlay = new TelluxGeoJSONOverlay({
+      geojson: resource.geojson,
+      url: resource.url ? this.normalizeResourceUrl(resource.url) : undefined,
+      resolution: resource.resolution,
+      pointRadius: style.pointRadius,
+      strokeStyle: style.stroke,
+      strokeWidth: style.strokeWidth,
+      fillStyle: style.fill,
+      opacity: style.opacity,
+      color: style.color,
+      getStyle: this.createGeoJSONGetStyle(style),
+      preprocessURL: resource.preprocessURL
+    })
+
+    if (resource.fetchOptions || resource.preprocessURL) {
+      const fetchOptions = resource.fetchOptions
+      const fetchGeoJSON = (url: string, options: RequestInit = {}) => {
+        const normalizedUrl = resource.preprocessURL ? resource.preprocessURL(url) : url
+        if (normalizedUrl === null) {
+          return Promise.reject(new Error('TilesetManager: GeoJSON URL preprocessing returned null.'))
+        }
+
+        return fetch(normalizedUrl, this.mergeFetchOptions(fetchOptions, options))
+      }
+
+      overlay.fetch = fetchGeoJSON
+      if (overlay.imageSource) {
+        overlay.imageSource.fetchData = fetchGeoJSON
+      }
+    }
+
+    const getTexture = overlay.getTexture.bind(overlay)
+    overlay.getTexture = (range: number[]) => {
+      return getTexture(range) ?? this.options.transparentOverlayTexture
+    }
+    const lockTexture = overlay.lockTexture.bind(overlay)
+    overlay.lockTexture = async (range: number[]) => {
+      return (await lockTexture(range)) ?? this.options.transparentOverlayTexture
+    }
+
+    return overlay
+  }
+
+  private createGeoJSONGetStyle(style: ImageryLayerStyleOptions): GeoJSONGetStyleCallback | undefined {
+    const getStyle = style.getStyle as GeoJSONGetStyleCallback | undefined
+    if (!getStyle) return undefined
+
+    const defaultStyle = {
+      fill: style.fill,
+      stroke: style.stroke,
+      strokeWidth: style.strokeWidth,
+      radius: style.pointRadius
+    }
+
+    return (feature, properties) => {
+      const featureStyle = getStyle(feature, properties)
+      return featureStyle === null ? null : {
+        ...defaultStyle,
+        ...featureStyle
+      }
+    }
+  }
+
+  private createMVTOverlay(resource: MVTImagerySourceOptions, style: ImageryLayerStyleOptions = {}) {
+    const getStyle = (style.getStyle as MVTGetStyleCallback | undefined) ?? (() => ({}))
     const overlay = new MVTOverlay({
       url: resource.url,
       levels: resource.levels,
@@ -620,7 +720,7 @@ export class TilesetManager {
       resolution: resource.resolution,
       opacity: style.opacity,
       color: style.color,
-      getStyle: resource.getStyle
+      getStyle
     })
 
     if (resource.fetchOptions) {
@@ -639,7 +739,7 @@ export class TilesetManager {
     return overlay
   }
 
-  private createWMSOverlay(resource: WMSResourceOptions, style: ImageryLayerStyleOptions = {}) {
+  private createWMSOverlay(resource: WMSImagerySourceOptions, style: ImageryLayerStyleOptions = {}) {
     const overlay = new WMSTilesOverlay({
       url: this.normalizeResourceUrl(resource.url),
       layer: resource.layer,
@@ -723,7 +823,22 @@ export class TilesetManager {
       error.message === 'DataCache: Attempting to release key that does not exist'
   }
 
-  private normalizeWMSContentBoundingBox(resource: WMSResourceOptions) {
+  private mergeFetchOptions(base: RequestInit | undefined, override: RequestInit = {}): RequestInit {
+    if (!base) return override
+
+    const headers = new Headers(base.headers)
+    new Headers(override.headers).forEach((value, key) => {
+      headers.set(key, value)
+    })
+
+    return {
+      ...base,
+      ...override,
+      headers
+    }
+  }
+
+  private normalizeWMSContentBoundingBox(resource: WMSImagerySourceOptions) {
     const bbox = resource.contentBoundingBox
     if (!bbox) return undefined
 
@@ -749,7 +864,7 @@ export class TilesetManager {
     return 2 * Math.atan(Math.exp(y / 6378137)) - Math.PI / 2
   }
 
-  private createWMSPreprocessURL(resource: WMSResourceOptions) {
+  private createWMSPreprocessURL(resource: WMSImagerySourceOptions) {
     const preprocessURL = resource.preprocessURL
     if (!this.isWMS11Version(resource.version)) return preprocessURL
 

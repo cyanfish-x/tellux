@@ -4,7 +4,7 @@
 
 ## 总体架构
 
-Tellux 采用 `Viewer` 门面加内部 manager 的结构。用户侧主要接触 `Viewer`、`Camera`、`Scene`、`Clock`、`viewer.layers` 和 `resources/*` 中的资源配置 helper；内部由不同 manager 分别管理瓦片、影像图层、地形、大气、云和后处理。
+Tellux 采用 `Viewer` 门面加内部 manager 的结构。用户侧主要接触 `Viewer`、`Camera`、`Scene`、`Clock`、`viewer.layers` 和 `layers[].source` 数据源配置对象；内部由不同 manager 分别管理瓦片、影像图层、地形、大气、云和后处理。
 
 ```mermaid
 flowchart TB
@@ -26,7 +26,7 @@ flowchart TB
   LayerManager --> TilesetManager
   TilesetManager --> RendererPlugins["3d-tiles-renderer/plugins<br/>GeneratedSurface / Overlay / Terrain / Auth / Fade"]
   TilesetManager --> LocalPlugins["本地插件<br/>TerrainFetchPlugin<br/>TileCreasedNormalsPlugin"]
-  LayerManager --> Resources["resources/*<br/>CesiumIonResource<br/>TemplateUrlResource<br/>MVTResource<br/>WMSResource"]
+  LayerManager --> Sources["layers[].source<br/>xyz / cesium-ion / mvt / wms / geojson"]
 
   AtmosphereManager --> Takram["@takram<br/>three-atmosphere / three-clouds"]
   PostProcessingManager --> Postprocessing["postprocessing<br/>EffectPass / NormalPass"]
@@ -42,7 +42,6 @@ flowchart TB
 - `src/tiles/TilesetManager.ts`：瓦片和渲染管线管理器。负责地球表面、地形、影像 overlay 注册、插件注册、热切换、每帧 tileset 更新。
 - `src/rendering/AtmosphereManager.ts`：大气和云管理器。负责创建大气、云、太阳光、天空光，并加载云纹理和 STBN 资源。
 - `src/rendering/PostProcessingManager.ts`：后处理管理器。根据 `Scene` 状态组合 normal pass、大气云 pass、lens flare、SMAA、dithering。
-- `src/resources/*`：资源配置 helper。当前包含 Cesium Ion、模板 URL、MVT 和 WMS，后续 GeoJSON、PMTiles 等资源类型应继续放在该目录。
 
 ## Viewer 创建流程
 
@@ -175,12 +174,13 @@ Surface 的典型用途是无地形模式下显示基础椭球地球。即使没
 
 ### 影像图层策略
 
-`LayerManager` 只管理 imagery layer。resource helper 只描述数据来源，图层自身保存名称、显隐、顺序和显示样式。`TilesetManager` 当前支持四类 imagery resource：
+`LayerManager` 只管理 imagery layer。`source` 描述数据来源和加载协议，图层自身保存名称、显隐、顺序和显示样式。`TilesetManager` 当前支持五类 imagery source：
 
-- `template-url`：通过 `XYZTilesOverlay` 贴到裸球或地形表面。
+- `xyz`：通过 `XYZTilesOverlay` 贴到裸球或地形表面。
 - `cesium-ion`：通过 `CesiumIonOverlay` 贴到裸球或地形表面。
 - `mvt`：通过 `MVTOverlay` 转成可贴到地球或地形表面的影像 overlay。
 - `wms`：通过 `WMSTilesOverlay` 加载 WMS GetMap 图片瓦片，并贴到裸球或地形表面。
+- `geojson`：通过 `GeoJSONOverlay` 转成可贴到地球或地形表面的影像 overlay。
 
 当 MVT overlay 暂时没有 texture 时，`createMVTOverlay()` 会返回透明 fallback texture，避免 overlay 缺失导致渲染链路拿到 `null`。
 
@@ -217,14 +217,14 @@ Surface 的典型用途是无地形模式下显示基础椭球地球。即使没
 
 后续新增数据源时，推荐遵循以下边界：
 
-- 资源配置 helper 放到 `src/resources/`，例如 `WMSResource`、`GeoJsonResource`、`PMTilesResource`。
-- TypeScript option 类型继续维护在 `src/types.ts`，通过 discriminated union 扩展 resource 类型。
-- 资源到 3d-tiles-renderer plugin / overlay 的转换逻辑放在 `TilesetManager` 或进一步拆出的 imagery factory 中。
+- TypeScript option 类型继续维护在 `src/types.ts`，通过 discriminated union 扩展 `ImageryLayerSourceOptions`。
+- 数据源到 3d-tiles-renderer plugin / overlay 的转换逻辑放在 `TilesetManager` 或进一步拆出的 imagery factory 中。
+- 加载参数保留在 `source`，图层显示和矢量符号化保留在 `style`。
 - 如果新增能力会改变 terrain/surface 创建流程，优先补充 `TilesetManager` 文档和对应示例。
 
 当 `TilesetManager` 继续增长时，可以进一步拆出：
 
-- `ImageryOverlayFactory`：专门处理 template-url、Cesium Ion、MVT、WMS、WMTS、GeoJSON 等资源到 overlay/plugin 的转换。
+- `ImageryOverlayFactory`：专门处理 xyz、Cesium Ion、MVT、WMS、WMTS、TMS、GeoJSON 等 source 到 overlay/plugin 的转换。
 - `TerrainTilesetFactory`：专门处理 quantized-mesh、地形 URL、地形插件和地形影像。
 - `SurfaceTilesetFactory`：专门处理无地形地球表面和 `GeneratedSurfacePlugin`。
 

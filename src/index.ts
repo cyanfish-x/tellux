@@ -1,29 +1,21 @@
 import {
   Camera,
-  CesiumIonResource,
   Clock,
   ImageryLayer,
   LayerManager,
-  MVTResource,
   Scene,
   SpringControl,
-  TemplateUrlResource,
-  WMSResource,
   telluxConfig,
   Viewer
 } from './Viewer'
 
 export {
   Camera,
-  CesiumIonResource,
   Clock,
   ImageryLayer,
   LayerManager,
-  MVTResource,
   Scene,
   SpringControl,
-  TemplateUrlResource,
-  WMSResource,
   Viewer,
   type AtmosphereLightingMode,
   type CameraFlyToDestination,
@@ -33,21 +25,28 @@ export {
   type CameraSetViewOptions,
   type CartographicCoordinates,
   type CesiumIon3DTilesetOptions,
-  type CesiumIonResourceOptions,
+  type CesiumIonImagerySourceOptions,
   type FlyToTargetOffset,
   type FlyToTargetOptions,
   type FlyToTargetTarget,
+  type GeoJSONData,
+  type GeoJSONFeature,
+  type GeoJSONFeatureCollection,
+  type GeoJSONFeatureProperties,
+  type GeoJSONFeatureStyle,
+  type GeoJSONGeometry,
+  type GeoJSONGetStyleCallback,
+  type GeoJSONImagerySourceOptions,
   type ImageryLayerOptions,
   type ImageryLayerSourceOptions,
   type ImageryLayerStyleOptions,
   type Load3DTilesetOptions,
+  type MVTImagerySourceOptions,
   type MVTFeatureProperties,
   type MVTFeatureStyle,
   type MVTGetStyleCallback,
-  type MVTResourceOptions,
   type ScreenPosition,
   type SpringControlOptions,
-  type TemplateUrlResourceOptions,
   type TerrainOptions,
   type TerrainTileLoadingOptions,
   type TelluxConfig,
@@ -60,7 +59,8 @@ export {
   type ViewerMouseEvent,
   type ViewerMouseMoveEvent,
   type ViewerOptions,
-  type WMSResourceOptions
+  type WMSImagerySourceOptions,
+  type XYZImagerySourceOptions
 } from './Viewer'
 
 /**
@@ -73,13 +73,9 @@ const tellux = {
   Scene,
   Camera,
   Clock,
-  CesiumIonResource,
   ImageryLayer,
   LayerManager,
-  MVTResource,
   SpringControl,
-  TemplateUrlResource,
-  WMSResource,
 
   /**
    * Tellux 静态资源父级目录。
