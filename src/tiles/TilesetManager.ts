@@ -27,6 +27,7 @@ import type {
   GeoJSONImagerySourceOptions,
   MVTGetStyleCallback,
   MVTImagerySourceOptions,
+  HeightSamplingSource,
   TerrainOptions,
   TilesetLayer,
   WMSImagerySourceOptions
@@ -110,6 +111,11 @@ type ImageryOverlayContextOptions = {
 type ImageryOverlayContext = {
   plugin: ImageOverlayPlugin
   overlays: Map<string, ImageOverlay>
+}
+
+export type HeightSamplingTilesetEntry = {
+  source: TilesRenderer
+  tileset: TilesRenderer
 }
 
 const DEFAULT_TERRAIN_ERROR_TARGET = 1
@@ -238,6 +244,7 @@ export class TilesetManager {
   private activeSurfaceTileset: TilesRenderer
   private activeTerrainTileset: TilesRenderer | null = null
   private readonly sceneTilesets = new Map<string, TilesRenderer>()
+  private readonly sceneTilesetOptions = new Map<string, Load3DTilesetOptions>()
   private readonly imageryOverlayContexts = new WeakMap<TilesRenderer, ImageryOverlayContext>()
   private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
@@ -314,6 +321,7 @@ export class TilesetManager {
     this.registerCommonTilesetPlugins(tileset)
     this.registerSceneTilesetMaterialPlugins(tileset, options)
     this.sceneTilesets.set(id, tileset)
+    this.sceneTilesetOptions.set(id, { ...options, id })
     this.options.scene.add(tileset.group)
 
     return {
@@ -342,7 +350,42 @@ export class TilesetManager {
     this.options.scene.remove(tileset.group)
     tileset.dispose()
     this.sceneTilesets.delete(id)
+    this.sceneTilesetOptions.delete(id)
     return true
+  }
+
+  createHeightSamplingTilesets(source: HeightSamplingSource = 'all'): HeightSamplingTilesetEntry[] {
+    const entries: HeightSamplingTilesetEntry[] = []
+
+    if (source !== 'terrain') {
+      this.sceneTilesets.forEach((sourceTileset, id) => {
+        if (!sourceTileset.group.visible) return
+
+        const options = this.sceneTilesetOptions.get(id)
+        if (!options) return
+
+        const tileset = this.createSceneTileset(options)
+        this.registerSamplingTilesetPlugins(tileset)
+        this.registerSceneTilesetMaterialPlugins(tileset, options)
+        this.configureHeightSamplingTileset(tileset)
+        this.copyTilesetTransform(sourceTileset, tileset)
+        entries.push({ source: sourceTileset, tileset })
+      })
+    }
+
+    if (source !== 'tileset' && this.activeTerrainTileset && this.currentTerrain) {
+      const tileset = this.createHeightSamplingTerrainTileset(this.currentTerrain)
+      this.copyTilesetTransform(this.activeTerrainTileset, tileset)
+      entries.push({ source: this.activeTerrainTileset, tileset })
+    }
+
+    return entries
+  }
+
+  disposeHeightSamplingTilesets(entries: HeightSamplingTilesetEntry[]) {
+    entries.forEach((entry) => {
+      entry.tileset.dispose()
+    })
   }
 
   update() {
@@ -368,6 +411,7 @@ export class TilesetManager {
       tileset.dispose()
     })
     this.sceneTilesets.clear()
+    this.sceneTilesetOptions.clear()
     this.activeTerrainTileset?.dispose()
     this.activeSurfaceTileset.dispose()
   }
@@ -391,6 +435,14 @@ export class TilesetManager {
   }
 
   private registerCommonTilesetPlugins(tileset: TilesRenderer) {
+    this.registerSamplingTilesetPlugins(tileset)
+    tileset.registerPlugin(new TilesFadePlugin())
+    tileset.registerPlugin(new UpdateOnChangePlugin())
+    tileset.setCamera(this.options.camera)
+    tileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
+  }
+
+  private registerSamplingTilesetPlugins(tileset: TilesRenderer) {
     tileset.registerPlugin(new GLTFExtensionsPlugin({
       dracoLoader: this.options.dracoLoader,
       plugins: [createMaterialsUnlitCompatibilityPlugin],
@@ -399,10 +451,6 @@ export class TilesetManager {
     if (this.options.creasedNormals) {
       tileset.registerPlugin(new TileCreasedNormalsPlugin())
     }
-    tileset.registerPlugin(new TilesFadePlugin())
-    tileset.registerPlugin(new UpdateOnChangePlugin())
-    tileset.setCamera(this.options.camera)
-    tileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
   }
 
   private registerSceneTilesetMaterialPlugins(tileset: TilesRenderer, options: Load3DTilesetOptions) {
@@ -466,6 +514,35 @@ export class TilesetManager {
     tileset.registerPlugin(new QuantizedMeshPlugin(terrainOptions))
     tileset.errorTarget = terrain.tileLoading?.errorTarget ?? DEFAULT_TERRAIN_ERROR_TARGET
     tileset.registerPlugin(new TerrainFetchPlugin(terrain.url))
+  }
+
+  private createHeightSamplingTerrainTileset(terrain: TerrainOptions) {
+    const tileset = new TilesRenderer(this.normalizeTerrainUrl(terrain.url))
+    this.registerTerrainProvider(tileset, terrain)
+    this.registerSamplingTilesetPlugins(tileset)
+    this.configureHeightSamplingTileset(tileset)
+    return tileset
+  }
+
+  private configureHeightSamplingTileset(tileset: TilesRenderer) {
+    tileset.displayActiveTiles = true
+    tileset.loadAncestors = true
+    tileset.loadSiblings = false
+    tileset.errorTarget = 0
+    tileset.maxTilesProcessed = 8
+    tileset.downloadQueue.maxJobs = Math.min(tileset.downloadQueue.maxJobs, 4)
+    tileset.parseQueue.maxJobs = Math.min(tileset.parseQueue.maxJobs, 1)
+    tileset.processNodeQueue.maxJobs = Math.min(tileset.processNodeQueue.maxJobs, 2)
+  }
+
+  private copyTilesetTransform(source: TilesRenderer, target: TilesRenderer) {
+    source.group.updateMatrixWorld(true)
+    target.group.matrixAutoUpdate = source.group.matrixAutoUpdate
+    target.group.position.copy(source.group.position)
+    target.group.quaternion.copy(source.group.quaternion)
+    target.group.scale.copy(source.group.scale)
+    target.group.matrix.copy(source.group.matrix)
+    target.group.updateMatrixWorld(true)
   }
 
   private registerTerrainImagery(tileset: TilesRenderer, terrain: TerrainOptions, layers: ImageryLayer[]) {

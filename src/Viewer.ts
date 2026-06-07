@@ -238,6 +238,7 @@ export class Viewer {
   private previousTime = 0
   private isDestroyed = false
   private isUsingDefaultRenderLoop = false
+  private isHeightSamplingUpdateScheduled = false
   private currentResolutionScale: number
   private currentToneMappingExposure: number
   private nextModelId = 0
@@ -620,17 +621,24 @@ export class Viewer {
   /**
    * 以更高精度异步采样经纬度数组的表面高度。
    *
-   * 方法会临时使用离屏相机从采样点上方向下观察，驱动相关地形或 3D Tiles
-   * 加载和细化，然后再采样高度。它适合采样当前视角外的位置，但会产生额外
-   * 的瓦片请求和更新开销。
+   * 方法会创建独立的采样任务和采样专用 tileset，通过 Viewer 渲染生命周期
+   * 中的采样 pass 增量驱动相关地形或 3D Tiles 加载和细化，然后再采样高度。
+   * 它适合采样当前视角外的位置，但会产生额外的瓦片请求和更新开销。
+   *
+   * 当 {@link Viewer.useDefaultRenderLoop} 为 `false` 时，需要继续调用
+   * {@link Viewer.render} 推进采样任务。
    *
    * Asynchronously samples surface heights for an array of cartographic
    * coordinate tuples with higher detail.
    *
-   * The method temporarily uses an offscreen camera looking downward from
-   * above the sample point to drive terrain or 3D Tiles loading and refinement,
-   * then samples the height. It can sample positions outside the current view,
-   * but may incur extra tile requests and update cost.
+   * The method creates independent sampling tasks and sampling-only tilesets,
+   * then advances them through a sampling pass in the Viewer render lifecycle
+   * to drive terrain or 3D Tiles loading and refinement before sampling the
+   * height. It can sample positions outside the current view, but may incur
+   * extra tile requests and update cost.
+   *
+   * When {@link Viewer.useDefaultRenderLoop} is `false`, continue calling
+   * {@link Viewer.render} to advance pending sampling tasks.
    */
   async sampleHeightMostDetailed(
     positions: CartographicCoordinateTuple[],
@@ -663,6 +671,7 @@ export class Viewer {
     this.atmosphere.updateLightSources()
     this.updateModelLayers(deltaTime)
     this.renderer.render(this.scene.threeScene, this.threeCamera)
+    this.scheduleHeightSamplingUpdate()
     return deltaTime
   }
 
@@ -705,6 +714,7 @@ export class Viewer {
     this.renderer.domElement.removeEventListener('mousemove', this.handleCanvasMouseMove)
     this.clearEventListeners()
     this.clearModelLayers()
+    this.heightSampler.dispose()
 
     this.postProcessing.dispose()
     this.atmosphere.dispose()
@@ -717,6 +727,24 @@ export class Viewer {
     if (this.renderer.domElement.parentElement) {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement)
     }
+  }
+
+  private scheduleHeightSamplingUpdate() {
+    if (
+      this.isDestroyed ||
+      this.isHeightSamplingUpdateScheduled ||
+      !this.heightSampler.hasPendingMostDetailedSampling
+    ) {
+      return
+    }
+
+    this.isHeightSamplingUpdateScheduled = true
+    setTimeout(() => {
+      this.isHeightSamplingUpdateScheduled = false
+      if (this.isDestroyed) return
+
+      this.heightSampler.updateMostDetailedSampling()
+    }, 0)
   }
 
   private resolveSceneOptions(options: ViewerOptions['scene']): Required<NonNullable<ViewerOptions['scene']>> {
