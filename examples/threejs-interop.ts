@@ -24,7 +24,6 @@ if (!flyToModelButton || !toggleAnimationButton) {
 }
 
 const viewer = createTelluxViewer(container, {
-  terrain: undefined,
   camera: {
     latitude: MODEL_LATITUDE,
     longitude: MODEL_LONGITUDE,
@@ -42,19 +41,11 @@ const viewer = createTelluxViewer(container, {
   },
 })
 
-const model = viewer.addModel({
-  type: "gltf",
-  id: "littlest-tokyo",
-  url: MODEL_URL,
-  coordinates: [MODEL_LONGITUDE, MODEL_LATITUDE, MODEL_HEIGHT],
-  scale: 0.45,
-  heading: 180,
-  alignToGround: true,
-  animate: true,
-  animationChannel: 0,
-})
-
 let isAnimationPlaying = true
+let model: ReturnType<typeof viewer.addModel> | null = null
+
+flyToModelButton.disabled = true
+toggleAnimationButton.disabled = true
 
 function setStatus(message: string) {
   if (statusElement) statusElement.textContent = message
@@ -66,26 +57,76 @@ function updateAnimationButton() {
     : "播放动画"
 }
 
-model.ready
-  .then((layer) => {
-    if (modelStatusElement) {
-      modelStatusElement.textContent = `${layer.animations.length} 个动画通道`
-      viewer.flyToTarget(model.root, {
-        heading: -30,
-        pitch: -10,
-        distance: 500,
-      })
-    }
-    setStatus(
-      "Littlest Tokyo 已通过 viewer.addModel(...) 加入场景，并自动播放第 0 个动画通道。"
+async function loadModelOnSampledGround() {
+  setStatus("正在离屏采样模型位置的地形高度...")
+  if (modelStatusElement) {
+    modelStatusElement.textContent = "采样地形高度中"
+  }
+
+  let modelHeight = MODEL_HEIGHT
+  try {
+    const sampledPositions = await viewer.sampleHeightMostDetailed(
+      [[MODEL_LONGITUDE, MODEL_LATITUDE]],
+      {
+        source: "terrain",
+      }
     )
-  })
-  .catch((error) => {
-    console.error(error)
-    setStatus("模型加载失败，请检查网络或 three.js 示例资源是否可访问。")
+    const sampledPosition = sampledPositions[0]
+    if (!sampledPosition) {
+      setStatus("离屏采样地形高度未命中，已取消模型加载。")
+      if (modelStatusElement) {
+        modelStatusElement.textContent = "地形高度未命中"
+      }
+      return
+    }
+    modelHeight = sampledPosition[2]
+  } catch (error) {
+    console.warn("Failed to sample terrain height before loading model.", error)
+    setStatus("离屏采样地形高度失败，已取消模型加载。")
+    if (modelStatusElement) {
+      modelStatusElement.textContent = "地形高度采样失败"
+    }
+    return
+  }
+
+  model = viewer.addModel({
+    type: "gltf",
+    id: "littlest-tokyo",
+    url: MODEL_URL,
+    coordinates: [MODEL_LONGITUDE, MODEL_LATITUDE, modelHeight],
+    scale: 0.45,
+    heading: 180,
+    alignToGround: true,
+    animate: true,
+    animationChannel: 0,
   })
 
+  try {
+    const layer = await model.ready
+    if (modelStatusElement) {
+      modelStatusElement.textContent = `${layer.animations.length} 个动画通道`
+    }
+    flyToModelButton.disabled = false
+    toggleAnimationButton.disabled = false
+    viewer.flyToTarget(model.root, {
+      heading: -30,
+      pitch: -10,
+      distance: 500,
+    })
+    setStatus(
+      `Littlest Tokyo 已在采样高度 ${modelHeight.toFixed(2)} 米处加入场景，并自动播放第 0 个动画通道。`
+    )
+  } catch (error) {
+    console.error(error)
+    setStatus("模型加载失败，请检查网络或 three.js 示例资源是否可访问。")
+  }
+}
+
+loadModelOnSampledGround()
+
 flyToModelButton.addEventListener("click", () => {
+  if (!model) return
+
   viewer.flyToTarget(model.root, {
     heading: -30,
     pitch: -10,
@@ -94,6 +135,8 @@ flyToModelButton.addEventListener("click", () => {
 })
 
 toggleAnimationButton.addEventListener("click", () => {
+  if (!model) return
+
   isAnimationPlaying = !isAnimationPlaying
   if (isAnimationPlaying) {
     model.playAnimation(0)

@@ -1144,11 +1144,81 @@ export interface CartographicCoordinates {
 export type CartographicCoordinateTuple = [longitude: number, latitude: number, height?: number]
 
 /**
+ * 经纬高输出，顺序为 `[经度, 纬度, 高度]`。
+ *
+ * Cartographic output as `[longitude, latitude, height]`.
+ */
+export type CartographicHeightTuple = [longitude: number, latitude: number, height: number]
+
+/**
+ * 高精度高度采样结果；未命中时为 `undefined`。
+ *
+ * Most-detailed height sampling result; `undefined` when no surface is hit.
+ */
+export type SampleHeightMostDetailedResult = CartographicHeightTuple | undefined
+
+/**
  * 经纬高点位输入。
  *
  * Cartographic point input.
  */
 export type CartographicInput = CartographicCoordinateTuple | CartographicCoordinates
+
+/**
+ * 高度采样的数据源范围。
+ *
+ * Height sampling source range.
+ */
+export type HeightSamplingSource = 'all' | 'terrain' | 'tileset'
+
+/**
+ * 高度采样选项。
+ *
+ * Height sampling options.
+ */
+export interface SampleHeightOptions {
+  /**
+   * 参与采样的数据源，默认 `'all'`。
+   *
+   * Source to sample from. Defaults to `'all'`.
+   */
+  source?: HeightSamplingSource
+  /**
+   * 沿当地地表法线向下采样的最低高度（米），默认 `-10000`。
+   *
+   * Minimum height in meters along the local surface-normal sampling ray.
+   * Defaults to `-10000`.
+   */
+  minimumHeight?: number
+  /**
+   * 沿当地地表法线向下采样的最高高度（米），默认 `100000`。
+   *
+   * Maximum height in meters along the local surface-normal sampling ray.
+   * Defaults to `100000`.
+   */
+  maximumHeight?: number
+}
+
+/**
+ * 高精度高度采样选项。
+ *
+ * Most-detailed height sampling options.
+ */
+export interface SampleHeightMostDetailedOptions extends SampleHeightOptions {
+  /**
+   * 离屏采样相机的像素分辨率，默认 `256`。
+   *
+   * Pixel resolution used by the offscreen sampling camera. Defaults to `256`.
+   */
+  resolution?: number
+  /**
+   * 等待瓦片加载和细化的最大更新帧数，默认 `120`。
+   *
+   * Maximum number of update frames to wait for tile loading and refinement.
+   * Defaults to `120`.
+   */
+  maxFrames?: number
+}
 
 /**
  * 经纬高局部坐标框架选项。

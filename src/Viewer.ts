@@ -17,11 +17,16 @@ import type {
   AnyViewerEventListener,
   CartographicFrameOptions,
   CartographicCoordinates,
+  CartographicCoordinateTuple,
+  CartographicHeightTuple,
   CartographicInput,
   FlyToTargetOptions,
   FlyToTargetTarget,
   Load3DTilesetOptions,
   ModelLayer,
+  SampleHeightMostDetailedOptions,
+  SampleHeightMostDetailedResult,
+  SampleHeightOptions,
   ScreenPosition,
   TilesetLayer,
   ViewerEventListener,
@@ -50,12 +55,14 @@ export type {
   CartographicCoordinateTuple,
   CartographicFrameOptions,
   CartographicCoordinates,
+  CartographicHeightTuple,
   CartographicInput,
   CesiumIon3DTilesetOptions,
   CesiumIonImagerySourceOptions,
   FlyToTargetOffset,
   FlyToTargetOptions,
   FlyToTargetTarget,
+  HeightSamplingSource,
   GeoJSONData,
   GeoJSONFeature,
   GeoJSONFeatureCollection,
@@ -75,6 +82,9 @@ export type {
   MVTFeatureStyle,
   MVTGetStyleCallback,
   ScreenPosition,
+  SampleHeightMostDetailedOptions,
+  SampleHeightMostDetailedResult,
+  SampleHeightOptions,
   TerrainOptions,
   TerrainTileLoadingOptions,
   TilesetLayer,
@@ -99,6 +109,11 @@ class TelluxGlobeControls extends BaseGlobeControls {
     )._updateRotation.call(this, deltaTime)
   }
 }
+
+const DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT = -10000
+const DEFAULT_SAMPLE_HEIGHT_MAXIMUM_HEIGHT = 100000
+const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION = 256
+const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES = 120
 
 class GltfModelLayer implements ModelLayer {
   readonly root = new THREE.Group()
@@ -340,6 +355,19 @@ export class Viewer {
   private readonly pickPoint = new THREE.Vector3()
   private readonly pickMatrix = new THREE.Matrix4()
   private readonly pickCartographicScratch = { lat: 0, lon: 0, height: 0 }
+  private readonly sampleRaycaster = new THREE.Raycaster()
+  private readonly sampleRay = new THREE.Ray()
+  private readonly sampleSurfacePoint = new THREE.Vector3()
+  private readonly sampleOrigin = new THREE.Vector3()
+  private readonly sampleDirection = new THREE.Vector3()
+  private readonly samplePoint = new THREE.Vector3()
+  private readonly sampleMatrix = new THREE.Matrix4()
+  private readonly sampleTarget = new THREE.Vector3()
+  private readonly sampleOffscreenCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 1)
+  private readonly samplePreviousViewport = new THREE.Vector4()
+  private readonly samplePreviousScissor = new THREE.Vector4()
+  private readonly sampleCartographicScratch = { lat: 0, lon: 0, height: 0 }
+  private sampleRenderTarget: THREE.WebGLRenderTarget | null = null
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly gltfLoader: GLTFLoader
   private readonly modelLayers = new Map<string, GltfModelLayer>()
@@ -770,6 +798,86 @@ export class Viewer {
   }
 
   /**
+   * 采样指定经纬度在当前已加载内容上的表面高度。
+   *
+   * 方法沿当地地表法线向下发射射线，只使用当前已经加载到场景中的地形和
+   * 3D Tiles。视角外或尚未加载的瓦片不会被额外请求；未命中时返回
+   * `undefined`。
+   *
+   * Samples the surface height at cartographic coordinates from currently
+   * loaded content.
+   *
+   * The method casts a ray downward along the local surface normal and only
+   * uses terrain and 3D Tiles already loaded in the scene. Tiles outside the
+   * current view or not yet loaded are not requested; returns `undefined` when
+   * no surface is hit.
+   */
+  sampleHeight(position: CartographicInput, options: SampleHeightOptions = {}) {
+    return this.sampleHeightFromLoadedTiles(position, options)
+  }
+
+  /**
+   * 以更高精度异步采样经纬度数组的表面高度。
+   *
+   * 方法会临时使用离屏相机从采样点上方向下观察，驱动相关地形或 3D Tiles
+   * 加载和细化，然后再采样高度。它适合采样当前视角外的位置，但会产生额外
+   * 的瓦片请求和更新开销。
+   *
+   * Asynchronously samples surface heights for an array of cartographic
+   * coordinate tuples with higher detail.
+   *
+   * The method temporarily uses an offscreen camera looking downward from
+   * above the sample point to drive terrain or 3D Tiles loading and refinement,
+   * then samples the height. It can sample positions outside the current view,
+   * but may incur extra tile requests and update cost.
+   */
+  async sampleHeightMostDetailed(
+    positions: CartographicCoordinateTuple[],
+    options: SampleHeightMostDetailedOptions = {}
+  ): Promise<SampleHeightMostDetailedResult[]> {
+    const sampledPositions: SampleHeightMostDetailedResult[] = []
+    for (const position of positions) {
+      const height = await this.sampleHeightMostDetailedSingle(position, options)
+      sampledPositions.push(height === undefined ? undefined : [position[0], position[1], height])
+    }
+
+    return sampledPositions
+  }
+
+  private async sampleHeightMostDetailedSingle(position: CartographicCoordinateTuple, options: SampleHeightMostDetailedOptions) {
+    const tilesets = this.getHeightSamplingTilesets(options.source)
+    const offscreenTilesets = tilesets.filter((tileset) => tileset !== this.tilesets.surfaceTileset)
+    if (offscreenTilesets.length > 0) {
+      const camera = this.configureSampleOffscreenCamera(position, options)
+      const resolution = Math.max(1, options.resolution ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION)
+      const maxFrames = Math.max(0, options.maxFrames ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES)
+
+      offscreenTilesets.forEach((tileset) => {
+        tileset.setCamera(camera)
+        tileset.setResolution(camera, resolution, resolution)
+      })
+
+      try {
+        const sampledHeight = await this.updateHeightSamplingTilesets(
+          position,
+          options,
+          offscreenTilesets,
+          camera,
+          resolution,
+          maxFrames
+        )
+        if (sampledHeight !== undefined) return sampledHeight
+      } finally {
+        offscreenTilesets.forEach((tileset) => {
+          tileset.deleteCamera(camera)
+        })
+      }
+    }
+
+    return this.sampleHeightFromLoadedTiles(position, options)
+  }
+
+  /**
    * 渲染一帧，并返回以秒为单位的帧间隔。
    *
    * 当 {@link Viewer.useDefaultRenderLoop} 为 `false` 时，请手动调用此方法。
@@ -838,6 +946,8 @@ export class Viewer {
 
     this.postProcessing.dispose()
     this.atmosphere.dispose()
+    this.sampleRenderTarget?.dispose()
+    this.sampleRenderTarget = null
     this.transparentOverlayTexture.dispose()
     this.tilesets.dispose()
     this.controls.dispose()
@@ -965,6 +1075,235 @@ export class Viewer {
       latitude: input.latitude,
       height: input.height
     }
+  }
+
+  private sampleHeightFromLoadedTiles(input: CartographicInput, options: SampleHeightOptions) {
+    this.configureSampleRay(input, options)
+    const tilesets = this.getHeightSamplingTilesets(options.source)
+    let closestHit: { height: number; distance: number } | null = null
+
+    for (const tileset of tilesets) {
+      if (!tileset.group.visible) continue
+
+      const hit = this.sampleHeightFromTileset(tileset)
+      if (hit && (!closestHit || hit.distance < closestHit.distance)) {
+        closestHit = hit
+      }
+    }
+
+    return closestHit?.height
+  }
+
+  private configureSampleRay(input: CartographicInput, options: SampleHeightOptions) {
+    const cartographic = this.resolveCartographicInput(input)
+    const minimumHeight = options.minimumHeight ?? DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT
+    const maximumHeight = options.maximumHeight ?? DEFAULT_SAMPLE_HEIGHT_MAXIMUM_HEIGHT
+    const ellipsoid = this.tilesets.tileset.ellipsoid
+
+    ellipsoid.getCartographicToPosition(
+      cartographic.latitude * DEG2RAD,
+      cartographic.longitude * DEG2RAD,
+      0,
+      this.sampleSurfacePoint
+    )
+    ellipsoid.getCartographicToNormal(
+      cartographic.latitude * DEG2RAD,
+      cartographic.longitude * DEG2RAD,
+      this.sampleDirection
+    )
+
+    this.sampleOrigin.copy(this.sampleSurfacePoint).addScaledVector(this.sampleDirection, maximumHeight)
+    this.sampleRay.origin.copy(this.sampleOrigin)
+    this.sampleRay.direction.copy(this.sampleDirection).multiplyScalar(-1).normalize()
+    this.sampleRaycaster.ray.copy(this.sampleRay)
+    this.sampleRaycaster.near = 0
+    this.sampleRaycaster.far = Math.max(maximumHeight - minimumHeight, 0)
+  }
+
+  private configureSampleOffscreenCamera(input: CartographicInput, options: SampleHeightMostDetailedOptions) {
+    this.configureSampleRay(input, options)
+    const far = Math.max(this.sampleRaycaster.far, 1)
+    const camera = this.sampleOffscreenCamera
+
+    camera.near = Math.max(0.1, far / 1000000)
+    camera.far = far
+    camera.aspect = 1
+    camera.position.copy(this.sampleOrigin)
+    this.sampleTarget.copy(this.sampleOrigin).add(this.sampleRay.direction)
+    camera.up.set(0, 1, 0)
+    if (Math.abs(camera.up.dot(this.sampleRay.direction)) > 0.99) {
+      camera.up.set(1, 0, 0)
+    }
+    camera.lookAt(this.sampleTarget)
+    camera.updateProjectionMatrix()
+    camera.updateMatrixWorld(true)
+    return camera
+  }
+
+  private getHeightSamplingTilesets(source: SampleHeightOptions['source'] = 'all') {
+    if (source === 'terrain') {
+      return [this.tilesets.terrainTileset ?? this.tilesets.surfaceTileset]
+    }
+
+    if (source === 'tileset') {
+      return this.tilesets.loadedSceneTilesets.filter((tileset) => tileset.group.visible)
+    }
+
+    return [
+      ...this.tilesets.loadedSceneTilesets.filter((tileset) => tileset.group.visible),
+      this.tilesets.terrainTileset ?? this.tilesets.surfaceTileset
+    ]
+  }
+
+  private sampleHeightFromTileset(tileset: TilesRenderer) {
+    tileset.group.updateMatrixWorld(true)
+    const hits = this.sampleRaycaster.intersectObject(tileset.group, true)
+    const hit = hits.find((item) => this.isSampleHeightSurfaceHit(item))
+    if (!hit) return null
+
+    this.sampleMatrix.copy(tileset.group.matrixWorld).invert()
+    this.samplePoint.copy(hit.point).applyMatrix4(this.sampleMatrix)
+    const cartographic = tileset.ellipsoid.getPositionToCartographic(this.samplePoint, this.sampleCartographicScratch)
+    return {
+      height: cartographic.height,
+      distance: hit.distance
+    }
+  }
+
+  private isSampleHeightSurfaceHit(hit: THREE.Intersection) {
+    const mesh = hit.object as THREE.Mesh
+    const geometry = mesh.geometry
+    const isQuantizedMeshTerrain =
+      typeof hit.object.userData.minHeight === 'number' &&
+      typeof hit.object.userData.maxHeight === 'number'
+
+    if (
+      !isQuantizedMeshTerrain ||
+      !geometry ||
+      geometry.groups.length === 0 ||
+      hit.faceIndex == null
+    ) {
+      return true
+    }
+
+    const surfaceGroup = geometry.groups[0]
+    const indexStart = hit.faceIndex * 3
+    return indexStart >= surfaceGroup.start && indexStart < surfaceGroup.start + surfaceGroup.count
+  }
+
+  private async updateHeightSamplingTilesets(
+    position: CartographicCoordinateTuple,
+    options: SampleHeightMostDetailedOptions,
+    tilesets: TilesRenderer[],
+    camera: THREE.PerspectiveCamera,
+    resolution: number,
+    maxFrames: number
+  ) {
+    let stableFrames = 0
+    let lastSampledHeight: number | undefined
+
+    for (let frame = 0; frame < maxFrames; frame += 1) {
+      let loading = false
+      for (const tileset of tilesets) {
+        tileset.update()
+        loading = this.isTilesetLoading(tileset) || loading
+      }
+      this.scene.threeScene.updateMatrixWorld(true)
+      this.renderHeightSamplingOffscreenFrame(camera, resolution)
+      const hasRenderableTiles = tilesets.some((tileset) => this.hasTilesetRenderableTiles(tileset))
+
+      const sampledHeight = this.sampleHeightFromLoadedTiles(position, options)
+      if (sampledHeight !== undefined) {
+        lastSampledHeight = sampledHeight
+      }
+
+      if (!loading && hasRenderableTiles) {
+        stableFrames += 1
+        if (stableFrames >= 2) {
+          return lastSampledHeight
+        }
+      } else {
+        stableFrames = 0
+      }
+
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve())
+      })
+    }
+
+    return lastSampledHeight
+  }
+
+  private renderHeightSamplingOffscreenFrame(camera: THREE.PerspectiveCamera, resolution: number) {
+    const renderTarget = this.getHeightSamplingRenderTarget(resolution)
+    const previousRenderTarget = this.renderer.getRenderTarget()
+    const previousAutoClear = this.renderer.autoClear
+    const previousScissorTest = this.renderer.getScissorTest()
+
+    this.renderer.getViewport(this.samplePreviousViewport)
+    this.renderer.getScissor(this.samplePreviousScissor)
+
+    try {
+      this.renderer.setRenderTarget(renderTarget)
+      this.renderer.setViewport(0, 0, resolution, resolution)
+      this.renderer.setScissor(0, 0, resolution, resolution)
+      this.renderer.setScissorTest(false)
+      this.renderer.autoClear = true
+      this.renderer.clear()
+      this.renderer.render(this.scene.threeScene, camera)
+    } finally {
+      this.renderer.setRenderTarget(previousRenderTarget)
+      this.renderer.setViewport(this.samplePreviousViewport)
+      this.renderer.setScissor(this.samplePreviousScissor)
+      this.renderer.setScissorTest(previousScissorTest)
+      this.renderer.autoClear = previousAutoClear
+    }
+  }
+
+  private getHeightSamplingRenderTarget(resolution: number) {
+    if (!this.sampleRenderTarget) {
+      this.sampleRenderTarget = new THREE.WebGLRenderTarget(resolution, resolution, {
+        depthBuffer: true,
+        stencilBuffer: false
+      })
+      this.sampleRenderTarget.texture.name = 'Tellux.SampleHeightMostDetailed'
+    } else if (this.sampleRenderTarget.width !== resolution || this.sampleRenderTarget.height !== resolution) {
+      this.sampleRenderTarget.setSize(resolution, resolution)
+    }
+
+    return this.sampleRenderTarget
+  }
+
+  private hasTilesetRenderableTiles(tileset: TilesRenderer) {
+    const renderer = tileset as TilesRenderer & {
+      activeTiles?: Set<unknown>
+      visibleTiles?: Set<unknown>
+    }
+
+    return (renderer.activeTiles?.size ?? 0) > 0 || (renderer.visibleTiles?.size ?? 0) > 0
+  }
+
+  private isTilesetLoading(tileset: TilesRenderer) {
+    const renderer = tileset as TilesRenderer & {
+      isLoading?: boolean
+      stats?: {
+        queued?: number
+        downloading?: number
+        parsing?: number
+      }
+      loadingTiles?: Set<unknown>
+    }
+
+    const stats = renderer.stats
+    return Boolean(
+      !tileset.root ||
+      renderer.isLoading ||
+      tileset.loadProgress < 1 ||
+      (stats?.queued ?? 0) > 0 ||
+      (stats?.downloading ?? 0) > 0 ||
+      (stats?.parsing ?? 0) > 0 ||
+      (renderer.loadingTiles?.size ?? 0) > 0
+    )
   }
 
   private applyTargetFlight(target: FlyToTargetTarget, options: FlyToTargetOptions) {
