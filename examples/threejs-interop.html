@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tellux Three.js Interop</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar toolbar--wide" aria-label="Three.js interop controls">
+        <header class="toolbar__header">
+          <h1>Three.js 原生互操作</h1>
+          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+        </header>
+        <p>
+          加载 Three.js 官方 keyframes 示例模型，将 glTF 动画对象作为原生 <code>Object3D</code>
+          放到经度 114、纬度 30 的地表位置。
+        </p>
+        <p id="model-status" class="status" aria-live="polite">正在加载 Littlest Tokyo...</p>
+        <div class="toolbar__row">
+          <button class="button" id="fly-to-model" type="button">飞到模型</button>
+          <button class="button" id="toggle-animation" type="button">暂停动画</button>
+        </div>
+      </section>
+      <section class="location-panel" aria-label="Three.js model status">
+        <h2>Model API</h2>
+        <dl class="location-readout">
+          <dt>API</dt>
+          <dd>viewer.addModel</dd>
+          <dt>Coordinates</dt>
+          <dd>114.000000, 30.000000</dd>
+          <dt>Animation</dt>
+          <dd id="model-ready-status">-</dd>
+        </dl>
+      </section>
+    </main>
+    <script type="module" src="./threejs-interop.ts"></script>
+  </body>
+</html>

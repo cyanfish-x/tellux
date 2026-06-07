@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { EnvironmentControls, TilesRenderer, GlobeControls as BaseGlobeControls } from '3d-tiles-renderer'
 import { Camera } from './Camera'
 import { Clock } from './Clock'
@@ -12,11 +13,15 @@ import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { Scene } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
 import type {
+  AddModelOptions,
   AnyViewerEventListener,
+  CartographicFrameOptions,
   CartographicCoordinates,
+  CartographicInput,
   FlyToTargetOptions,
   FlyToTargetTarget,
   Load3DTilesetOptions,
+  ModelLayer,
   ScreenPosition,
   TilesetLayer,
   ViewerEventListener,
@@ -40,8 +45,12 @@ export type {
   CameraSetViewOptions
 } from './Camera'
 export type {
+  AddModelOptions,
   AtmosphereLightingMode,
+  CartographicCoordinateTuple,
+  CartographicFrameOptions,
   CartographicCoordinates,
+  CartographicInput,
   CesiumIon3DTilesetOptions,
   CesiumIonImagerySourceOptions,
   FlyToTargetOffset,
@@ -55,10 +64,12 @@ export type {
   GeoJSONGeometry,
   GeoJSONGetStyleCallback,
   GeoJSONImagerySourceOptions,
+  GltfModelOptions,
   ImageryLayerOptions,
   ImageryLayerSourceOptions,
   ImageryLayerStyleOptions,
   Load3DTilesetOptions,
+  ModelLayer,
   MVTImagerySourceOptions,
   MVTFeatureProperties,
   MVTFeatureStyle,
@@ -87,6 +98,158 @@ class TelluxGlobeControls extends BaseGlobeControls {
       }
     )._updateRotation.call(this, deltaTime)
   }
+}
+
+class GltfModelLayer implements ModelLayer {
+  readonly root = new THREE.Group()
+  readonly animations: THREE.AnimationClip[] = []
+  readonly ready: Promise<ModelLayer>
+  private currentModel: THREE.Object3D | null = null
+  private currentMixer: THREE.AnimationMixer | null = null
+  private currentAction: THREE.AnimationAction | null = null
+  private currentAnimationChannel: number
+  private isRemoved = false
+  private resolveReady!: (layer: ModelLayer) => void
+  private rejectReady!: (reason?: unknown) => void
+
+  constructor(
+    readonly id: string,
+    private readonly options: AddModelOptions,
+    private readonly loader: GLTFLoader,
+    private readonly removeLayer: (layer: GltfModelLayer) => void
+  ) {
+    this.root.name = id
+    this.root.visible = options.visible ?? true
+    this.root.matrixAutoUpdate = false
+    this.currentAnimationChannel = options.animationChannel ?? 0
+    this.ready = new Promise<ModelLayer>((resolve, reject) => {
+      this.resolveReady = resolve
+      this.rejectReady = reject
+    })
+  }
+
+  get model() {
+    return this.currentModel
+  }
+
+  get show() {
+    return this.root.visible
+  }
+
+  set show(value: boolean) {
+    this.root.visible = value
+  }
+
+  async load() {
+    try {
+      const gltf = await this.loader.loadAsync(this.options.url)
+      if (this.isRemoved) {
+        disposeObject(gltf.scene)
+        this.rejectReady(new Error(`Viewer: model "${this.id}" was removed before it finished loading.`))
+        return
+      }
+
+      const model = gltf.scene
+      this.applyModelTransform(model)
+      this.root.add(model)
+      this.currentModel = model
+      this.animations.splice(0, this.animations.length, ...gltf.animations)
+
+      if (gltf.animations.length > 0) {
+        this.currentMixer = new THREE.AnimationMixer(model)
+        if (this.options.animate) {
+          this.playAnimation(this.currentAnimationChannel)
+        }
+      }
+
+      this.resolveReady(this)
+    } catch (error) {
+      if (!this.isRemoved) {
+        this.removeLayer(this)
+      }
+      this.rejectReady(error)
+    }
+  }
+
+  update(deltaTime: number) {
+    if (!this.isRemoved) {
+      this.currentMixer?.update(deltaTime)
+    }
+  }
+
+  playAnimation(animationChannel = this.currentAnimationChannel) {
+    if (!this.currentMixer || !this.currentModel) return false
+
+    const clip = this.animations[animationChannel]
+    if (!clip) return false
+
+    if (this.currentAction && animationChannel === this.currentAnimationChannel && this.currentAction.paused) {
+      this.currentAction.paused = false
+      this.currentAction.enabled = true
+      this.currentAction.play()
+      return true
+    }
+
+    this.currentAnimationChannel = animationChannel
+    this.currentAction?.stop()
+    this.currentAction = this.currentMixer.clipAction(clip)
+    this.currentAction.paused = false
+    this.currentAction.reset().play()
+    return true
+  }
+
+  pauseAnimation() {
+    if (!this.currentAction) return false
+
+    this.currentAction.paused = true
+    return true
+  }
+
+  stopAnimation() {
+    this.currentAction?.stop()
+    this.currentAction = null
+  }
+
+  remove() {
+    if (this.isRemoved) return
+
+    this.isRemoved = true
+    this.stopAnimation()
+    this.currentMixer?.stopAllAction()
+    this.currentMixer = null
+    this.removeLayer(this)
+    disposeObject(this.root)
+  }
+
+  private applyModelTransform(model: THREE.Object3D) {
+    const { scale } = this.options
+    if (Array.isArray(scale)) {
+      model.scale.set(scale[0], scale[1], scale[2])
+    } else if (scale !== undefined) {
+      model.scale.setScalar(scale)
+    }
+
+    if (this.options.alignToGround) {
+      const box = new THREE.Box3().setFromObject(model)
+      if (!box.isEmpty()) {
+        model.position.y -= box.min.y
+      }
+    }
+  }
+}
+
+function disposeObject(object: THREE.Object3D) {
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh
+    mesh.geometry?.dispose()
+
+    const material = mesh.material
+    if (Array.isArray(material)) {
+      material.forEach((item) => item.dispose())
+    } else {
+      material?.dispose()
+    }
+  })
 }
 
 /**
@@ -178,6 +341,8 @@ export class Viewer {
   private readonly pickMatrix = new THREE.Matrix4()
   private readonly pickCartographicScratch = { lat: 0, lon: 0, height: 0 }
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
+  private readonly gltfLoader: GLTFLoader
+  private readonly modelLayers = new Map<string, GltfModelLayer>()
   private readonly resizeObserver: ResizeObserver
   private readonly atmosphere: AtmosphereManager
   private readonly postProcessing: PostProcessingManager
@@ -227,6 +392,7 @@ export class Viewer {
   private isUsingDefaultRenderLoop = false
   private currentResolutionScale: number
   private currentToneMappingExposure: number
+  private nextModelId = 0
 
   /**
    * 在非空容器元素内创建 viewer。
@@ -278,6 +444,8 @@ export class Viewer {
 
     this.dracoLoader = new DRACOLoader()
     this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
+    this.gltfLoader = new GLTFLoader()
+    this.gltfLoader.setDRACOLoader(this.dracoLoader)
 
     this.tilesets = new TilesetManager({
       scene: this.scene.threeScene,
@@ -402,6 +570,90 @@ export class Viewer {
   off<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
     this.eventListeners.get(type)?.delete(listener as AnyViewerEventListener)
     return this
+  }
+
+  /**
+   * 将经纬高转换为底层 Three.js 世界坐标。
+   *
+   * 输入数组顺序为 `[经度, 纬度, 高度]`；对象输入使用 `{ longitude, latitude, height }`。
+   *
+   * Converts cartographic coordinates to an underlying Three.js world position.
+   *
+   * Tuple input order is `[longitude, latitude, height]`; object input uses
+   * `{ longitude, latitude, height }`.
+   */
+  cartographicToVector3(input: CartographicInput, target = new THREE.Vector3()) {
+    const cartographic = this.resolveCartographicInput(input)
+    return this.tilesets.tileset.ellipsoid.getCartographicToPosition(
+      cartographic.latitude * DEG2RAD,
+      cartographic.longitude * DEG2RAD,
+      cartographic.height,
+      target
+    )
+  }
+
+  /**
+   * 将经纬高和当地姿态转换为 Three.js 对象矩阵。
+   *
+   * 该矩阵使用适合 Three.js 对象的当地坐标框架，`+Y` 指向当地上方，
+   * `+Z` 指向对象前方，适合放置 glTF 模型、marker、标签锚点和其他
+   * 需要贴合地球曲面的 Three.js 对象。
+   *
+   * Converts cartographic coordinates and local orientation to a Three.js object
+   * matrix.
+   *
+   * The matrix uses the local Three.js object frame: `+Y` points up and `+Z`
+   * points forward. It is suitable for placing glTF models, markers, label
+   * anchors, and other Three.js objects that should follow the globe surface.
+   */
+  cartographicToMatrix4(input: CartographicInput, options: CartographicFrameOptions = {}, target = new THREE.Matrix4()) {
+    const cartographic = this.resolveCartographicInput(input)
+    return this.tilesets.tileset.ellipsoid.getObjectFrame(
+      cartographic.latitude * DEG2RAD,
+      cartographic.longitude * DEG2RAD,
+      cartographic.height,
+      (options.heading ?? 0) * DEG2RAD,
+      (options.pitch ?? 0) * DEG2RAD,
+      (options.roll ?? 0) * DEG2RAD,
+      target
+    )
+  }
+
+  /**
+   * 加载 glTF / GLB 模型并按经纬高加入场景。
+   *
+   * `type` 固定为 `gltf`，`url` 可以指向 `.gltf` 或 `.glb` 文件。
+   * 当 `animate` 为 `true` 时，默认播放第一个动画通道；可通过
+   * `animationChannel` 指定其他动画通道。
+   *
+   * Loads a glTF / GLB model and adds it to the scene at cartographic
+   * coordinates.
+   *
+   * `type` is `gltf`; `url` can point to either a `.gltf` or `.glb` file. When
+   * `animate` is `true`, the first animation channel plays by default; use
+   * `animationChannel` to choose another channel.
+   */
+  addModel(options: AddModelOptions): ModelLayer {
+    if (options.type !== 'gltf') {
+      throw new Error(`Viewer: unsupported model type "${String(options.type)}".`)
+    }
+
+    const id = options.id ?? this.createModelId()
+    if (this.modelLayers.has(id)) {
+      throw new Error(`Viewer: model "${id}" already exists.`)
+    }
+
+    const layer = new GltfModelLayer(id, options, this.gltfLoader, (modelLayer) => this.removeModelLayer(modelLayer))
+    this.cartographicToMatrix4(options.coordinates, {
+      heading: options.heading,
+      pitch: options.pitch,
+      roll: options.roll
+    }, layer.root.matrix)
+    layer.root.matrixWorldNeedsUpdate = true
+    this.modelLayers.set(id, layer)
+    this.scene.threeScene.add(layer.root)
+    void layer.load()
+    return layer
   }
 
   /**
@@ -539,6 +791,7 @@ export class Viewer {
     this.postProcessing.updateForCameraHeight(currentHeight)
     this.tilesets.update()
     this.atmosphere.updateLightSources()
+    this.updateModelLayers(deltaTime)
     this.renderer.render(this.scene.threeScene, this.threeCamera)
     return deltaTime
   }
@@ -581,6 +834,7 @@ export class Viewer {
     this.renderer.domElement.removeEventListener('click', this.handleCanvasClick)
     this.renderer.domElement.removeEventListener('mousemove', this.handleCanvasMouseMove)
     this.clearEventListeners()
+    this.clearModelLayers()
 
     this.postProcessing.dispose()
     this.atmosphere.dispose()
@@ -669,6 +923,48 @@ export class Viewer {
     )
     this.scene.updateFallbackAmbientLight(cartographic.height)
     return cartographic.height
+  }
+
+  private updateModelLayers(deltaTime: number) {
+    this.modelLayers.forEach((layer) => {
+      layer.update(deltaTime)
+    })
+  }
+
+  private removeModelLayer(layer: GltfModelLayer) {
+    this.modelLayers.delete(layer.id)
+    this.scene.threeScene.remove(layer.root)
+  }
+
+  private clearModelLayers() {
+    Array.from(this.modelLayers.values()).forEach((layer) => {
+      layer.remove()
+    })
+    this.modelLayers.clear()
+  }
+
+  private createModelId() {
+    do {
+      this.nextModelId += 1
+    } while (this.modelLayers.has(`model-${this.nextModelId}`))
+
+    return `model-${this.nextModelId}`
+  }
+
+  private resolveCartographicInput(input: CartographicInput): CartographicCoordinates {
+    if (Array.isArray(input)) {
+      return {
+        longitude: input[0],
+        latitude: input[1],
+        height: input[2] ?? 0
+      }
+    }
+
+    return {
+      longitude: input.longitude,
+      latitude: input.latitude,
+      height: input.height
+    }
   }
 
   private applyTargetFlight(target: FlyToTargetTarget, options: FlyToTargetOptions) {
