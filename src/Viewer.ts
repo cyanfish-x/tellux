@@ -1,16 +1,19 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { EnvironmentControls, TilesRenderer, GlobeControls as BaseGlobeControls } from '3d-tiles-renderer'
-import { LoadRegionPlugin, RayRegion } from '3d-tiles-renderer/plugins'
+import { TilesRenderer } from '3d-tiles-renderer'
 import { Camera } from './Camera'
 import { Clock } from './Clock'
 import { CAMERA_FRAME, DEFAULT_CAMERA, DEG2RAD, RAD2DEG } from './constants'
 import { telluxConfig } from './config'
+import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import type { ThreeRendererWithEffects } from './effects'
 import { LayerManager } from './LayerManager'
+import { GltfModelLayer } from './models/GltfModelLayer'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
+import { CartographicPicker } from './sampling/CartographicPicker'
+import { HeightSampler } from './sampling/HeightSampler'
 import { Scene } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
 import type {
@@ -101,218 +104,6 @@ export type {
   XYZImagerySourceOptions
 } from './types'
 
-class TelluxGlobeControls extends BaseGlobeControls {
-  _updateRotation(deltaTime: number) {
-    ;(
-      EnvironmentControls.prototype as unknown as {
-        _updateRotation(this: TelluxGlobeControls, deltaTime: number): void
-      }
-    )._updateRotation.call(this, deltaTime)
-  }
-}
-
-const DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT = -10000
-const DEFAULT_SAMPLE_HEIGHT_MAXIMUM_HEIGHT = 100000
-const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION = 256
-const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES = 120
-const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_REGION_ERROR_TARGET = 0
-const TILE_LOADING_STATE_FAILED = -1
-const TILE_LOADING_STATE_LOADED = 4
-
-type HeightSamplingLoadRegion = {
-  plugin: InstanceType<typeof LoadRegionPlugin>
-  region: InstanceType<typeof RayRegion>
-}
-
-type RaycastableTilesRenderer = TilesRenderer & {
-  raycast(raycaster: THREE.Raycaster, intersects: THREE.Intersection[]): void
-}
-
-type HeightSamplingTile = {
-  geometricError: number
-  refine?: 'REPLACE' | 'ADD'
-  parent?: HeightSamplingTile | null
-  children?: HeightSamplingTile[]
-  engineData?: {
-    boundingVolume?: {
-      intersectsRay(ray: THREE.Ray): boolean
-    }
-  }
-  internal?: {
-    hasContent: boolean
-    hasRenderableContent: boolean
-    hasUnrenderableContent: boolean
-    loadingState: number
-    depth: number
-  }
-  traversal?: {
-    error: number
-  }
-}
-
-type HeightSamplingTilesRenderer = TilesRenderer & {
-  root: HeightSamplingTile | null
-  errorTarget: number
-  maxDepth: number
-}
-
-type HeightSamplingReadiness = {
-  intersects: boolean
-  ready: boolean
-}
-
-class GltfModelLayer implements ModelLayer {
-  readonly root = new THREE.Group()
-  readonly animations: THREE.AnimationClip[] = []
-  readonly ready: Promise<ModelLayer>
-  private currentModel: THREE.Object3D | null = null
-  private currentMixer: THREE.AnimationMixer | null = null
-  private currentAction: THREE.AnimationAction | null = null
-  private currentAnimationChannel: number
-  private isRemoved = false
-  private resolveReady!: (layer: ModelLayer) => void
-  private rejectReady!: (reason?: unknown) => void
-
-  constructor(
-    readonly id: string,
-    private readonly options: AddModelOptions,
-    private readonly loader: GLTFLoader,
-    private readonly removeLayer: (layer: GltfModelLayer) => void
-  ) {
-    this.root.name = id
-    this.root.visible = options.visible ?? true
-    this.root.matrixAutoUpdate = false
-    this.currentAnimationChannel = options.animationChannel ?? 0
-    this.ready = new Promise<ModelLayer>((resolve, reject) => {
-      this.resolveReady = resolve
-      this.rejectReady = reject
-    })
-  }
-
-  get model() {
-    return this.currentModel
-  }
-
-  get show() {
-    return this.root.visible
-  }
-
-  set show(value: boolean) {
-    this.root.visible = value
-  }
-
-  async load() {
-    try {
-      const gltf = await this.loader.loadAsync(this.options.url)
-      if (this.isRemoved) {
-        disposeObject(gltf.scene)
-        this.rejectReady(new Error(`Viewer: model "${this.id}" was removed before it finished loading.`))
-        return
-      }
-
-      const model = gltf.scene
-      this.applyModelTransform(model)
-      this.root.add(model)
-      this.currentModel = model
-      this.animations.splice(0, this.animations.length, ...gltf.animations)
-
-      if (gltf.animations.length > 0) {
-        this.currentMixer = new THREE.AnimationMixer(model)
-        if (this.options.animate) {
-          this.playAnimation(this.currentAnimationChannel)
-        }
-      }
-
-      this.resolveReady(this)
-    } catch (error) {
-      if (!this.isRemoved) {
-        this.removeLayer(this)
-      }
-      this.rejectReady(error)
-    }
-  }
-
-  update(deltaTime: number) {
-    if (!this.isRemoved) {
-      this.currentMixer?.update(deltaTime)
-    }
-  }
-
-  playAnimation(animationChannel = this.currentAnimationChannel) {
-    if (!this.currentMixer || !this.currentModel) return false
-
-    const clip = this.animations[animationChannel]
-    if (!clip) return false
-
-    if (this.currentAction && animationChannel === this.currentAnimationChannel && this.currentAction.paused) {
-      this.currentAction.paused = false
-      this.currentAction.enabled = true
-      this.currentAction.play()
-      return true
-    }
-
-    this.currentAnimationChannel = animationChannel
-    this.currentAction?.stop()
-    this.currentAction = this.currentMixer.clipAction(clip)
-    this.currentAction.paused = false
-    this.currentAction.reset().play()
-    return true
-  }
-
-  pauseAnimation() {
-    if (!this.currentAction) return false
-
-    this.currentAction.paused = true
-    return true
-  }
-
-  stopAnimation() {
-    this.currentAction?.stop()
-    this.currentAction = null
-  }
-
-  remove() {
-    if (this.isRemoved) return
-
-    this.isRemoved = true
-    this.stopAnimation()
-    this.currentMixer?.stopAllAction()
-    this.currentMixer = null
-    this.removeLayer(this)
-    disposeObject(this.root)
-  }
-
-  private applyModelTransform(model: THREE.Object3D) {
-    const { scale } = this.options
-    if (Array.isArray(scale)) {
-      model.scale.set(scale[0], scale[1], scale[2])
-    } else if (scale !== undefined) {
-      model.scale.setScalar(scale)
-    }
-
-    if (this.options.alignToGround) {
-      const box = new THREE.Box3().setFromObject(model)
-      if (!box.isEmpty()) {
-        model.position.y -= box.min.y
-      }
-    }
-  }
-}
-
-function disposeObject(object: THREE.Object3D) {
-  object.traverse((child) => {
-    const mesh = child as THREE.Mesh
-    mesh.geometry?.dispose()
-
-    const material = mesh.material
-    if (Array.isArray(material)) {
-      material.forEach((item) => item.dispose())
-    } else {
-      material?.dispose()
-    }
-  })
-}
-
 /**
  * Tellux 主视图类。
  *
@@ -395,33 +186,15 @@ export class Viewer {
   private readonly flyToTargetCamera = new THREE.PerspectiveCamera()
   private readonly cameraCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly flyToTargetCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
-  private readonly pickCoords = new THREE.Vector2()
-  private readonly pickRaycaster = new THREE.Raycaster()
-  private readonly pickRay = new THREE.Ray()
-  private readonly pickPoint = new THREE.Vector3()
-  private readonly pickMatrix = new THREE.Matrix4()
-  private readonly pickCartographicScratch = { lat: 0, lon: 0, height: 0 }
-  private readonly sampleRaycaster = new THREE.Raycaster()
-  private readonly sampleRay = new THREE.Ray()
-  private readonly sampleSurfacePoint = new THREE.Vector3()
-  private readonly sampleOrigin = new THREE.Vector3()
-  private readonly sampleDirection = new THREE.Vector3()
-  private readonly samplePoint = new THREE.Vector3()
-  private readonly sampleMatrix = new THREE.Matrix4()
-  private readonly sampleTilesetRay = new THREE.Ray()
-  private readonly sampleTilesetRayOrigin = new THREE.Vector3()
-  private readonly sampleTilesetRayTarget = new THREE.Vector3()
-  private readonly sampleTarget = new THREE.Vector3()
-  private readonly sampleOffscreenCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 1)
-  private readonly sampleCartographicScratch = { lat: 0, lon: 0, height: 0 }
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
-  private readonly heightSamplingLoadRegionPlugins = new WeakMap<TilesRenderer, InstanceType<typeof LoadRegionPlugin>>()
   private readonly gltfLoader: GLTFLoader
   private readonly modelLayers = new Map<string, GltfModelLayer>()
   private readonly resizeObserver: ResizeObserver
   private readonly atmosphere: AtmosphereManager
   private readonly postProcessing: PostProcessingManager
   private readonly tilesets: TilesetManager
+  private readonly cartographicPicker: CartographicPicker
+  private readonly heightSampler: HeightSampler
   private readonly handleWindowResize = () => {
     this.resize()
   }
@@ -531,6 +304,8 @@ export class Viewer {
       terrain: options.terrain,
       creasedNormals: sceneOptions.creasedNormals
     })
+    this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
+    this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
     this.camera.setView(cameraOptions)
 
     this.controls = new TelluxGlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
@@ -820,28 +595,7 @@ export class Viewer {
    * It returns `null` when neither target is hit.
    */
   pickCartographic(position: ScreenPosition): CartographicCoordinates | null {
-    const canvas = this.renderer.domElement
-    const width = canvas.clientWidth
-    const height = canvas.clientHeight
-    if (!width || !height) return null
-
-    this.pickCoords.set((position.x / width) * 2 - 1, -(position.y / height) * 2 + 1)
-    this.threeCamera.updateMatrixWorld()
-    this.pickRaycaster.setFromCamera(this.pickCoords, this.threeCamera)
-
-    for (const tileset of this.tilesets.loadedSceneTilesets) {
-      if (!tileset.group.visible) continue
-
-      const tilesetHit = this.pickTilesetCartographic(tileset)
-      if (tilesetHit) return tilesetHit
-    }
-
-    if (this.tilesets.terrainTileset) {
-      const terrainHit = this.pickTilesetCartographic(this.tilesets.terrainTileset)
-      if (terrainHit) return terrainHit
-    }
-
-    return this.pickTilesetCartographic(this.tilesets.surfaceTileset) ?? this.pickEllipsoidCartographic()
+    return this.cartographicPicker.pick(position)
   }
 
   /**
@@ -860,7 +614,7 @@ export class Viewer {
    * no surface is hit.
    */
   sampleHeight(position: CartographicInput, options: SampleHeightOptions = {}) {
-    return this.sampleHeightFromLoadedTiles(position, options)
+    return this.heightSampler.sampleHeight(position, options)
   }
 
   /**
@@ -882,48 +636,7 @@ export class Viewer {
     positions: CartographicCoordinateTuple[],
     options: SampleHeightMostDetailedOptions = {}
   ): Promise<SampleHeightMostDetailedResult[]> {
-    const sampledPositions: SampleHeightMostDetailedResult[] = []
-    for (const position of positions) {
-      const height = await this.sampleHeightMostDetailedSingle(position, options)
-      sampledPositions.push(height === undefined ? undefined : [position[0], position[1], height])
-    }
-
-    return sampledPositions
-  }
-
-  private async sampleHeightMostDetailedSingle(position: CartographicCoordinateTuple, options: SampleHeightMostDetailedOptions) {
-    const tilesets = this.getHeightSamplingTilesets(options.source)
-    const offscreenTilesets = tilesets.filter((tileset) => tileset !== this.tilesets.surfaceTileset)
-    if (offscreenTilesets.length > 0) {
-      const camera = this.configureSampleOffscreenCamera(position, options)
-      const resolution = Math.max(1, options.resolution ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION)
-      const maxFrames = Math.max(0, options.maxFrames ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES)
-      const loadRegions = offscreenTilesets.map((tileset) => this.addHeightSamplingLoadRegion(tileset))
-
-      offscreenTilesets.forEach((tileset) => {
-        tileset.setCamera(camera)
-        tileset.setResolution(camera, resolution, resolution)
-      })
-
-      try {
-        const sampledHeight = await this.updateHeightSamplingTilesets(
-          position,
-          options,
-          offscreenTilesets,
-          maxFrames
-        )
-        if (sampledHeight !== undefined) return sampledHeight
-      } finally {
-        loadRegions.forEach((loadRegion) => {
-          loadRegion.plugin.removeRegion(loadRegion.region)
-        })
-        offscreenTilesets.forEach((tileset) => {
-          tileset.deleteCamera(camera)
-        })
-      }
-    }
-
-    return this.sampleHeightFromLoadedTiles(position, options)
+    return this.heightSampler.sampleHeightMostDetailed(positions, options)
   }
 
   /**
@@ -1124,323 +837,6 @@ export class Viewer {
     }
   }
 
-  private sampleHeightFromLoadedTiles(input: CartographicInput, options: SampleHeightOptions) {
-    this.configureSampleRay(input, options)
-    const tilesets = this.getHeightSamplingTilesets(options.source)
-    let closestHit: { height: number; distance: number } | null = null
-
-    for (const tileset of tilesets) {
-      if (!tileset.group.visible) continue
-
-      const hit = this.sampleHeightFromTileset(tileset)
-      if (hit && (!closestHit || hit.distance < closestHit.distance)) {
-        closestHit = hit
-      }
-    }
-
-    return closestHit?.height
-  }
-
-  private configureSampleRay(input: CartographicInput, options: SampleHeightOptions) {
-    const cartographic = this.resolveCartographicInput(input)
-    const minimumHeight = options.minimumHeight ?? DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT
-    const maximumHeight = options.maximumHeight ?? DEFAULT_SAMPLE_HEIGHT_MAXIMUM_HEIGHT
-    const ellipsoid = this.tilesets.tileset.ellipsoid
-
-    ellipsoid.getCartographicToPosition(
-      cartographic.latitude * DEG2RAD,
-      cartographic.longitude * DEG2RAD,
-      0,
-      this.sampleSurfacePoint
-    )
-    ellipsoid.getCartographicToNormal(
-      cartographic.latitude * DEG2RAD,
-      cartographic.longitude * DEG2RAD,
-      this.sampleDirection
-    )
-
-    this.sampleOrigin.copy(this.sampleSurfacePoint).addScaledVector(this.sampleDirection, maximumHeight)
-    this.sampleRay.origin.copy(this.sampleOrigin)
-    this.sampleRay.direction.copy(this.sampleDirection).multiplyScalar(-1).normalize()
-    this.sampleRaycaster.ray.copy(this.sampleRay)
-    this.sampleRaycaster.near = 0
-    this.sampleRaycaster.far = Math.max(maximumHeight - minimumHeight, 0)
-  }
-
-  private configureSampleOffscreenCamera(input: CartographicInput, options: SampleHeightMostDetailedOptions) {
-    this.configureSampleRay(input, options)
-    const far = Math.max(this.sampleRaycaster.far, 1)
-    const camera = this.sampleOffscreenCamera
-
-    camera.near = Math.max(0.1, far / 1000000)
-    camera.far = far
-    camera.aspect = 1
-    camera.position.copy(this.sampleOrigin)
-    this.sampleTarget.copy(this.sampleOrigin).add(this.sampleRay.direction)
-    camera.up.set(0, 1, 0)
-    if (Math.abs(camera.up.dot(this.sampleRay.direction)) > 0.99) {
-      camera.up.set(1, 0, 0)
-    }
-    camera.lookAt(this.sampleTarget)
-    camera.updateProjectionMatrix()
-    camera.updateMatrixWorld(true)
-    return camera
-  }
-
-  private getHeightSamplingTilesets(source: SampleHeightOptions['source'] = 'all') {
-    if (source === 'terrain') {
-      return [this.tilesets.terrainTileset ?? this.tilesets.surfaceTileset]
-    }
-
-    if (source === 'tileset') {
-      return this.tilesets.loadedSceneTilesets.filter((tileset) => tileset.group.visible)
-    }
-
-    return [
-      ...this.tilesets.loadedSceneTilesets.filter((tileset) => tileset.group.visible),
-      this.tilesets.terrainTileset ?? this.tilesets.surfaceTileset
-    ]
-  }
-
-  private sampleHeightFromTileset(tileset: TilesRenderer) {
-    tileset.group.updateMatrixWorld(true)
-    const hits: THREE.Intersection[] = []
-    ;(tileset as RaycastableTilesRenderer).raycast(this.sampleRaycaster, hits)
-    hits.sort((a, b) => a.distance - b.distance)
-    const hit = hits.find((item) => this.isSampleHeightSurfaceHit(item))
-    if (!hit) return null
-
-    this.sampleMatrix.copy(tileset.group.matrixWorld).invert()
-    this.samplePoint.copy(hit.point).applyMatrix4(this.sampleMatrix)
-    const cartographic = tileset.ellipsoid.getPositionToCartographic(this.samplePoint, this.sampleCartographicScratch)
-    return {
-      height: cartographic.height,
-      distance: hit.distance
-    }
-  }
-
-  private isSampleHeightSurfaceHit(hit: THREE.Intersection) {
-    const mesh = hit.object as THREE.Mesh
-    const geometry = mesh.geometry
-    const isQuantizedMeshTerrain =
-      typeof hit.object.userData.minHeight === 'number' &&
-      typeof hit.object.userData.maxHeight === 'number'
-
-    if (
-      !isQuantizedMeshTerrain ||
-      !geometry ||
-      geometry.groups.length === 0 ||
-      hit.faceIndex == null
-    ) {
-      return true
-    }
-
-    const surfaceGroup = geometry.groups[0]
-    const indexStart = hit.faceIndex * 3
-    return indexStart >= surfaceGroup.start && indexStart < surfaceGroup.start + surfaceGroup.count
-  }
-
-  private addHeightSamplingLoadRegion(tileset: TilesRenderer): HeightSamplingLoadRegion {
-    const plugin = this.getHeightSamplingLoadRegionPlugin(tileset)
-    const region = new RayRegion({
-      ray: this.getHeightSamplingRayInTilesetFrame(tileset),
-      errorTarget: DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_REGION_ERROR_TARGET,
-      mask: true
-    })
-
-    plugin.addRegion(region)
-    return { plugin, region }
-  }
-
-  private getHeightSamplingLoadRegionPlugin(tileset: TilesRenderer) {
-    const cachedPlugin = this.heightSamplingLoadRegionPlugins.get(tileset)
-    if (cachedPlugin) return cachedPlugin
-
-    const existingPlugin = tileset.getPluginByName('LOAD_REGION_PLUGIN')
-    if (existingPlugin instanceof LoadRegionPlugin) {
-      this.heightSamplingLoadRegionPlugins.set(tileset, existingPlugin)
-      return existingPlugin
-    }
-
-    const plugin = new LoadRegionPlugin()
-    tileset.registerPlugin(plugin)
-    this.heightSamplingLoadRegionPlugins.set(tileset, plugin)
-    return plugin
-  }
-
-  private getHeightSamplingRayInTilesetFrame(tileset: TilesRenderer) {
-    tileset.group.updateMatrixWorld(true)
-    this.sampleMatrix.copy(tileset.group.matrixWorld).invert()
-    this.sampleTilesetRayOrigin.copy(this.sampleRay.origin).applyMatrix4(this.sampleMatrix)
-    this.sampleTilesetRayTarget
-      .copy(this.sampleRay.origin)
-      .add(this.sampleRay.direction)
-      .applyMatrix4(this.sampleMatrix)
-
-    this.sampleTilesetRay.direction
-      .copy(this.sampleTilesetRayTarget)
-      .sub(this.sampleTilesetRayOrigin)
-      .normalize()
-    this.sampleTilesetRay.origin.copy(this.sampleTilesetRayOrigin)
-    return this.sampleTilesetRay
-  }
-
-  private async updateHeightSamplingTilesets(
-    position: CartographicCoordinateTuple,
-    options: SampleHeightMostDetailedOptions,
-    tilesets: TilesRenderer[],
-    maxFrames: number
-  ) {
-    let stableFrames = 0
-    let lastSampledHeight: number | undefined
-
-    for (let frame = 0; frame < maxFrames; frame += 1) {
-      let loading = false
-      for (const tileset of tilesets) {
-        tileset.update()
-        loading = this.isTilesetLoading(tileset) || loading
-      }
-      const hasRenderableTiles = tilesets.some((tileset) => this.hasTilesetRenderableTiles(tileset))
-      const isMostDetailed = tilesets.every((tileset) => this.isHeightSamplingRayMostDetailed(tileset))
-
-      const sampledHeight = this.sampleHeightFromLoadedTiles(position, options)
-      if (sampledHeight !== undefined) {
-        lastSampledHeight = sampledHeight
-      }
-
-      if (!loading && hasRenderableTiles && isMostDetailed) {
-        stableFrames += 1
-        if (stableFrames >= 2) {
-          return lastSampledHeight
-        }
-      } else {
-        stableFrames = 0
-      }
-
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => resolve())
-      })
-    }
-
-    return lastSampledHeight
-  }
-
-  private hasTilesetRenderableTiles(tileset: TilesRenderer) {
-    const renderer = tileset as TilesRenderer & {
-      activeTiles?: Set<unknown>
-      visibleTiles?: Set<unknown>
-    }
-
-    return (renderer.activeTiles?.size ?? 0) > 0 || (renderer.visibleTiles?.size ?? 0) > 0
-  }
-
-  private isHeightSamplingRayMostDetailed(tileset: TilesRenderer) {
-    const renderer = tileset as HeightSamplingTilesRenderer
-    if (!renderer.root) return false
-
-    const ray = this.getHeightSamplingRayInTilesetFrame(tileset)
-    const readiness = this.getHeightSamplingTileReadiness(renderer.root, renderer, ray)
-    return readiness.intersects ? readiness.ready : true
-  }
-
-  private getHeightSamplingTileReadiness(
-    tile: HeightSamplingTile,
-    renderer: HeightSamplingTilesRenderer,
-    ray: THREE.Ray
-  ): HeightSamplingReadiness {
-    if (!this.heightSamplingTileIntersectsRay(tile, ray)) {
-      return { intersects: false, ready: true }
-    }
-
-    if (!tile.internal || !tile.traversal || !this.isHeightSamplingTileDownloadFinished(tile)) {
-      return { intersects: true, ready: false }
-    }
-
-    if (!this.canHeightSamplingTileTraverse(tile, renderer)) {
-      return { intersects: true, ready: true }
-    }
-
-    const children = tile.children ?? []
-    if (children.length === 0) {
-      return { intersects: true, ready: true }
-    }
-
-    let childIntersects = false
-    for (const child of children) {
-      const readiness = this.getHeightSamplingTileReadiness(child, renderer, ray)
-      childIntersects = childIntersects || readiness.intersects
-      if (readiness.intersects && !readiness.ready) {
-        return { intersects: true, ready: false }
-      }
-    }
-
-    return { intersects: true, ready: childIntersects ? true : this.isHeightSamplingTileDownloadFinished(tile) }
-  }
-
-  private heightSamplingTileIntersectsRay(tile: HeightSamplingTile, ray: THREE.Ray) {
-    const boundingVolume = tile.engineData?.boundingVolume
-    return boundingVolume ? boundingVolume.intersectsRay(ray) : true
-  }
-
-  private canHeightSamplingTileTraverse(tile: HeightSamplingTile, renderer: HeightSamplingTilesRenderer) {
-    if (this.isHeightSamplingTileWithinErrorTarget(tile, renderer) && !this.canHeightSamplingTileUnconditionallyRefine(tile)) {
-      return false
-    }
-
-    if (renderer.maxDepth > 0 && tile.internal && tile.internal.depth + 1 >= renderer.maxDepth) {
-      return false
-    }
-
-    const children = tile.children ?? []
-    return children.length === 0 || Boolean(children[children.length - 1]?.traversal)
-  }
-
-  private isHeightSamplingTileWithinErrorTarget(tile: HeightSamplingTile, renderer: HeightSamplingTilesRenderer) {
-    return (tile.traversal?.error ?? Infinity) <= renderer.errorTarget
-  }
-
-  private canHeightSamplingTileUnconditionallyRefine(tile: HeightSamplingTile) {
-    return Boolean(tile.internal?.hasUnrenderableContent || (tile.parent && tile.parent.geometricError < tile.geometricError))
-  }
-
-  private isHeightSamplingTileDownloadFinished(tile: HeightSamplingTile) {
-    if (!tile.internal?.hasContent) return true
-
-    return (
-      tile.internal.loadingState === TILE_LOADING_STATE_LOADED ||
-      tile.internal.loadingState === TILE_LOADING_STATE_FAILED
-    )
-  }
-
-  private isTilesetLoading(tileset: TilesRenderer) {
-    const renderer = tileset as TilesRenderer & {
-      isLoading?: boolean
-      stats?: {
-        queued?: number
-        downloading?: number
-        parsing?: number
-      }
-      downloadQueue?: { running?: boolean }
-      parseQueue?: { running?: boolean }
-      processNodeQueue?: { running?: boolean }
-      loadingTiles?: Set<unknown>
-    }
-
-    const stats = renderer.stats
-    return Boolean(
-      !tileset.root ||
-      renderer.isLoading ||
-      tileset.loadProgress < 1 ||
-      (stats?.queued ?? 0) > 0 ||
-      (stats?.downloading ?? 0) > 0 ||
-      (stats?.parsing ?? 0) > 0 ||
-      renderer.downloadQueue?.running ||
-      renderer.parseQueue?.running ||
-      renderer.processNodeQueue?.running ||
-      (renderer.loadingTiles?.size ?? 0) > 0
-    )
-  }
-
   private applyTargetFlight(target: FlyToTargetTarget, options: FlyToTargetOptions) {
     const resolvedTarget = this.resolveFlyToTarget(target)
     if (!resolvedTarget) return false
@@ -1541,37 +937,6 @@ export class Viewer {
     return {
       center: this.flyToTargetCenter,
       radius: 1
-    }
-  }
-
-  private pickTilesetCartographic(tileset: TilesRenderer): CartographicCoordinates | null {
-    tileset.group.updateMatrixWorld(true)
-    this.pickMatrix.copy(tileset.group.matrixWorld).invert()
-
-    const hit = this.pickRaycaster.intersectObject(tileset.group, true)[0]
-    if (!hit) return null
-
-    this.pickPoint.copy(hit.point).applyMatrix4(this.pickMatrix)
-    return this.toCartographicCoordinates(this.pickPoint, tileset)
-  }
-
-  private pickEllipsoidCartographic() {
-    this.tilesets.surfaceTileset.group.updateMatrixWorld(true)
-    this.pickMatrix.copy(this.tilesets.surfaceTileset.group.matrixWorld).invert()
-    this.pickRay.copy(this.pickRaycaster.ray).applyMatrix4(this.pickMatrix)
-
-    const point = this.tilesets.surfaceTileset.ellipsoid.intersectRay(this.pickRay, this.pickPoint)
-    if (!point) return null
-
-    return this.toCartographicCoordinates(point, this.tilesets.surfaceTileset)
-  }
-
-  private toCartographicCoordinates(point: THREE.Vector3, tileset: TilesRenderer): CartographicCoordinates {
-    const cartographic = tileset.ellipsoid.getPositionToCartographic(point, this.pickCartographicScratch)
-    return {
-      latitude: cartographic.lat * RAD2DEG,
-      longitude: cartographic.lon * RAD2DEG,
-      height: cartographic.height
     }
   }
 
