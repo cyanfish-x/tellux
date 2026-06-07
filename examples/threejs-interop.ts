@@ -1,7 +1,8 @@
 import { createTelluxViewer } from "./shared"
+import { mountLocationReadout } from "./location-readout"
 
-const MODEL_LONGITUDE = 114
-const MODEL_LATITUDE = 30
+const MODEL_LONGITUDE = 113.9958  
+const MODEL_LATITUDE = 30.0072
 const MODEL_HEIGHT = 0
 const MODEL_URL = "https://threejs.org/examples/models/gltf/LittlestTokyo.glb"
 
@@ -43,6 +44,9 @@ const viewer = createTelluxViewer(container, {
 
 let isAnimationPlaying = true
 let model: ReturnType<typeof viewer.addModel> | null = null
+const locationReadout = mountLocationReadout(viewer, {
+  parent: container.parentElement ?? document.body,
+})
 
 flyToModelButton.disabled = true
 toggleAnimationButton.disabled = true
@@ -95,10 +99,9 @@ async function loadModelOnSampledGround() {
     url: MODEL_URL,
     coordinates: [MODEL_LONGITUDE, MODEL_LATITUDE, modelHeight],
     scale: 0.45,
-    heading: 180,
+    heading: 160,
     alignToGround: true,
     animate: true,
-    animationChannel: 0,
   })
 
   try {
@@ -149,5 +152,6 @@ toggleAnimationButton.addEventListener("click", () => {
 updateAnimationButton()
 
 window.addEventListener("beforeunload", () => {
+  locationReadout.destroy()
   viewer.destroy()
 })

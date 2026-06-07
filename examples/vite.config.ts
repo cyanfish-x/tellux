@@ -12,6 +12,7 @@ const htmlInputs = {
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
+  instancedHorses: resolve(__dirname, "instanced-horses.html"),
 }
 
 export default defineConfig(({ mode }) => {

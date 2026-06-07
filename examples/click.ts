@@ -1,6 +1,7 @@
 import tellux from "../src"
 import { createTelluxViewer } from "./shared"
-import type { ViewerClickEvent, ViewerMouseMoveEvent } from "../src"
+import { formatHeight, mountLocationReadout } from "./location-readout"
+import type { ViewerClickEvent } from "../src"
 
 const container = document.querySelector("#viewer")
 const tokenStatus = document.querySelector<HTMLElement>("#token-status")
@@ -10,9 +11,6 @@ const clickLongitude = document.querySelector<HTMLElement>("#click-longitude")
 const clickLatitude = document.querySelector<HTMLElement>("#click-latitude")
 const clickHeight = document.querySelector<HTMLElement>("#click-height")
 const clickCount = document.querySelector<HTMLElement>("#click-count")
-const mouseLongitude = document.querySelector<HTMLElement>("#mouse-longitude")
-const mouseLatitude = document.querySelector<HTMLElement>("#mouse-latitude")
-const mouseHeight = document.querySelector<HTMLElement>("#mouse-height")
 const clearButton = document.querySelector("#clear")
 const cesiumIonToken = import.meta.env.VITE_CESIUM_ION_TOKEN as
   | string
@@ -44,10 +42,9 @@ const viewer = createTelluxViewer(container, {
 })
 
 let count = 0
-
-function formatHeight(height: number) {
-  return Math.abs(height) < 0.05 ? "0.0" : height.toFixed(1)
-}
+const locationReadout = mountLocationReadout(viewer, {
+  parent: container.parentElement ?? document.body,
+})
 
 function updateClickReadout(event: ViewerClickEvent) {
   count += 1
@@ -68,23 +65,7 @@ function updateClickReadout(event: ViewerClickEvent) {
   if (clickCount) clickCount.textContent = String(count)
 }
 
-function updateMouseReadout(event: ViewerMouseMoveEvent) {
-  if (mouseLongitude)
-    mouseLongitude.textContent = event.cartographic
-      ? event.cartographic.longitude.toFixed(6)
-      : "-"
-  if (mouseLatitude)
-    mouseLatitude.textContent = event.cartographic
-      ? event.cartographic.latitude.toFixed(6)
-      : "-"
-  if (mouseHeight)
-    mouseHeight.textContent = event.cartographic
-      ? formatHeight(event.cartographic.height)
-      : "-"
-}
-
 viewer.on("click", updateClickReadout)
-viewer.on("mousemove", updateMouseReadout)
 
 clearButton?.addEventListener("click", () => {
   count = 0
@@ -98,6 +79,6 @@ clearButton?.addEventListener("click", () => {
 
 window.addEventListener("beforeunload", () => {
   viewer.off("click", updateClickReadout)
-  viewer.off("mousemove", updateMouseReadout)
+  locationReadout.destroy()
   viewer.destroy()
 })
