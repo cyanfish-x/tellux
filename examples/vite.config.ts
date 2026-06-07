@@ -11,6 +11,7 @@ const htmlInputs = {
   tiles3d: resolve(__dirname, "3d-tiles.html"),
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
+  threejsInterop: resolve(__dirname, "threejs-interop.html"),
 }
 
 export default defineConfig(({ mode }) => {

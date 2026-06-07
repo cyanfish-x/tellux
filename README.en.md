@@ -181,6 +181,57 @@ viewer.layers.add({
 
 > WMS layers should request an image format such as `image/png`. `format=application/openlayers` is usually a GeoServer preview page format and is not suitable for imagery textures.
 
+## glTF / GLB models
+
+Use `viewer.addModel(...)` to load regular glTF or GLB models and place them in the Tellux scene with cartographic coordinates. `coordinates` accepts a `[longitude, latitude, height]` tuple or a `{ longitude, latitude, height }` object. Height is in meters.
+
+```ts
+const model = viewer.addModel({
+  type: 'gltf',
+  id: 'littlest-tokyo',
+  url: 'https://threejs.org/examples/models/gltf/LittlestTokyo.glb',
+  coordinates: [114, 30, 0],
+  scale: 0.45,
+  heading: 180,
+  alignToGround: true,
+  animate: true,
+  animationChannel: 0
+})
+
+await model.ready
+
+viewer.flyToTarget(model.root, {
+  heading: -35,
+  pitch: -28,
+  distance: 2600
+})
+
+model.playAnimation(0)
+model.pauseAnimation()
+model.stopAnimation()
+model.remove()
+```
+
+`type` is always `'gltf'`, and the URL can point to either `.gltf` or `.glb`. When `animate: true` is set, the first animation channel plays after loading by default. Use `animationChannel` to choose another channel.
+
+If you need to place your own Three.js objects, reuse Tellux coordinate conversion APIs:
+
+```ts
+const position = viewer.cartographicToVector3([114, 30, 100])
+
+const matrix = viewer.cartographicToMatrix4([114, 30, 0], {
+  heading: 90,
+  pitch: 0,
+  roll: 0
+})
+
+object.matrixAutoUpdate = false
+object.matrix.copy(matrix)
+viewer.scene.threeScene.add(object)
+```
+
+`cartographicToVector3(...)` returns the underlying Three.js world position. `cartographicToMatrix4(...)` returns a local Three.js object matrix where `+Y` points up and `+Z` points forward.
+
 ## Lighting Modes
 
 Tellux provides two atmosphere lighting modes. The default is `light-source`:
@@ -233,7 +284,7 @@ Make sure the container has a non-zero size:
 
 ## Draco decoder
 
-Tellux uses `DRACOLoader` for glTF tiles. By default it loads decoders from `/draco/gltf/`.
+Tellux uses `DRACOLoader` for glTF tiles and glTF / GLB models. By default it loads decoders from `/draco/gltf/`.
 
 Copy the decoder files from `three/examples/jsm/libs/draco/gltf/` into your app's public directory, or pass a custom path:
 
@@ -287,6 +338,16 @@ viewer.flyToTarget(layer.tileset, {
   heading: 0,
   pitch: -30
 })
+
+const model = viewer.addModel({
+  type: 'gltf',
+  url: '/models/site.glb',
+  coordinates: [121.4737, 31.2304, 0],
+  animate: true
+})
+
+await model.ready
+viewer.flyToTarget(model.root)
 
 viewer.scene.clouds.show = false
 viewer.scene.skyAtmosphere.show = true

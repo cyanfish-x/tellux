@@ -38,7 +38,7 @@ document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((link) => {
 
 if (globeContainer instanceof HTMLElement) {
   const viewer = new tellux.Viewer(globeContainer, {
-    dracoDecoderPath: '/node_modules/three/examples/jsm/libs/draco/gltf/',
+    dracoDecoderPath: '/draco/gltf/',
     terrain: DEFAULT_TERRAIN_URL
       ? {
           url: DEFAULT_TERRAIN_URL,

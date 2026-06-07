@@ -179,6 +179,57 @@ viewer.layers.add({
 
 > WMS 图层应请求图片格式，例如 `image/png`。`format=application/openlayers` 通常是 GeoServer 的预览页格式，不适合作为影像贴图。
 
+## glTF / GLB 模型
+
+可以通过 `viewer.addModel(...)` 加载普通 glTF 或 GLB 模型，并直接按经纬高放置到 Tellux 场景中。`coordinates` 支持 `[经度, 纬度, 高度]` 数组，也支持 `{ longitude, latitude, height }` 对象；高度单位为米。
+
+```ts
+const model = viewer.addModel({
+  type: 'gltf',
+  id: 'littlest-tokyo',
+  url: 'https://threejs.org/examples/models/gltf/LittlestTokyo.glb',
+  coordinates: [114, 30, 0],
+  scale: 0.45,
+  heading: 180,
+  alignToGround: true,
+  animate: true,
+  animationChannel: 0
+})
+
+await model.ready
+
+viewer.flyToTarget(model.root, {
+  heading: -35,
+  pitch: -28,
+  distance: 2600
+})
+
+model.playAnimation(0)
+model.pauseAnimation()
+model.stopAnimation()
+model.remove()
+```
+
+`type` 固定为 `'gltf'`，URL 可以指向 `.gltf` 或 `.glb`。当 `animate: true` 时，模型加载完成后默认播放第 `0` 个动画通道；可以用 `animationChannel` 指定其他通道。
+
+如果你需要自己放置 Three.js 对象，也可以复用 Tellux 的坐标转换 API：
+
+```ts
+const position = viewer.cartographicToVector3([114, 30, 100])
+
+const matrix = viewer.cartographicToMatrix4([114, 30, 0], {
+  heading: 90,
+  pitch: 0,
+  roll: 0
+})
+
+object.matrixAutoUpdate = false
+object.matrix.copy(matrix)
+viewer.scene.threeScene.add(object)
+```
+
+`cartographicToVector3(...)` 返回底层 Three.js 世界坐标；`cartographicToMatrix4(...)` 返回适合 Three.js 对象的当地坐标矩阵，`+Y` 指向当地上方，`+Z` 指向对象前方。
+
 ## 光照模式
 
 Tellux 提供两种大气光照模式，默认使用 `light-source`：
@@ -231,7 +282,7 @@ const layer = viewer.load3DTileset({
 
 ## Draco 解码器
 
-Tellux 使用 `DRACOLoader` 加载 glTF tiles。默认情况下，解码器会从 `/draco/gltf/` 加载。
+Tellux 使用 `DRACOLoader` 加载 glTF tiles 和 glTF / GLB 模型。默认情况下，解码器会从 `/draco/gltf/` 加载。
 
 你可以将 `three/examples/jsm/libs/draco/gltf/` 中的解码器文件复制到应用的 public 目录，或传入自定义路径：
 
@@ -286,6 +337,16 @@ viewer.flyToTarget(layer.tileset, {
   pitch: -30
 })
 
+const model = viewer.addModel({
+  type: 'gltf',
+  url: '/models/site.glb',
+  coordinates: [121.4737, 31.2304, 0],
+  animate: true
+})
+
+await model.ready
+viewer.flyToTarget(model.root)
+
 viewer.scene.clouds.show = false
 viewer.scene.skyAtmosphere.show = true
 viewer.scene.postProcessStages.smaa.enabled = true
@@ -311,6 +372,7 @@ flowchart TB
   Viewer --> Renderer["Three.WebGLRenderer<br/>canvas / render"]
 
   Viewer --> TilesetManager["TilesetManager<br/>surface / terrain / imagery / overlays"]
+  Viewer --> Models["ModelLayer<br/>glTF / GLB / AnimationMixer"]
   Viewer --> AtmosphereManager["AtmosphereManager<br/>大气 / 云 / 太阳光 / 贴图"]
   Viewer --> PostProcessingManager["PostProcessingManager<br/>NormalPass / 大气云组合 / SMAA 等"]
 
@@ -330,10 +392,11 @@ flowchart TB
 
 主要模块职责：
 
-- `Viewer`：主入口和门面类，负责创建 renderer、scene、camera、clock、controls，并协调各 manager 的生命周期。
+- `Viewer`：主入口和门面类，负责创建 renderer、scene、camera、clock、controls，提供 glTF / GLB 模型加载入口，并协调各 manager 的生命周期。
 - `Camera`：封装 Cesium 风格的 `setView`、`flyTo` 和当前视角读取。
 - `Scene`：保存云、大气、后处理等场景状态，并在状态变化时触发后处理重组。
 - `TilesetManager`：创建和热切换基础地球表面、quantized-mesh 地形、影像底图和影像叠加层。
+- `ModelLayer`：由 `viewer.addModel(...)` 创建，管理 glTF / GLB 模型、动画通道、显隐和资源释放。
 - `AtmosphereManager`：创建大气、云、太阳光、天空光，并加载云纹理和 STBN 资源。
 - `PostProcessingManager`：根据 `Scene` 状态组合 normal pass、大气云 pass、SMAA、dithering 和 lens flare。
 
@@ -373,8 +436,9 @@ sequenceDiagram
     V->>C: controls.update()
     V->>T: tilesets.update()
     T->>T: 根据相机加载和更新可见瓦片
+    V->>V: updateModelLayers(deltaTime)
     V->>R: renderer.render(scene, camera)
   end
 ```
 
-运行时，`Viewer` 只负责串联流程：先同步容器尺寸，再更新地球控制器，然后让 `TilesetManager` 推进瓦片加载与 LOD 更新，最后交给 Three.js renderer 渲染当前场景。影像、地形和叠加层切换时，`Viewer` 会转发给 `TilesetManager`；云、大气和后处理开关变化时，`Scene` 会触发 `PostProcessingManager` 重新组合渲染效果。
+运行时，`Viewer` 只负责串联流程：先同步容器尺寸，再更新地球控制器，然后让 `TilesetManager` 推进瓦片加载与 LOD 更新，接着更新已加载模型的动画，最后交给 Three.js renderer 渲染当前场景。影像、地形和叠加层切换时，`Viewer` 会转发给 `TilesetManager`；云、大气和后处理开关变化时，`Scene` 会触发 `PostProcessingManager` 重新组合渲染效果。

@@ -28,6 +28,7 @@ pnpm examples
 - `http://127.0.0.1:5173/3d-tiles.html`
 - `http://127.0.0.1:5173/terrain.html`
 - `http://127.0.0.1:5173/atmosphere.html`
+- `http://127.0.0.1:5173/threejs-interop.html`
 
 ## 3D Tiles 示例
 
@@ -63,3 +64,9 @@ VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
 
 `atmosphere.html` 演示默认体积云、大气天空和后处理组合。左上角面板可以切换大气与云层，
 并调整 UTC 时间、云覆盖率和渲染曝光。
+
+## Three.js 原生互操作示例
+
+`threejs-interop.html` 演示通过 `viewer.addModel({ type: 'gltf', ... })` 加载 Three.js
+官方 keyframes glTF / GLB 动画模型，放置到经度 `114`、纬度 `30` 的地表位置，并自动播放第
+`0` 个动画通道。
