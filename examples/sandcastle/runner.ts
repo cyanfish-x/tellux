@@ -3,7 +3,7 @@ import * as THREE from "three"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import {
   arcgisWorldImageryUrl,
-  createTelluxViewer,
+  defaultTerrainUrl,
   showTokenNotice,
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
@@ -115,7 +115,7 @@ function executeExampleScript(source: string) {
     "THREE",
     "GLTFLoader",
     "arcgisWorldImageryUrl",
-    "createTelluxViewer",
+    "defaultTerrainUrl",
     "showTokenNotice",
     "mountLocationReadout",
     "formatHeight",
@@ -127,7 +127,7 @@ function executeExampleScript(source: string) {
     THREE,
     GLTFLoader,
     arcgisWorldImageryUrl,
-    createTelluxViewer,
+    defaultTerrainUrl,
     showTokenNotice,
     mountLocationReadout,
     formatHeight,

@@ -3,7 +3,7 @@ import tellux, {
   type ImageryLayer,
   type ImageryLayerOptions,
 } from "../src"
-import { arcgisWorldImageryUrl, createTelluxViewer } from "./shared"
+import { arcgisWorldImageryUrl } from "./shared"
 
 const container = document.querySelector("#viewer")
 const overlayList = document.querySelector<HTMLElement>("#overlay-list")
@@ -249,7 +249,8 @@ const initialLayers: ImageryLayerOptions[] = [
   },
 ]
 
-const viewer = createTelluxViewer(container, {
+const viewer = new tellux.Viewer(container, {
+  dracoDecoderPath: "/draco/gltf/",
   layers: initialLayers,
   scene: {
     clouds: false,
@@ -257,6 +258,8 @@ const viewer = createTelluxViewer(container, {
   },
   terrain: undefined,
 })
+
+;(window as any).viewer = viewer
 
 overlayLayers.forEach((item) => {
   const layer = viewer.layers.get(item.key)

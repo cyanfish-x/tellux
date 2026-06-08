@@ -1,5 +1,6 @@
 import type { TilesetLayer } from '../src'
-import { createTelluxViewer } from './shared'
+import tellux from '../src'
+import { arcgisWorldImageryUrl, defaultTerrainUrl } from './shared'
 
 const container = document.querySelector('#viewer')
 const tilesetUrlInput = document.querySelector<HTMLInputElement>('#tileset-url')
@@ -35,12 +36,29 @@ const loadUrlControl = loadUrlButton
 const loadIonControl = loadIonButton
 const removeControl = removeButton
 
-const viewer = createTelluxViewer(container, {
+const viewer = new tellux.Viewer(container, {
+  dracoDecoderPath: '/draco/gltf/',
+  terrain: defaultTerrainUrl
+    ? {
+        url: defaultTerrainUrl
+      }
+    : undefined,
+  layers: [
+    {
+      source: {
+        type: 'xyz',
+        url: arcgisWorldImageryUrl,
+        levels: 19
+      }
+    }
+  ],
   scene: {
     clouds: false,
     toneMappingExposure: 7
   }
 })
+
+;(window as any).viewer = viewer
 
 tilesetUrlField.value = DEFAULT_TILESET_URL
 ionAssetIdField.value = DEFAULT_ION_ASSET_ID

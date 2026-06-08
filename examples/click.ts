@@ -1,5 +1,5 @@
 import tellux from "../src"
-import { createTelluxViewer } from "./shared"
+import { arcgisWorldImageryUrl, defaultTerrainUrl } from "./shared"
 import { formatHeight, mountLocationReadout } from "./location-readout"
 import type { ViewerClickEvent } from "../src"
 
@@ -26,7 +26,22 @@ if (tokenStatus) {
     : "未检测到 VITE_CESIUM_ION_TOKEN，Cesium Ion Resource 可能无法加载。"
 }
 
-const viewer = createTelluxViewer(container, {
+const viewer = new tellux.Viewer(container, {
+  dracoDecoderPath: "/draco/gltf/",
+  terrain: defaultTerrainUrl
+    ? {
+        url: defaultTerrainUrl,
+      }
+    : undefined,
+  layers: [
+    {
+      source: {
+        type: "xyz",
+        url: arcgisWorldImageryUrl,
+        levels: 19,
+      },
+    },
+  ],
   camera: {
     latitude: 30.23008052218771,
     longitude: 102.79593627471901,
@@ -40,6 +55,8 @@ const viewer = createTelluxViewer(container, {
     toneMappingExposure: 7,
   },
 })
+
+;(window as any).viewer = viewer
 
 let count = 0
 const locationReadout = mountLocationReadout(viewer, {
