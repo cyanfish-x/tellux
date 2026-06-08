@@ -165,8 +165,26 @@ function createRunKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function getRegisteredTypeScriptWorker() {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      return await monaco.languages.typescript.getTypeScriptWorker()
+    } catch (error) {
+      if (String(error) !== "TypeScript not registered!" || attempt === 19) {
+        throw error
+      }
+      await sleep(25)
+    }
+  }
+  return monaco.languages.typescript.getTypeScriptWorker()
+}
+
 async function getCompiledJavascript() {
-  const worker = await monaco.languages.typescript.getTypeScriptWorker()
+  const worker = await getRegisteredTypeScriptWorker()
   const client = await worker(models.javascript.uri)
   const output = await client.getEmitOutput(models.javascript.uri.toString())
   return output.outputFiles[0]?.text ?? models.javascript.getValue()
@@ -249,11 +267,16 @@ function updateConsoleHeight(clientY: number) {
 }
 
 async function runCurrentCode() {
-  const url = createRunnerUrl(await getCurrentPayload())
   clearConsole()
   appendConsoleLine("info", ["Running example..."])
-  previewFrame.src = url
-  standaloneLink.href = url
+  try {
+    const url = createRunnerUrl(await getCurrentPayload())
+    previewFrame.src = url
+    standaloneLink.href = url
+  } catch (error) {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error)
+    appendConsoleLine("error", [message])
+  }
 }
 
 function selectPane(pane: SandcastleEditorPane) {
