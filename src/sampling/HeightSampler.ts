@@ -11,6 +11,7 @@ import type {
   SampleHeightMostDetailedResult,
   SampleHeightOptions
 } from '../types'
+import { QuantizedMeshTerrainSampler } from './QuantizedMeshTerrainSampler'
 
 const DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT = -10000
 const DEFAULT_SAMPLE_HEIGHT_MAXIMUM_HEIGHT = 100000
@@ -111,13 +112,16 @@ export class HeightSampler {
   private readonly sampleDirection = new THREE.Vector3()
   private readonly samplePoint = new THREE.Vector3()
   private readonly sampleMatrix = new THREE.Matrix4()
+  private readonly sampleLocalRay = new THREE.Ray()
   private readonly sampleTilesetRay = new THREE.Ray()
   private readonly sampleTilesetRayOrigin = new THREE.Vector3()
   private readonly sampleTilesetRayTarget = new THREE.Vector3()
   private readonly sampleTarget = new THREE.Vector3()
   private readonly sampleCartographicScratch = { lat: 0, lon: 0, height: 0 }
+  private readonly terrainSampler = new QuantizedMeshTerrainSampler()
   private readonly heightSamplingLoadRegionPlugins = new WeakMap<TilesRenderer, InstanceType<typeof LoadRegionPlugin>>()
   private readonly heightSamplingJobs: HeightSamplingJob[] = []
+  private heightSamplingJobCursor = 0
 
   get hasPendingMostDetailedSampling() {
     return this.heightSamplingJobs.length > 0
@@ -138,6 +142,11 @@ export class HeightSampler {
   ): Promise<SampleHeightMostDetailedResult[]> {
     const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
     if (positions.length === 0) return results
+
+    if (options.source === 'terrain') {
+      const terrainResults = await this.sampleTerrainMostDetailedDirect(positions)
+      if (terrainResults) return terrainResults
+    }
 
     const entries = this.tilesets.createHeightSamplingTilesets(options.source)
     if (entries.length === 0) {
@@ -169,11 +178,14 @@ export class HeightSampler {
   updateMostDetailedSampling(maxPasses = DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_PASSES_PER_FRAME) {
     const passCount = Math.max(0, maxPasses)
     for (let pass = 0; pass < passCount && this.heightSamplingJobs.length > 0; pass += 1) {
-      const job = this.heightSamplingJobs[0]
+      if (this.heightSamplingJobCursor >= this.heightSamplingJobs.length) {
+        this.heightSamplingJobCursor = 0
+      }
+
+      const job = this.heightSamplingJobs[this.heightSamplingJobCursor]
       const isComplete = this.updateHeightSamplingJob(job)
-      if (!isComplete && this.heightSamplingJobs[0] === job && this.heightSamplingJobs.length > 1) {
-        this.heightSamplingJobs.shift()
-        this.heightSamplingJobs.push(job)
+      if (!isComplete && this.heightSamplingJobs[this.heightSamplingJobCursor] === job) {
+        this.heightSamplingJobCursor += 1
       }
     }
 
@@ -183,6 +195,19 @@ export class HeightSampler {
   dispose() {
     while (this.heightSamplingJobs.length > 0) {
       this.cancelHeightSamplingJob(this.heightSamplingJobs[0])
+    }
+    this.terrainSampler.clear()
+  }
+
+  private async sampleTerrainMostDetailedDirect(positions: CartographicCoordinateTuple[]) {
+    const terrain = this.tilesets.terrainOptions
+    if (!terrain || !this.tilesets.terrainTileset) return null
+
+    try {
+      return await this.terrainSampler.sampleMostDetailed(terrain, positions)
+    } catch (error) {
+      console.warn('Tellux height sampler: direct terrain sampling failed; falling back to tiles renderer sampling.', error)
+      return null
     }
   }
 
@@ -399,7 +424,10 @@ export class HeightSampler {
 
   private sampleHeightFromTileset(tileset: TilesRenderer, raycaster: THREE.Raycaster) {
     tileset.group.updateMatrixWorld(true)
-    const activeTileHit = this.sampleHeightFromActiveTiles(tileset, raycaster)
+    this.sampleMatrix.copy(tileset.group.matrixWorld).invert()
+    this.sampleLocalRay.copy(raycaster.ray).applyMatrix4(this.sampleMatrix)
+
+    const activeTileHit = this.sampleHeightFromActiveTiles(tileset, raycaster, this.sampleMatrix, this.sampleLocalRay)
     if (activeTileHit) return activeTileHit
 
     const hits: THREE.Intersection[] = []
@@ -408,10 +436,15 @@ export class HeightSampler {
     const hit = hits.find((item) => this.isSampleHeightSurfaceHit(item))
     if (!hit) return null
 
-    return this.toHeightSamplingHit(tileset, hit, 0)
+    return this.toHeightSamplingHit(tileset, hit, 0, this.sampleMatrix)
   }
 
-  private sampleHeightFromActiveTiles(tileset: TilesRenderer, raycaster: THREE.Raycaster): HeightSamplingHit | null {
+  private sampleHeightFromActiveTiles(
+    tileset: TilesRenderer,
+    raycaster: THREE.Raycaster,
+    inverseMatrix: THREE.Matrix4,
+    localRay: THREE.Ray
+  ): HeightSamplingHit | null {
     const renderer = tileset as HeightSamplingTilesRenderer
     const activeTiles = renderer.activeTiles as unknown as Set<HeightSamplingTile> | undefined
     if (!activeTiles?.size) return null
@@ -422,13 +455,14 @@ export class HeightSampler {
     activeTiles.forEach((tile) => {
       const scene = tile.engineData?.scene
       if (!scene) return
+      if (!this.heightSamplingTileIntersectsRay(tile, localRay)) return
 
       hits.length = 0
       raycaster.intersectObject(scene, true, hits)
       for (const hit of hits) {
         if (!this.isSampleHeightSurfaceHit(hit)) continue
 
-        const sampledHit = this.toHeightSamplingHit(tileset, hit, tile.internal?.depth ?? 0)
+        const sampledHit = this.toHeightSamplingHit(tileset, hit, tile.internal?.depth ?? 0, inverseMatrix)
         if (this.isBetterHeightSamplingHit(sampledHit, closestHit)) {
           closestHit = sampledHit
         }
@@ -439,9 +473,13 @@ export class HeightSampler {
     return closestHit
   }
 
-  private toHeightSamplingHit(tileset: TilesRenderer, hit: THREE.Intersection, depth: number): HeightSamplingHit {
-    this.sampleMatrix.copy(tileset.group.matrixWorld).invert()
-    this.samplePoint.copy(hit.point).applyMatrix4(this.sampleMatrix)
+  private toHeightSamplingHit(
+    tileset: TilesRenderer,
+    hit: THREE.Intersection,
+    depth: number,
+    inverseMatrix: THREE.Matrix4
+  ): HeightSamplingHit {
+    this.samplePoint.copy(hit.point).applyMatrix4(inverseMatrix)
     const cartographic = tileset.ellipsoid.getPositionToCartographic(this.samplePoint, this.sampleCartographicScratch)
     return {
       height: cartographic.height,
@@ -650,6 +688,12 @@ export class HeightSampler {
     const index = this.heightSamplingJobs.indexOf(job)
     if (index !== -1) {
       this.heightSamplingJobs.splice(index, 1)
+      if (index < this.heightSamplingJobCursor) {
+        this.heightSamplingJobCursor -= 1
+      }
+      if (this.heightSamplingJobCursor >= this.heightSamplingJobs.length) {
+        this.heightSamplingJobCursor = 0
+      }
     }
   }
 

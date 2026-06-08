@@ -1,61 +1,97 @@
 # sampleHeightMostDetailed 实现链路
 
-本文档记录 `Viewer.sampleHeightMostDetailed` 的当前实现逻辑，重点说明它如何驱动采样专用瓦片加载、如何判断目标区域已经达到最高细节，以及最终如何从瓦片几何中取高度。
+本文档记录 `Viewer.sampleHeightMostDetailed` 的当前实现逻辑，重点说明 `terrain` 模式如何直接按 quantized-mesh terrain 的最高可用层级采样，以及其他模式如何通过采样专用 tileset 和 raycast 兜底。
 
 相关源码：
 
 - `src/Viewer.ts`
 - `src/sampling/HeightSampler.ts`
+- `src/sampling/QuantizedMeshTerrainSampler.ts`
 - `src/tiles/TilesetManager.ts`
+- `src/TerrainFetchPlugin.ts`
 
 ## API 入口
 
 公开入口是 `Viewer.sampleHeightMostDetailed(positions, options)`。
 
-`Viewer` 本身不直接执行采样逻辑，而是转发到 `HeightSampler.sampleHeightMostDetailed`。这样可以把 viewer 主渲染、鼠标拾取、模型管理和高度采样状态机分开。
+`Viewer` 本身不直接执行采样逻辑，而是转发到 `HeightSampler.sampleHeightMostDetailed`。输入点格式为 `[longitude, latitude]`，返回值与输入顺序一致：命中时返回 `[longitude, latitude, height]`，未命中时返回 `undefined`。
 
-输入参数：
+关键选项：
 
-- `positions`: 经纬度数组，格式为 `[longitude, latitude]`。
 - `options.source`: 采样数据源，支持 `'all'`、`'terrain'`、`'tileset'`。
-- `options.minimumHeight`: 沿当地法线向下采样的最低高度。
-- `options.maximumHeight`: 沿当地法线向下采样的最高高度。
-- `options.resolution`: 采样相机参与瓦片误差计算时使用的像素分辨率。
-- `options.maxFrames`: 单个 batch 最多等待的采样更新帧数。
+- `options.minimumHeight` / `options.maximumHeight`: raycast 兜底路径的高度范围。
+- `options.resolution`: raycast 兜底路径中采样相机参与瓦片误差计算时使用的像素分辨率。
+- `options.maxFrames`: raycast 兜底路径中单个 batch 最多等待的采样更新帧数。
 
-返回值是与输入顺序一致的数组。命中时返回 `[longitude, latitude, height]`，未命中时返回 `undefined`。
+## 总体分流
 
-## 总体流程
+`sampleHeightMostDetailed` 现在有两条主要链路：
 
-`sampleHeightMostDetailed` 的流程可以概括为：
+1. `source: 'terrain'` 优先走 `QuantizedMeshTerrainSampler`。
+2. `source: 'tileset'`、`source: 'all'`，或 terrain 直采失败时，走采样专用 `TilesRenderer` + `LoadRegionPlugin` + raycast 链路。
 
-1. 创建采样专用 tileset。
-2. 为每个采样点构造沿当地地表法线向下的射线。
-3. 按空间范围和数量把采样点拆成 batch。
-4. 在 `Viewer.render` 后用异步采样 pass 增量推进 batch。
-5. 为 batch 配置离屏采样相机和 `LoadRegionPlugin` 的 ray region。
-6. 循环调用采样 tileset 的 `update()`，直到目标 ray 上的瓦片达到最细可用层级，或超过 `maxFrames`。
-7. 对 active tiles 做射线求交，取最终高度。
-8. 清理临时 region、相机和采样 tileset。
+terrain 直采不创建离屏相机，不创建采样 tileset，也不会调用 `TilesRenderer.update()`。它直接读取 terrain 服务的 `layer.json` 和目标 `.terrain` 文件，然后在 quantized-mesh 三角网中插值高度。
 
-当前实现不会在采样 pass 中调用 `renderer.render()`，因此不会用离屏 WebGL 渲染阻塞主渲染流程。采样相机只用于驱动 `3d-tiles-renderer` 的视锥、SSE 和瓦片调度。
+## Terrain 直采链路
 
-## 采样专用 Tileset
+`source: 'terrain'` 且当前 viewer 启用了 terrain 时，`HeightSampler` 会调用 `QuantizedMeshTerrainSampler.sampleMostDetailed`。
 
-`TilesetManager.createHeightSamplingTilesets(source)` 会为 most-detailed 采样创建独立 tileset，而不是直接复用主场景中的 tileset。
+流程：
 
-这样做有几个目的：
+1. 归一化 terrain URL。如果传入的是 `layer.json`，转换为 terrain 根目录；如果传入根目录但缺少 `/`，补齐尾部斜杠。
+2. 加载并缓存 `layer.json`。
+3. 读取 `projection`、`available`、`metadataAvailability`、`maxzoom` 和 `tiles` 模板。
+4. 对每个采样点，把经纬度转换到 terrain projection 的 normalized 坐标。
+5. 从当前已知 availability 中找到覆盖该点的最深瓦片。
+6. 如果该瓦片按 `metadataAvailability` 规则可能携带更深 availability，则加载该 `.terrain`，解析 metadata 扩展，合并新的 `available` 信息。
+7. 重复第 5-6 步，直到到达 `maxzoom`，或没有更深 availability。
+8. 按最终最高可用瓦片分组，同一个瓦片只请求一次。
+9. 解析 quantized-mesh vertex/index buffer。
+10. 在 UV 平面中找到覆盖采样点的三角形，用重心坐标插值高度。
 
-- 避免采样请求改变主视角的瓦片加载状态。
-- 允许采样 tileset 使用更激进的加载参数，例如 `errorTarget = 0`。
-- 避免采样相机和主相机互相影响。
-- 采样结束后可以整体 dispose 临时资源。
+这个链路更接近 Cesium 的 `sampleTerrainMostDetailed`：最高细节由 terrain availability 决定，而不是由相机视角、SSE 或当前场景 active tiles 决定。
 
-不同 source 的行为：
+## URL 与 gzip 处理
 
-- `terrain`: 只创建地形采样 tileset。
-- `tileset`: 为可见 3D Tiles 图层创建采样 tileset。
-- `all`: 同时包含可见 3D Tiles 图层和地形。
+直采链路会复用 Tellux terrain 加载的一些约定：
+
+- terrain URL 上的 query 参数会继承到 `layer.json` 和 `.terrain` 请求。
+- `.terrain` 请求会带 `Accept: application/vnd.quantized-mesh,application/octet-stream;q=0.9;extensions=octvertexnormals-watermask-metadata`。
+- 如果 `.terrain` 返回 gzip 字节但服务端没有设置 `Content-Encoding: gzip`，会用 `DecompressionStream('gzip')` 做兜底解压。
+
+## Quantized-Mesh 插值
+
+`.terrain` 文件解析内容包括：
+
+- header 中的 `minHeight`、`maxHeight`
+- 解码后的 `u`、`v`、`height`
+- 解码后的 triangle indices
+- metadata 扩展中的 `available`
+
+高度插值逻辑：
+
+1. 根据瓦片经纬度 bounds，把采样点转换成瓦片局部 UV。
+2. 遍历 terrain surface triangles。
+3. 在 UV 平面中计算重心坐标。
+4. 命中三角形后，对三个顶点的 normalized height 做重心插值。
+5. 用 `minHeight + (maxHeight - minHeight) * normalizedHeight` 转成米。
+
+直采不会生成 Three.js 几何，也不会包含 terrain skirt，因此不会命中裙边。
+
+## 直采缓存与批量性能
+
+`QuantizedMeshTerrainSampler` 维护两个缓存：
+
+- `layerCache`: 按 terrain 根 URL 缓存 `layer.json` 和已经合并的 availability。
+- `tileCache`: 按 `terrainRoot|level/x/y` 缓存解析后的 `.terrain`。
+
+批量采样会先按最终瓦片分组，因此同一瓦片内的多个点只产生一次网络请求和一次 quantized-mesh 解析。对 `instanced-horses` 这类大量点落在少量地形瓦片内的场景，主要收益来自跳过隐藏 `TilesRenderer` traversal、跳过 Three.js raycast、跳过几何构建和重用同瓦片解析结果。
+
+## Raycast 兜底链路
+
+当 `source` 不是纯 terrain，或 terrain 直采抛错时，会进入原有采样 tileset 链路。
+
+`TilesetManager.createHeightSamplingTilesets(source)` 会为 most-detailed 采样创建独立 tileset，而不是直接复用主场景 tileset。这样可以避免采样相机改变主视角的瓦片加载状态，也可以让采样 tileset 使用更激进的参数。
 
 采样 tileset 的关键配置：
 
@@ -63,15 +99,13 @@
 - `loadAncestors = true`
 - `loadSiblings = false`
 - `errorTarget = 0`
-- 限制下载、解析和节点处理队列并发，降低对主线程和网络的冲击。
+- 限制下载、解析和节点处理队列并发
 
-`loadAncestors = true` 可以在子瓦片加载前保留父瓦片作为 fallback，但这也意味着最终射线求交时父子瓦片可能同时 active，命中选择必须额外处理。
+采样 tileset 会被池化复用。terrain 配置、图层配置或 3D Tiles 图层变化时，池会失效并释放旧 tileset。
 
-## 采样任务与射线
+## 兜底任务与射线
 
-每个输入点会生成一个 `HeightSamplingTask`。
-
-任务中保存：
+兜底链路会为每个输入点生成一个 `HeightSamplingTask`：
 
 - 原始输入下标，用于恢复返回顺序。
 - 经纬度位置。
@@ -88,121 +122,68 @@
 4. ray direction 取当地法线反方向。
 5. raycaster 的 far 取 `maximumHeight - minimumHeight`。
 
-这个方向和鼠标拾取不同：鼠标拾取来自屏幕相机，地形高度采样则固定沿当地地表法线向下。
+## Batch 与异步更新
 
-## Batch 拆分
+兜底链路会按纬度、经度排序，再按 batch size 和经纬度跨度拆分任务。
 
-批量采样会先按纬度、经度排序，再按两个条件拆 batch：
+`sampleHeightMostDetailed` 不会自己开同步 while 循环，也不会渲染离屏帧。它把 job 放进 `HeightSampler` 队列后，由 `Viewer.render()` 在主场景渲染后通过 `setTimeout(..., 0)` 安排采样 pass，再调用 `heightSampler.updateMostDetailedSampling()`。
 
-- 每个 batch 最多 `DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE` 个点。
-- batch 经纬度跨度不超过 `DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_BATCH_SPAN_DEGREES`。
+这个设计保证当前帧的 WebGL 绘制先完成。采样 pass 默认只推进有限数量的 batch，避免一次性处理过多瓦片更新。
 
-这样做是为了让一个 batch 内的点尽量空间接近，采样相机可以覆盖较小区域，`LoadRegionPlugin` 也不会同时拉取过于分散的瓦片。
+## 采样相机与 LoadRegionPlugin
 
-## 采样更新调度
+兜底链路的每个 batch 会创建一个 `THREE.OrthographicCamera`。相机只用于参与 `3d-tiles-renderer` 的视锥判断和 screen-space error 计算，不会用于 `renderer.render(scene, camera)`。
 
-`sampleHeightMostDetailed` 不会自己开一个同步 while 循环，也不会自己渲染离屏帧。
-
-它把 job 放进 `HeightSampler` 的队列后，由 `Viewer.render()` 在主场景渲染后调用 `scheduleHeightSamplingUpdate()`。该方法用 `setTimeout(..., 0)` 安排一次异步采样 pass，再调用 `heightSampler.updateMostDetailedSampling()`。
-
-这个设计有两个效果：
-
-- 主场景 render 先完成，采样更新不阻塞当前帧的 WebGL 绘制。
-- 每次采样 pass 默认只推进有限数量的 batch，避免一次性处理过多瓦片更新。
-
-如果 `Viewer.useDefaultRenderLoop` 为 `false`，调用方需要继续调用 `viewer.render()` 推进 pending sampling job。
-
-## 采样相机
-
-每个 batch 会创建一个 `THREE.OrthographicCamera`。
-
-采样相机的位置和方向：
-
-- batch 内所有采样点的地表位置求平均，作为观察中心。
-- batch 内所有当地法线求平均，作为 up 方向参考。
-- 相机放在中心点沿平均法线抬升 `maximumHeight` 的位置。
-- 相机朝向地表。
-
-相机视锥范围：
-
-- 把 batch 内采样点转换到相机局部空间。
-- 用这些点生成二维 bounds。
-- 加 padding 后设置 orthographic camera 的 left/right/top/bottom。
-
-相机用途：
-
-- 注册到采样 tileset：`tileset.setCamera(camera)`。
-- 设置分辨率：`tileset.setResolution(camera, resolution, resolution)`。
-- 参与 `3d-tiles-renderer` 的视锥判断和 screen-space error 计算。
-
-相机不会用于 `renderer.render(scene, camera)`。
-
-## LoadRegionPlugin
-
-每个采样 task 都会给每个采样 tileset 添加一个临时 `RayRegion`。
-
-配置：
+每个采样 task 还会给每个采样 tileset 添加一个临时 `RayRegion`：
 
 - `ray`: 采样 ray 转换到 tileset local frame 后的射线。
 - `errorTarget = 0`。
 - `mask = true`。
 
-`RayRegion` 的作用是让 `3d-tiles-renderer` 在采样 ray 穿过的局部区域继续加载和细化瓦片。`mask = true` 会抑制 region 外的瓦片参与加载，减少不相关瓦片请求。
+`RayRegion` 会让 `3d-tiles-renderer` 在采样 ray 穿过的区域继续加载和细化瓦片，并抑制 region 外瓦片参与加载。
 
-采样结束时，batch 会移除所有临时 region，并从 tileset 删除采样相机。
+## 兜底最高细节判断
 
-## 最高细节判断
-
-当前实现不把“请求队列空了”直接等同于最高细节。队列空只能说明当前没有正在下载、解析或处理的任务，不能证明目标采样点没有更深层可用瓦片。
+兜底链路不把“请求队列空了”直接等同于最高细节。队列空只能说明当前没有正在下载、解析或处理的任务，不能证明目标 ray 上没有更深层可用瓦片。
 
 batch 每次更新时会检查：
 
-- 采样 tileset root 是否存在。
+- root 是否存在。
 - `isLoading`、`loadProgress`、`stats` 是否仍有队列任务。
 - `downloadQueue`、`parseQueue`、`processNodeQueue` 是否 running。
 - `loadingTiles` 是否仍有内容。
 - 是否有可渲染瓦片。
 - batch 内每条采样 ray 是否都达到 most-detailed。
 
-`isHeightSamplingBatchMostDetailed` 会对每个 task 的 ray 执行目标链路检查：
+`isHeightSamplingBatchMostDetailed` 会从 root tile 开始递归检查与采样 ray 相交的 tile 分支。如果相交分支的 tile 尚未初始化 traversal、内容尚未加载完成、子节点尚未 preprocess，都会继续等待。只有达到误差目标、达到 `maxDepth`、没有子节点，或所有相交子分支都 ready 时，该 ray 才认为 ready。
 
-1. 把采样 ray 转换到 tileset local frame。
-2. 从 root tile 开始递归检查 ray 是否穿过 tile bounding volume。
-3. 如果 tile 尚未初始化 traversal，或者内容尚未加载完成，则未完成。
-4. 如果 tile 已满足误差目标、达到 `maxDepth`，或没有子节点，则认为该分支 ready。
-5. 如果子节点还未 preprocess 出 traversal，则未完成。
-6. 递归检查与 ray 相交的子节点。
+## 兜底高度求交
 
-batch 需要连续稳定若干帧满足 ready 条件才会完成。这样可以避免某一帧刚好队列为空或 traversal 状态尚未稳定时提前采样。
-
-## 高度求交与结果选择
-
-batch 完成后，`HeightSampler` 会对每个 task 执行 raycast。
+batch 完成后，兜底链路会对每个 task 执行 raycast。
 
 优先路径是遍历采样 tileset 的 `activeTiles`：
 
-1. 对每个 active tile 的 `engineData.scene` 做 Three.js raycast。
-2. 过滤 quantized-mesh terrain 的 skirt，只接受 surface group。
-3. 把 hit point 从 world frame 转到 tileset local frame。
-4. 用 tileset ellipsoid 转成 cartographic height。
+1. 先用 tile bounding volume 和采样 ray 做快速相交过滤。
+2. 对相交 active tile 的 `engineData.scene` 做 Three.js raycast。
+3. 过滤 quantized-mesh terrain 的 skirt，只接受 surface group。
+4. 把 hit point 从 world frame 转到 tileset local frame。
+5. 用 tileset ellipsoid 转成 cartographic height。
 
 命中选择规则：
 
-- 对 quantized-mesh terrain，父级 fallback 和子级精细瓦片可能同时 active；因此优先选择 tile depth 更深的命中。
+- 对 quantized-mesh terrain，父级 fallback 和子级精细瓦片可能同时 active，因此优先选择 tile depth 更深的命中。
 - 同一 depth 下按 ray distance 选择最近命中。
 - 非 terrain 命中保持按 ray distance 最近优先。
 
 如果 active tile 路径没有命中，会 fallback 到 `TilesRenderer.raycast()`。
 
-这个深度优先策略是地形采样准确性的关键之一。因为 `loadAncestors = true` 会保留父瓦片作为子瓦片加载期间的 fallback，如果只按距离取最近命中，低级父瓦片可能抢在更高精度子瓦片前返回，导致高度偏差。
-
 ## Fallback 行为
 
-如果没有创建采样专用 tileset，例如当前没有 terrain 或对应 source 没有可用图层，实现会退回到 `sampleHeightFromLoadedTiles`。
+terrain 直采失败时，`HeightSampler` 会打印 warning，并回到采样 tileset 兜底链路。
 
-这个 fallback 只使用当前已经加载在主场景中的 tileset，不会额外请求视角外瓦片。因此它不保证 most-detailed，只保证在现有加载内容中做一次 raycast。
+如果没有创建采样专用 tileset，例如当前没有 terrain 或对应 source 没有可用图层，实现会退回到 `sampleHeightFromLoadedTiles`。这个 fallback 只使用当前已经加载在主场景中的 tileset，不会额外请求视角外瓦片，因此不保证 most-detailed。
 
-如果 batch 超过 `maxFrames` 仍未达到 ready，也会完成当前 batch 并采样已有结果。此时返回值可能是当前加载状态下的最佳结果，而不是严格最高细节。
+如果兜底 batch 超过 `maxFrames` 仍未达到 ready，也会完成当前 batch 并采样已有结果。此时返回值可能是当前加载状态下的最佳结果，而不是严格最高细节。
 
 ## 与 Cesium 思路的关系
 
@@ -211,21 +192,26 @@ Cesium 中存在两类相关能力：
 - `sampleTerrainMostDetailed`: 基于 terrain availability 计算指定经纬度的最大可用层级，再请求该层级进行高度插值。
 - `Scene.sampleHeightMostDetailed`: 通过 most-detailed pick pass 驱动 3D Tiles 细化，等 pass ready 后再做拾取。
 
-Tellux 当前实现更接近第二类：通过采样相机、`LoadRegionPlugin` 和采样专用 tileset 驱动 `3d-tiles-renderer` traversal，然后用 raycast 获取几何高度。
+Tellux 当前实现也对应这两类：
 
-它没有直接解析 quantized-mesh availability 并做三角形插值。因此它依赖 `3d-tiles-renderer` 的 tile traversal、active tiles 和 quantized-mesh 插件生成的几何。
+- `source: 'terrain'`: 使用 direct quantized-mesh 采样，更接近 `sampleTerrainMostDetailed`。
+- `source: 'tileset'` / `source: 'all'`: 使用采样 tileset、LoadRegion 和 raycast，更接近 scene pick pass。
 
 ## 排查要点
 
-如果 `sampleHeightMostDetailed` 返回高度不准确，优先检查：
+如果 terrain 模式返回高度不准确，优先检查：
 
-- 采样 source 是否正确，例如只采地形时应使用 `{ source: 'terrain' }`。
+- 是否使用 `{ source: 'terrain' }`。
+- terrain `layer.json` 是否包含完整 `available`，或 `.terrain` metadata 是否包含更深层 availability。
+- `metadataAvailability` 是否与服务端 metadata 实际发布方式一致。
+- terrain projection 是否为当前支持的 `EPSG:4326`、`CRS:84` 或 `EPSG:3857`。
+- `.terrain` 请求是否实际返回 quantized-mesh，而不是鉴权失败 HTML 或错误 JSON。
+
+如果兜底 raycast 模式返回高度不准确，优先检查：
+
 - `maximumHeight` / `minimumHeight` 是否覆盖目标地表高度。
 - 采样 batch 是否因 `maxFrames` 太小提前结束。
-- `isTilesetLoading` 是否完整覆盖 download、parse、processNode 三个队列。
 - `RayRegion` 是否正确转换到了 tileset local frame。
-- `LoadRegionPlugin` 是否注册到采样 tileset，而不是主场景 tileset。
-- `mask` 是否导致 batch 内较分散采样点互相裁剪；如果采样点分散，需要调小 batch 范围或拆分 batch。
 - active tile 命中是否优先选择了更深层 terrain tile。
 - terrain skirt 是否被过滤，避免命中瓦片裙边。
 
@@ -234,11 +220,5 @@ Tellux 当前实现更接近第二类：通过采样相机、`LoadRegionPlugin` 
 - 是否重新引入了 `renderer.render(scene, sampleCamera)`。
 - `maxPasses` 是否过大。
 - batch size 是否过大。
-- `maxTilesProcessed`、下载队列、解析队列并发是否过高。
-
-## 已知限制
-
-- 当前 most-detailed 判断是基于 `3d-tiles-renderer` traversal 状态，不是 Cesium terrain availability 的直接最大层级查询。
-- 如果 terrain 服务 metadata 不完整，或 quantized-mesh 插件无法发现更深 availability，采样无法凭空知道更高层级存在。
-- 超过 `maxFrames` 后会返回当前最佳加载结果，不保证严格最高细节。
-- 对非常分散的大批量采样，batch 相机和 region 数量会影响加载效率，需要通过 batch size 和 span 控制。
+- 兜底链路的 `maxTilesProcessed`、下载队列、解析队列并发是否过高。
+- direct terrain 采样是否首次请求了大量不同最高层级瓦片；同瓦片重复采样会复用缓存，但大量离散点仍会产生大量 `.terrain` 请求和解析。

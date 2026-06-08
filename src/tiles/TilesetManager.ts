@@ -116,6 +116,8 @@ type ImageryOverlayContext = {
 export type HeightSamplingTilesetEntry = {
   source: TilesRenderer
   tileset: TilesRenderer
+  poolKey: string
+  poolRevision: number
 }
 
 const DEFAULT_TERRAIN_ERROR_TARGET = 1
@@ -245,10 +247,12 @@ export class TilesetManager {
   private activeTerrainTileset: TilesRenderer | null = null
   private readonly sceneTilesets = new Map<string, TilesRenderer>()
   private readonly sceneTilesetOptions = new Map<string, Load3DTilesetOptions>()
+  private readonly heightSamplingTilesetPool = new Map<string, TilesRenderer[]>()
   private readonly imageryOverlayContexts = new WeakMap<TilesRenderer, ImageryOverlayContext>()
   private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
   private sceneTilesetId = 0
+  private heightSamplingPoolRevision = 0
 
   constructor(private readonly options: TilesetManagerOptions) {
     this.currentTerrain = options.terrain
@@ -275,11 +279,16 @@ export class TilesetManager {
     return this.activeTerrainTileset
   }
 
+  get terrainOptions() {
+    return this.currentTerrain
+  }
+
   get loadedSceneTilesets() {
     return [...this.sceneTilesets.values()]
   }
 
   setImageryLayers(layers: ImageryLayer[] = []) {
+    this.invalidateHeightSamplingTilesetPool()
     this.currentImageryLayers = layers
     this.replaceSurfaceTileset(this.createSurfaceTileset(this.currentImageryLayers))
     if (this.currentTerrain) {
@@ -303,6 +312,7 @@ export class TilesetManager {
   }
 
   setTerrain(terrain: TerrainOptions | null | undefined) {
+    this.invalidateHeightSamplingTilesetPool()
     this.currentTerrain = terrain ?? undefined
     this.replaceTerrainTileset(
       this.currentTerrain
@@ -351,6 +361,7 @@ export class TilesetManager {
     tileset.dispose()
     this.sceneTilesets.delete(id)
     this.sceneTilesetOptions.delete(id)
+    this.invalidateHeightSamplingTilesetPool()
     return true
   }
 
@@ -364,19 +375,34 @@ export class TilesetManager {
         const options = this.sceneTilesetOptions.get(id)
         if (!options) return
 
-        const tileset = this.createSceneTileset(options)
-        this.registerSamplingTilesetPlugins(tileset)
-        this.registerSceneTilesetMaterialPlugins(tileset, options)
-        this.configureHeightSamplingTileset(tileset)
+        const poolKey = `tileset:${id}`
+        const tileset = this.acquireHeightSamplingTileset(poolKey, () => {
+          const samplingTileset = this.createSceneTileset(options)
+          this.registerSamplingTilesetPlugins(samplingTileset)
+          this.registerSceneTilesetMaterialPlugins(samplingTileset, options)
+          this.configureHeightSamplingTileset(samplingTileset)
+          return samplingTileset
+        })
         this.copyTilesetTransform(sourceTileset, tileset)
-        entries.push({ source: sourceTileset, tileset })
+        entries.push({
+          source: sourceTileset,
+          tileset,
+          poolKey,
+          poolRevision: this.heightSamplingPoolRevision
+        })
       })
     }
 
     if (source !== 'tileset' && this.activeTerrainTileset && this.currentTerrain) {
-      const tileset = this.createHeightSamplingTerrainTileset(this.currentTerrain)
+      const poolKey = 'terrain'
+      const tileset = this.acquireHeightSamplingTileset(poolKey, () => this.createHeightSamplingTerrainTileset(this.currentTerrain!))
       this.copyTilesetTransform(this.activeTerrainTileset, tileset)
-      entries.push({ source: this.activeTerrainTileset, tileset })
+      entries.push({
+        source: this.activeTerrainTileset,
+        tileset,
+        poolKey,
+        poolRevision: this.heightSamplingPoolRevision
+      })
     }
 
     return entries
@@ -384,7 +410,7 @@ export class TilesetManager {
 
   disposeHeightSamplingTilesets(entries: HeightSamplingTilesetEntry[]) {
     entries.forEach((entry) => {
-      entry.tileset.dispose()
+      this.releaseHeightSamplingTileset(entry)
     })
   }
 
@@ -406,6 +432,7 @@ export class TilesetManager {
   }
 
   dispose() {
+    this.invalidateHeightSamplingTilesetPool()
     this.sceneTilesets.forEach((tileset) => {
       this.options.scene.remove(tileset.group)
       tileset.dispose()
@@ -522,6 +549,55 @@ export class TilesetManager {
     this.registerSamplingTilesetPlugins(tileset)
     this.configureHeightSamplingTileset(tileset)
     return tileset
+  }
+
+  private acquireHeightSamplingTileset(poolKey: string, createTileset: () => TilesRenderer) {
+    const pool = this.heightSamplingTilesetPool.get(poolKey)
+    const tileset = pool?.pop() ?? createTileset()
+    this.configureHeightSamplingTileset(tileset)
+    return tileset
+  }
+
+  private releaseHeightSamplingTileset(entry: HeightSamplingTilesetEntry) {
+    if (
+      entry.poolRevision !== this.heightSamplingPoolRevision ||
+      !this.isHeightSamplingTilesetReusable(entry.tileset)
+    ) {
+      entry.tileset.dispose()
+      return
+    }
+
+    let pool = this.heightSamplingTilesetPool.get(entry.poolKey)
+    if (!pool) {
+      pool = []
+      this.heightSamplingTilesetPool.set(entry.poolKey, pool)
+    }
+    pool.push(entry.tileset)
+  }
+
+  private isHeightSamplingTilesetReusable(tileset: TilesRenderer) {
+    const renderer = tileset as TilesRenderer & {
+      isLoading?: boolean
+      loadingTiles?: Set<unknown>
+    }
+
+    return !(
+      renderer.isLoading ||
+      renderer.downloadQueue.running ||
+      renderer.parseQueue.running ||
+      renderer.processNodeQueue.running ||
+      (renderer.loadingTiles?.size ?? 0) > 0
+    )
+  }
+
+  private invalidateHeightSamplingTilesetPool() {
+    this.heightSamplingPoolRevision += 1
+    this.heightSamplingTilesetPool.forEach((pool) => {
+      pool.forEach((tileset) => {
+        tileset.dispose()
+      })
+    })
+    this.heightSamplingTilesetPool.clear()
   }
 
   private configureHeightSamplingTileset(tileset: TilesRenderer) {
