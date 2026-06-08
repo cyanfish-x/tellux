@@ -1,18 +1,15 @@
-import tellux, { type ViewerOptions } from "../../src"
+import tellux from "../../src"
+import * as THREE from "three"
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import {
-  applyInitialSettings,
-  loadStoredExampleSettings,
-  mountExampleSettingsPanel,
-  type ExampleSettingsPanelOptions,
-} from "../settings-panel/index"
-import { arcgisWorldImageryUrl } from "../shared"
-import type { SandboxLogLevel } from "./types"
+  arcgisWorldImageryUrl,
+  createTelluxViewer,
+  showTokenNotice,
+} from "../shared"
+import { formatHeight, mountLocationReadout } from "../location-readout"
+import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
-type ExampleCleanup = void | (() => void) | Promise<void | (() => void)>
-
-const DEFAULT_TERRAIN_URL = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ""
-
-tellux.baseUrl = "/tellux/"
+const STORAGE_PREFIX = "tellux:sandcastle-run:"
 
 function serializeConsoleValue(value: unknown) {
   if (value instanceof Error) {
@@ -55,94 +52,116 @@ function installConsoleBridge() {
   })
 }
 
-function createTelluxViewer(
-  container: HTMLElement,
-  options: ViewerOptions = {},
-  settingsPanel: ExampleSettingsPanelOptions = {}
-) {
-  const layers = options.layers ?? [
-    {
-      source: {
-        type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
-      },
-    },
-  ]
-  const viewer = new tellux.Viewer(container, {
-    dracoDecoderPath: "/draco/gltf/",
-    terrain: DEFAULT_TERRAIN_URL
-      ? {
-          url: DEFAULT_TERRAIN_URL,
-        }
-      : undefined,
-    ...options,
-    layers,
-  })
-  const panelSettings = {
-    ...settingsPanel,
-    ...loadStoredExampleSettings(),
+function loadPayload() {
+  const params = new URLSearchParams(window.location.search)
+  const key = params.get("run")
+  const encodedPayload = params.get("payload")
+
+  if (encodedPayload) {
+    return JSON.parse(decodeURIComponent(encodedPayload)) as SandcastleRunPayload
   }
-  applyInitialSettings(viewer, panelSettings)
-  mountExampleSettingsPanel(viewer, panelSettings)
-  ;(window as any).viewer = viewer
-  return viewer
+
+  if (!key) {
+    return null
+  }
+
+  const rawPayload = localStorage.getItem(`${STORAGE_PREFIX}${key}`)
+  return rawPayload ? (JSON.parse(rawPayload) as SandcastleRunPayload) : null
 }
 
-function createViewerShell() {
-  document.body.innerHTML = `
-    <main class="viewer-shell sandcastle-preview-shell">
-      <div id="viewer"></div>
-    </main>
-  `
-  const container = document.querySelector("#viewer")
-  if (!(container instanceof HTMLElement)) {
-    throw new Error("Viewer container not found.")
+function prepareHtml(html: string) {
+  const document = new DOMParser().parseFromString(html, "text/html")
+  if (!document.querySelector("base")) {
+    const base = document.createElement("base")
+    base.href = "../"
+    document.head.prepend(base)
   }
-  return container
+  return `<!doctype html>\n${document.documentElement.outerHTML}`
 }
 
-async function runExample(code: string) {
-  const container = createViewerShell()
+function applyHtml(html: string) {
+  document.open()
+  document.write(prepareHtml(html))
+  document.close()
+}
+
+function removeOriginalModuleScripts() {
+  document
+    .querySelectorAll('script[type="module"][src]')
+    .forEach((script) => script.remove())
+}
+
+function stripModuleDeclarations(code: string) {
+  return code
+    .replace(/^\s*import\s+["'][^"']+["'];?\s*$/gm, "")
+    .replace(/^\s*import[\s\S]*?\s+from\s+["'][^"']+["'];?\s*$/gm, "")
+    .replace(/^\s*export\s+\{\s*\};?\s*$/gm, "")
+}
+
+function transformExampleScript(code: string) {
+  return stripModuleDeclarations(code).replace(
+    /\bimport\s*\.\s*meta\b/g,
+    "__sandcastleImportMeta"
+  )
+}
+
+function executeExampleScript(source: string) {
+  const sandcastleImportMeta = {
+    env: { ...import.meta.env },
+    url: window.location.href,
+  }
   const execute = new Function(
-    "container",
     "tellux",
+    "THREE",
+    "GLTFLoader",
+    "arcgisWorldImageryUrl",
     "createTelluxViewer",
-    `"use strict";\nreturn (async () => {\n${code}\n})()`
-  ) as (
-    container: HTMLElement,
-    telluxModule: typeof tellux,
-    viewerFactory: typeof createTelluxViewer
-  ) => ExampleCleanup
-
-  const cleanup = await execute(container, tellux, createTelluxViewer)
-  if (typeof cleanup === "function") {
-    window.addEventListener("beforeunload", cleanup, { once: true })
-  }
+    "showTokenNotice",
+    "mountLocationReadout",
+    "formatHeight",
+    "__sandcastleImportMeta",
+    `"use strict";\n${transformExampleScript(source)}\n//# sourceURL=tellux-sandcastle-example.js`
+  )
+  execute(
+    tellux,
+    THREE,
+    GLTFLoader,
+    arcgisWorldImageryUrl,
+    createTelluxViewer,
+    showTokenNotice,
+    mountLocationReadout,
+    formatHeight,
+    sandcastleImportMeta
+  )
 }
 
-installConsoleBridge()
-window.parent.postMessage({ type: "sandbox-ready" }, window.location.origin)
+async function runExample(payload: SandcastleRunPayload) {
+  applyHtml(payload.html)
+  installConsoleBridge()
+  removeOriginalModuleScripts()
+  executeExampleScript(payload.compiledJavascript)
+}
 
 void main()
 
 async function main() {
-  const params = new URLSearchParams(window.location.search)
-  const encodedCode = params.get("code")
+  window.parent.postMessage({ type: "sandbox-ready" }, window.location.origin)
 
-  if (encodedCode) {
-    try {
-      await runExample(decodeURIComponent(encodedCode))
-    } catch (error) {
-      const message = error instanceof Error ? error.stack ?? error.message : String(error)
-      console.error(error)
-      window.parent.postMessage(
-        {
-          type: "sandbox-error",
-          message,
-        },
-        window.location.origin
-      )
+  try {
+    const payload = loadPayload()
+    if (!payload) {
+      throw new Error("Sandcastle run payload not found.")
     }
+    await runExample(payload)
+  } catch (error) {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error)
+    console.error(error)
+    window.parent.postMessage(
+      {
+        type: "sandbox-error",
+        message,
+      },
+      window.location.origin
+    )
   }
 }
