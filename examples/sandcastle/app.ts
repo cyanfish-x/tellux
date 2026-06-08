@@ -19,6 +19,7 @@ self.MonacoEnvironment = {
 }
 
 const STORAGE_PREFIX = "tellux:sandcastle-run:"
+const MAX_STORED_RUNS = 6
 const root = document.querySelector("#sandcastle-root")
 
 if (!(root instanceof HTMLElement)) {
@@ -47,11 +48,8 @@ root.innerHTML = `
       </a>
       <div class="sandcastle-title">
         <strong data-current-title></strong>
-        <span data-current-description></span>
       </div>
       <div class="sandcastle-actions" aria-label="示例操作">
-        <button class="sandcastle-button sandcastle-button--primary" data-action="run" type="button">Run</button>
-        <button class="sandcastle-button" data-action="reset" type="button">Reset</button>
         <a class="sandcastle-button" data-action="standalone" href="./sandcastle/runner.html" target="_blank" rel="noreferrer">Standalone</a>
       </div>
     </header>
@@ -65,7 +63,14 @@ root.innerHTML = `
     </nav>
     <aside class="sandcastle-sidebar" data-panel="examples" aria-label="示例列表">
       <div class="sandcastle-sidebar__search">
-        <input class="sandcastle-search" type="search" placeholder="搜索示例或标签" aria-label="搜索示例或标签" />
+        <label class="sandcastle-search-field">
+          <svg class="sandcastle-search-field__icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m16 16 4 4" />
+          </svg>
+          <input class="sandcastle-search" type="search" placeholder="搜索示例或标签" aria-label="搜索示例或标签" />
+        </label>
+        <button class="sandcastle-side-toggle" data-action="toggle-side-panel" type="button" aria-expanded="true" aria-label="收起侧边栏" title="收起侧边栏"></button>
       </div>
       <div class="sandcastle-gallery__list"></div>
     </aside>
@@ -73,6 +78,10 @@ root.innerHTML = `
       <div class="sandcastle-editor-tabs" role="tablist" aria-label="代码类型">
         <button class="sandcastle-editor-tab" data-pane="javascript" type="button" role="tab">Javascript</button>
         <button class="sandcastle-editor-tab" data-pane="html" type="button" role="tab">HTML/CSS</button>
+        <div class="sandcastle-editor-actions" aria-label="代码操作">
+          <button class="sandcastle-button sandcastle-button--primary" data-action="run" type="button">Run</button>
+        </div>
+        <button class="sandcastle-side-toggle" data-action="toggle-side-panel" type="button" aria-expanded="true" aria-label="收起侧边栏" title="收起侧边栏"></button>
       </div>
       <div class="sandcastle-editor" id="sandcastle-editor"></div>
     </section>
@@ -80,14 +89,47 @@ root.innerHTML = `
     <section class="sandcastle-stage" aria-label="预览与控制台">
       <div class="sandcastle-preview-panel">
         <iframe class="sandcastle-preview" title="Tellux Sandcastle preview" sandbox="allow-scripts allow-same-origin"></iframe>
+        <button class="sandcastle-preview-fullscreen" data-action="toggle-preview-fullscreen" type="button" aria-label="全屏预览" title="全屏预览">
+          <svg class="sandcastle-preview-fullscreen__enter" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <path d="M8 3H3v5" />
+            <path d="M3 3l7 7" />
+            <path d="M16 3h5v5" />
+            <path d="M21 3l-7 7" />
+            <path d="M8 21H3v-5" />
+            <path d="M3 21l7-7" />
+            <path d="M16 21h5v-5" />
+            <path d="M21 21l-7-7" />
+          </svg>
+          <svg class="sandcastle-preview-fullscreen__exit" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <path d="M10 4v6H4" />
+            <path d="M4 10l7-7" />
+            <path d="M14 4v6h6" />
+            <path d="M20 10l-7-7" />
+            <path d="M10 20v-6H4" />
+            <path d="M4 14l7 7" />
+            <path d="M14 20v-6h6" />
+            <path d="M20 14l-7 7" />
+          </svg>
+        </button>
       </div>
       <section class="sandcastle-console" aria-label="Console">
         <div class="sandcastle-console-resizer" role="separator" aria-orientation="horizontal" aria-label="调整 Console 高度" tabindex="0"></div>
         <header>
-          <span>Console</span>
+          <div class="sandcastle-console__title">
+            <button class="sandcastle-console__toggle" data-action="toggle-console" type="button" aria-expanded="true" aria-label="折叠 Console" title="折叠 Console"></button>
+            <span>Console</span>
+          </div>
           <div class="sandcastle-console__actions">
-            <button class="sandcastle-console__toggle" data-action="toggle-console" type="button" aria-expanded="true" aria-label="折叠 Console" title="折叠 Console">⌄</button>
-            <button data-action="clear-console" type="button">Clear</button>
+            <button class="sandcastle-console__clear" data-action="clear-console" type="button">
+              <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v5" />
+                <path d="M14 11v5" />
+              </svg>
+              <span>Clear</span>
+            </button>
           </div>
         </header>
         <div class="sandcastle-console__body" aria-live="polite"></div>
@@ -105,19 +147,29 @@ const editorElement = queryRequired("#sandcastle-editor", HTMLElement)
 const layoutElement = queryRequired(".sandcastle", HTMLElement)
 const splitter = queryRequired(".sandcastle-splitter", HTMLElement)
 const stageElement = queryRequired(".sandcastle-stage", HTMLElement)
+const previewPanel = queryRequired(".sandcastle-preview-panel", HTMLElement)
 const consoleResizer = queryRequired(".sandcastle-console-resizer", HTMLElement)
 const previewFrame = queryRequired(".sandcastle-preview", HTMLIFrameElement)
 const consoleBody = queryRequired(".sandcastle-console__body", HTMLElement)
 const currentTitle = queryRequired("[data-current-title]", HTMLElement)
-const currentDescription = queryRequired("[data-current-description]", HTMLElement)
 const runButton = queryRequired('[data-action="run"]', HTMLButtonElement)
-const resetButton = queryRequired('[data-action="reset"]', HTMLButtonElement)
 const standaloneLink = queryRequired('[data-action="standalone"]', HTMLAnchorElement)
 const clearConsoleButton = queryRequired('[data-action="clear-console"]', HTMLButtonElement)
 const toggleConsoleButton = queryRequired('[data-action="toggle-console"]', HTMLButtonElement)
+const togglePreviewFullscreenButton = queryRequired(
+  '[data-action="toggle-preview-fullscreen"]',
+  HTMLButtonElement
+)
+const toggleSidePanelButtons = Array.from(
+  sandcastleRoot.querySelectorAll<HTMLButtonElement>('[data-action="toggle-side-panel"]')
+)
 const paneButtons = Array.from(
   sandcastleRoot.querySelectorAll<HTMLButtonElement>(".sandcastle-editor-tab")
 )
+
+if (toggleSidePanelButtons.length === 0) {
+  throw new Error("Sandcastle UI element not found: [data-action=\"toggle-side-panel\"]")
+}
 
 monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
   allowNonTsExtensions: true,
@@ -156,6 +208,7 @@ let activeExample = getSandcastleExample(new URLSearchParams(window.location.sea
 let displayedExamples = sandcastleExamples
 let activePane: SandcastleEditorPane = "javascript"
 let activeView: "examples" | "code" = "code"
+let isSidePanelCollapsed = false
 let isConsoleCollapsed = false
 let isDraggingSplitter = false
 let isDraggingConsole = false
@@ -163,6 +216,60 @@ let consoleHeight = 150
 
 function createRunKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function getStoredRunEntries() {
+  const entries: Array<{ key: string; createdAt: number }> = []
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const storageKey = localStorage.key(index)
+    if (!storageKey?.startsWith(STORAGE_PREFIX)) {
+      continue
+    }
+    const runKey = storageKey.slice(STORAGE_PREFIX.length)
+    const timestamp = Number.parseInt(runKey.split("-")[0] ?? "", 36)
+    entries.push({
+      key: storageKey,
+      createdAt: Number.isFinite(timestamp) ? timestamp : 0,
+    })
+  }
+  return entries.sort((left, right) => left.createdAt - right.createdAt)
+}
+
+function pruneStoredRuns(maxRuns: number) {
+  const entries = getStoredRunEntries()
+  const removeCount = Math.max(0, entries.length - maxRuns)
+  for (const entry of entries.slice(0, removeCount)) {
+    localStorage.removeItem(entry.key)
+  }
+}
+
+function clearStoredRuns() {
+  for (const entry of getStoredRunEntries()) {
+    localStorage.removeItem(entry.key)
+  }
+}
+
+function isStorageQuotaExceeded(error: unknown) {
+  return (
+    error instanceof DOMException &&
+    (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED")
+  )
+}
+
+function saveRunPayload(key: string, payload: SandcastleRunPayload) {
+  const storageKey = `${STORAGE_PREFIX}${key}`
+  const serializedPayload = JSON.stringify(payload)
+
+  pruneStoredRuns(MAX_STORED_RUNS - 1)
+  try {
+    localStorage.setItem(storageKey, serializedPayload)
+  } catch (error) {
+    if (!isStorageQuotaExceeded(error)) {
+      throw error
+    }
+    clearStoredRuns()
+    localStorage.setItem(storageKey, serializedPayload)
+  }
 }
 
 function sleep(ms: number) {
@@ -200,7 +307,7 @@ async function getCurrentPayload(): Promise<SandcastleRunPayload> {
 
 function createRunnerUrl(payload: SandcastleRunPayload) {
   const key = createRunKey()
-  localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(payload))
+  saveRunPayload(key, payload)
   return `./sandcastle/runner.html?run=${encodeURIComponent(key)}`
 }
 
@@ -235,8 +342,56 @@ function setConsoleCollapsed(isCollapsed: boolean) {
   toggleConsoleButton.title = isConsoleCollapsed ? "展开 Console" : "折叠 Console"
 }
 
+function updatePreviewFullscreenState() {
+  const isFullscreen = document.fullscreenElement === previewPanel
+  previewPanel.toggleAttribute("data-preview-fullscreen", isFullscreen)
+  togglePreviewFullscreenButton.setAttribute("aria-pressed", String(isFullscreen))
+  togglePreviewFullscreenButton.setAttribute(
+    "aria-label",
+    isFullscreen ? "退出全屏预览" : "全屏预览"
+  )
+  togglePreviewFullscreenButton.title = isFullscreen ? "退出全屏预览" : "全屏预览"
+}
+
+async function togglePreviewFullscreen() {
+  try {
+    if (document.fullscreenElement === previewPanel) {
+      await document.exitFullscreen()
+    } else {
+      await previewPanel.requestFullscreen()
+    }
+    updatePreviewFullscreenState()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    appendConsoleLine("error", [`Unable to toggle fullscreen: ${message}`])
+  }
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
+}
+
+function setSidePanelCollapsed(isCollapsed: boolean) {
+  isSidePanelCollapsed = isCollapsed
+  layoutElement.toggleAttribute("data-side-collapsed", isSidePanelCollapsed)
+  toggleSidePanelButtons.forEach((button) => {
+    button.setAttribute("aria-expanded", String(!isSidePanelCollapsed))
+    button.setAttribute("aria-label", "收起侧边栏")
+    button.title = "收起侧边栏"
+  })
+  if (isSidePanelCollapsed) {
+    layoutElement.toggleAttribute("data-resizing", false)
+    sandcastleRoot.querySelectorAll<HTMLElement>("[data-panel]").forEach((panel) => {
+      panel.toggleAttribute("data-active", false)
+    })
+    railButtons.forEach((button) => {
+      button.toggleAttribute("data-active", false)
+      button.setAttribute("aria-current", "false")
+    })
+    requestAnimationFrame(() => editor.layout())
+  } else if (activeView === "code") {
+    requestAnimationFrame(() => editor.layout())
+  }
 }
 
 function updateSplitterPosition(clientX: number) {
@@ -292,6 +447,7 @@ function selectPane(pane: SandcastleEditorPane) {
 
 function selectView(view: "examples" | "code") {
   activeView = view
+  setSidePanelCollapsed(false)
   sandcastleRoot.querySelectorAll<HTMLElement>("[data-panel]").forEach((panel) => {
     panel.toggleAttribute("data-active", panel.dataset.panel === view)
   })
@@ -310,7 +466,6 @@ function selectExample(example: SandcastleExample, shouldRun = true) {
   models.javascript.setValue(example.javascript)
   models.html.setValue(example.html)
   currentTitle.textContent = example.title
-  currentDescription.textContent = example.description
   const url = new URL(window.location.href)
   url.searchParams.set("example", example.id)
   window.history.replaceState(null, "", url)
@@ -319,6 +474,18 @@ function selectExample(example: SandcastleExample, shouldRun = true) {
   selectView("code")
   if (shouldRun) {
     void runCurrentCode()
+  }
+}
+
+function updateDescriptionTitle(description: HTMLElement, fullText: string) {
+  const isClamped =
+    description.scrollHeight > description.clientHeight + 1 ||
+    description.scrollWidth > description.clientWidth + 1
+
+  if (isClamped) {
+    description.title = fullText
+  } else {
+    description.removeAttribute("title")
   }
 }
 
@@ -338,6 +505,12 @@ function renderGallery(examples: SandcastleExample[]) {
         <span class="sandcastle-card__tags">${example.tags.map((tag) => `<em>${tag}</em>`).join("")}</span>
       </span>
     `
+    const description = button.querySelector<HTMLElement>(".sandcastle-card__description")
+    if (description) {
+      description.addEventListener("pointerenter", () => {
+        updateDescriptionTitle(description, example.description)
+      })
+    }
     if (example.thumbnail) {
       const thumb = button.querySelector<HTMLElement>(".sandcastle-card__thumb")
       if (thumb) {
@@ -346,6 +519,9 @@ function renderGallery(examples: SandcastleExample[]) {
     }
     button.addEventListener("click", () => selectExample(example))
     galleryList.appendChild(button)
+    if (description) {
+      updateDescriptionTitle(description, example.description)
+    }
   }
 }
 
@@ -372,13 +548,19 @@ function filterExamples(query: string) {
 runButton.addEventListener("click", () => {
   void runCurrentCode()
 })
-resetButton.addEventListener("click", () => selectExample(activeExample))
 clearConsoleButton.addEventListener("click", clearConsole)
 toggleConsoleButton.addEventListener("click", () => setConsoleCollapsed(!isConsoleCollapsed))
+togglePreviewFullscreenButton.addEventListener("click", () => {
+  void togglePreviewFullscreen()
+})
+toggleSidePanelButtons.forEach((button) => {
+  button.addEventListener("click", () => setSidePanelCollapsed(!isSidePanelCollapsed))
+})
 searchInput.addEventListener("input", () => filterExamples(searchInput.value))
+document.addEventListener("fullscreenchange", updatePreviewFullscreenState)
 
 splitter.addEventListener("pointerdown", (event) => {
-  if (window.matchMedia("(max-width: 1080px)").matches) {
+  if (isSidePanelCollapsed || window.matchMedia("(max-width: 1080px)").matches) {
     return
   }
   isDraggingSplitter = true
@@ -408,6 +590,9 @@ splitter.addEventListener("pointercancel", () => {
 })
 
 splitter.addEventListener("keydown", (event) => {
+  if (isSidePanelCollapsed) {
+    return
+  }
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
     return
   }
