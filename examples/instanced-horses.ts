@@ -3,8 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import { createTelluxViewer } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
-const ZOIGE_GRASSLAND_LONGITUDE = 102.434637
-const ZOIGE_GRASSLAND_LATITUDE = 33.568156
+const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
+const ZOIGE_GRASSLAND_LATITUDE = 33.5314
 const HORSE_COUNT = 1000
 const MIN_SPACING_METERS = 34
 const PLACEMENT_RADIUS_METERS = 1100
@@ -194,10 +194,10 @@ async function createHorseHerd() {
   setStatus(
     `已在若尔盖大草原附近放置 ${sampledPlacements.length} 匹实例化奔马。`
   )
-  viewer.flyToTarget(herd.group, {
-    heading: -18,
-    pitch: -16,
-    distance: 2200,
+ viewer.flyToTarget(herd.group, {
+    heading: 180,
+    pitch: -10,
+    distance: 800,
   })
 }
 
@@ -465,9 +465,9 @@ flyToButton.addEventListener("click", () => {
   if (!herd) return
 
   viewer.flyToTarget(herd.group, {
-    heading: -18,
-    pitch: -16,
-    distance: 2200,
+    heading: 180,
+    pitch: -10,
+    distance: 800,
   })
 })
 
