@@ -1,4 +1,5 @@
-import { createTelluxViewer } from "./shared"
+import tellux from "../src"
+import { arcgisWorldImageryUrl } from "./shared"
 
 const DEFAULT_TERRAIN_URL = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ""
 
@@ -30,7 +31,17 @@ const terrainToggleControl = terrainToggle
 const applyTerrainControl = applyTerrainButton
 const clearTerrainControl = clearTerrainButton
 
-const viewer = createTelluxViewer(container, {
+const viewer = new tellux.Viewer(container, {
+  dracoDecoderPath: "/draco/gltf/",
+  layers: [
+    {
+      source: {
+        type: "xyz",
+        url: arcgisWorldImageryUrl,
+        levels: 19,
+      },
+    },
+  ],
   camera: {
     latitude: 30.73605413066788,
     longitude: 103.51750379494544,
@@ -44,6 +55,8 @@ const viewer = createTelluxViewer(container, {
     toneMappingExposure: 7,
   },
 })
+
+;(window as any).viewer = viewer
 
 terrainUrlField.value = DEFAULT_TERRAIN_URL
 terrainToggleControl.checked = Boolean(DEFAULT_TERRAIN_URL)

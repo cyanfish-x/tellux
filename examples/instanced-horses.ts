@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
-import { createTelluxViewer } from "./shared"
+import tellux from "../src"
+import { arcgisWorldImageryUrl, defaultTerrainUrl } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
@@ -57,7 +58,22 @@ if (!flyToButton || !toggleAnimationButton || !regenerateButton) {
   throw new Error("Instanced horse controls not found.")
 }
 
-const viewer = createTelluxViewer(container, {
+const viewer = new tellux.Viewer(container, {
+  dracoDecoderPath: "/draco/gltf/",
+  terrain: defaultTerrainUrl
+    ? {
+        url: defaultTerrainUrl,
+      }
+    : undefined,
+  layers: [
+    {
+      source: {
+        type: "xyz",
+        url: arcgisWorldImageryUrl,
+        levels: 19,
+      },
+    },
+  ],
   camera: {
     latitude: 33.54814875712769,
     longitude: 102.44504184115536,
@@ -74,6 +90,8 @@ const viewer = createTelluxViewer(container, {
     fallbackAmbientLightIntensity: 0.85,
   },
 })
+
+;(window as any).viewer = viewer
 
 const loader = new GLTFLoader()
 const locationReadout = mountLocationReadout(viewer, {

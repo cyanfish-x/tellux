@@ -1,4 +1,5 @@
-import { createTelluxViewer } from "./shared"
+import tellux from "../src"
+import { arcgisWorldImageryUrl, defaultTerrainUrl } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const MODEL_LONGITUDE = 113.9958  
@@ -24,7 +25,22 @@ if (!flyToModelButton || !toggleAnimationButton) {
   throw new Error("Three.js interop controls not found.")
 }
 
-const viewer = createTelluxViewer(container, {
+const viewer = new tellux.Viewer(container, {
+  dracoDecoderPath: "/draco/gltf/",
+  terrain: defaultTerrainUrl
+    ? {
+        url: defaultTerrainUrl,
+      }
+    : undefined,
+  layers: [
+    {
+      source: {
+        type: "xyz",
+        url: arcgisWorldImageryUrl,
+        levels: 19,
+      },
+    },
+  ],
   camera: {
     latitude: MODEL_LATITUDE,
     longitude: MODEL_LONGITUDE,
@@ -41,6 +57,8 @@ const viewer = createTelluxViewer(container, {
     fallbackAmbientLightIntensity: 0.8,
   },
 })
+
+;(window as any).viewer = viewer
 
 let isAnimationPlaying = true
 let model: ReturnType<typeof viewer.addModel> | null = null

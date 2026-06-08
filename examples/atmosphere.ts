@@ -1,9 +1,12 @@
-import { createTelluxViewer } from './shared'
+import tellux from '../src'
+import { arcgisWorldImageryUrl, defaultTerrainUrl } from './shared'
 
 const container = document.querySelector('#viewer')
 const dujiangyanButton = document.querySelector<HTMLButtonElement>('#dujiangyan')
 const pacificButton = document.querySelector<HTMLButtonElement>('#pacific')
 const himalayaButton = document.querySelector<HTMLButtonElement>('#himalaya')
+
+const initialDaytimeHourUTC = 5
 
 const dujiangyanView = {
   latitude: 31.025122345612274,
@@ -22,29 +25,42 @@ if (!dujiangyanButton || !pacificButton || !himalayaButton) {
   throw new Error('Atmosphere controls not found.')
 }
 
-const viewer = createTelluxViewer(
-  container,
-  {
-    camera: {
-      ...dujiangyanView,
-      far: 8000000
-    },
-    scene: {
-      clouds: true,
-      skyAtmosphere: true,
-      cloudCoverage: 0.35,
-      atmosphereLightingMode: 'post-process',
-      toneMappingExposure: 8,
-      lensFlare: true,
-      smaa: true
-    },
-    resolutionScale: 1
+const viewer = new tellux.Viewer(container, {
+  dracoDecoderPath: '/draco/gltf/',
+  terrain: defaultTerrainUrl
+    ? {
+        url: defaultTerrainUrl
+      }
+    : undefined,
+  layers: [
+    {
+      source: {
+        type: 'xyz',
+        url: arcgisWorldImageryUrl,
+        levels: 19
+      }
+    }
+  ],
+  camera: {
+    ...dujiangyanView,
+    far: 8000000
   },
-  {
-    cloudLayerAltitude: 1500,
-    cloudLayerHeight: 650
-  }
-)
+  scene: {
+    clouds: true,
+    skyAtmosphere: true,
+    cloudCoverage: 0.35,
+    atmosphereLightingMode: 'post-process',
+    toneMappingExposure: 8,
+    lensFlare: true,
+    smaa: true
+  },
+  resolutionScale: 1
+})
+
+viewer.clock.setHourUTC(initialDaytimeHourUTC)
+viewer.scene.cloudLayerAltitude = 2500
+viewer.scene.cloudLayerHeight = 650
+;(window as any).viewer = viewer
 
 dujiangyanButton.addEventListener('click', () => {
   viewer.camera.flyTo({

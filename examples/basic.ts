@@ -1,4 +1,5 @@
-import { createTelluxViewer, showTokenNotice } from './shared'
+import tellux from '../src'
+import { arcgisWorldImageryUrl, defaultTerrainUrl, showTokenNotice } from './shared'
 
 const container = document.querySelector('#viewer')
 const tokenStatus = document.querySelector<HTMLElement>('#token-status')
@@ -9,7 +10,22 @@ if (!(container instanceof HTMLElement)) {
 
 showTokenNotice(tokenStatus)
 
-const viewer = createTelluxViewer(container, {
+const viewer = new tellux.Viewer(container, {
+  dracoDecoderPath: '/draco/gltf/',
+  terrain: defaultTerrainUrl
+    ? {
+        url: defaultTerrainUrl
+      }
+    : undefined,
+  layers: [
+    {
+      source: {
+        type: 'xyz',
+        url: arcgisWorldImageryUrl,
+        levels: 19
+      }
+    }
+  ],
   camera: {
     latitude: 35.6812,
     longitude: 139.8,
@@ -22,6 +38,8 @@ const viewer = createTelluxViewer(container, {
     toneMappingExposure: 8
   }
 })
+
+;(window as any).viewer = viewer
 
 document.querySelector('#tokyo')?.addEventListener('click', () => {
   viewer.camera.flyTo({
