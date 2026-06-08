@@ -1,6 +1,6 @@
 {
   "name": "tellux",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A Three.js GIS viewer for Cesium Ion 3D Tiles, atmosphere, clouds, and post-processing effects.",
   "type": "module",
   "license": "MIT",
