@@ -239,6 +239,7 @@ export class Viewer {
   private isDestroyed = false
   private isUsingDefaultRenderLoop = false
   private isHeightSamplingUpdateScheduled = false
+  private heightSamplingUpdateFrameId = 0
   private currentResolutionScale: number
   private currentToneMappingExposure: number
   private nextModelId = 0
@@ -661,6 +662,7 @@ export class Viewer {
     const deltaTime = this.previousTime === 0 ? 0 : (time - this.previousTime) / 1000
     this.previousTime = time
 
+    this.clearFrameBuffer()
     this.clock.tick(deltaTime)
     this.postProcessing.setDeltaTime(deltaTime)
     this.resize()
@@ -705,6 +707,11 @@ export class Viewer {
     this.isDestroyed = true
     this.camera.cancelFlight()
     this.useDefaultRenderLoop = false
+    if (this.heightSamplingUpdateFrameId !== 0) {
+      cancelAnimationFrame(this.heightSamplingUpdateFrameId)
+      this.heightSamplingUpdateFrameId = 0
+      this.isHeightSamplingUpdateScheduled = false
+    }
     window.removeEventListener('resize', this.handleWindowResize)
     this.resizeObserver.disconnect()
     this.renderer.domElement.removeEventListener('pointerdown', this.handleCameraInteraction)
@@ -740,12 +747,20 @@ export class Viewer {
     }
 
     this.isHeightSamplingUpdateScheduled = true
-    setTimeout(() => {
+    this.heightSamplingUpdateFrameId = requestAnimationFrame(() => {
       this.isHeightSamplingUpdateScheduled = false
+      this.heightSamplingUpdateFrameId = 0
       if (this.isDestroyed) return
 
       this.heightSampler.updateMostDetailedSampling()
-    }, 0)
+    })
+  }
+
+  private clearFrameBuffer() {
+    const renderTarget = this.renderer.getRenderTarget()
+    this.renderer.setRenderTarget(null)
+    this.renderer.clear(true, true, true)
+    this.renderer.setRenderTarget(renderTarget)
   }
 
   private resolveSceneOptions(options: ViewerOptions['scene']): Required<NonNullable<ViewerOptions['scene']>> {

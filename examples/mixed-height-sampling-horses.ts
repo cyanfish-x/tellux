@@ -136,6 +136,14 @@ function updateAnimationButton() {
   toggleAnimationButton.textContent = isAnimationPlaying ? "暂停动画" : "播放动画"
 }
 
+function waitForBrowserPaint() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      setTimeout(resolve, 0)
+    })
+  })
+}
+
 async function initializeMixedSamplingScene() {
   setStatus("正在加载 CesiumGS Discrete LOD 3D Tiles...")
   tilesetLayer = viewer.load3DTileset({
@@ -152,6 +160,7 @@ async function initializeMixedSamplingScene() {
     distance: 720,
   })
 
+  await waitForBrowserPaint()
   await createHorseHerd()
 }
 

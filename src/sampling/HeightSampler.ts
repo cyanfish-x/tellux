@@ -21,6 +21,7 @@ const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES = 120
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_PASSES_PER_FRAME = 1
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE = 8
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_SCENE_REGION_BATCH_SIZE = 64
+const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RAYCAST_TIME_SLICE_MS = Number.POSITIVE_INFINITY
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_BATCH_SPAN_DEGREES = 0.25
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_REGION_ERROR_TARGET = 0
 const TILE_LOADING_STATE_FAILED = -1
@@ -114,6 +115,10 @@ type HeightSamplingBatchState = {
   startedAt: number
   frames: number
   stableFrames: number
+  isSampling: boolean
+  sampleCursor: number
+  sampleElapsedMilliseconds: number
+  sampleSlices: number
 }
 
 type ResolvedHeightSamplingDebugOptions = Required<SampleHeightMostDetailedDebugOptions>
@@ -176,6 +181,8 @@ export class HeightSampler {
   ): Promise<SampleHeightMostDetailedResult[]> {
     if (positions.length === 0) return []
 
+    await this.waitForBrowserPaint()
+
     const hybridResults = await this.sampleAllMostDetailedHybrid(positions, options)
     if (hybridResults) return hybridResults
 
@@ -229,7 +236,7 @@ export class HeightSampler {
     if (options.source !== undefined && options.source !== 'all') return null
     if (!this.tilesets.terrainOptions || !this.tilesets.terrainTileset) return null
 
-    const tilesetEntries = this.tilesets.createSceneRegionHeightSamplingTilesets('tileset')
+    const tilesetEntries = this.tilesets.createHeightSamplingTilesets('tileset')
     if (tilesetEntries.length === 0) return null
 
     const terrainPromise = this.sampleTerrainMostDetailedDirect(positions)
@@ -741,9 +748,17 @@ export class HeightSampler {
       return this.finishHeightSamplingJob(job)
     }
 
+    if (batch.isSampling) {
+      const isBatchSampled = this.updateHeightSamplingBatchSample(job)
+      return isBatchSampled && job.currentBatchIndex >= job.batches.length
+        ? this.finishHeightSamplingJob(job)
+        : false
+    }
+
     if (batch.frames >= job.maxFrames) {
-      this.completeHeightSamplingBatch(job)
-      return job.currentBatchIndex >= job.batches.length
+      this.beginHeightSamplingBatchSample(job)
+      const isBatchSampled = this.updateHeightSamplingBatchSample(job)
+      return isBatchSampled && job.currentBatchIndex >= job.batches.length
         ? this.finishHeightSamplingJob(job)
         : false
     }
@@ -789,8 +804,9 @@ export class HeightSampler {
         isMostDetailed,
         completedBy: batch.stableFrames >= 2 ? 'stable' : 'maxFrames'
       })
-      this.completeHeightSamplingBatch(job)
-      return job.currentBatchIndex >= job.batches.length
+      this.beginHeightSamplingBatchSample(job)
+      const isBatchSampled = this.updateHeightSamplingBatchSample(job)
+      return isBatchSampled && job.currentBatchIndex >= job.batches.length
         ? this.finishHeightSamplingJob(job)
         : false
     }
@@ -821,23 +837,58 @@ export class HeightSampler {
       loadRegions,
       startedAt: performance.now(),
       frames: 0,
-      stableFrames: 0
+      stableFrames: 0,
+      isSampling: false,
+      sampleCursor: 0,
+      sampleElapsedMilliseconds: 0,
+      sampleSlices: 0
     }
+  }
+
+  private beginHeightSamplingBatchSample(job: HeightSamplingJob) {
+    const batch = job.activeBatch
+    if (!batch) return
+
+    batch.isSampling = true
+    batch.sampleCursor = 0
+    batch.sampleElapsedMilliseconds = 0
+    batch.sampleSlices = 0
+  }
+
+  private updateHeightSamplingBatchSample(job: HeightSamplingJob) {
+    const batch = job.activeBatch
+    if (!batch) return false
+    if (!batch.isSampling) this.beginHeightSamplingBatchSample(job)
+
+    const sliceStartedAt = performance.now()
+    const sliceBudget = Math.max(1, DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RAYCAST_TIME_SLICE_MS)
+
+    while (batch.sampleCursor < batch.tasks.length) {
+      const task = batch.tasks[batch.sampleCursor]
+      const height = this.sampleHeightFromSamplingTilesetsForTask(task, job.entries)
+        ?? this.sampleHeightFromLoadedTilesForTask(task, job.options)
+
+      job.results[task.index] = height === undefined ? undefined : [task.position[0], task.position[1], height]
+      batch.sampleCursor += 1
+
+      if (performance.now() - sliceStartedAt >= sliceBudget) {
+        break
+      }
+    }
+
+    batch.sampleElapsedMilliseconds += performance.now() - sliceStartedAt
+    batch.sampleSlices += 1
+    if (batch.sampleCursor < batch.tasks.length) return false
+
+    this.completeHeightSamplingBatch(job)
+    return true
   }
 
   private completeHeightSamplingBatch(job: HeightSamplingJob) {
     const batch = job.activeBatch
     if (!batch) return
 
-    const sampleStartedAt = performance.now()
-    this.sampleHeightTasksFromSamplingTilesets(batch.tasks, job.entries, job.results)
-    batch.tasks.forEach((task) => {
-      if (job.results[task.index] !== undefined) return
-
-      const height = this.sampleHeightFromLoadedTilesForTask(task, job.options)
-      job.results[task.index] = height === undefined ? undefined : [task.position[0], task.position[1], height]
-    })
-    this.logHeightSamplingBatchSampleDebug(job, batch, performance.now() - sampleStartedAt)
+    this.logHeightSamplingBatchSampleDebug(job, batch, batch.sampleElapsedMilliseconds)
 
     this.disposeHeightSamplingBatch(job)
     job.currentBatchIndex += 1
@@ -887,16 +938,16 @@ export class HeightSampler {
     }
   }
 
-  private sampleHeightTasksFromSamplingTilesets(
-    tasks: HeightSamplingTask[],
-    entries: HeightSamplingTilesetEntry[],
-    results: SampleHeightMostDetailedResult[]
-  ) {
-    tasks.forEach((task) => {
-      const height = this.sampleHeightFromSamplingTilesetsForTask(task, entries)
-      if (height !== undefined) {
-        results[task.index] = [task.position[0], task.position[1], height]
+  private waitForBrowserPaint() {
+    return new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame !== 'function') {
+        setTimeout(resolve, 0)
+        return
       }
+
+      requestAnimationFrame(() => {
+        setTimeout(resolve, 0)
+      })
     })
   }
 
