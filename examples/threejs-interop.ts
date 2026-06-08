@@ -9,6 +9,12 @@ const MODEL_URL = "https://threejs.org/examples/models/gltf/LittlestTokyo.glb"
 
 const container = document.querySelector("#viewer")
 const statusElement = document.querySelector<HTMLElement>("#model-status")
+const coordinatesTextElement = document.querySelector<HTMLElement>(
+  "#model-coordinates-text"
+)
+const coordinatesElement = document.querySelector<HTMLElement>(
+  "#model-coordinates"
+)
 const modelStatusElement = document.querySelector<HTMLElement>(
   "#model-ready-status"
 )
@@ -68,6 +74,12 @@ const locationReadout = mountLocationReadout(viewer, {
 
 flyToModelButton.disabled = true
 toggleAnimationButton.disabled = true
+
+const modelCoordinatesText = `经度 ${MODEL_LONGITUDE.toFixed(6)}、纬度 ${MODEL_LATITUDE.toFixed(6)}`
+if (coordinatesTextElement) coordinatesTextElement.textContent = modelCoordinatesText
+if (coordinatesElement) {
+  coordinatesElement.textContent = `${MODEL_LONGITUDE.toFixed(6)}, ${MODEL_LATITUDE.toFixed(6)}`
+}
 
 function setStatus(message: string) {
   if (statusElement) statusElement.textContent = message
