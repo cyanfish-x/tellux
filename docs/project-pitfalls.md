@@ -1,0 +1,66 @@
+# Tellux 项目坑点记录
+
+本文档记录项目开发过程中遇到的非显而易见问题，尤其是容易在性能优化、渲染调度和 3D Tiles 采样链路中反复踩到的坑。
+
+## 高度采样更新抢占渲染循环
+
+相关源码：
+
+- `src/Viewer.ts`
+- `src/sampling/HeightSampler.ts`
+- `src/tiles/TilesetManager.ts`
+- `examples/mixed-height-sampling-horses.ts`
+
+### 现象
+
+在 `mixed-height-sampling-horses` 示例中，调用 `sampleHeightMostDetailed({ source: 'all' })` 批量采样 1000 个点时，页面状态文本已经更新为“正在采样”，但 viewer 主画面经常要等采样完成后才稳定显示。
+
+等待期间如果用鼠标操作画面，主画面会偶尔被触发渲染，但可能出现白色圆环或瓦片边界状残影。这说明浏览器并不是完全没有帧提交，而是采样任务和主渲染链路发生了调度/状态污染问题。
+
+### 容易误判的方向
+
+一开始容易把问题归因于“需要把所有采样 raycast 改成多线程”或“需要把每个 raycast batch 拆成很小的时间片”。这两个方向都有风险：
+
+- Three.js `Raycaster` 只能一次处理一条射线，没有“一次发射多条射线”的批量 API。
+- `TilesRenderer`、`Object3D`、WebGL 资源不能直接跨 Worker 共享。要做真正多线程 raycast，需要复制或重建采样几何和加速结构，复杂度和内存成本都很高。
+- 把主线程 raycast 简单拆成每 6ms 一个时间片，会显著降低吞吐。在实际测试中，采样时间从约 2000ms 增加到约 15000ms。
+
+### 根因
+
+这个问题有两层：
+
+1. 采样更新不应该用连续的 `setTimeout(0)` 抢占事件循环。
+
+   `sampleHeightMostDetailed` 的 3D Tiles 路径需要在多个渲染/更新帧中推进瓦片加载、细化和 raycast。如果用 `setTimeout(0)` 在每帧 render 后立即推进采样任务，采样更新可能比浏览器的下一次 paint 更积极，导致主渲染循环得不到稳定提交帧的机会。
+
+2. `source: 'all'` 复用主场景 tileset 做 `LoadRegionPlugin/RayRegion` 采样时，会污染主画面的临时加载状态。
+
+   主场景 `TilesRenderer` 上挂临时采样 region，可以让观察区域加载到更高精度并复用缓存。但批量采样 1000 个点时，这些临时 region 可能驱动大量非相机视角的瓦片参与 traversal。等待期间一旦用户交互触发渲染，就可能把采样区域的临时可见/活动瓦片状态画进主画面，表现为残影或异常边界。
+
+### 当前修复策略
+
+1. 采样任务推进改为 `requestAnimationFrame` 调度。
+
+   `Viewer.scheduleHeightSamplingUpdate()` 不再用 `setTimeout(0)`，而是在下一次 animation frame 中推进 `HeightSampler.updateMostDetailedSampling()`。这样采样更新节奏与主渲染循环对齐，避免连续宏任务抢占浏览器 paint。
+
+2. `source: 'all'` 的 3D Tiles 覆盖采样使用采样专用 tileset。
+
+   Terrain 仍然走 `QuantizedMeshTerrainSampler` 直接按 availability 采样；3D Tiles 覆盖检测不再复用主场景 `createSceneRegionHeightSamplingTilesets('tileset')`，而是使用 `createHeightSamplingTilesets('tileset')` 创建/复用采样专用 `TilesRenderer`，由离屏采样相机和 `LoadRegionPlugin(mask: true)` 驱动。
+
+   这样可以避免批量采样的临时 region 污染主场景可见 tileset。
+
+3. 主画面每帧显式清理输出缓冲。
+
+   `Viewer.render()` 开头会显式清理 canvas 输出缓冲，降低 post-processing / half-float output buffer 链路在交互触发帧中留下历史内容的风险。
+
+### 后续实现准则
+
+- 不要为了“不卡主线程”盲目把 raycast 拆成过小时间片。先区分等待瓦片加载、瓦片解析、raycast、结果合成分别耗时多少。
+- 主场景 scene-region 适合少量观察点预热，不适合大批量高度采样直接挂上百上千个采样 region。
+- 大批量 `source: 'all'` 应优先使用：
+  - terrain direct sampler 作为地形基准；
+  - 采样专用 tileset/离屏相机处理 3D Tiles 覆盖；
+  - 最后合并 terrain 与 tileset 结果。
+- 如果要继续优化主线程卡顿，优先考虑为采样专用 tileset 建立只读几何加速结构，而不是把 Three.js 场景对象直接丢进 Worker。
+- 需要等待浏览器真正显示一帧时，单独 `await requestAnimationFrame()` 不一定够。rAF 回调发生在 paint 前，在回调里 resolve 的 Promise 后续 microtask 仍可能抢在 paint 前执行。必要时使用 `requestAnimationFrame(() => setTimeout(resolve, 0))`。
+
