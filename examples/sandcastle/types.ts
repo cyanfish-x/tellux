@@ -4,8 +4,19 @@ export interface SandcastleExample {
   category: string
   description: string
   tags: string[]
-  code: string
+  html: string
+  javascript: string
+  sourceHtmlPath: string
+  sourceScriptPath: string
   thumbnail?: string
+}
+
+export type SandcastleEditorPane = "javascript" | "html"
+
+export interface SandcastleRunPayload {
+  html: string
+  javascript: string
+  compiledJavascript: string
 }
 
 export type SandboxLogLevel = "log" | "info" | "warn" | "error"
