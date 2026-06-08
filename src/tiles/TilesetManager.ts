@@ -116,8 +116,10 @@ type ImageryOverlayContext = {
 export type HeightSamplingTilesetEntry = {
   source: TilesRenderer
   tileset: TilesRenderer
-  poolKey: string
-  poolRevision: number
+  poolKey?: string
+  poolRevision?: number
+  useSamplingCamera?: boolean
+  regionMask?: boolean
 }
 
 const DEFAULT_TERRAIN_ERROR_TARGET = 1
@@ -388,7 +390,9 @@ export class TilesetManager {
           source: sourceTileset,
           tileset,
           poolKey,
-          poolRevision: this.heightSamplingPoolRevision
+          poolRevision: this.heightSamplingPoolRevision,
+          useSamplingCamera: true,
+          regionMask: true
         })
       })
     }
@@ -401,7 +405,36 @@ export class TilesetManager {
         source: this.activeTerrainTileset,
         tileset,
         poolKey,
-        poolRevision: this.heightSamplingPoolRevision
+        poolRevision: this.heightSamplingPoolRevision,
+        useSamplingCamera: true,
+        regionMask: true
+      })
+    }
+
+    return entries
+  }
+
+  createSceneRegionHeightSamplingTilesets(source: HeightSamplingSource = 'all'): HeightSamplingTilesetEntry[] {
+    const entries: HeightSamplingTilesetEntry[] = []
+
+    if (source !== 'terrain') {
+      this.sceneTilesets.forEach((tileset) => {
+        if (!tileset.group.visible) return
+        entries.push({
+          source: tileset,
+          tileset,
+          useSamplingCamera: false,
+          regionMask: false
+        })
+      })
+    }
+
+    if (source !== 'tileset' && this.activeTerrainTileset) {
+      entries.push({
+        source: this.activeTerrainTileset,
+        tileset: this.activeTerrainTileset,
+        useSamplingCamera: false,
+        regionMask: false
       })
     }
 
@@ -559,6 +592,10 @@ export class TilesetManager {
   }
 
   private releaseHeightSamplingTileset(entry: HeightSamplingTilesetEntry) {
+    if (!entry.poolKey || entry.poolRevision === undefined) {
+      return
+    }
+
     if (
       entry.poolRevision !== this.heightSamplingPoolRevision ||
       !this.isHeightSamplingTilesetReusable(entry.tileset)

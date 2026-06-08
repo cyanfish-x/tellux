@@ -1200,6 +1200,38 @@ export interface SampleHeightOptions {
 }
 
 /**
+ * 高精度高度采样调试选项。
+ *
+ * Most-detailed height sampling debug options.
+ */
+export interface SampleHeightMostDetailedDebugOptions {
+  /**
+   * 控制台日志标签。
+   *
+   * Console log label.
+   */
+  label?: string
+  /**
+   * 是否输出每个 batch 的诊断信息，默认 `true`。
+   *
+   * Whether to log diagnostics for each batch. Defaults to `true`.
+   */
+  logBatches?: boolean
+  /**
+   * 每隔多少个 batch 输出一次日志，默认 `1`。
+   *
+   * Batch interval for diagnostics. Defaults to `1`.
+   */
+  batchInterval?: number
+  /**
+   * 超过多少毫秒的 batch 总是输出日志，默认 `500`。
+   *
+   * Always log batches slower than this threshold in milliseconds. Defaults to `500`.
+   */
+  slowBatchMilliseconds?: number
+}
+
+/**
  * 高精度高度采样选项。
  *
  * Most-detailed height sampling options.
@@ -1218,6 +1250,18 @@ export interface SampleHeightMostDetailedOptions extends SampleHeightOptions {
    * Defaults to `120`.
    */
   maxFrames?: number
+  /**
+   * 是否输出高度采样调试信息。
+   *
+   * 传 `true` 使用默认调试配置；也可以传入对象控制日志标签、batch
+   * 输出频率和慢 batch 阈值。
+   *
+   * Whether to log height sampling diagnostics.
+   *
+   * Pass `true` to use default debug settings, or pass an object to configure
+   * the log label, batch logging interval, and slow batch threshold.
+   */
+  debug?: boolean | SampleHeightMostDetailedDebugOptions
 }
 
 /**

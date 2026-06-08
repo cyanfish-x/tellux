@@ -1,17 +1,20 @@
 import * as THREE from "three"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
+import type { TilesetLayer } from "../src"
 import tellux from "../src"
 import { arcgisWorldImageryUrl, defaultTerrainUrl } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
-const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
-const ZOIGE_GRASSLAND_LATITUDE = 33.5314
+const MIXED_TILESET_URL =
+  "https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json"
+const MIXED_CENTER_LONGITUDE = -75.61209430782448
+const MIXED_CENTER_LATITUDE = 40.04253061142591
 const HORSE_COUNT = 1000
-const MIN_SPACING_METERS = 34
-const PLACEMENT_RADIUS_METERS = 1100
-const HORSE_BASE_HEADING = 72
-const HORSE_HEADING_JITTER = 10
-const HORSE_SCALE_FACTOR = 0.3
+const MIN_SPACING_METERS = 8
+const PLACEMENT_RADIUS_METERS = 260
+const HORSE_BASE_HEADING = 132
+const HORSE_HEADING_JITTER = 26
+const HORSE_SCALE_FACTOR = 0.08
 const HORSE_MODEL_URL = "https://threejs.org/examples/models/gltf/Horse.glb"
 const EARTH_RADIUS_METERS = 6378137
 const DEG2RAD = Math.PI / 180
@@ -39,23 +42,35 @@ type HorseHerd = {
 }
 
 const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#horse-status")
-const horseCountElement = document.querySelector<HTMLElement>("#horse-count")
-const animationStatusElement = document.querySelector<HTMLElement>(
-  "#horse-animation-status"
+const statusElement = document.querySelector<HTMLElement>("#mixed-horse-status")
+const horseCountElement = document.querySelector<HTMLElement>("#mixed-horse-count")
+const samplingStatusElement = document.querySelector<HTMLElement>(
+  "#mixed-horse-sampling-status"
 )
-const flyToButton = document.querySelector<HTMLButtonElement>("#fly-to-horses")
-const toggleAnimationButton =
-  document.querySelector<HTMLButtonElement>("#toggle-horses")
-const regenerateButton =
-  document.querySelector<HTMLButtonElement>("#regenerate-horses")
+const flyToHorsesButton = document.querySelector<HTMLButtonElement>(
+  "#fly-to-mixed-horses"
+)
+const flyToTilesetButton = document.querySelector<HTMLButtonElement>(
+  "#fly-to-mixed-tileset"
+)
+const toggleAnimationButton = document.querySelector<HTMLButtonElement>(
+  "#toggle-mixed-horses"
+)
+const regenerateButton = document.querySelector<HTMLButtonElement>(
+  "#regenerate-mixed-horses"
+)
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (!flyToButton || !toggleAnimationButton || !regenerateButton) {
-  throw new Error("Instanced horse controls not found.")
+if (
+  !flyToHorsesButton ||
+  !flyToTilesetButton ||
+  !toggleAnimationButton ||
+  !regenerateButton
+) {
+  throw new Error("Mixed height sampling horse controls not found.")
 }
 
 const viewer = new tellux.Viewer(container, {
@@ -75,19 +90,19 @@ const viewer = new tellux.Viewer(container, {
     },
   ],
   camera: {
-    latitude: 33.54814875712769,
-    longitude: 102.44504184115536,
-    height: 4348.650119598099,
-    heading: -23.80650527077907,
-    pitch: -16.634341482316092,
-    roll: 0.00005099704147283671,
+    latitude: 40.0442,
+    longitude: -75.6139,
+    height: 1050,
+    heading: 133,
+    pitch: -24,
+    roll: 0,
   },
   scene: {
     clouds: false,
     skyAtmosphere: true,
     atmosphereLightingMode: "light-source",
     toneMappingExposure: 7,
-    fallbackAmbientLightIntensity: 0.85,
+    fallbackAmbientLightIntensity: 0.9,
   },
 })
 
@@ -98,12 +113,14 @@ const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
 })
 
+let tilesetLayer: TilesetLayer | null = null
 let herd: HorseHerd | null = null
 let isAnimationPlaying = true
 let generationToken = 0
 let animationFrame = 0
 
-flyToButton.disabled = true
+flyToHorsesButton.disabled = true
+flyToTilesetButton.disabled = true
 toggleAnimationButton.disabled = true
 regenerateButton.disabled = true
 
@@ -111,59 +128,76 @@ function setStatus(message: string) {
   if (statusElement) statusElement.textContent = message
 }
 
-function setAnimationStatus(message: string) {
-  if (animationStatusElement) animationStatusElement.textContent = message
+function setSamplingStatus(message: string) {
+  if (samplingStatusElement) samplingStatusElement.textContent = message
 }
 
 function updateAnimationButton() {
-  toggleAnimationButton.textContent = isAnimationPlaying
-    ? "暂停动画"
-    : "播放动画"
+  toggleAnimationButton.textContent = isAnimationPlaying ? "暂停动画" : "播放动画"
+}
+
+async function initializeMixedSamplingScene() {
+  setStatus("正在加载 CesiumGS Discrete LOD 3D Tiles...")
+  tilesetLayer = viewer.load3DTileset({
+    type: "url",
+    id: "mixed-height-sampling-tileset",
+    url: MIXED_TILESET_URL,
+    materialMode: "unlit",
+  })
+  flyToTilesetButton.disabled = false
+
+  viewer.flyToTarget(tilesetLayer.tileset, {
+    heading: 132,
+    pitch: -24,
+    distance: 720,
+  })
+
+  await createHorseHerd()
 }
 
 async function createHorseHerd() {
   const token = ++generationToken
-  flyToButton.disabled = true
+  flyToHorsesButton.disabled = true
   toggleAnimationButton.disabled = true
   regenerateButton.disabled = true
   horseCountElement && (horseCountElement.textContent = "-")
-  setAnimationStatus("-")
-  setStatus("正在生成带间距约束的若尔盖草原随机点...")
+  setSamplingStatus("-")
+  setStatus("正在生成 3D Tiles 附近的随机点...")
 
   herd?.dispose()
   herd = null
 
   const placements = generatePlacementPoints({
     count: HORSE_COUNT,
-    centerLongitude: ZOIGE_GRASSLAND_LONGITUDE,
-    centerLatitude: ZOIGE_GRASSLAND_LATITUDE,
+    centerLongitude: MIXED_CENTER_LONGITUDE,
+    centerLatitude: MIXED_CENTER_LATITUDE,
     radiusMeters: PLACEMENT_RADIUS_METERS,
     minSpacingMeters: MIN_SPACING_METERS,
-    seed: 20260607 + token,
+    seed: 20260608 + token,
   })
 
-  setStatus(`已生成 ${placements.length} 个候选点，正在离屏采样地形高度...`)
+  setStatus(`已生成 ${placements.length} 个候选点，正在用 source: all 采样混合高度...`)
 
-  let sampledPositions: Awaited<
-    ReturnType<typeof viewer.sampleHeightMostDetailed>
-  >
-  const samplingTimerLabel = `[Tellux] instanced-horses sampleHeightMostDetailed ${placements.length} points`
+  let sampledPositions: Awaited<ReturnType<typeof viewer.sampleHeightMostDetailed>>
+  const samplingTimerLabel = `[Tellux] mixed-height-sampling-horses sampleHeightMostDetailed source=all ${placements.length} points`
   console.time(samplingTimerLabel)
   try {
     sampledPositions = await viewer.sampleHeightMostDetailed(
       placements.map((point) => [point.longitude, point.latitude]),
       {
         source: "all",
-        resolution: 128,
-        maxFrames: 90,
+        resolution: 160,
+        maxFrames: 120,
+        // debug: {
+        //   label: "[Tellux] mixed-height-sampling-horses debug",
+        //   batchInterval: 1,
+        //   slowBatchMilliseconds: 250,
+        // },
       }
     )
   } catch (error) {
-    console.error(
-      "Failed to sample terrain height for instanced horses.",
-      error
-    )
-    setStatus("地形高度采样失败，请检查地形数据源是否可用。")
+    console.error("Failed to sample mixed terrain and 3D Tiles height.", error)
+    setStatus("混合高度采样失败，请检查 3D Tiles 和地形数据源是否可访问。")
     regenerateButton.disabled = false
     return
   } finally {
@@ -182,14 +216,16 @@ async function createHorseHerd() {
     )
 
   if (sampledPlacements.length === 0) {
-    setStatus("地形高度没有命中，未加载奔马实例。")
+    setStatus("混合高度没有命中，未加载奔马实例。")
     regenerateButton.disabled = false
     return
   }
 
-  setStatus(
-    `采样命中 ${sampledPlacements.length} 个点，正在加载 Three.js Horse.glb...`
-  )
+  const heights = sampledPlacements.map((item) => item.height)
+  const minHeight = Math.min(...heights)
+  const maxHeight = Math.max(...heights)
+  setSamplingStatus(`${minHeight.toFixed(2)}m - ${maxHeight.toFixed(2)}m`)
+  setStatus(`采样命中 ${sampledPlacements.length} 个点，正在加载 Three.js Horse.glb...`)
 
   try {
     herd = await buildHorseHerd(sampledPlacements)
@@ -207,19 +243,19 @@ async function createHorseHerd() {
   }
 
   viewer.scene.threeScene.add(herd.group)
-  flyToButton.disabled = false
+  flyToHorsesButton.disabled = false
   toggleAnimationButton.disabled = false
   regenerateButton.disabled = false
   horseCountElement &&
     (horseCountElement.textContent = `${sampledPlacements.length} / ${HORSE_COUNT}`)
-  setAnimationStatus("Morph targets instancing")
   setStatus(
-    `已在若尔盖大草原附近放置 ${sampledPlacements.length} 匹实例化奔马。`
+    `已在 3D Tiles 和地形混合表面放置 ${sampledPlacements.length} 匹实例化奔马。`
   )
- viewer.flyToTarget(herd.group, {
-    heading: 180,
-    pitch: -10,
-    distance: 800,
+
+  viewer.flyToTarget(herd.group, {
+    heading: 132,
+    pitch: -18,
+    distance: 360,
   })
 }
 
@@ -258,14 +294,14 @@ async function buildHorseHerd(
 
   sampledPlacements.forEach(({ placement, height }, index) => {
     viewer.cartographicToMatrix4(
-      [placement.longitude, placement.latitude, height + 0.35],
+      [placement.longitude, placement.latitude, height + 0.08],
       { heading: placement.heading },
       matrix
     )
     scaleMatrix.makeScale(placement.scale, placement.scale, placement.scale)
     matrix.multiply(scaleMatrix)
     instancedMesh.setMatrixAt(index, matrix)
-    color.setHSL(placement.colorHue / 360, 0.5, 0.66)
+    color.setHSL(placement.colorHue / 360, 0.46, 0.64)
     instancedMesh.setColorAt(index, color)
   })
 
@@ -285,7 +321,7 @@ async function buildHorseHerd(
   instancedMesh.frustumCulled = false
   instancedMesh.castShadow = false
   instancedMesh.receiveShadow = false
-  group.name = "zoige-instanced-horses"
+  group.name = "mixed-height-sampling-instanced-horses"
   group.add(instancedMesh)
 
   return {
@@ -310,9 +346,7 @@ async function buildHorseHerd(
 function animateHorses() {
   animationFrame = requestAnimationFrame(animateHorses)
 
-  if (!herd || !isAnimationPlaying) {
-    return
-  }
+  if (!herd || !isAnimationPlaying) return
 
   const elapsedTime = performance.now() / 1000 - herd.startedAt
   updateHerdMorphTargets({
@@ -360,7 +394,7 @@ function generatePlacementPoints(options: {
   const random = createSeededRandom(options.seed)
   const points: PlacementPoint[] = []
   const minSpacingSquared = options.minSpacingMeters * options.minSpacingMeters
-  const maxAttempts = options.count * 180
+  const maxAttempts = options.count * 220
 
   for (
     let attempt = 0;
@@ -398,9 +432,9 @@ function generatePlacementPoints(options: {
       longitude: coordinates.longitude,
       latitude: coordinates.latitude,
       heading: HORSE_BASE_HEADING + (random() - 0.5) * HORSE_HEADING_JITTER,
-      scale: (0.68 + random() * 0.22) * HORSE_SCALE_FACTOR,
+      scale: (0.82 + random() * 0.28) * HORSE_SCALE_FACTOR,
       phase: random(),
-      colorHue: random() * 360,
+      colorHue: 24 + random() * 48,
     })
   }
 
@@ -483,20 +517,29 @@ function disposeMaterial(material: THREE.Material | THREE.Material[]) {
   }
 }
 
-flyToButton.addEventListener("click", () => {
+flyToHorsesButton.addEventListener("click", () => {
   if (!herd) return
 
   viewer.flyToTarget(herd.group, {
-    heading: 180,
-    pitch: -10,
-    distance: 800,
+    heading: 132,
+    pitch: -18,
+    distance: 360,
+  })
+})
+
+flyToTilesetButton.addEventListener("click", () => {
+  if (!tilesetLayer) return
+
+  viewer.flyToTarget(tilesetLayer.tileset, {
+    heading: 132,
+    pitch: -24,
+    distance: 720,
   })
 })
 
 toggleAnimationButton.addEventListener("click", () => {
   isAnimationPlaying = !isAnimationPlaying
   updateAnimationButton()
-  setAnimationStatus(isAnimationPlaying ? "Morph targets instancing" : "Paused")
 })
 
 regenerateButton.addEventListener("click", () => {
@@ -507,10 +550,11 @@ window.addEventListener("beforeunload", () => {
   generationToken += 1
   cancelAnimationFrame(animationFrame)
   herd?.dispose()
+  tilesetLayer?.remove()
   locationReadout.destroy()
   viewer.destroy()
 })
 
 updateAnimationButton()
 animateHorses()
-void createHorseHerd()
+void initializeMixedSamplingScene()

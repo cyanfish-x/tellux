@@ -621,9 +621,10 @@ export class Viewer {
   /**
    * 以更高精度异步采样经纬度数组的表面高度。
    *
-   * 方法会创建独立的采样任务和采样专用 tileset，通过 Viewer 渲染生命周期
-   * 中的采样 pass 增量驱动相关地形或 3D Tiles 加载和细化，然后再采样高度。
-   * 它适合采样当前视角外的位置，但会产生额外的瓦片请求和更新开销。
+   * 地形模式会直接按 quantized-mesh availability 加载最高可用层级并插值高度。
+   * 3D Tiles 或混合模式会优先在主场景 tileset 上临时添加局部加载区域，
+   * 让采样区域的瓦片细化后再 raycast；这样采样完成后，该区域也会保留在
+   * 主场景缓存中。必要时会退回到采样专用 tileset。
    *
    * 当 {@link Viewer.useDefaultRenderLoop} 为 `false` 时，需要继续调用
    * {@link Viewer.render} 推进采样任务。
@@ -631,11 +632,11 @@ export class Viewer {
    * Asynchronously samples surface heights for an array of cartographic
    * coordinate tuples with higher detail.
    *
-   * The method creates independent sampling tasks and sampling-only tilesets,
-   * then advances them through a sampling pass in the Viewer render lifecycle
-   * to drive terrain or 3D Tiles loading and refinement before sampling the
-   * height. It can sample positions outside the current view, but may incur
-   * extra tile requests and update cost.
+   * Terrain mode loads the most detailed available quantized-mesh tiles directly
+   * from terrain availability and interpolates height. 3D Tiles and mixed modes
+   * first add temporary local load regions to the scene tilesets, refine the
+   * sampling area, and then raycast; the loaded region remains warm in the scene
+   * cache. A sampling-only tileset path is kept as a fallback.
    *
    * When {@link Viewer.useDefaultRenderLoop} is `false`, continue calling
    * {@link Viewer.render} to advance pending sampling tasks.

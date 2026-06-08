@@ -1,6 +1,6 @@
 # sampleHeightMostDetailed 实现链路
 
-本文档记录 `Viewer.sampleHeightMostDetailed` 的当前实现逻辑，重点说明 `terrain` 模式如何直接按 quantized-mesh terrain 的最高可用层级采样，以及其他模式如何通过采样专用 tileset 和 raycast 兜底。
+本文档记录 `Viewer.sampleHeightMostDetailed` 的当前实现逻辑，重点说明 `terrain` 模式如何直接按 quantized-mesh terrain 的最高可用层级采样，以及 `tileset` / `all` 模式如何通过主场景局部加载区域把观察点附近的瓦片预热到最高细节后再采样。
 
 相关源码：
 
@@ -25,12 +25,15 @@
 
 ## 总体分流
 
-`sampleHeightMostDetailed` 现在有两条主要链路：
+`sampleHeightMostDetailed` 现在有三条主要链路：
 
 1. `source: 'terrain'` 优先走 `QuantizedMeshTerrainSampler`。
-2. `source: 'tileset'`、`source: 'all'`，或 terrain 直采失败时，走采样专用 `TilesRenderer` + `LoadRegionPlugin` + raycast 链路。
+2. `source: 'tileset'` 或存在可见 3D Tiles 的 `source: 'all'`，优先走主场景 `TilesRenderer` + `LoadRegionPlugin(mask: false)` + raycast 链路。
+3. terrain 直采失败、或主场景没有可用 tileset 时，走采样专用 `TilesRenderer` + `LoadRegionPlugin(mask: true)` + raycast 兜底链路。
 
 terrain 直采不创建离屏相机，不创建采样 tileset，也不会调用 `TilesRenderer.update()`。它直接读取 terrain 服务的 `layer.json` 和目标 `.terrain` 文件，然后在 quantized-mesh 三角网中插值高度。
+
+主场景局部加载链路不会复制 tileset，也不会替换主相机。它会给当前可见 tileset 临时挂采样 ray region，让采样区域额外进入 `3d-tiles-renderer` traversal 和加载队列；采样完成后只移除 region，已经加载的瓦片仍保留在主场景缓存中，后续观察该区域可以复用。
 
 ## Terrain 直采链路
 
@@ -87,11 +90,29 @@ terrain 直采不创建离屏相机，不创建采样 tileset，也不会调用 
 
 批量采样会先按最终瓦片分组，因此同一瓦片内的多个点只产生一次网络请求和一次 quantized-mesh 解析。对 `instanced-horses` 这类大量点落在少量地形瓦片内的场景，主要收益来自跳过隐藏 `TilesRenderer` traversal、跳过 Three.js raycast、跳过几何构建和重用同瓦片解析结果。
 
-## Raycast 兜底链路
+## 主场景局部加载链路
 
-当 `source` 不是纯 terrain，或 terrain 直采抛错时，会进入原有采样 tileset 链路。
+当 `source: 'tileset'`，或 `source: 'all'` 且当前存在可见 3D Tiles 时，`HeightSampler` 会优先使用 `TilesetManager.createSceneRegionHeightSamplingTilesets` 返回主场景中的可见 tileset。
 
-`TilesetManager.createHeightSamplingTilesets(source)` 会为 most-detailed 采样创建独立 tileset，而不是直接复用主场景 tileset。这样可以避免采样相机改变主视角的瓦片加载状态，也可以让采样 tileset 使用更激进的参数。
+每个 batch 会给这些主场景 tileset 临时添加 `RayRegion`：
+
+- `ray`: 采样 ray 转换到 tileset local frame 后的射线。
+- `errorTarget = 0`。
+- `mask = false`。
+
+`mask = false` 很重要：region 只会额外把采样区域纳入加载和细化，不会抑制主相机视野内其他瓦片，也不会改变正常渲染的可见区域。
+
+这个路径的收益是：
+
+- 不再创建和维护采样专用 3D Tiles 副本。
+- 采样点附近的 terrain / 3D Tiles 会直接加载到主场景缓存。
+- 如果采样点就是即将观察、放模型或放实例的位置，采样完成后的交互视角也能复用这批瓦片。
+
+## 采样专用 Tileset 兜底链路
+
+terrain 直采失败，或主场景局部加载链路没有可用 tileset 时，会进入采样专用 tileset 兜底链路。
+
+`TilesetManager.createHeightSamplingTilesets(source)` 会为 most-detailed 采样创建独立 tileset。这样可以在不影响主场景加载状态的情况下完成一次查询，并允许采样 tileset 使用更激进的参数。
 
 采样 tileset 的关键配置：
 
@@ -103,9 +124,9 @@ terrain 直采不创建离屏相机，不创建采样 tileset，也不会调用 
 
 采样 tileset 会被池化复用。terrain 配置、图层配置或 3D Tiles 图层变化时，池会失效并释放旧 tileset。
 
-## 兜底任务与射线
+## 任务与射线
 
-兜底链路会为每个输入点生成一个 `HeightSamplingTask`：
+raycast 类链路会为每个输入点生成一个 `HeightSamplingTask`：
 
 - 原始输入下标，用于恢复返回顺序。
 - 经纬度位置。
@@ -124,7 +145,7 @@ terrain 直采不创建离屏相机，不创建采样 tileset，也不会调用 
 
 ## Batch 与异步更新
 
-兜底链路会按纬度、经度排序，再按 batch size 和经纬度跨度拆分任务。
+raycast 类链路会按纬度、经度排序，再按 batch size 和经纬度跨度拆分任务。
 
 `sampleHeightMostDetailed` 不会自己开同步 while 循环，也不会渲染离屏帧。它把 job 放进 `HeightSampler` 队列后，由 `Viewer.render()` 在主场景渲染后通过 `setTimeout(..., 0)` 安排采样 pass，再调用 `heightSampler.updateMostDetailedSampling()`。
 
@@ -132,19 +153,22 @@ terrain 直采不创建离屏相机，不创建采样 tileset，也不会调用 
 
 ## 采样相机与 LoadRegionPlugin
 
-兜底链路的每个 batch 会创建一个 `THREE.OrthographicCamera`。相机只用于参与 `3d-tiles-renderer` 的视锥判断和 screen-space error 计算，不会用于 `renderer.render(scene, camera)`。
+主场景局部加载链路不创建采样相机，继续使用主相机；它只依赖 `RayRegion(mask: false)` 把采样区域额外纳入 traversal。
 
-每个采样 task 还会给每个采样 tileset 添加一个临时 `RayRegion`：
+采样专用 tileset 兜底链路会为每个 batch 创建一个 `THREE.OrthographicCamera`。相机只用于参与 `3d-tiles-renderer` 的视锥判断和 screen-space error 计算，不会用于 `renderer.render(scene, camera)`。
+
+每个采样 task 会给参与采样的 tileset 添加一个临时 `RayRegion`：
 
 - `ray`: 采样 ray 转换到 tileset local frame 后的射线。
 - `errorTarget = 0`。
-- `mask = true`。
+- 主场景局部加载链路使用 `mask = false`。
+- 采样专用 tileset 兜底链路使用 `mask = true`。
 
-`RayRegion` 会让 `3d-tiles-renderer` 在采样 ray 穿过的区域继续加载和细化瓦片，并抑制 region 外瓦片参与加载。
+`RayRegion` 会让 `3d-tiles-renderer` 在采样 ray 穿过的区域继续加载和细化瓦片。`mask = true` 会抑制 region 外瓦片参与加载，只适合采样专用 tileset；主场景路径使用 `mask = false`，避免干扰正常渲染。
 
-## 兜底最高细节判断
+## Raycast 最高细节判断
 
-兜底链路不把“请求队列空了”直接等同于最高细节。队列空只能说明当前没有正在下载、解析或处理的任务，不能证明目标 ray 上没有更深层可用瓦片。
+raycast 类链路不把“请求队列空了”直接等同于最高细节。队列空只能说明当前没有正在下载、解析或处理的任务，不能证明目标 ray 上没有更深层可用瓦片。
 
 batch 每次更新时会检查：
 
@@ -157,9 +181,9 @@ batch 每次更新时会检查：
 
 `isHeightSamplingBatchMostDetailed` 会从 root tile 开始递归检查与采样 ray 相交的 tile 分支。如果相交分支的 tile 尚未初始化 traversal、内容尚未加载完成、子节点尚未 preprocess，都会继续等待。只有达到误差目标、达到 `maxDepth`、没有子节点，或所有相交子分支都 ready 时，该 ray 才认为 ready。
 
-## 兜底高度求交
+## Raycast 高度求交
 
-batch 完成后，兜底链路会对每个 task 执行 raycast。
+batch 完成后，raycast 类链路会对每个 task 执行 raycast。
 
 优先路径是遍历采样 tileset 的 `activeTiles`：
 
@@ -179,7 +203,7 @@ batch 完成后，兜底链路会对每个 task 执行 raycast。
 
 ## Fallback 行为
 
-terrain 直采失败时，`HeightSampler` 会打印 warning，并回到采样 tileset 兜底链路。
+terrain 直采失败时，`HeightSampler` 会打印 warning，并回到 raycast 链路。
 
 如果没有创建采样专用 tileset，例如当前没有 terrain 或对应 source 没有可用图层，实现会退回到 `sampleHeightFromLoadedTiles`。这个 fallback 只使用当前已经加载在主场景中的 tileset，不会额外请求视角外瓦片，因此不保证 most-detailed。
 
@@ -195,7 +219,7 @@ Cesium 中存在两类相关能力：
 Tellux 当前实现也对应这两类：
 
 - `source: 'terrain'`: 使用 direct quantized-mesh 采样，更接近 `sampleTerrainMostDetailed`。
-- `source: 'tileset'` / `source: 'all'`: 使用采样 tileset、LoadRegion 和 raycast，更接近 scene pick pass。
+- `source: 'tileset'` / `source: 'all'`: 使用主场景 region preload 或采样专用 tileset、LoadRegion 和 raycast，更接近 scene pick pass。
 
 ## 排查要点
 

@@ -7,6 +7,7 @@ import type {
   CartographicCoordinateTuple,
   CartographicCoordinates,
   CartographicInput,
+  SampleHeightMostDetailedDebugOptions,
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
   SampleHeightOptions
@@ -19,6 +20,7 @@ const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION = 256
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES = 120
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_PASSES_PER_FRAME = 1
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE = 8
+const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_SCENE_REGION_BATCH_SIZE = 64
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_BATCH_SPAN_DEGREES = 0.25
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_REGION_ERROR_TARGET = 0
 const TILE_LOADING_STATE_FAILED = -1
@@ -75,6 +77,26 @@ type HeightSamplingReadiness = {
   ready: boolean
 }
 
+type HeightSamplingReadinessSummary = {
+  ready: boolean
+  intersectingRays: number
+  pendingRays: number
+}
+
+type HeightSamplingTilesetSnapshot = {
+  loading: boolean
+  loadProgress: number
+  queued: number
+  downloading: number
+  parsing: number
+  activeTiles: number
+  visibleTiles: number
+  loadingTiles: number
+  downloadQueueRunning: boolean
+  parseQueueRunning: boolean
+  processNodeQueueRunning: boolean
+}
+
 type HeightSamplingTask = {
   index: number
   position: CartographicCoordinateTuple
@@ -87,10 +109,21 @@ type HeightSamplingTask = {
 
 type HeightSamplingBatchState = {
   tasks: HeightSamplingTask[]
-  camera: THREE.OrthographicCamera
+  camera: THREE.OrthographicCamera | null
   loadRegions: HeightSamplingLoadRegion[]
+  startedAt: number
   frames: number
   stableFrames: number
+}
+
+type ResolvedHeightSamplingDebugOptions = Required<SampleHeightMostDetailedDebugOptions>
+
+type HeightSamplingDebugState = {
+  options: ResolvedHeightSamplingDebugOptions
+  startedAt: number
+  positions: number
+  batches: number
+  route: string
 }
 
 type HeightSamplingJob = {
@@ -101,6 +134,7 @@ type HeightSamplingJob = {
   maxFrames: number
   entries: HeightSamplingTilesetEntry[]
   activeBatch: HeightSamplingBatchState | null
+  debug: HeightSamplingDebugState | null
   resolve: (results: SampleHeightMostDetailedResult[]) => void
 }
 
@@ -140,15 +174,26 @@ export class HeightSampler {
     positions: CartographicCoordinateTuple[],
     options: SampleHeightMostDetailedOptions = {}
   ): Promise<SampleHeightMostDetailedResult[]> {
-    const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
-    if (positions.length === 0) return results
+    if (positions.length === 0) return []
 
-    if (options.source === 'terrain') {
+    const hybridResults = await this.sampleAllMostDetailedHybrid(positions, options)
+    if (hybridResults) return hybridResults
+
+    if (options.source === 'terrain' || this.canUseDirectTerrainOnlySampling(options.source)) {
       const terrainResults = await this.sampleTerrainMostDetailedDirect(positions)
       if (terrainResults) return terrainResults
     }
 
-    const entries = this.tilesets.createHeightSamplingTilesets(options.source)
+    const entries = this.createMostDetailedSamplingEntries(options.source)
+    return this.sampleHeightMostDetailedFromEntries(positions, options, entries)
+  }
+
+  private sampleHeightMostDetailedFromEntries(
+    positions: CartographicCoordinateTuple[],
+    options: SampleHeightMostDetailedOptions,
+    entries: HeightSamplingTilesetEntry[]
+  ): Promise<SampleHeightMostDetailedResult[]> | SampleHeightMostDetailedResult[] {
+    const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
     if (entries.length === 0) {
       positions.forEach((position, index) => {
         const height = this.sampleHeightFromLoadedTiles(position, options)
@@ -158,10 +203,11 @@ export class HeightSampler {
     }
 
     const tasks = positions.map((position, index) => this.createHeightSamplingTask(position, index, options))
-    const batches = this.createHeightSamplingBatches(tasks)
+    const batches = this.createHeightSamplingBatches(tasks, entries)
     const maxFrames = Math.max(0, options.maxFrames ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES)
+    const debug = this.createHeightSamplingDebugState(options.debug, positions.length, batches.length, entries)
 
-    return new Promise((resolve) => {
+    return new Promise<SampleHeightMostDetailedResult[]>((resolve) => {
       this.heightSamplingJobs.push({
         options,
         results,
@@ -170,8 +216,46 @@ export class HeightSampler {
         maxFrames,
         entries,
         activeBatch: null,
+        debug,
         resolve
       })
+    })
+  }
+
+  private async sampleAllMostDetailedHybrid(
+    positions: CartographicCoordinateTuple[],
+    options: SampleHeightMostDetailedOptions
+  ) {
+    if (options.source !== undefined && options.source !== 'all') return null
+    if (!this.tilesets.terrainOptions || !this.tilesets.terrainTileset) return null
+
+    const tilesetEntries = this.tilesets.createSceneRegionHeightSamplingTilesets('tileset')
+    if (tilesetEntries.length === 0) return null
+
+    const terrainPromise = this.sampleTerrainMostDetailedDirect(positions)
+    const tilesetResults = await this.sampleHeightMostDetailedFromEntries(
+      positions,
+      { ...options, source: 'tileset' },
+      tilesetEntries
+    )
+    const terrainResults = await terrainPromise
+    if (!terrainResults) return null
+
+    return this.mergeMostDetailedTerrainAndTilesetResults(positions, terrainResults, tilesetResults)
+  }
+
+  private mergeMostDetailedTerrainAndTilesetResults(
+    positions: CartographicCoordinateTuple[],
+    terrainResults: SampleHeightMostDetailedResult[],
+    tilesetResults: SampleHeightMostDetailedResult[]
+  ) {
+    return positions.map((position, index) => {
+      const tilesetResult = tilesetResults[index]
+      const terrainResult = terrainResults[index]
+      if (!terrainResult) return tilesetResult
+      if (!tilesetResult) return terrainResult
+
+      return tilesetResult[2] >= terrainResult[2] ? tilesetResult : terrainResult
     })
   }
 
@@ -208,6 +292,72 @@ export class HeightSampler {
     } catch (error) {
       console.warn('Tellux height sampler: direct terrain sampling failed; falling back to tiles renderer sampling.', error)
       return null
+    }
+  }
+
+  private canUseDirectTerrainOnlySampling(source: SampleHeightMostDetailedOptions['source']) {
+    if (source !== undefined && source !== 'all') return false
+
+    return this.tilesets.loadedSceneTilesets.every((tileset) => !tileset.group.visible)
+  }
+
+  private createMostDetailedSamplingEntries(source: SampleHeightMostDetailedOptions['source']) {
+    if (source !== 'terrain') {
+      const sceneRegionEntries = this.tilesets.createSceneRegionHeightSamplingTilesets(source)
+      if (sceneRegionEntries.length > 0) return sceneRegionEntries
+    }
+
+    return this.tilesets.createHeightSamplingTilesets(source)
+  }
+
+  private createHeightSamplingDebugState(
+    debug: SampleHeightMostDetailedOptions['debug'],
+    positions: number,
+    batches: number,
+    entries: HeightSamplingTilesetEntry[]
+  ): HeightSamplingDebugState | null {
+    if (!debug) return null
+
+    const options = this.resolveHeightSamplingDebugOptions(debug)
+    const route = entries.every((entry) => entry.useSamplingCamera === false)
+      ? 'scene-region'
+      : 'sampling-tileset'
+    const state = {
+      options,
+      startedAt: performance.now(),
+      positions,
+      batches,
+      route
+    }
+
+    console.info(`${options.label}: started`, {
+      positions,
+      batches,
+      route,
+      entries: entries.map((entry) => this.getHeightSamplingEntryDebugInfo(entry))
+    })
+    return state
+  }
+
+  private resolveHeightSamplingDebugOptions(
+    debug: true | SampleHeightMostDetailedDebugOptions
+  ): ResolvedHeightSamplingDebugOptions {
+    const options = debug === true ? {} : debug
+    return {
+      label: options.label ?? '[Tellux] sampleHeightMostDetailed',
+      logBatches: options.logBatches ?? true,
+      batchInterval: Math.max(1, options.batchInterval ?? 1),
+      slowBatchMilliseconds: Math.max(0, options.slowBatchMilliseconds ?? 500)
+    }
+  }
+
+  private getHeightSamplingEntryDebugInfo(entry: HeightSamplingTilesetEntry) {
+    return {
+      mode: entry.useSamplingCamera === false ? 'scene-region' : 'sampling-tileset',
+      regionMask: entry.regionMask ?? true,
+      isTerrain: entry.source === this.tilesets.terrainTileset,
+      visible: entry.source.group.visible,
+      sameAsSource: entry.source === entry.tileset
     }
   }
 
@@ -309,9 +459,11 @@ export class HeightSampler {
     this.sampleRaycaster.far = Math.max(maximumHeight - minimumHeight, 0)
   }
 
-  private createHeightSamplingBatches(tasks: HeightSamplingTask[]) {
+  private createHeightSamplingBatches(tasks: HeightSamplingTask[], entries: HeightSamplingTilesetEntry[]) {
     const batches: HeightSamplingTask[][] = []
-    const maxBatchSize = DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE
+    const maxBatchSize = this.isSceneRegionSamplingEntries(entries)
+      ? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_SCENE_REGION_BATCH_SIZE
+      : DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE
     const maxSpan = DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_BATCH_SPAN_DEGREES
     const sortedTasks = tasks.slice().sort((a, b) => {
       const latitudeDelta = a.position[1] - b.position[1]
@@ -360,6 +512,10 @@ export class HeightSampler {
     flushBatch()
 
     return batches
+  }
+
+  private isSceneRegionSamplingEntries(entries: HeightSamplingTilesetEntry[]) {
+    return entries.length > 0 && entries.every((entry) => entry.useSamplingCamera === false)
   }
 
   private configureSampleOffscreenCamera(tasks: HeightSamplingTask[], options: SampleHeightMostDetailedOptions) {
@@ -524,13 +680,17 @@ export class HeightSampler {
     )
   }
 
-  private addHeightSamplingLoadRegions(tileset: TilesRenderer, tasks: HeightSamplingTask[]): HeightSamplingLoadRegion[] {
+  private addHeightSamplingLoadRegions(
+    tileset: TilesRenderer,
+    tasks: HeightSamplingTask[],
+    mask: boolean
+  ): HeightSamplingLoadRegion[] {
     const plugin = this.getHeightSamplingLoadRegionPlugin(tileset)
     return tasks.map((task) => {
       const region = new RayRegion({
         ray: this.getHeightSamplingRayInTilesetFrame(tileset, task.ray),
         errorTarget: DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_REGION_ERROR_TARGET,
-        mask: true
+        mask
       })
 
       plugin.addRegion(region)
@@ -588,17 +748,31 @@ export class HeightSampler {
         : false
     }
 
+    const snapshots: HeightSamplingTilesetSnapshot[] = []
     let loading = false
     for (const entry of job.entries) {
       entry.tileset.update()
-      loading = this.isTilesetLoading(entry.tileset) || loading
+      if (job.debug) {
+        const snapshot = this.getTilesetLoadingSnapshot(entry.tileset)
+        snapshots.push(snapshot)
+        loading = snapshot.loading || loading
+      } else {
+        loading = this.isTilesetLoading(entry.tileset) || loading
+      }
     }
 
     const hasRenderableTiles = job.entries.some((entry) => this.hasTilesetRenderableTiles(entry.tileset))
+    const readinessSummaries = job.debug
+      ? job.entries.map((entry) => this.getHeightSamplingBatchReadinessSummary(entry.tileset, batch.tasks))
+      : null
+    const isSceneRegionJob = this.isSceneRegionSamplingEntries(job.entries)
+    const isBatchRegionReady = readinessSummaries
+      ? readinessSummaries.every((summary) => summary.ready)
+      : job.entries.every((entry) => this.isHeightSamplingBatchMostDetailed(entry.tileset, batch.tasks))
     const isMostDetailed =
-      !loading &&
       hasRenderableTiles &&
-      job.entries.every((entry) => this.isHeightSamplingBatchMostDetailed(entry.tileset, batch.tasks))
+      isBatchRegionReady &&
+      (isSceneRegionJob || !loading)
 
     if (isMostDetailed) {
       batch.stableFrames += 1
@@ -609,6 +783,12 @@ export class HeightSampler {
     batch.frames += 1
 
     if (batch.stableFrames >= 2 || batch.frames >= job.maxFrames) {
+      this.logHeightSamplingBatchDebug(job, batch, snapshots, readinessSummaries, {
+        loading,
+        hasRenderableTiles,
+        isMostDetailed,
+        completedBy: batch.stableFrames >= 2 ? 'stable' : 'maxFrames'
+      })
       this.completeHeightSamplingBatch(job)
       return job.currentBatchIndex >= job.batches.length
         ? this.finishHeightSamplingJob(job)
@@ -622,11 +802,15 @@ export class HeightSampler {
     const tasks = job.batches[job.currentBatchIndex]
     if (!tasks) return
 
-    const camera = this.configureSampleOffscreenCamera(tasks, job.options)
+    const needsSamplingCamera = job.entries.some((entry) => entry.useSamplingCamera !== false)
+    const camera = needsSamplingCamera ? this.configureSampleOffscreenCamera(tasks, job.options) : null
     const resolution = Math.max(1, job.options.resolution ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RESOLUTION)
-    const loadRegions = job.entries.flatMap((entry) => this.addHeightSamplingLoadRegions(entry.tileset, tasks))
+    const loadRegions = job.entries.flatMap((entry) => (
+      this.addHeightSamplingLoadRegions(entry.tileset, tasks, entry.regionMask ?? true)
+    ))
 
     job.entries.forEach((entry) => {
+      if (!camera || entry.useSamplingCamera === false) return
       entry.tileset.setCamera(camera)
       entry.tileset.setResolution(camera, resolution, resolution)
     })
@@ -635,6 +819,7 @@ export class HeightSampler {
       tasks,
       camera,
       loadRegions,
+      startedAt: performance.now(),
       frames: 0,
       stableFrames: 0
     }
@@ -644,6 +829,7 @@ export class HeightSampler {
     const batch = job.activeBatch
     if (!batch) return
 
+    const sampleStartedAt = performance.now()
     this.sampleHeightTasksFromSamplingTilesets(batch.tasks, job.entries, job.results)
     batch.tasks.forEach((task) => {
       if (job.results[task.index] !== undefined) return
@@ -651,6 +837,7 @@ export class HeightSampler {
       const height = this.sampleHeightFromLoadedTilesForTask(task, job.options)
       job.results[task.index] = height === undefined ? undefined : [task.position[0], task.position[1], height]
     })
+    this.logHeightSamplingBatchSampleDebug(job, batch, performance.now() - sampleStartedAt)
 
     this.disposeHeightSamplingBatch(job)
     job.currentBatchIndex += 1
@@ -664,7 +851,9 @@ export class HeightSampler {
       loadRegion.plugin.removeRegion(loadRegion.region)
     })
     job.entries.forEach((entry) => {
-      entry.tileset.deleteCamera(batch.camera)
+      if (batch.camera && entry.useSamplingCamera !== false) {
+        entry.tileset.deleteCamera(batch.camera)
+      }
     })
     job.activeBatch = null
   }
@@ -673,6 +862,7 @@ export class HeightSampler {
     this.disposeHeightSamplingBatch(job)
     this.tilesets.disposeHeightSamplingTilesets(job.entries)
     this.removeHeightSamplingJob(job)
+    this.logHeightSamplingJobFinished(job)
     job.resolve(job.results)
     return true
   }
@@ -733,15 +923,35 @@ export class HeightSampler {
   }
 
   private isHeightSamplingBatchMostDetailed(tileset: TilesRenderer, tasks: HeightSamplingTask[]) {
+    return this.getHeightSamplingBatchReadinessSummary(tileset, tasks).ready
+  }
+
+  private getHeightSamplingBatchReadinessSummary(tileset: TilesRenderer, tasks: HeightSamplingTask[]): HeightSamplingReadinessSummary {
     const renderer = tileset as HeightSamplingTilesRenderer
     const root = renderer.root
-    if (!root) return false
+    if (!root) {
+      return {
+        ready: false,
+        intersectingRays: 0,
+        pendingRays: tasks.length
+      }
+    }
 
-    return tasks.every((task) => {
+    let intersectingRays = 0
+    let pendingRays = 0
+    tasks.forEach((task) => {
       const ray = this.getHeightSamplingRayInTilesetFrame(tileset, task.ray)
       const readiness = this.getHeightSamplingTileReadiness(root, renderer, ray)
-      return readiness.intersects ? readiness.ready : true
+      if (!readiness.intersects) return
+
+      intersectingRays += 1
+      if (!readiness.ready) pendingRays += 1
     })
+    return {
+      ready: pendingRays === 0,
+      intersectingRays,
+      pendingRays
+    }
   }
 
   private getHeightSamplingTileReadiness(
@@ -814,8 +1024,14 @@ export class HeightSampler {
   }
 
   private isTilesetLoading(tileset: TilesRenderer) {
+    return this.getTilesetLoadingSnapshot(tileset).loading
+  }
+
+  private getTilesetLoadingSnapshot(tileset: TilesRenderer): HeightSamplingTilesetSnapshot {
     const renderer = tileset as TilesRenderer & {
       isLoading?: boolean
+      activeTiles?: Set<unknown>
+      visibleTiles?: Set<unknown>
       stats?: {
         queued?: number
         downloading?: number
@@ -828,17 +1044,121 @@ export class HeightSampler {
     }
 
     const stats = renderer.stats
-    return Boolean(
+    const queued = stats?.queued ?? 0
+    const downloading = stats?.downloading ?? 0
+    const parsing = stats?.parsing ?? 0
+    const loadingTiles = renderer.loadingTiles?.size ?? 0
+    const downloadQueueRunning = Boolean(renderer.downloadQueue?.running)
+    const parseQueueRunning = Boolean(renderer.parseQueue?.running)
+    const processNodeQueueRunning = Boolean(renderer.processNodeQueue?.running)
+    const loading = Boolean(
       !tileset.root ||
       renderer.isLoading ||
       tileset.loadProgress < 1 ||
-      (stats?.queued ?? 0) > 0 ||
-      (stats?.downloading ?? 0) > 0 ||
-      (stats?.parsing ?? 0) > 0 ||
-      renderer.downloadQueue?.running ||
-      renderer.parseQueue?.running ||
-      renderer.processNodeQueue?.running ||
-      (renderer.loadingTiles?.size ?? 0) > 0
+      queued > 0 ||
+      downloading > 0 ||
+      parsing > 0 ||
+      downloadQueueRunning ||
+      parseQueueRunning ||
+      processNodeQueueRunning ||
+      loadingTiles > 0
     )
+
+    return {
+      loading,
+      loadProgress: tileset.loadProgress,
+      queued,
+      downloading,
+      parsing,
+      activeTiles: renderer.activeTiles?.size ?? 0,
+      visibleTiles: renderer.visibleTiles?.size ?? 0,
+      loadingTiles,
+      downloadQueueRunning,
+      parseQueueRunning,
+      processNodeQueueRunning
+    }
+  }
+
+  private logHeightSamplingBatchDebug(
+    job: HeightSamplingJob,
+    batch: HeightSamplingBatchState,
+    snapshots: HeightSamplingTilesetSnapshot[],
+    readinessSummaries: HeightSamplingReadinessSummary[] | null,
+    status: {
+      loading: boolean
+      hasRenderableTiles: boolean
+      isMostDetailed: boolean
+      completedBy: 'stable' | 'maxFrames'
+    }
+  ) {
+    const debug = job.debug
+    if (!debug?.options.logBatches) return
+
+    const batchNumber = job.currentBatchIndex + 1
+    const elapsed = performance.now() - batch.startedAt
+    const shouldLog =
+      batchNumber % debug.options.batchInterval === 0 ||
+      elapsed >= debug.options.slowBatchMilliseconds ||
+      status.completedBy === 'maxFrames'
+    if (!shouldLog) return
+
+    console.info(`${debug.options.label}: batch ${batchNumber}/${debug.batches}`, {
+      route: debug.route,
+      tasks: batch.tasks.length,
+      elapsedMilliseconds: Math.round(elapsed),
+      frames: batch.frames,
+      stableFrames: batch.stableFrames,
+      completedBy: status.completedBy,
+      loading: status.loading,
+      hasRenderableTiles: status.hasRenderableTiles,
+      isMostDetailed: status.isMostDetailed,
+      tilesets: snapshots.length > 0
+        ? snapshots
+        : job.entries.map((entry) => this.getTilesetLoadingSnapshot(entry.tileset)),
+      readiness: readinessSummaries ?? job.entries.map((entry) => (
+        this.getHeightSamplingBatchReadinessSummary(entry.tileset, batch.tasks)
+      ))
+    })
+  }
+
+  private logHeightSamplingBatchSampleDebug(
+    job: HeightSamplingJob,
+    batch: HeightSamplingBatchState,
+    elapsedMilliseconds: number
+  ) {
+    const debug = job.debug
+    if (!debug?.options.logBatches) return
+
+    const batchNumber = job.currentBatchIndex + 1
+    if (
+      batchNumber % debug.options.batchInterval !== 0 &&
+      elapsedMilliseconds < debug.options.slowBatchMilliseconds
+    ) {
+      return
+    }
+
+    const hits = batch.tasks.reduce((count, task) => (
+      job.results[task.index] === undefined ? count : count + 1
+    ), 0)
+    console.info(`${debug.options.label}: batch ${batchNumber}/${debug.batches} raycast`, {
+      tasks: batch.tasks.length,
+      hits,
+      elapsedMilliseconds: Math.round(elapsedMilliseconds)
+    })
+  }
+
+  private logHeightSamplingJobFinished(job: HeightSamplingJob) {
+    const debug = job.debug
+    if (!debug) return
+
+    const elapsed = performance.now() - debug.startedAt
+    const hits = job.results.reduce((count, result) => result === undefined ? count : count + 1, 0)
+    console.info(`${debug.options.label}: finished`, {
+      route: debug.route,
+      positions: debug.positions,
+      batches: debug.batches,
+      hits,
+      elapsedMilliseconds: Math.round(elapsed)
+    })
   }
 }
