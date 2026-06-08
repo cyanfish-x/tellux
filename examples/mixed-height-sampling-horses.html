@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tellux Mixed Height Sampling Horses</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar toolbar--wide" aria-label="Mixed height sampling controls">
+        <header class="toolbar__header">
+          <h1>混合场景高度采样奔马</h1>
+          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+        </header>
+        <p>
+          加载 CesiumGS Discrete LOD 3D Tiles，在模型附近生成 1000 个随机点，
+          使用 <code>sampleHeightMostDetailed</code> 的 <code>source: "all"</code>
+          采样模型和地形混合高度后贴地实例化奔马。
+        </p>
+        <p id="mixed-horse-status" class="status" aria-live="polite">正在准备混合采样场景...</p>
+        <dl class="click-readout">
+          <dt>Center</dt>
+          <dd>-75.612094, 40.042531</dd>
+          <dt>Instances</dt>
+          <dd id="mixed-horse-count">-</dd>
+          <dt>Source</dt>
+          <dd>all</dd>
+          <dt>Sampling</dt>
+          <dd id="mixed-horse-sampling-status">-</dd>
+        </dl>
+        <div class="toolbar__row">
+          <button class="button" id="fly-to-mixed-horses" type="button">飞到马群</button>
+          <button class="button" id="fly-to-mixed-tileset" type="button">飞到 3D Tiles</button>
+          <button class="button" id="toggle-mixed-horses" type="button">暂停动画</button>
+          <button class="button" id="regenerate-mixed-horses" type="button">重新生成</button>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./mixed-height-sampling-horses.ts"></script>
+  </body>
+</html>

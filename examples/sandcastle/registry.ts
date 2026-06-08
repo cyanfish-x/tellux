@@ -20,6 +20,7 @@ const categoryById: Record<string, string> = {
   "data-sources": "Layers",
   "fly-to": "Camera",
   "instanced-horses": "Models",
+  "mixed-height-sampling-horses": "Sampling",
   terrain: "Terrain",
   "threejs-interop": "Models",
 }

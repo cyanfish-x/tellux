@@ -13,6 +13,7 @@ const htmlInputs = {
   atmosphere: resolve(__dirname, "atmosphere.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
   instancedHorses: resolve(__dirname, "instanced-horses.html"),
+  mixedHeightSamplingHorses: resolve(__dirname, "mixed-height-sampling-horses.html"),
   sandcastle: resolve(__dirname, "sandcastle.html"),
   sandcastleRunner: resolve(__dirname, "sandcastle/runner.html"),
 }
