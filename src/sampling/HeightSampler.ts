@@ -32,12 +32,20 @@ type RaycastableTilesRenderer = TilesRenderer & {
   raycast(raycaster: THREE.Raycaster, intersects: THREE.Intersection[]): void
 }
 
+type HeightSamplingHit = {
+  height: number
+  distance: number
+  depth: number
+  isTerrain: boolean
+}
+
 type HeightSamplingTile = {
   geometricError: number
   refine?: 'REPLACE' | 'ADD'
   parent?: HeightSamplingTile | null
   children?: HeightSamplingTile[]
   engineData?: {
+    scene?: THREE.Object3D | null
     boundingVolume?: {
       intersectsRay(ray: THREE.Ray): boolean
     }
@@ -58,6 +66,7 @@ type HeightSamplingTilesRenderer = TilesRenderer & {
   root: HeightSamplingTile | null
   errorTarget: number
   maxDepth: number
+  activeTiles?: Set<HeightSamplingTile>
 }
 
 type HeightSamplingReadiness = {
@@ -390,30 +399,74 @@ export class HeightSampler {
 
   private sampleHeightFromTileset(tileset: TilesRenderer, raycaster: THREE.Raycaster) {
     tileset.group.updateMatrixWorld(true)
+    const activeTileHit = this.sampleHeightFromActiveTiles(tileset, raycaster)
+    if (activeTileHit) return activeTileHit
+
     const hits: THREE.Intersection[] = []
     ;(tileset as RaycastableTilesRenderer).raycast(raycaster, hits)
     hits.sort((a, b) => a.distance - b.distance)
     const hit = hits.find((item) => this.isSampleHeightSurfaceHit(item))
     if (!hit) return null
 
+    return this.toHeightSamplingHit(tileset, hit, 0)
+  }
+
+  private sampleHeightFromActiveTiles(tileset: TilesRenderer, raycaster: THREE.Raycaster): HeightSamplingHit | null {
+    const renderer = tileset as HeightSamplingTilesRenderer
+    const activeTiles = renderer.activeTiles as unknown as Set<HeightSamplingTile> | undefined
+    if (!activeTiles?.size) return null
+
+    let closestHit: HeightSamplingHit | null = null
+    const hits: THREE.Intersection[] = []
+
+    activeTiles.forEach((tile) => {
+      const scene = tile.engineData?.scene
+      if (!scene) return
+
+      hits.length = 0
+      raycaster.intersectObject(scene, true, hits)
+      for (const hit of hits) {
+        if (!this.isSampleHeightSurfaceHit(hit)) continue
+
+        const sampledHit = this.toHeightSamplingHit(tileset, hit, tile.internal?.depth ?? 0)
+        if (this.isBetterHeightSamplingHit(sampledHit, closestHit)) {
+          closestHit = sampledHit
+        }
+        break
+      }
+    })
+
+    return closestHit
+  }
+
+  private toHeightSamplingHit(tileset: TilesRenderer, hit: THREE.Intersection, depth: number): HeightSamplingHit {
     this.sampleMatrix.copy(tileset.group.matrixWorld).invert()
     this.samplePoint.copy(hit.point).applyMatrix4(this.sampleMatrix)
     const cartographic = tileset.ellipsoid.getPositionToCartographic(this.samplePoint, this.sampleCartographicScratch)
     return {
       height: cartographic.height,
-      distance: hit.distance
+      distance: hit.distance,
+      depth,
+      isTerrain: this.isQuantizedMeshTerrainHit(hit)
     }
+  }
+
+  private isBetterHeightSamplingHit(candidate: HeightSamplingHit, current: HeightSamplingHit | null) {
+    if (!current) return true
+
+    if (candidate.isTerrain && current.isTerrain && candidate.depth !== current.depth) {
+      return candidate.depth > current.depth
+    }
+
+    return candidate.distance < current.distance
   }
 
   private isSampleHeightSurfaceHit(hit: THREE.Intersection) {
     const mesh = hit.object as THREE.Mesh
     const geometry = mesh.geometry
-    const isQuantizedMeshTerrain =
-      typeof hit.object.userData.minHeight === 'number' &&
-      typeof hit.object.userData.maxHeight === 'number'
 
     if (
-      !isQuantizedMeshTerrain ||
+      !this.isQuantizedMeshTerrainHit(hit) ||
       !geometry ||
       geometry.groups.length === 0 ||
       hit.faceIndex == null
@@ -424,6 +477,13 @@ export class HeightSampler {
     const surfaceGroup = geometry.groups[0]
     const indexStart = hit.faceIndex * 3
     return indexStart >= surfaceGroup.start && indexStart < surfaceGroup.start + surfaceGroup.count
+  }
+
+  private isQuantizedMeshTerrainHit(hit: THREE.Intersection) {
+    return (
+      typeof hit.object.userData.minHeight === 'number' &&
+      typeof hit.object.userData.maxHeight === 'number'
+    )
   }
 
   private addHeightSamplingLoadRegions(tileset: TilesRenderer, tasks: HeightSamplingTask[]): HeightSamplingLoadRegion[] {
@@ -653,13 +713,13 @@ export class HeightSampler {
       return { intersects: true, ready: false }
     }
 
-    if (!this.canHeightSamplingTileTraverse(tile, renderer)) {
+    if (this.isHeightSamplingTileReadyLeaf(tile, renderer)) {
       return { intersects: true, ready: true }
     }
 
     const children = tile.children ?? []
-    if (children.length === 0) {
-      return { intersects: true, ready: true }
+    if (!children[children.length - 1]?.traversal) {
+      return { intersects: true, ready: false }
     }
 
     let childIntersects = false
@@ -679,17 +739,17 @@ export class HeightSampler {
     return boundingVolume ? boundingVolume.intersectsRay(ray) : true
   }
 
-  private canHeightSamplingTileTraverse(tile: HeightSamplingTile, renderer: HeightSamplingTilesRenderer) {
+  private isHeightSamplingTileReadyLeaf(tile: HeightSamplingTile, renderer: HeightSamplingTilesRenderer) {
     if (this.isHeightSamplingTileWithinErrorTarget(tile, renderer) && !this.canHeightSamplingTileUnconditionallyRefine(tile)) {
-      return false
+      return true
     }
 
     if (renderer.maxDepth > 0 && tile.internal && tile.internal.depth + 1 >= renderer.maxDepth) {
-      return false
+      return true
     }
 
     const children = tile.children ?? []
-    return children.length === 0 || Boolean(children[children.length - 1]?.traversal)
+    return children.length === 0
   }
 
   private isHeightSamplingTileWithinErrorTarget(tile: HeightSamplingTile, renderer: HeightSamplingTilesRenderer) {
