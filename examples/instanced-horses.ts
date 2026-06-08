@@ -147,6 +147,8 @@ async function createHorseHerd() {
   let sampledPositions: Awaited<
     ReturnType<typeof viewer.sampleHeightMostDetailed>
   >
+  const samplingTimerLabel = `[Tellux] instanced-horses sampleHeightMostDetailed ${placements.length} points`
+  console.time(samplingTimerLabel)
   try {
     sampledPositions = await viewer.sampleHeightMostDetailed(
       placements.map((point) => [point.longitude, point.latitude]),
@@ -164,6 +166,8 @@ async function createHorseHerd() {
     setStatus("地形高度采样失败，请检查地形数据源是否可用。")
     regenerateButton.disabled = false
     return
+  } finally {
+    console.timeEnd(samplingTimerLabel)
   }
 
   if (token !== generationToken) return
