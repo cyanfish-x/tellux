@@ -22,7 +22,7 @@
           <div class="portal-nav__links">
             <a href="#capabilities">能力</a>
             <a href="#workflow">工作流</a>
-            <a href="#examples">示例</a>
+            <a href="./sandcastle.html">示例</a>
             <a href="https://github.com/Bro-B/tellux">GitHub</a>
           </div>
         </nav>
@@ -36,7 +36,7 @@
               Cesium / mapboxgl 使用习惯的 TypeScript API。
             </p>
             <div class="portal-actions" aria-label="主要操作">
-              <a class="portal-button portal-button--primary" href="#examples">查看示例</a>
+              <a class="portal-button portal-button--primary" href="./sandcastle.html">进入 Sandcastle</a>
               <a class="portal-button" href="https://github.com/Bro-B/tellux/blob/main/README.md#使用">快速开始</a>
             </div>
           </section>
@@ -216,60 +216,6 @@ viewer.<span class="code-token code-token--property">layers</span>.<span class="
         </div>
       </section>
 
-      <section id="examples" class="portal-section">
-        <div class="portal-section__header">
-          <p class="portal-eyebrow">Examples</p>
-          <h2>可运行示例</h2>
-          <p>这些页面通过 Vite 从仓库源码直接引入 Tellux，适合开发时验证 API 行为和渲染效果。</p>
-        </div>
-        <div class="portal-example-grid" aria-label="Tellux 示例入口">
-          <a class="portal-example" href="./basic.html">
-            <span>Viewer</span>
-            <strong>基础场景渲染</strong>
-            <p>创建查看器，加载 ArcGIS 影像瓦片，并启用默认大气、云层和后处理。</p>
-          </a>
-          <a class="portal-example" href="./fly-to.html">
-            <span>Camera</span>
-            <strong>相机飞行</strong>
-            <p>使用 Cesium 风格 API 在东京、上海、新加坡之间平滑飞行。</p>
-          </a>
-          <a class="portal-example" href="./click.html">
-            <span>Events</span>
-            <strong>点击与鼠标读数</strong>
-            <p>监听点击和鼠标移动事件，读取屏幕坐标以及经纬高。</p>
-          </a>
-          <a class="portal-example" href="./data-sources.html">
-            <span>Layers</span>
-            <strong>影像图层管理器</strong>
-            <p>管理 XYZ、WMS 和 MVT 图层，支持显隐、透明度和拖拽排序。</p>
-          </a>
-          <a class="portal-example" href="./3d-tiles.html">
-            <span>3D Tiles</span>
-            <strong>三维瓦片加载</strong>
-            <p>通过 tileset.json 或 Cesium Ion asset 加载独立 3D Tiles 场景。</p>
-          </a>
-          <a class="portal-example" href="./terrain.html">
-            <span>Terrain</span>
-            <strong>Cesium 地形热切换</strong>
-            <p>输入 quantized-mesh 地形地址，运行时开启、关闭并热切换地形。</p>
-          </a>
-          <a class="portal-example" href="./threejs-interop.html">
-            <span>Three.js</span>
-            <strong>模型、动画加载</strong>
-            <p>通过 viewer.addModel 加载 glTF / GLB 模型，按经纬高贴地放置并播放动画。</p>
-          </a>
-          <a class="portal-example" href="./instanced-horses.html">
-            <span>Instancing</span>
-            <strong>实例化渲染与高度采样</strong>
-            <p>采样地形高度，在若尔盖大草原附近批量放置 1000 匹 morph target 实例化奔马。</p>
-          </a>
-          <a class="portal-example" href="./atmosphere.html">
-            <span>Atmosphere</span>
-            <strong>体积云与大气</strong>
-            <p>调整大气、体积云、UTC 时间、光照和曝光。</p>
-          </a>
-        </div>
-      </section>
     </main>
   </body>
 </html>

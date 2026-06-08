@@ -60,6 +60,7 @@
     "@types/node": "^18.18.12",
     "@types/three": "^0.184.1",
     "concurrently": "^9.2.1",
+    "monaco-editor": "^0.52.2",
     "pbf": "^4.0.2",
     "postprocessing": "6.39.1",
     "rimraf": "^6.0.1",
