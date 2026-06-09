@@ -19,15 +19,17 @@ export type AtmosphereLightingMode = 'post-process' | 'light-source'
 /**
  * 基础地球表面瓦片材质模式。
  *
+ * `auto` 根据大气光照模式自动选择材质；
  * `basic` 使用不受 Three.js 光源影响的 `MeshBasicMaterial`；
  * `standard` 使用受光照影响的 `MeshStandardMaterial`。
  *
  * Base globe surface tile material mode.
  *
+ * `auto` derives the material from the atmosphere lighting mode;
  * `basic` uses `MeshBasicMaterial` unaffected by Three.js lights;
  * `standard` uses lit `MeshStandardMaterial`.
  */
-export type SurfaceMaterialMode = 'basic' | 'standard'
+export type SurfaceMaterialMode = 'auto' | 'basic' | 'standard'
 
 /**
  * Viewer 调试设置面板的初始值。
@@ -244,12 +246,12 @@ export interface ViewerOptions {
     /**
      * 基础地球表面瓦片材质模式。
      *
-     * 不传时根据 `atmosphereLightingMode` 自动选择：`light-source` 使用
-     * `standard`，`post-process` 使用 `basic`。
+     * 默认 `auto`。此时根据 `atmosphereLightingMode` 自动选择：
+     * `light-source` 使用 `standard`，`post-process` 使用 `basic`。
      *
      * Base globe surface tile material mode.
      *
-     * When omitted, this is derived from `atmosphereLightingMode`:
+     * Defaults to `auto`. In this mode it is derived from `atmosphereLightingMode`:
      * `light-source` uses `standard`, while `post-process` uses `basic`.
      */
     surfaceMaterialMode?: SurfaceMaterialMode

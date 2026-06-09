@@ -24,6 +24,7 @@ import {
 import type {
   AddModelOptions,
   AnyViewerEventListener,
+  AtmosphereLightingMode,
   CartographicFrameOptions,
   CartographicCoordinates,
   CartographicCoordinateTuple,
@@ -47,6 +48,8 @@ import type {
   ViewerWidgetOptions
 } from './types'
 import type { GlobeControls } from '3d-tiles-renderer'
+
+type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
 
 export { Camera } from './Camera'
 export { Clock } from './Clock'
@@ -295,7 +298,8 @@ export class Viewer {
       sceneOptions,
       () => atmosphere?.cloudsEffect ?? null,
       () => atmosphere ?? null,
-      () => this.postProcessing.applyEffects()
+      () => this.postProcessing.applyEffects(),
+      () => this.syncSurfaceMaterialMode()
     )
     this.atmosphere = new AtmosphereManager(this.renderer, this.threeCamera, () => this.postProcessing.applyEffects())
     atmosphere = this.atmosphere
@@ -320,7 +324,10 @@ export class Viewer {
       transparentOverlayTexture: this.transparentOverlayTexture,
       terrain: options.terrain,
       creasedNormals: sceneOptions.creasedNormals,
-      surfaceMaterialMode: sceneOptions.surfaceMaterialMode
+      surfaceMaterialMode: this.resolveSurfaceMaterialMode(
+        sceneOptions.surfaceMaterialMode,
+        sceneOptions.atmosphereLightingMode
+      )
     })
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
@@ -802,8 +809,6 @@ export class Viewer {
 
   private resolveSceneOptions(options: ViewerOptions['scene']): Required<NonNullable<ViewerOptions['scene']>> {
     const atmosphereLightingMode = options?.atmosphereLightingMode ?? 'light-source'
-    const surfaceMaterialMode: SurfaceMaterialMode =
-      options?.surfaceMaterialMode ?? (atmosphereLightingMode === 'light-source' ? 'standard' : 'basic')
 
     return {
       clouds: options?.clouds ?? true,
@@ -823,7 +828,7 @@ export class Viewer {
       atmosphereCorrectAltitude: options?.atmosphereCorrectAltitude ?? true,
       atmosphereCorrectGeometricError: options?.atmosphereCorrectGeometricError ?? true,
       atmosphereLightingMode,
-      surfaceMaterialMode,
+      surfaceMaterialMode: options?.surfaceMaterialMode ?? 'auto',
       atmosphereSunLightIntensity: options?.atmosphereSunLightIntensity ?? 1,
       atmosphereSkyLightIntensity: options?.atmosphereSkyLightIntensity ?? 1,
       atmosphereSunLight: options?.atmosphereSunLight ?? true,
@@ -1035,6 +1040,20 @@ export class Viewer {
   private clearEventListeners() {
     this.eventListeners.forEach((listeners) => listeners.clear())
     this.eventListeners.clear()
+  }
+
+  private resolveSurfaceMaterialMode(
+    surfaceMaterialMode: SurfaceMaterialMode,
+    atmosphereLightingMode: AtmosphereLightingMode
+  ): ResolvedSurfaceMaterialMode {
+    if (surfaceMaterialMode !== 'auto') return surfaceMaterialMode
+    return atmosphereLightingMode === 'light-source' ? 'standard' : 'basic'
+  }
+
+  private syncSurfaceMaterialMode() {
+    this.tilesets.setSurfaceMaterialMode(
+      this.resolveSurfaceMaterialMode(this.scene.surfaceMaterialMode, this.scene.atmosphereLightingMode)
+    )
   }
 
   private static resolveContainer(container: HTMLElement | string) {
