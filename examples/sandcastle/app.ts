@@ -9,6 +9,18 @@ import type {
   SandboxMessage,
 } from "./types"
 
+const telluxSourceModules = import.meta.glob("../../src/**/*.ts", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>
+
+const exampleSourceModules = import.meta.glob(["../*.ts", "../settings-panel/**/*.ts"], {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>
+
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
     if (label === "typescript" || label === "javascript") {
@@ -173,29 +185,66 @@ const toggleSidePanelButtons = Array.from(
 const paneButtons = Array.from(
   sandcastleRoot.querySelectorAll<HTMLButtonElement>(".sandcastle-editor-tab")
 )
+const sandcastleScriptUri = monaco.Uri.parse("file:///tellux/examples/sandcastle-current.ts")
+const sandcastleHtmlUri = monaco.Uri.parse("file:///tellux/examples/sandcastle-current.html")
 
 if (toggleSidePanelButtons.length === 0) {
   throw new Error("Sandcastle UI element not found: [data-action=\"toggle-side-panel\"]")
 }
 
-monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-  allowNonTsExtensions: true,
-  checkJs: true,
-  module: monaco.languages.typescript.ModuleKind.ESNext,
-  noEmitOnError: false,
-  target: monaco.languages.typescript.ScriptTarget.Latest,
-})
+function toVirtualProjectPath(modulePath: string) {
+  const normalizedPath = modulePath.replace(/\\/g, "/")
+  if (normalizedPath.startsWith("../../src/")) {
+    return `file:///tellux/src/${normalizedPath.slice("../../src/".length)}`
+  }
+  if (normalizedPath.startsWith("../")) {
+    return `file:///tellux/examples/${normalizedPath.slice("../".length)}`
+  }
+  return `file:///tellux/${normalizedPath.replace(/^\.\//, "")}`
+}
 
-monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-  allowNonTsExtensions: true,
-  module: monaco.languages.typescript.ModuleKind.ESNext,
-  noEmitOnError: false,
-  target: monaco.languages.typescript.ScriptTarget.Latest,
-})
+function getSandcastleTypeLibs() {
+  const sourceLibs = Object.entries({
+    ...telluxSourceModules,
+    ...exampleSourceModules,
+  }).map(([modulePath, content]) => ({
+    filePath: toVirtualProjectPath(modulePath),
+    content,
+  }))
+
+  return [
+    ...sourceLibs,
+    {
+      filePath: "file:///tellux/src.ts",
+      content: 'export * from "./src/index"\nexport { default } from "./src/index"\n',
+    },
+  ]
+}
+
+function configureTypeScriptDefaults(
+  defaults: typeof monaco.languages.typescript.typescriptDefaults,
+  checkJs: boolean
+) {
+  defaults.setCompilerOptions({
+    allowNonTsExtensions: true,
+    allowSyntheticDefaultImports: true,
+    checkJs,
+    module: monaco.languages.typescript.ModuleKind.ESNext,
+    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+    noEmitOnError: false,
+    skipLibCheck: true,
+    target: monaco.languages.typescript.ScriptTarget.Latest,
+  })
+  defaults.setExtraLibs(getSandcastleTypeLibs())
+  defaults.setEagerModelSync(true)
+}
+
+configureTypeScriptDefaults(monaco.languages.typescript.javascriptDefaults, true)
+configureTypeScriptDefaults(monaco.languages.typescript.typescriptDefaults, false)
 
 const models: Record<SandcastleEditorPane, monaco.editor.ITextModel> = {
-  javascript: monaco.editor.createModel("", "typescript"),
-  html: monaco.editor.createModel("", "html"),
+  javascript: monaco.editor.createModel("", "typescript", sandcastleScriptUri),
+  html: monaco.editor.createModel("", "html", sandcastleHtmlUri),
 }
 
 const editor = monaco.editor.create(editorElement, {
