@@ -38,6 +38,7 @@ import type {
   SampleHeightMostDetailedResult,
   SampleHeightOptions,
   ScreenPosition,
+  SurfaceMaterialMode,
   TilesetLayer,
   ViewerEventListener,
   ViewerEventMap,
@@ -99,6 +100,7 @@ export type {
   SampleHeightOptions,
   TerrainOptions,
   TerrainTileLoadingOptions,
+  SurfaceMaterialMode,
   TilesetLayer,
   Url3DTilesetOptions,
   ViewerClickEvent,
@@ -317,7 +319,8 @@ export class Viewer {
       dracoLoader: this.dracoLoader,
       transparentOverlayTexture: this.transparentOverlayTexture,
       terrain: options.terrain,
-      creasedNormals: sceneOptions.creasedNormals
+      creasedNormals: sceneOptions.creasedNormals,
+      surfaceMaterialMode: sceneOptions.surfaceMaterialMode
     })
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
@@ -798,6 +801,10 @@ export class Viewer {
   }
 
   private resolveSceneOptions(options: ViewerOptions['scene']): Required<NonNullable<ViewerOptions['scene']>> {
+    const atmosphereLightingMode = options?.atmosphereLightingMode ?? 'light-source'
+    const surfaceMaterialMode: SurfaceMaterialMode =
+      options?.surfaceMaterialMode ?? (atmosphereLightingMode === 'light-source' ? 'standard' : 'basic')
+
     return {
       clouds: options?.clouds ?? true,
       skyAtmosphere: options?.skyAtmosphere ?? true,
@@ -815,7 +822,8 @@ export class Viewer {
       atmosphereInscatterHorizonRange: options?.atmosphereInscatterHorizonRange ?? [0, 0.6],
       atmosphereCorrectAltitude: options?.atmosphereCorrectAltitude ?? true,
       atmosphereCorrectGeometricError: options?.atmosphereCorrectGeometricError ?? true,
-      atmosphereLightingMode: options?.atmosphereLightingMode ?? 'light-source',
+      atmosphereLightingMode,
+      surfaceMaterialMode,
       atmosphereSunLightIntensity: options?.atmosphereSunLightIntensity ?? 1,
       atmosphereSkyLightIntensity: options?.atmosphereSkyLightIntensity ?? 1,
       atmosphereSunLight: options?.atmosphereSunLight ?? true,
