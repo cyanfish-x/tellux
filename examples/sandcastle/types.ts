@@ -1,6 +1,7 @@
 export interface SandcastleExample {
   id: string
   title: string
+  order?: number
   category: string
   description: string
   tags: string[]
