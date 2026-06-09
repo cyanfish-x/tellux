@@ -7,6 +7,7 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 常用类型：
 
 - `ViewerOptions`
+- `AtmosphereLightingMode`
 - `TerrainOptions`
 - `ImageryLayerOptions`
 - `Load3DTilesetOptions`

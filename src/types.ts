@@ -17,6 +17,82 @@ import type { Viewer } from './Viewer'
 export type AtmosphereLightingMode = 'post-process' | 'light-source'
 
 /**
+ * Viewer 调试设置面板的初始值。
+ *
+ * Initial values for the Viewer debug settings panel.
+ */
+export interface DebugSettingsPanelOptions {
+  skyAtmosphere?: boolean
+  stars?: boolean
+  starsIntensity?: number
+  starsPointSize?: number
+  clockAnimate?: boolean
+  clockMultiplier?: number
+  hourUTC?: number
+  dayOfYear?: number
+  clouds?: boolean
+  cloudCoverage?: number
+  cloudSpeed?: number
+  cloudLayerAltitude?: number
+  cloudLayerHeight?: number
+  atmosphereInscatterIntensity?: number
+  atmosphereInscatterHorizonBlend?: boolean
+  atmosphereInscatterHorizonRange?: [number, number]
+  atmosphereCorrectAltitude?: boolean
+  atmosphereCorrectGeometricError?: boolean
+  atmosphereTransmittance?: boolean
+  atmosphereInscatter?: boolean
+  atmosphereLightingMode?: AtmosphereLightingMode
+  atmosphereSunLight?: boolean
+  atmosphereSkyLight?: boolean
+  atmosphereSunLightIntensity?: number
+  atmosphereSkyLightIntensity?: number
+  fallbackAmbientLight?: boolean
+  fallbackAmbientLightIntensity?: number
+  atmosphereSun?: boolean
+  atmosphereMoon?: boolean
+  atmosphereGround?: boolean
+  atmosphereAlbedoScale?: number
+  atmosphereSunAngularRadius?: number
+  atmosphereMoonAngularRadius?: number
+  atmosphereLunarRadianceScale?: number
+  atmosphereShadowRadius?: number
+  atmosphereShadowSampleCount?: number
+  atmosphereSolarIrradianceScale?: number
+  atmosphereRayleighScatteringScale?: number
+  atmosphereMieScatteringScale?: number
+  atmosphereMieExtinctionScale?: number
+  atmosphereMiePhaseFunctionG?: number
+  atmosphereAbsorptionExtinctionScale?: number
+  atmosphereGroundAlbedo?: number
+  toneMappingExposure?: number
+  resolutionScale?: number
+  lensFlare?: boolean
+  smaa?: boolean
+  dithering?: boolean
+  showFps?: boolean
+}
+
+/**
+ * Viewer 内置控件配置。
+ *
+ * Built-in Viewer widget options.
+ */
+export interface ViewerWidgetOptions {
+  /**
+   * 是否挂载内置调试设置面板，默认 `false`。
+   *
+   * 传入对象时会作为面板初始值，并与当前页面缓存值合并。
+   *
+   * Whether to mount the built-in debug settings panel. Defaults to `false`.
+   *
+   * Pass an object to provide initial panel values. They are merged with cached
+   * values for the current page.
+   */
+  settingPanel?: boolean | DebugSettingsPanelOptions
+}
+
+/**
  * 创建 {@link Viewer} 时使用的配置项。
  *
  * Options used to create a {@link Viewer}.
@@ -262,6 +338,12 @@ export interface ViewerOptions {
    * render loop and call {@link Viewer.render} yourself.
    */
   useDefaultRenderLoop?: boolean
+  /**
+   * 内置控件配置。
+   *
+   * Built-in widget options.
+   */
+  widgets?: ViewerWidgetOptions
   /**
    * 渲染器像素比，默认 `Math.min(window.devicePixelRatio, 2)`。
    *
