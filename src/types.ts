@@ -14,7 +14,12 @@ import type { Viewer } from './Viewer'
  * `post-process` uses Takram aerial-perspective post-process lighting;
  * `light-source` uses Takram Three.js light sources as an approximation.
  */
-export type AtmosphereLightingMode = 'post-process' | 'light-source'
+export const AtmosphereLightingMode = {
+  PostProcess: 'post-process',
+  LightSource: 'light-source'
+} as const
+
+export type AtmosphereLightingMode = (typeof AtmosphereLightingMode)[keyof typeof AtmosphereLightingMode]
 
 /**
  * 基础地球表面瓦片材质模式。
