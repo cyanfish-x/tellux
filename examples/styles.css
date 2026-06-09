@@ -1507,6 +1507,20 @@ body.sandcastle-page {
   cursor: pointer;
 }
 
+.sandcastle-rail__link {
+  text-decoration: none;
+}
+
+.sandcastle-rail__button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
 .sandcastle-rail__button:hover,
 .sandcastle-rail__button:focus-visible,
 .sandcastle-rail__button[data-active] {

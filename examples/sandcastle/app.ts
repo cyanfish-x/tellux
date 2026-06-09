@@ -60,6 +60,12 @@ root.innerHTML = `
       <button class="sandcastle-rail__button" data-view="code" type="button" aria-label="代码">
         <span aria-hidden="true">&lt;/&gt;</span>
       </button>
+      <a class="sandcastle-rail__button sandcastle-rail__link" data-action="open-docs" href="./docs/" target="_blank" rel="noreferrer" aria-label="文档" title="文档">
+        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
+        </svg>
+      </a>
     </nav>
     <aside class="sandcastle-sidebar" data-panel="examples" aria-label="示例列表">
       <div class="sandcastle-sidebar__search">
@@ -154,6 +160,7 @@ const consoleBody = queryRequired(".sandcastle-console__body", HTMLElement)
 const currentTitle = queryRequired("[data-current-title]", HTMLElement)
 const runButton = queryRequired('[data-action="run"]', HTMLButtonElement)
 const standaloneLink = queryRequired('[data-action="standalone"]', HTMLAnchorElement)
+const docsLink = queryRequired('[data-action="open-docs"]', HTMLAnchorElement)
 const clearConsoleButton = queryRequired('[data-action="clear-console"]', HTMLButtonElement)
 const toggleConsoleButton = queryRequired('[data-action="toggle-console"]', HTMLButtonElement)
 const togglePreviewFullscreenButton = queryRequired(
@@ -213,6 +220,20 @@ let isConsoleCollapsed = false
 let isDraggingSplitter = false
 let isDraggingConsole = false
 let consoleHeight = 150
+
+function getDocsUrl() {
+  const isLocalExamplesServer =
+    window.location.port === "5173" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "::1")
+
+  if (isLocalExamplesServer) {
+    return "http://127.0.0.1:5174/docs/"
+  }
+
+  return new URL("./docs/", window.location.href).toString()
+}
 
 function createRunKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -547,6 +568,11 @@ function filterExamples(query: string) {
 
 runButton.addEventListener("click", () => {
   void runCurrentCode()
+})
+docsLink.href = getDocsUrl()
+docsLink.addEventListener("click", (event) => {
+  event.preventDefault()
+  window.open(docsLink.href, "_blank", "noopener")?.focus()
 })
 clearConsoleButton.addEventListener("click", clearConsole)
 toggleConsoleButton.addEventListener("click", () => setConsoleCollapsed(!isConsoleCollapsed))
