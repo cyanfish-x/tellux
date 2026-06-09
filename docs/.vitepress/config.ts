@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
+import type { ConfigEnv } from 'vite'
 
-export default defineConfig({
+export default ({ command }: ConfigEnv) => defineConfig({
   title: 'Tellux',
   description: 'Three.js GIS viewer for terrain, imagery, 3D Tiles, atmosphere, clouds, and post-processing.',
   base: '/docs/',
@@ -15,7 +16,13 @@ export default defineConfig({
       { text: '指南', link: '/guide/getting-started' },
       { text: 'API', link: '/api/viewer' },
       { text: '能力参考', link: '/capabilities/3d-tiles-renderer' },
-      { text: 'Sandcastle', link: '../sandcastle.html' }
+      {
+        text: 'Sandcastle',
+        link:
+          command === 'serve'
+            ? 'http://127.0.0.1:5173/sandcastle.html'
+            : '../../sandcastle.html'
+      }
     ],
     sidebar: [
       {
