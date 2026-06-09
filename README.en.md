@@ -19,9 +19,7 @@ npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphe
 ```ts
 import tellux from 'tellux'
 
-const container = document.querySelector('#viewer') as HTMLElement
-
-const viewer = new tellux.Viewer(container, {
+const viewer = new tellux.Viewer('viewer', {
   terrain: {
     url: 'https://example.com/terrain/'
   },

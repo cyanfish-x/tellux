@@ -4,15 +4,16 @@
 
 ```ts
 const viewer = new tellux.Viewer(container, options)
+const viewerById = new tellux.Viewer('viewer', options)
 ```
 
 ## 构造参数
 
 ### `container`
 
-类型：`HTMLElement`
+类型：`HTMLElement | string`
 
-接收 WebGL canvas 的容器元素。容器需要有有效宽高。
+接收 WebGL canvas 的容器元素，或容器元素的 `id`。传入字符串时会通过 `document.getElementById(...)` 查找元素；容器需要有有效宽高。
 
 ### `options`
 
