@@ -7,6 +7,7 @@ import {
   showTokenNotice,
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
+import exampleStyles from "../styles.css?raw"
 import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
 const STORAGE_PREFIX = "tellux:sandcastle-run:"
@@ -71,6 +72,18 @@ function loadPayload() {
 
 function prepareHtml(html: string) {
   const document = new DOMParser().parseFromString(html, "text/html")
+  document
+    .querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet"][href]')
+    .forEach((link) => {
+      const href = link.getAttribute("href")?.trim()
+      if (href !== "./styles.css" && href !== "styles.css" && href !== "../styles.css") {
+        return
+      }
+
+      const style = document.createElement("style")
+      style.textContent = exampleStyles
+      link.replaceWith(style)
+    })
   if (!document.querySelector("base")) {
     const base = document.createElement("base")
     base.href = "../"
