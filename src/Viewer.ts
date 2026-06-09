@@ -245,18 +245,20 @@ export class Viewer {
   private nextModelId = 0
 
   /**
-   * 在非空容器元素内创建 viewer。
+   * 在非空容器元素内创建 viewer。传入字符串时，会将其作为元素 ID 获取容器。
    *
-   * Creates a viewer inside a non-empty container element.
+   * Creates a viewer inside a non-empty container element. When a string is
+   * provided, it is treated as an element ID and resolved with `getElementById`.
    */
-  constructor(container: HTMLElement, options: ViewerOptions = {}) {
-    this.container = container
+  constructor(container: HTMLElement | string, options: ViewerOptions = {}) {
+    const resolvedContainer = Viewer.resolveContainer(container)
+    this.container = resolvedContainer
     this.currentResolutionScale = options.resolutionScale ?? Math.min(window.devicePixelRatio, 2)
     const sceneOptions = this.resolveSceneOptions(options.scene)
     this.currentToneMappingExposure = sceneOptions.toneMappingExposure
 
-    const width = container.clientWidth || 1
-    const height = container.clientHeight || 1
+    const width = resolvedContainer.clientWidth || 1
+    const height = resolvedContainer.clientHeight || 1
     const cameraOptions = {
       ...DEFAULT_CAMERA,
       ...options.camera
@@ -272,7 +274,7 @@ export class Viewer {
     this.renderer.setSize(width, height)
     this.renderer.toneMapping = THREE.AgXToneMapping
     this.renderer.toneMappingExposure = this.currentToneMappingExposure
-    container.appendChild(this.renderer.domElement)
+    resolvedContainer.appendChild(this.renderer.domElement)
     this.transparentOverlayTexture = this.createTransparentOverlayTexture()
 
     let atmosphere: AtmosphereManager | null = null
@@ -993,5 +995,16 @@ export class Viewer {
   private clearEventListeners() {
     this.eventListeners.forEach((listeners) => listeners.clear())
     this.eventListeners.clear()
+  }
+
+  private static resolveContainer(container: HTMLElement | string) {
+    if (typeof container !== 'string') return container
+
+    const element = document.getElementById(container)
+    if (!element) {
+      throw new Error(`Tellux Viewer container element with id "${container}" was not found.`)
+    }
+
+    return element
   }
 }

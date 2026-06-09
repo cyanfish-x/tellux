@@ -15,13 +15,7 @@ pnpm add tellux three 3d-tiles-renderer @takram/three-geospatial @takram/three-g
 ```ts
 import tellux from 'tellux'
 
-const container = document.querySelector('#viewer')
-
-if (!(container instanceof HTMLElement)) {
-  throw new Error('Viewer container not found.')
-}
-
-const viewer = new tellux.Viewer(container, {
+const viewer = new tellux.Viewer('viewer', {
   terrain: {
     url: 'https://example.com/terrain/'
   },
