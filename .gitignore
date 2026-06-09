@@ -1,5 +1,7 @@
 node_modules
 dist
+examples/public/docs
+docs/.vitepress/cache
 *.log
 *.local
 .DS_Store
