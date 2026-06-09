@@ -135,6 +135,7 @@ const TelluxGeoJSONOverlay = GeoJSONOverlay as unknown as GeoJSONOverlayConstruc
 const KHR_MATERIALS_UNLIT = 'KHR_materials_unlit'
 
 type MaterialParams = Record<string, unknown>
+type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
 
 type UnlitCompatibilityPlugin = GLTFLoaderPlugin & {
   extendParams(materialParams: MaterialParams, materialDef: Record<string, any>, parser: GLTFParser): Promise<unknown[]>
@@ -235,21 +236,44 @@ class TileUnlitMaterialPlugin implements TileModelPlugin {
   }
 }
 
-class SurfaceLitMaterialPlugin implements TileModelPlugin {
+class SurfaceMaterialPlugin implements TileModelPlugin {
   readonly priority = -20
 
+  constructor(private currentMode: ResolvedSurfaceMaterialMode) {}
+
   processTileModel(tileScene: THREE.Object3D) {
+    this.applyToScene(tileScene)
+  }
+
+  setMode(mode: ResolvedSurfaceMaterialMode, tileset: TilesRenderer) {
+    if (this.currentMode === mode) return
+
+    this.currentMode = mode
+    tileset.forEachLoadedModel((tileScene) => {
+      this.applyToScene(tileScene)
+    })
+    tileset.dispatchEvent({ type: 'needs-render' })
+  }
+
+  private applyToScene(tileScene: THREE.Object3D) {
     tileScene.traverse((object) => {
       const mesh = object as THREE.Mesh
       if (!mesh.material) return
 
       mesh.material = Array.isArray(mesh.material)
-        ? mesh.material.map((material) => this.toLitMaterial(material))
-        : this.toLitMaterial(mesh.material)
+        ? mesh.material.map((material) => this.toModeMaterial(material))
+        : this.toModeMaterial(mesh.material)
     })
   }
 
-  private toLitMaterial(material: THREE.Material) {
+  private toModeMaterial(material: THREE.Material) {
+    return this.currentMode === 'standard'
+      ? this.toStandardMaterial(material)
+      : this.toBasicMaterial(material)
+  }
+
+  private toStandardMaterial(material: THREE.Material) {
+    if (material instanceof THREE.MeshStandardMaterial) return material
     if (!(material instanceof THREE.MeshBasicMaterial)) return material
 
     const lit = new THREE.MeshStandardMaterial({
@@ -262,25 +286,56 @@ class SurfaceLitMaterialPlugin implements TileModelPlugin {
       metalness: 0,
       roughness: 1
     })
-    lit.name = material.name
-    lit.wireframe = material.wireframe
-    lit.transparent = material.transparent
-    lit.opacity = material.opacity
-    lit.alphaTest = material.alphaTest
-    lit.side = material.side
-    lit.depthTest = material.depthTest
-    lit.depthWrite = material.depthWrite
-    lit.colorWrite = material.colorWrite
-    lit.blending = material.blending
-    lit.blendSrc = material.blendSrc
-    lit.blendDst = material.blendDst
-    lit.blendEquation = material.blendEquation
-    lit.polygonOffset = material.polygonOffset
-    lit.polygonOffsetFactor = material.polygonOffsetFactor
-    lit.polygonOffsetUnits = material.polygonOffsetUnits
-    lit.toneMapped = material.toneMapped
-    lit.userData = { ...material.userData }
+    this.copyMaterialState(material, lit)
+    material.dispose()
     return lit
+  }
+
+  private toBasicMaterial(material: THREE.Material) {
+    if (material instanceof THREE.MeshBasicMaterial) return material
+
+    const source = material as THREE.MeshStandardMaterial
+    const basic = new THREE.MeshBasicMaterial({
+      color: source.color ?? new THREE.Color(1, 1, 1),
+      map: source.map ?? null,
+      alphaMap: source.alphaMap ?? null,
+      aoMap: source.aoMap ?? null,
+      envMap: source.envMap ?? null,
+      lightMap: source.lightMap ?? null
+    })
+    basic.wireframe = 'wireframe' in source ? Boolean(source.wireframe) : false
+    this.copyMaterialState(material, basic)
+    material.dispose()
+    return basic
+  }
+
+  private copyMaterialState(source: THREE.Material, target: THREE.Material) {
+    target.name = source.name
+    target.transparent = source.transparent
+    target.opacity = source.opacity
+    target.alphaTest = source.alphaTest
+    target.side = source.side
+    target.depthTest = source.depthTest
+    target.depthWrite = source.depthWrite
+    target.colorWrite = source.colorWrite
+    target.blending = source.blending
+    target.blendSrc = source.blendSrc
+    target.blendDst = source.blendDst
+    target.blendEquation = source.blendEquation
+    target.polygonOffset = source.polygonOffset
+    target.polygonOffsetFactor = source.polygonOffsetFactor
+    target.polygonOffsetUnits = source.polygonOffsetUnits
+    target.toneMapped = source.toneMapped
+    target.defines = source.defines ? { ...source.defines } : undefined
+    target.onBeforeCompile = source.onBeforeCompile
+    target.customProgramCacheKey = source.customProgramCacheKey
+    target.userData = { ...source.userData }
+
+    Object.getOwnPropertySymbols(source).forEach((symbol) => {
+      ;(target as unknown as Record<symbol, unknown>)[symbol] =
+        (source as unknown as Record<symbol, unknown>)[symbol]
+    })
+    target.needsUpdate = true
   }
 }
 
@@ -292,7 +347,7 @@ export interface TilesetManagerOptions {
   transparentOverlayTexture: THREE.Texture
   terrain?: TerrainOptions
   creasedNormals?: boolean
-  surfaceMaterialMode: SurfaceMaterialMode
+  surfaceMaterialMode: ResolvedSurfaceMaterialMode
 }
 
 export class TilesetManager {
@@ -302,6 +357,7 @@ export class TilesetManager {
   private readonly sceneTilesetOptions = new Map<string, Load3DTilesetOptions>()
   private readonly heightSamplingTilesetPool = new Map<string, TilesRenderer[]>()
   private readonly imageryOverlayContexts = new WeakMap<TilesRenderer, ImageryOverlayContext>()
+  private surfaceMaterialPlugin!: SurfaceMaterialPlugin
   private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
   private sceneTilesetId = 0
@@ -338,6 +394,11 @@ export class TilesetManager {
 
   get loadedSceneTilesets() {
     return [...this.sceneTilesets.values()]
+  }
+
+  setSurfaceMaterialMode(mode: ResolvedSurfaceMaterialMode) {
+    this.options.surfaceMaterialMode = mode
+    this.surfaceMaterialPlugin.setMode(mode, this.activeSurfaceTileset)
   }
 
   setImageryLayers(layers: ImageryLayer[] = []) {
@@ -529,10 +590,11 @@ export class TilesetManager {
 
   private createSurfaceTileset(layers: ImageryLayer[] = []) {
     const tileset = new TilesRenderer()
+    const surfaceMaterialPlugin = new SurfaceMaterialPlugin(this.options.surfaceMaterialMode)
+
+    this.surfaceMaterialPlugin = surfaceMaterialPlugin
     this.registerSurfaceImageryStack(tileset, layers)
-    if (this.options.surfaceMaterialMode === 'standard') {
-      tileset.registerPlugin(new SurfaceLitMaterialPlugin())
-    }
+    tileset.registerPlugin(surfaceMaterialPlugin)
     this.registerCommonTilesetPlugins(tileset)
     return tileset
   }

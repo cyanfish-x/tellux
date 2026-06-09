@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { CloudsEffect } from '@takram/three-clouds'
 import type { AtmosphereRuntimeControls } from './rendering/AtmosphereManager'
-import type { AtmosphereLightingMode, ViewerOptions } from './types'
+import type { AtmosphereLightingMode, SurfaceMaterialMode, ViewerOptions } from './types'
 
 const FALLBACK_AMBIENT_LIGHT_MIN_HEIGHT = 8000
 const FALLBACK_AMBIENT_LIGHT_MAX_HEIGHT = 7600000
@@ -121,6 +121,7 @@ export class Scene {
   private currentCloudLayerAltitude: number
   private currentCloudLayerHeight: number
   private currentAtmosphereInscatterIntensity: number
+  private currentSurfaceMaterialMode: SurfaceMaterialMode
   private isAtmosphereInscatterHorizonBlend: boolean
   private currentAtmosphereInscatterHorizonRange: [number, number]
   private readonly cloudLayerOffsets = [0, 250]
@@ -128,19 +129,23 @@ export class Scene {
   private readonly getCloudsEffect: () => CloudsEffect | null
   private readonly getAtmosphereControls: () => AtmosphereRuntimeControls | null
   private readonly onEffectsChange: () => void
+  private readonly onSurfaceMaterialModeChange: () => void
 
   constructor(
     options: Required<NonNullable<ViewerOptions['scene']>>,
     getCloudsEffect: () => CloudsEffect | null,
     getAtmosphereControls: () => AtmosphereRuntimeControls | null,
-    onEffectsChange: () => void
+    onEffectsChange: () => void,
+    onSurfaceMaterialModeChange: () => void
   ) {
     this.getCloudsEffect = getCloudsEffect
     this.getAtmosphereControls = getAtmosphereControls
     this.onEffectsChange = onEffectsChange
+    this.onSurfaceMaterialModeChange = onSurfaceMaterialModeChange
     this.currentCloudCoverage = options.cloudCoverage
     this.currentCloudSpeed = toNonNegativeFinite(options.cloudSpeed, DEFAULT_CLOUD_SPEED)
     this.currentAtmosphereInscatterIntensity = options.atmosphereInscatterIntensity
+    this.currentSurfaceMaterialMode = options.surfaceMaterialMode
     this.isAtmosphereInscatterHorizonBlend = options.atmosphereInscatterHorizonBlend
     this.currentAtmosphereInscatterHorizonRange = options.atmosphereInscatterHorizonRange
     this.currentCloudLayerAltitude = DEFAULT_CLOUD_LAYER_ALTITUDE
@@ -319,7 +324,27 @@ export class Scene {
     if (atmosphere && atmosphere.lightingMode !== value) {
       atmosphere.lightingMode = value
       this.onEffectsChange()
+      this.onSurfaceMaterialModeChange()
     }
+  }
+
+  /**
+   * 基础地球表面瓦片材质模式。
+   *
+   * `auto` 会根据大气光照模式选择材质。
+   *
+   * Base globe surface tile material mode.
+   *
+   * `auto` derives the material from the atmosphere lighting mode.
+   */
+  get surfaceMaterialMode() {
+    return this.currentSurfaceMaterialMode
+  }
+
+  set surfaceMaterialMode(value: SurfaceMaterialMode) {
+    if (this.currentSurfaceMaterialMode === value) return
+    this.currentSurfaceMaterialMode = value
+    this.onSurfaceMaterialModeChange()
   }
 
   /**
