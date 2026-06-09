@@ -16,6 +16,11 @@ import { CartographicPicker } from './sampling/CartographicPicker'
 import { HeightSampler } from './sampling/HeightSampler'
 import { Scene } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
+import {
+  applyInitialDebugSettings,
+  DebugSettingsPanel,
+  loadStoredDebugSettings
+} from './widget/DebugSettingsPanel'
 import type {
   AddModelOptions,
   AnyViewerEventListener,
@@ -24,6 +29,7 @@ import type {
   CartographicCoordinateTuple,
   CartographicHeightTuple,
   CartographicInput,
+  DebugSettingsPanelOptions,
   FlyToTargetOptions,
   FlyToTargetTarget,
   Load3DTilesetOptions,
@@ -36,7 +42,8 @@ import type {
   ViewerEventListener,
   ViewerEventMap,
   ViewerMouseEvent,
-  ViewerOptions
+  ViewerOptions,
+  ViewerWidgetOptions
 } from './types'
 import type { GlobeControls } from '3d-tiles-renderer'
 
@@ -46,6 +53,7 @@ export { ImageryLayer, LayerManager } from './LayerManager'
 export { Scene } from './Scene'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
 export { telluxConfig, type TelluxConfig } from './config'
+export { DebugSettingsPanel, type DebugSettingsPanelOptions } from './widget'
 export type {
   CameraFlyToDestination,
   CameraFlyToOptions,
@@ -99,6 +107,7 @@ export type {
   ViewerEventMap,
   ViewerMouseEvent,
   ViewerMouseMoveEvent,
+  ViewerWidgetOptions,
   ViewerOptions,
   WMSImagerySourceOptions,
   XYZImagerySourceOptions
@@ -195,6 +204,7 @@ export class Viewer {
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
   private readonly heightSampler: HeightSampler
+  private debugSettingsPanel: DebugSettingsPanel | null = null
   private readonly handleWindowResize = () => {
     this.resize()
   }
@@ -254,6 +264,7 @@ export class Viewer {
     const resolvedContainer = Viewer.resolveContainer(container)
     this.container = resolvedContainer
     this.currentResolutionScale = options.resolutionScale ?? Math.min(window.devicePixelRatio, 2)
+    const debugSettings = this.resolveSettingPanelOptions(options.widgets?.settingPanel)
     const sceneOptions = this.resolveSceneOptions(options.scene)
     this.currentToneMappingExposure = sceneOptions.toneMappingExposure
 
@@ -341,6 +352,9 @@ export class Viewer {
       this.atmosphere,
       () => this.camera.getCurrentHeight()
     )
+    if (debugSettings) {
+      applyInitialDebugSettings(this, debugSettings)
+    }
     this.postProcessing.applyEffects()
     this.atmosphere.loadTextures()
     this.atmosphere.updateSunDirection(this.clock.currentTime)
@@ -351,6 +365,10 @@ export class Viewer {
     this.resizeObserver.observe(this.container)
     window.addEventListener('resize', this.handleWindowResize)
     this.resize()
+
+    if (debugSettings) {
+      this.debugSettingsPanel = new DebugSettingsPanel(this, debugSettings)
+    }
 
     if (options.useDefaultRenderLoop !== false) {
       this.useDefaultRenderLoop = true
@@ -669,6 +687,7 @@ export class Viewer {
     this.postProcessing.setDeltaTime(deltaTime)
     this.resize()
     this.controls.update()
+    this.debugSettingsPanel?.update(deltaTime, time)
     this.syncAtmosphereInscatter()
     const currentHeight = this.syncFallbackAmbientLight()
     this.postProcessing.updateForCameraHeight(currentHeight)
@@ -724,6 +743,7 @@ export class Viewer {
     this.renderer.domElement.removeEventListener('mousemove', this.handleCanvasMouseMove)
     this.clearEventListeners()
     this.clearModelLayers()
+    this.debugSettingsPanel?.dispose()
     this.heightSampler.dispose()
 
     this.postProcessing.dispose()
@@ -756,6 +776,18 @@ export class Viewer {
 
       this.heightSampler.updateMostDetailedSampling()
     })
+  }
+
+  private resolveSettingPanelOptions(options: ViewerWidgetOptions['settingPanel']): DebugSettingsPanelOptions | null {
+    if (!options) return null
+
+    const storedSettings = loadStoredDebugSettings()
+    if (options === true) return storedSettings
+
+    return {
+      ...options,
+      ...storedSettings
+    }
   }
 
   private clearFrameBuffer() {

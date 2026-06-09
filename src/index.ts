@@ -4,6 +4,7 @@ import {
   ImageryLayer,
   LayerManager,
   Scene,
+  DebugSettingsPanel,
   SpringControl,
   telluxConfig,
   Viewer
@@ -15,6 +16,7 @@ export {
   ImageryLayer,
   LayerManager,
   Scene,
+  DebugSettingsPanel,
   SpringControl,
   Viewer,
   type AtmosphereLightingMode,
@@ -24,6 +26,7 @@ export {
   type CameraOrientation,
   type CameraSetViewOptions,
   type AddModelOptions,
+  type DebugSettingsPanelOptions,
   type CartographicCoordinateTuple,
   type CartographicCoordinates,
   type CartographicFrameOptions,
@@ -67,6 +70,7 @@ export {
   type ViewerEventMap,
   type ViewerMouseEvent,
   type ViewerMouseMoveEvent,
+  type ViewerWidgetOptions,
   type ViewerOptions,
   type WMSImagerySourceOptions,
   type XYZImagerySourceOptions
@@ -84,6 +88,7 @@ const tellux = {
   Clock,
   ImageryLayer,
   LayerManager,
+  DebugSettingsPanel,
   SpringControl,
 
   /**

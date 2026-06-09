@@ -30,6 +30,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
         items: [
           { text: '快速开始', link: '/guide/getting-started' },
           { text: 'Viewer 基础', link: '/guide/viewer' },
+          { text: '光照模式与参数', link: '/guide/lighting' },
           { text: '地形与影像', link: '/guide/terrain-and-imagery' },
           { text: '3D Tiles', link: '/guide/3d-tiles' }
         ]
