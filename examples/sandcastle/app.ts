@@ -1,7 +1,7 @@
 import * as monaco from "monaco-editor"
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker"
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker"
-import { getSandcastleExample, sandcastleExamples } from "./registry"
+import { defaultSandcastleExample, getSandcastleExample, sandcastleExamples } from "./registry"
 import type {
   SandcastleEditorPane,
   SandcastleExample,
@@ -214,7 +214,7 @@ const editor = monaco.editor.create(editorElement, {
 let activeExample = getSandcastleExample(new URLSearchParams(window.location.search).get("example"))
 let displayedExamples = sandcastleExamples
 let activePane: SandcastleEditorPane = "javascript"
-let activeView: "examples" | "code" = "code"
+let activeView: "examples" | "code" = activeExample ? "code" : "examples"
 let isSidePanelCollapsed = false
 let isConsoleCollapsed = false
 let isDraggingSplitter = false
@@ -445,14 +445,21 @@ function updateConsoleHeight(clientY: number) {
 async function runCurrentCode() {
   clearConsole()
   appendConsoleLine("info", ["Running example..."])
+  setStandaloneEnabled(false)
   try {
     const url = createRunnerUrl(await getCurrentPayload())
     previewFrame.src = url
     standaloneLink.href = url
+    setStandaloneEnabled(true)
   } catch (error) {
     const message = error instanceof Error ? error.stack ?? error.message : String(error)
     appendConsoleLine("error", [message])
   }
+}
+
+function setStandaloneEnabled(isEnabled: boolean) {
+  standaloneLink.toggleAttribute("aria-disabled", !isEnabled)
+  standaloneLink.tabIndex = isEnabled ? 0 : -1
 }
 
 function selectPane(pane: SandcastleEditorPane) {
@@ -498,6 +505,17 @@ function selectExample(example: SandcastleExample, shouldRun = true) {
   }
 }
 
+function loadDefaultExample() {
+  activeExample = null
+  models.javascript.setValue(defaultSandcastleExample.javascript)
+  models.html.setValue(defaultSandcastleExample.html)
+  currentTitle.textContent = "Examples"
+  renderGallery(displayedExamples)
+  selectPane(activePane)
+  selectView("examples")
+  void runCurrentCode()
+}
+
 function updateDescriptionTitle(description: HTMLElement, fullText: string) {
   const isClamped =
     description.scrollHeight > description.clientHeight + 1 ||
@@ -516,7 +534,7 @@ function renderGallery(examples: SandcastleExample[]) {
     const button = document.createElement("button")
     button.className = "sandcastle-card"
     button.type = "button"
-    button.toggleAttribute("data-active", example.id === activeExample.id)
+    button.toggleAttribute("data-active", example.id === activeExample?.id)
     button.innerHTML = `
       <span class="sandcastle-card__thumb" aria-hidden="true"></span>
       <span class="sandcastle-card__body">
@@ -573,6 +591,11 @@ docsLink.href = getDocsUrl()
 docsLink.addEventListener("click", (event) => {
   event.preventDefault()
   window.open(docsLink.href, "_blank", "noopener")?.focus()
+})
+standaloneLink.addEventListener("click", (event) => {
+  if (standaloneLink.getAttribute("aria-disabled") === "true") {
+    event.preventDefault()
+  }
 })
 clearConsoleButton.addEventListener("click", clearConsole)
 toggleConsoleButton.addEventListener("click", () => setConsoleCollapsed(!isConsoleCollapsed))
@@ -712,4 +735,8 @@ window.addEventListener("message", (event: MessageEvent<SandboxMessage>) => {
 renderGallery(displayedExamples)
 selectPane(activePane)
 selectView(activeView)
-selectExample(activeExample)
+if (activeExample) {
+  selectExample(activeExample)
+} else {
+  loadDefaultExample()
+}

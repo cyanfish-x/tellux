@@ -16,6 +16,7 @@ const categoryById: Record<string, string> = {
   "3d-tiles": "Tiles",
   atmosphere: "Rendering",
   basic: "Viewer",
+  blank: "Viewer",
   click: "Interaction",
   "data-sources": "Layers",
   "fly-to": "Camera",
@@ -23,6 +24,14 @@ const categoryById: Record<string, string> = {
   "mixed-height-sampling-horses": "Sampling",
   terrain: "Terrain",
   "threejs-interop": "Models",
+}
+
+const titleById: Record<string, string> = {
+  blank: "纯净地球",
+}
+
+const descriptionById: Record<string, string> = {
+  blank: "创建一个 Tellux Viewer，加载干净的地球影像底图。",
 }
 
 const tagByTerm: Array<[string, string]> = [
@@ -55,6 +64,7 @@ const tagByTerm: Array<[string, string]> = [
 ]
 
 const excludedHtmlFiles = new Set(["index", "sandcastle"])
+const hiddenDefaultExampleId = "blank"
 
 function getFileId(path: string) {
   return path.match(/\/([^/]+)\.html$/)?.[1] ?? path
@@ -87,15 +97,17 @@ function getScriptSource(scriptPath: string | null) {
 function getTitle(id: string, html: string) {
   const document = parseHtmlDocument(html)
   return (
+    titleById[id] ||
     document.querySelector("h1")?.textContent?.trim() ||
     document.querySelector("title")?.textContent?.replace(/^Tellux\s*/i, "").trim() ||
     id
   )
 }
 
-function getDescription(html: string) {
+function getDescription(id: string, html: string) {
   const document = parseHtmlDocument(html)
   return (
+    descriptionById[id] ||
     document.querySelector(".toolbar p, .layer-manager__status, .status")?.textContent?.trim() ||
     "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。"
   )
@@ -122,7 +134,7 @@ function createExample(path: string, html: string): SandcastleExample | null {
   }
 
   const title = getTitle(id, html)
-  const description = getDescription(html)
+  const description = getDescription(id, html)
   return {
     id,
     title,
@@ -136,11 +148,19 @@ function createExample(path: string, html: string): SandcastleExample | null {
   }
 }
 
-export const sandcastleExamples: SandcastleExample[] = Object.entries(htmlModules)
+const allSandcastleExamples: SandcastleExample[] = Object.entries(htmlModules)
   .map(([path, html]) => createExample(path, html))
   .filter((example): example is SandcastleExample => example !== null)
   .sort((a, b) => a.title.localeCompare(b.title, "zh-CN"))
 
+export const defaultSandcastleExample =
+  allSandcastleExamples.find((example) => example.id === hiddenDefaultExampleId) ??
+  allSandcastleExamples[0]
+
+export const sandcastleExamples: SandcastleExample[] = allSandcastleExamples.filter(
+  (example) => example.id !== hiddenDefaultExampleId
+)
+
 export function getSandcastleExample(id: string | null) {
-  return sandcastleExamples.find((example) => example.id === id) ?? sandcastleExamples[0]
+  return allSandcastleExamples.find((example) => example.id === id) ?? null
 }
