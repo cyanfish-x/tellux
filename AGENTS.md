@@ -18,6 +18,41 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 - `dist/`：生成的构建产物。只有需要刷新构建输出时才更新。
 - `README.md`：面向用户的使用文档。
 
+## examples / docs / Sandcastle 架构入口
+
+涉及项目主页、文档站点、示例站点或 Sandcastle 的改动前，优先阅读：
+
+- `notes/examples-architecture.md`
+
+该文档是维护者架构说明，用于快速理解：
+
+- 项目主页：`examples/index.html`、`examples/index.ts`
+- 项目文档页：`docs/`、`docs/.vitepress/config.ts`、`examples/public/docs/`
+- 项目 Sandcastle：`examples/sandcastle.html`、`examples/sandcastle/app.ts`、`examples/sandcastle/registry.ts`、`examples/sandcastle/runner.ts`
+
+判断规则：
+
+- 面向用户的教程、API、能力说明放在 `docs/`。
+- 项目级备忘、调研记录、架构草稿和维护说明放在 `notes/`。
+- `examples/public/docs/` 是 VitePress 构建产物，不要手动编辑。
+- 新增普通示例时，通常需要同时关注示例 HTML/TS、`examples/vite.config.ts` 的入口注册，以及 Sandcastle registry 的分类/标题/描述规则。
+- 修改 Sandcastle 时先区分主应用和 runner：`app.ts` 负责编辑器、示例列表、运行控制和日志；`runner.ts` 负责 iframe 内执行当前 payload。
+
+## notes 快速索引
+
+`notes/` 存放项目级备忘、架构说明、能力调研和实现链路。遇到对应主题时，先读相关 notes，再进入源码细节。
+
+- 涉及 Viewer 创建流程、每帧渲染流程、TilesetManager、地形 / 影像 / surface tileset 生命周期时，先读 `notes/project-architecture.md`。
+- 涉及历史 bug、容易误判的实现方向、渲染循环抢占和高度采样副作用时，先读 `notes/project-pitfalls.md`。
+- 涉及 `sampleHeightMostDetailed`、地形高度采样、离屏采样、采样专用 tileset、LoadRegionPlugin 或 raycast 高度求交时，先读 `notes/sample-height-most-detailed.md`。
+- 涉及 3D Tiles 能力评估、数据格式、LOD、调试、性能、Cesium Ion、地形或影像瓦片能力时，先读 `notes/3d-tiles-renderer-capabilities.md`。
+- 涉及 3D Tiles plugin / overlay 取舍、认证插件、GLTFExtensionsPlugin、QuantizedMeshPlugin、ImageOverlayPlugin、TilesFadePlugin、UpdateOnChangePlugin、MVT / GeoJSON overlay 时，先读 `notes/3d-tiles-renderer-plugins-and-overlays.md`。
+- 涉及经纬高、椭球、大地坐标、瓦片坐标、STBN / typed array 资源加载或 geospatial shader 工具时，先读 `notes/takram-three-geospatial-capabilities.md`。
+- 涉及天空大气、空气透视、太阳 / 月亮方向、光源式光照、星空材质或与云层合成时，先读 `notes/takram-three-atmosphere-capabilities.md`。
+- 涉及体积云、云层建模、天气贴图、噪声纹理、程序化纹理、云影或云渲染性能时，先读 `notes/takram-three-clouds-capabilities.md`。
+- 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/takram-three-geospatial-effects-capabilities.md`。
+- 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/examples-architecture.md`。
+
 ## 模块化与文件大小
 
 - 避免继续膨胀 `src/Viewer.ts`。新增功能默认先判断是否属于 `controls/`、`models/`、`sampling/`、`rendering/`、`tiles/` 等高内聚模块；`Viewer` 只保留公开 API、生命周期编排和跨模块协调。
@@ -41,7 +76,6 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 + https://github.com/takram-design-engineering/three-geospatial
 + https://github.com/NASA-AMMOS/3DTilesRendererJS
-+ takram仓库源码：D:\dev_work\three-geospatial
 
 ## 常用命令
 
