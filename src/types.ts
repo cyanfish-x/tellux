@@ -17,6 +17,19 @@ import type { Viewer } from './Viewer'
 export type AtmosphereLightingMode = 'post-process' | 'light-source'
 
 /**
+ * 基础地球表面瓦片材质模式。
+ *
+ * `basic` 使用不受 Three.js 光源影响的 `MeshBasicMaterial`；
+ * `standard` 使用受光照影响的 `MeshStandardMaterial`。
+ *
+ * Base globe surface tile material mode.
+ *
+ * `basic` uses `MeshBasicMaterial` unaffected by Three.js lights;
+ * `standard` uses lit `MeshStandardMaterial`.
+ */
+export type SurfaceMaterialMode = 'basic' | 'standard'
+
+/**
  * Viewer 调试设置面板的初始值。
  *
  * Initial values for the Viewer debug settings panel.
@@ -43,6 +56,7 @@ export interface DebugSettingsPanelOptions {
   atmosphereTransmittance?: boolean
   atmosphereInscatter?: boolean
   atmosphereLightingMode?: AtmosphereLightingMode
+  surfaceMaterialMode?: SurfaceMaterialMode
   atmosphereSunLight?: boolean
   atmosphereSkyLight?: boolean
   atmosphereSunLightIntensity?: number
@@ -227,6 +241,18 @@ export interface ViewerOptions {
      * probe in the scene.
      */
     atmosphereLightingMode?: AtmosphereLightingMode
+    /**
+     * 基础地球表面瓦片材质模式。
+     *
+     * 不传时根据 `atmosphereLightingMode` 自动选择：`light-source` 使用
+     * `standard`，`post-process` 使用 `basic`。
+     *
+     * Base globe surface tile material mode.
+     *
+     * When omitted, this is derived from `atmosphereLightingMode`:
+     * `light-source` uses `standard`, while `post-process` uses `basic`.
+     */
+    surfaceMaterialMode?: SurfaceMaterialMode
     /**
      * 是否应用太阳直射光照，默认 `true`。
      *

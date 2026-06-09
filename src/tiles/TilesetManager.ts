@@ -29,6 +29,7 @@ import type {
   MVTImagerySourceOptions,
   HeightSamplingSource,
   TerrainOptions,
+  SurfaceMaterialMode,
   TilesetLayer,
   WMSImagerySourceOptions
 } from '../types'
@@ -234,6 +235,55 @@ class TileUnlitMaterialPlugin implements TileModelPlugin {
   }
 }
 
+class SurfaceLitMaterialPlugin implements TileModelPlugin {
+  readonly priority = -20
+
+  processTileModel(tileScene: THREE.Object3D) {
+    tileScene.traverse((object) => {
+      const mesh = object as THREE.Mesh
+      if (!mesh.material) return
+
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map((material) => this.toLitMaterial(material))
+        : this.toLitMaterial(mesh.material)
+    })
+  }
+
+  private toLitMaterial(material: THREE.Material) {
+    if (!(material instanceof THREE.MeshBasicMaterial)) return material
+
+    const lit = new THREE.MeshStandardMaterial({
+      color: material.color,
+      map: material.map,
+      alphaMap: material.alphaMap,
+      aoMap: material.aoMap,
+      envMap: material.envMap,
+      lightMap: material.lightMap,
+      metalness: 0,
+      roughness: 1
+    })
+    lit.name = material.name
+    lit.wireframe = material.wireframe
+    lit.transparent = material.transparent
+    lit.opacity = material.opacity
+    lit.alphaTest = material.alphaTest
+    lit.side = material.side
+    lit.depthTest = material.depthTest
+    lit.depthWrite = material.depthWrite
+    lit.colorWrite = material.colorWrite
+    lit.blending = material.blending
+    lit.blendSrc = material.blendSrc
+    lit.blendDst = material.blendDst
+    lit.blendEquation = material.blendEquation
+    lit.polygonOffset = material.polygonOffset
+    lit.polygonOffsetFactor = material.polygonOffsetFactor
+    lit.polygonOffsetUnits = material.polygonOffsetUnits
+    lit.toneMapped = material.toneMapped
+    lit.userData = { ...material.userData }
+    return lit
+  }
+}
+
 export interface TilesetManagerOptions {
   scene: THREE.Scene
   camera: THREE.PerspectiveCamera
@@ -242,6 +292,7 @@ export interface TilesetManagerOptions {
   transparentOverlayTexture: THREE.Texture
   terrain?: TerrainOptions
   creasedNormals?: boolean
+  surfaceMaterialMode: SurfaceMaterialMode
 }
 
 export class TilesetManager {
@@ -479,6 +530,9 @@ export class TilesetManager {
   private createSurfaceTileset(layers: ImageryLayer[] = []) {
     const tileset = new TilesRenderer()
     this.registerSurfaceImageryStack(tileset, layers)
+    if (this.options.surfaceMaterialMode === 'standard') {
+      tileset.registerPlugin(new SurfaceLitMaterialPlugin())
+    }
     this.registerCommonTilesetPlugins(tileset)
     return tileset
   }
