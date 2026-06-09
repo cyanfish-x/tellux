@@ -113,6 +113,15 @@ function getDescription(id: string, html: string) {
   )
 }
 
+function getOrder(html: string) {
+  const document = parseHtmlDocument(html)
+  const content = document
+    .querySelector('meta[name="sandcastle-order"]')
+    ?.getAttribute("content")
+  const order = content ? Number.parseFloat(content) : Number.NaN
+  return Number.isFinite(order) ? order : undefined
+}
+
 function getTags(text: string) {
   const normalizedText = text.toLowerCase()
   const tags = tagByTerm
@@ -135,9 +144,11 @@ function createExample(path: string, html: string): SandcastleExample | null {
 
   const title = getTitle(id, html)
   const description = getDescription(id, html)
+  const order = getOrder(html)
   return {
     id,
     title,
+    ...(order === undefined ? {} : { order }),
     category: categoryById[id] ?? "Example",
     description,
     tags: getTags(`${title} ${description} ${javascript}`),
@@ -151,7 +162,12 @@ function createExample(path: string, html: string): SandcastleExample | null {
 const allSandcastleExamples: SandcastleExample[] = Object.entries(htmlModules)
   .map(([path, html]) => createExample(path, html))
   .filter((example): example is SandcastleExample => example !== null)
-  .sort((a, b) => a.title.localeCompare(b.title, "zh-CN"))
+  .sort(
+    (a, b) =>
+      (a.order ?? Number.MAX_SAFE_INTEGER) -
+        (b.order ?? Number.MAX_SAFE_INTEGER) ||
+      a.title.localeCompare(b.title, "zh-CN")
+  )
 
 export const defaultSandcastleExample =
   allSandcastleExamples.find((example) => example.id === hiddenDefaultExampleId) ??
