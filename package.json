@@ -23,6 +23,7 @@
   "scripts": {
     "build": "vite build && tsc -p tsconfig.types.json",
     "build:examples": "vite build --config examples/vite.config.ts",
+    "preview": "vite preview --config examples/vite.config.ts --host 127.0.0.1 --port 4173 --strictPort",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
     "dev": "vite examples --host 127.0.0.1 --port 5173 --strictPort",
