@@ -1467,6 +1467,14 @@ body.sandcastle-page {
   outline: none;
 }
 
+.sandcastle-button[aria-disabled="true"] {
+  border-color: rgba(215, 224, 233, 0.1);
+  color: #697480;
+  background: rgba(215, 224, 233, 0.03);
+  cursor: default;
+  pointer-events: none;
+}
+
 .sandcastle-button--primary {
   border-color: rgba(45, 245, 195, 0.82);
   color: #03110d;
