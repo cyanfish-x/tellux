@@ -57,6 +57,7 @@ export { ImageryLayer, LayerManager } from './LayerManager'
 export { Scene } from './Scene'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
 export { telluxConfig, type TelluxConfig } from './config'
+export { AtmosphereLightingMode } from './types'
 export { DebugSettingsPanel, type DebugSettingsPanelOptions } from './widget'
 export type {
   CameraFlyToDestination,
@@ -67,7 +68,6 @@ export type {
 } from './Camera'
 export type {
   AddModelOptions,
-  AtmosphereLightingMode,
   CartographicCoordinateTuple,
   CartographicFrameOptions,
   CartographicCoordinates,

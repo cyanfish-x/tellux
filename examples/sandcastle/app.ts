@@ -1,7 +1,11 @@
 import * as monaco from "monaco-editor"
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker"
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker"
-import { defaultSandcastleExample, getSandcastleExample, sandcastleExamples } from "./registry"
+import {
+  defaultSandcastleExample,
+  getSandcastleExample,
+  sandcastleExamples,
+} from "./registry"
 import type {
   SandcastleEditorPane,
   SandcastleExample,
@@ -15,11 +19,14 @@ const telluxSourceModules = import.meta.glob("../../src/**/*.ts", {
   import: "default",
 }) as Record<string, string>
 
-const exampleSourceModules = import.meta.glob(["../*.ts", "../settings-panel/**/*.ts"], {
-  eager: true,
-  query: "?raw",
-  import: "default",
-}) as Record<string, string>
+const exampleSourceModules = import.meta.glob(
+  ["../*.ts", "../settings-panel/**/*.ts"],
+  {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  }
+) as Record<string, string>
 
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
@@ -171,25 +178,42 @@ const previewFrame = queryRequired(".sandcastle-preview", HTMLIFrameElement)
 const consoleBody = queryRequired(".sandcastle-console__body", HTMLElement)
 const currentTitle = queryRequired("[data-current-title]", HTMLElement)
 const runButton = queryRequired('[data-action="run"]', HTMLButtonElement)
-const standaloneLink = queryRequired('[data-action="standalone"]', HTMLAnchorElement)
+const standaloneLink = queryRequired(
+  '[data-action="standalone"]',
+  HTMLAnchorElement
+)
 const docsLink = queryRequired('[data-action="open-docs"]', HTMLAnchorElement)
-const clearConsoleButton = queryRequired('[data-action="clear-console"]', HTMLButtonElement)
-const toggleConsoleButton = queryRequired('[data-action="toggle-console"]', HTMLButtonElement)
+const clearConsoleButton = queryRequired(
+  '[data-action="clear-console"]',
+  HTMLButtonElement
+)
+const toggleConsoleButton = queryRequired(
+  '[data-action="toggle-console"]',
+  HTMLButtonElement
+)
 const togglePreviewFullscreenButton = queryRequired(
   '[data-action="toggle-preview-fullscreen"]',
   HTMLButtonElement
 )
 const toggleSidePanelButtons = Array.from(
-  sandcastleRoot.querySelectorAll<HTMLButtonElement>('[data-action="toggle-side-panel"]')
+  sandcastleRoot.querySelectorAll<HTMLButtonElement>(
+    '[data-action="toggle-side-panel"]'
+  )
 )
 const paneButtons = Array.from(
   sandcastleRoot.querySelectorAll<HTMLButtonElement>(".sandcastle-editor-tab")
 )
-const sandcastleScriptUri = monaco.Uri.parse("file:///tellux/examples/sandcastle-current.ts")
-const sandcastleHtmlUri = monaco.Uri.parse("file:///tellux/examples/sandcastle-current.html")
+const sandcastleScriptUri = monaco.Uri.parse(
+  "file:///tellux/examples/sandcastle-current.ts"
+)
+const sandcastleHtmlUri = monaco.Uri.parse(
+  "file:///tellux/examples/sandcastle-current.html"
+)
 
 if (toggleSidePanelButtons.length === 0) {
-  throw new Error("Sandcastle UI element not found: [data-action=\"toggle-side-panel\"]")
+  throw new Error(
+    'Sandcastle UI element not found: [data-action="toggle-side-panel"]'
+  )
 }
 
 function toVirtualProjectPath(modulePath: string) {
@@ -216,7 +240,8 @@ function getSandcastleTypeLibs() {
     ...sourceLibs,
     {
       filePath: "file:///tellux/src.ts",
-      content: 'export * from "./src/index"\nexport { default } from "./src/index"\n',
+      content:
+        'export * from "./src/index"\nexport { default } from "./src/index"\n',
     },
   ]
 }
@@ -239,8 +264,14 @@ function configureTypeScriptDefaults(
   defaults.setEagerModelSync(true)
 }
 
-configureTypeScriptDefaults(monaco.languages.typescript.javascriptDefaults, true)
-configureTypeScriptDefaults(monaco.languages.typescript.typescriptDefaults, false)
+configureTypeScriptDefaults(
+  monaco.languages.typescript.javascriptDefaults,
+  true
+)
+configureTypeScriptDefaults(
+  monaco.languages.typescript.typescriptDefaults,
+  false
+)
 
 const models: Record<SandcastleEditorPane, monaco.editor.ITextModel> = {
   javascript: monaco.editor.createModel("", "typescript", sandcastleScriptUri),
@@ -258,9 +289,17 @@ const editor = monaco.editor.create(editorElement, {
   scrollBeyondLastLine: false,
   tabSize: 2,
   wordWrap: "on",
+  quickSuggestions: {
+    other: true,
+    comments: false,
+    strings: true,
+  },
+  suggestOnTriggerCharacters: true,
 })
 
-let activeExample = getSandcastleExample(new URLSearchParams(window.location.search).get("example"))
+let activeExample = getSandcastleExample(
+  new URLSearchParams(window.location.search).get("example")
+)
 let displayedExamples = sandcastleExamples
 let activePane: SandcastleEditorPane = "javascript"
 let activeView: "examples" | "code" = activeExample ? "code" : "examples"
@@ -322,7 +361,8 @@ function clearStoredRuns() {
 function isStorageQuotaExceeded(error: unknown) {
   return (
     error instanceof DOMException &&
-    (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED")
+    (error.name === "QuotaExceededError" ||
+      error.name === "NS_ERROR_DOM_QUOTA_REACHED")
   )
 }
 
@@ -409,18 +449,25 @@ function setConsoleCollapsed(isCollapsed: boolean) {
     "aria-label",
     isConsoleCollapsed ? "展开 Console" : "折叠 Console"
   )
-  toggleConsoleButton.title = isConsoleCollapsed ? "展开 Console" : "折叠 Console"
+  toggleConsoleButton.title = isConsoleCollapsed
+    ? "展开 Console"
+    : "折叠 Console"
 }
 
 function updatePreviewFullscreenState() {
   const isFullscreen = document.fullscreenElement === previewPanel
   previewPanel.toggleAttribute("data-preview-fullscreen", isFullscreen)
-  togglePreviewFullscreenButton.setAttribute("aria-pressed", String(isFullscreen))
+  togglePreviewFullscreenButton.setAttribute(
+    "aria-pressed",
+    String(isFullscreen)
+  )
   togglePreviewFullscreenButton.setAttribute(
     "aria-label",
     isFullscreen ? "退出全屏预览" : "全屏预览"
   )
-  togglePreviewFullscreenButton.title = isFullscreen ? "退出全屏预览" : "全屏预览"
+  togglePreviewFullscreenButton.title = isFullscreen
+    ? "退出全屏预览"
+    : "全屏预览"
 }
 
 async function togglePreviewFullscreen() {
@@ -451,9 +498,11 @@ function setSidePanelCollapsed(isCollapsed: boolean) {
   })
   if (isSidePanelCollapsed) {
     layoutElement.toggleAttribute("data-resizing", false)
-    sandcastleRoot.querySelectorAll<HTMLElement>("[data-panel]").forEach((panel) => {
-      panel.toggleAttribute("data-active", false)
-    })
+    sandcastleRoot
+      .querySelectorAll<HTMLElement>("[data-panel]")
+      .forEach((panel) => {
+        panel.toggleAttribute("data-active", false)
+      })
     railButtons.forEach((button) => {
       button.toggleAttribute("data-active", false)
       button.setAttribute("aria-current", "false")
@@ -467,7 +516,8 @@ function setSidePanelCollapsed(isCollapsed: boolean) {
 function updateSplitterPosition(clientX: number) {
   const layoutRect = layoutElement.getBoundingClientRect()
   const railWidth =
-    sandcastleRoot.querySelector(".sandcastle-rail")?.getBoundingClientRect().width ?? 52
+    sandcastleRoot.querySelector(".sandcastle-rail")?.getBoundingClientRect()
+      .width ?? 52
   const splitterWidth = splitter.getBoundingClientRect().width
   const availableWidth = layoutRect.width - railWidth - splitterWidth
   const minPanelWidth = 320
@@ -477,7 +527,10 @@ function updateSplitterPosition(clientX: number) {
     minPanelWidth,
     maxLeftWidth
   )
-  layoutElement.style.setProperty("--sandcastle-left-width", `${nextLeftWidth}px`)
+  layoutElement.style.setProperty(
+    "--sandcastle-left-width",
+    `${nextLeftWidth}px`
+  )
   editor.layout()
 }
 
@@ -485,10 +538,20 @@ function updateConsoleHeight(clientY: number) {
   const stageRect = stageElement.getBoundingClientRect()
   const headerHeight = 40
   const minPreviewHeight = 220
-  const maxConsoleHeight = Math.max(headerHeight, stageRect.height - minPreviewHeight)
-  const nextConsoleHeight = clamp(stageRect.bottom - clientY, headerHeight, maxConsoleHeight)
+  const maxConsoleHeight = Math.max(
+    headerHeight,
+    stageRect.height - minPreviewHeight
+  )
+  const nextConsoleHeight = clamp(
+    stageRect.bottom - clientY,
+    headerHeight,
+    maxConsoleHeight
+  )
   consoleHeight = nextConsoleHeight
-  stageElement.style.setProperty("--sandcastle-console-height", `${nextConsoleHeight}px`)
+  stageElement.style.setProperty(
+    "--sandcastle-console-height",
+    `${nextConsoleHeight}px`
+  )
 }
 
 async function runCurrentCode() {
@@ -501,7 +564,8 @@ async function runCurrentCode() {
     standaloneLink.href = url
     setStandaloneEnabled(true)
   } catch (error) {
-    const message = error instanceof Error ? error.stack ?? error.message : String(error)
+    const message =
+      error instanceof Error ? error.stack ?? error.message : String(error)
     appendConsoleLine("error", [message])
   }
 }
@@ -525,9 +589,11 @@ function selectPane(pane: SandcastleEditorPane) {
 function selectView(view: "examples" | "code") {
   activeView = view
   setSidePanelCollapsed(false)
-  sandcastleRoot.querySelectorAll<HTMLElement>("[data-panel]").forEach((panel) => {
-    panel.toggleAttribute("data-active", panel.dataset.panel === view)
-  })
+  sandcastleRoot
+    .querySelectorAll<HTMLElement>("[data-panel]")
+    .forEach((panel) => {
+      panel.toggleAttribute("data-active", panel.dataset.panel === view)
+    })
   railButtons.forEach((button) => {
     const isActive = button.dataset.view === view
     button.toggleAttribute("data-active", isActive)
@@ -590,10 +656,14 @@ function renderGallery(examples: SandcastleExample[]) {
         <span class="sandcastle-card__category">${example.category}</span>
         <strong>${example.title}</strong>
         <span class="sandcastle-card__description">${example.description}</span>
-        <span class="sandcastle-card__tags">${example.tags.map((tag) => `<em>${tag}</em>`).join("")}</span>
+        <span class="sandcastle-card__tags">${example.tags
+          .map((tag) => `<em>${tag}</em>`)
+          .join("")}</span>
       </span>
     `
-    const description = button.querySelector<HTMLElement>(".sandcastle-card__description")
+    const description = button.querySelector<HTMLElement>(
+      ".sandcastle-card__description"
+    )
     if (description) {
       description.addEventListener("pointerenter", () => {
         updateDescriptionTitle(description, example.description)
@@ -647,18 +717,25 @@ standaloneLink.addEventListener("click", (event) => {
   }
 })
 clearConsoleButton.addEventListener("click", clearConsole)
-toggleConsoleButton.addEventListener("click", () => setConsoleCollapsed(!isConsoleCollapsed))
+toggleConsoleButton.addEventListener("click", () =>
+  setConsoleCollapsed(!isConsoleCollapsed)
+)
 togglePreviewFullscreenButton.addEventListener("click", () => {
   void togglePreviewFullscreen()
 })
 toggleSidePanelButtons.forEach((button) => {
-  button.addEventListener("click", () => setSidePanelCollapsed(!isSidePanelCollapsed))
+  button.addEventListener("click", () =>
+    setSidePanelCollapsed(!isSidePanelCollapsed)
+  )
 })
 searchInput.addEventListener("input", () => filterExamples(searchInput.value))
 document.addEventListener("fullscreenchange", updatePreviewFullscreenState)
 
 splitter.addEventListener("pointerdown", (event) => {
-  if (isSidePanelCollapsed || window.matchMedia("(max-width: 1080px)").matches) {
+  if (
+    isSidePanelCollapsed ||
+    window.matchMedia("(max-width: 1080px)").matches
+  ) {
     return
   }
   isDraggingSplitter = true
@@ -695,15 +772,23 @@ splitter.addEventListener("keydown", (event) => {
     return
   }
   const currentWidth =
-    Number.parseFloat(getComputedStyle(layoutElement).getPropertyValue("--sandcastle-left-width")) ||
-    layoutElement.getBoundingClientRect().width * 0.48
+    Number.parseFloat(
+      getComputedStyle(layoutElement).getPropertyValue(
+        "--sandcastle-left-width"
+      )
+    ) || layoutElement.getBoundingClientRect().width * 0.48
   const direction = event.key === "ArrowLeft" ? -1 : 1
   const layoutRect = layoutElement.getBoundingClientRect()
   const railWidth =
-    sandcastleRoot.querySelector(".sandcastle-rail")?.getBoundingClientRect().width ?? 52
+    sandcastleRoot.querySelector(".sandcastle-rail")?.getBoundingClientRect()
+      .width ?? 52
   const splitterWidth = splitter.getBoundingClientRect().width
   const availableWidth = layoutRect.width - railWidth - splitterWidth
-  const nextWidth = clamp(currentWidth + direction * 24, 320, Math.max(320, availableWidth - 320))
+  const nextWidth = clamp(
+    currentWidth + direction * 24,
+    320,
+    Math.max(320, availableWidth - 320)
+  )
   layoutElement.style.setProperty("--sandcastle-left-width", `${nextWidth}px`)
   editor.layout()
   event.preventDefault()
@@ -743,13 +828,23 @@ consoleResizer.addEventListener("keydown", (event) => {
   }
   setConsoleCollapsed(false)
   const currentHeight =
-    Number.parseFloat(getComputedStyle(stageElement).getPropertyValue("--sandcastle-console-height")) ||
-    150
+    Number.parseFloat(
+      getComputedStyle(stageElement).getPropertyValue(
+        "--sandcastle-console-height"
+      )
+    ) || 150
   const stageRect = stageElement.getBoundingClientRect()
   const direction = event.key === "ArrowUp" ? 1 : -1
-  const nextHeight = clamp(currentHeight + direction * 20, 40, Math.max(40, stageRect.height - 220))
+  const nextHeight = clamp(
+    currentHeight + direction * 20,
+    40,
+    Math.max(40, stageRect.height - 220)
+  )
   consoleHeight = nextHeight
-  stageElement.style.setProperty("--sandcastle-console-height", `${nextHeight}px`)
+  stageElement.style.setProperty(
+    "--sandcastle-console-height",
+    `${nextHeight}px`
+  )
   event.preventDefault()
 })
 
@@ -763,7 +858,10 @@ railButtons.forEach((button) => {
 
 paneButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    if (button.dataset.pane === "javascript" || button.dataset.pane === "html") {
+    if (
+      button.dataset.pane === "javascript" ||
+      button.dataset.pane === "html"
+    ) {
       selectPane(button.dataset.pane)
     }
   })

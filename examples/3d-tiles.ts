@@ -53,12 +53,14 @@ const viewer = new tellux.Viewer(container, {
     }
   ],
   scene: {
+    atmosphereLightingMode:'post-process',
     clouds: false,
     toneMappingExposure: 7
   }
 })
 
 ;(window as any).viewer = viewer
+viewer.clock.hourUTC = 4 // UTC 04:00，对应东八区正午
 
 tilesetUrlField.value = DEFAULT_TILESET_URL
 ionAssetIdField.value = DEFAULT_ION_ASSET_ID
