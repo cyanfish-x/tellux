@@ -728,7 +728,7 @@ export class Viewer {
     this.resize()
     this.controls.update()
     this.debugSettingsPanel?.update(deltaTime, time)
-    this.timeline?.update()
+    this.timeline?.update(deltaTime)
     this.syncAtmosphereInscatter()
     const currentHeight = this.syncFallbackAmbientLight()
     this.postProcessing.updateForCameraHeight(currentHeight)
