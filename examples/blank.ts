@@ -20,8 +20,12 @@ const viewer = new tellux.Viewer('viewer', {
     far: 30000000
   },
   scene: {
-    clouds: false,
-    toneMappingExposure: 8
+    clouds: {
+      show: false
+    },
+    postProcess: {
+      toneMappingExposure: 8
+    }
   }
 })
 

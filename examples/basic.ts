@@ -34,8 +34,12 @@ const viewer = new tellux.Viewer(container, {
     pitch: -12
   },
   scene: {
-    clouds:false,
-    toneMappingExposure: 8
+    clouds: {
+      show: false
+    },
+    postProcess: {
+      toneMappingExposure: 8
+    }
   }
 })
 

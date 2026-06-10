@@ -98,11 +98,21 @@ const viewer = new tellux.Viewer(container, {
     roll: 0,
   },
   scene: {
-    clouds: false,
-    skyAtmosphere: true,
-    atmosphereLightingMode: "light-source",
-    toneMappingExposure: 7,
-    fallbackAmbientLightIntensity: 0.9,
+    atmosphere: {
+      show: true,
+      lighting: {
+        mode: "light-source"
+      },
+      fallbackAmbientLight: {
+        intensity: 0.9
+      }
+    },
+    clouds: {
+      show: false
+    },
+    postProcess: {
+      toneMappingExposure: 7
+    }
   },
 })
 

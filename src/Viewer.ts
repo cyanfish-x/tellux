@@ -14,13 +14,14 @@ import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { CartographicPicker } from './sampling/CartographicPicker'
 import { HeightSampler } from './sampling/HeightSampler'
-import { Scene } from './Scene'
+import { Scene, type ResolvedSceneOptions } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
   applyInitialDebugSettings,
   DebugSettingsPanel,
   loadStoredDebugSettings
 } from './widget/DebugSettingsPanel'
+import { Timeline } from './widget/Timeline'
 import type {
   AddModelOptions,
   AnyViewerEventListener,
@@ -40,6 +41,7 @@ import type {
   SampleHeightOptions,
   ScreenPosition,
   SurfaceMaterialMode,
+  TimelineOptions,
   TilesetLayer,
   ViewerEventListener,
   ViewerEventMap,
@@ -59,7 +61,7 @@ export { Scene } from './Scene'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
 export { telluxConfig, type TelluxConfig } from './config'
 export { AtmosphereLightingMode } from './types'
-export { DebugSettingsPanel, type DebugSettingsPanelOptions } from './widget'
+export { DebugSettingsPanel, Timeline, type DebugSettingsPanelOptions, type TimelineOptions } from './widget'
 export type {
   CameraFlyToDestination,
   CameraFlyToOptions,
@@ -69,6 +71,7 @@ export type {
 } from './Camera'
 export type {
   AddModelOptions,
+  CloudQualityPreset,
   CartographicCoordinateTuple,
   CartographicFrameOptions,
   CartographicCoordinates,
@@ -114,6 +117,17 @@ export type {
   ViewerEventMap,
   ViewerMouseEvent,
   ViewerMouseMoveEvent,
+  ViewerAtmosphereLightingOptions,
+  ViewerAtmosphereOptions,
+  ViewerAtmosphereScatteringOptions,
+  ViewerAtmosphereShadowOptions,
+  ViewerAtmosphereSkyOptions,
+  ViewerCloudLayerOptions,
+  ViewerCloudOptions,
+  ViewerFallbackAmbientLightOptions,
+  ViewerPostProcessOptions,
+  ViewerSceneOptions,
+  ViewerSurfaceOptions,
   ViewerWidgetOptions,
   ViewerOptions,
   WMSImagerySourceOptions,
@@ -212,6 +226,7 @@ export class Viewer {
   private readonly cartographicPicker: CartographicPicker
   private readonly heightSampler: HeightSampler
   private debugSettingsPanel: DebugSettingsPanel | null = null
+  private timeline: Timeline | null = null
   private readonly handleWindowResize = () => {
     this.resize()
   }
@@ -271,9 +286,11 @@ export class Viewer {
     const resolvedContainer = Viewer.resolveContainer(container)
     this.container = resolvedContainer
     this.currentResolutionScale = options.resolutionScale ?? Math.min(window.devicePixelRatio, 2)
-    const debugSettings = this.resolveSettingPanelOptions(options.widgets?.settingPanel)
+    const widgetOptions = this.resolveWidgetOptions(options)
+    const debugSettings = this.resolveSettingPanelOptions(widgetOptions.settingPanel)
+    const timelineOptions = this.resolveTimelineOptions(widgetOptions.timeline)
     const sceneOptions = this.resolveSceneOptions(options.scene)
-    this.currentToneMappingExposure = sceneOptions.toneMappingExposure
+    this.currentToneMappingExposure = sceneOptions.postProcess.toneMappingExposure
 
     const width = resolvedContainer.clientWidth || 1
     const height = resolvedContainer.clientHeight || 1
@@ -296,21 +313,21 @@ export class Viewer {
     this.transparentOverlayTexture = this.createTransparentOverlayTexture()
 
     let atmosphere: AtmosphereManager | null = null
+    let postProcessing: PostProcessingManager | null = null
+    let tilesets: TilesetManager | null = null
     this.scene = new Scene(
       sceneOptions,
       () => atmosphere?.cloudsEffect ?? null,
       () => atmosphere ?? null,
-      () => this.postProcessing.applyEffects(),
-      () => this.syncSurfaceMaterialMode()
+      () => postProcessing?.applyEffects(),
+      () => {
+        if (tilesets) this.syncSurfaceMaterialMode()
+      }
     )
-    this.atmosphere = new AtmosphereManager(this.renderer, this.threeCamera, () => this.postProcessing.applyEffects())
+    this.atmosphere = new AtmosphereManager(this.renderer, this.threeCamera, () => postProcessing?.applyEffects())
     atmosphere = this.atmosphere
     this.atmosphere.addLightSourcesTo(this.scene.threeScene)
-    this.applyInitialAtmosphereOptions(sceneOptions)
-    this.scene.cloudCoverage = this.scene.cloudCoverage
-    this.scene.cloudSpeed = this.scene.cloudSpeed
-    this.scene.cloudLayerAltitude = this.scene.cloudLayerAltitude
-    this.scene.cloudLayerHeight = this.scene.cloudLayerHeight
+    this.scene.syncRuntimeEffects()
     this.clock = new Clock(() => this.atmosphere.updateSunDirection(this.clock.currentTime))
 
     this.dracoLoader = new DRACOLoader()
@@ -326,11 +343,12 @@ export class Viewer {
       transparentOverlayTexture: this.transparentOverlayTexture,
       terrain: options.terrain,
       surfaceMaterialMode: this.resolveSurfaceMaterialMode(
-        sceneOptions.surfaceMaterialMode,
-        sceneOptions.atmosphereLightingMode
+        sceneOptions.surface.materialMode,
+        sceneOptions.atmosphere.lighting.mode
       ),
-      sceneTilesetMaterialMode: this.resolveSceneContentMaterialMode(sceneOptions.atmosphereLightingMode)
+      sceneTilesetMaterialMode: this.resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode)
     })
+    tilesets = this.tilesets
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
     this.camera.setView(cameraOptions)
@@ -364,6 +382,7 @@ export class Viewer {
       this.atmosphere,
       () => this.camera.getCurrentHeight()
     )
+    postProcessing = this.postProcessing
     if (debugSettings) {
       applyInitialDebugSettings(this, debugSettings)
     }
@@ -380,6 +399,9 @@ export class Viewer {
 
     if (debugSettings) {
       this.debugSettingsPanel = new DebugSettingsPanel(this, debugSettings)
+    }
+    if (timelineOptions) {
+      this.timeline = new Timeline(this, timelineOptions)
     }
 
     if (options.useDefaultRenderLoop !== false) {
@@ -531,7 +553,7 @@ export class Viewer {
       id,
       options,
       this.gltfLoader,
-      this.resolveModelMaterialMode(this.scene.atmosphereLightingMode),
+      this.resolveModelMaterialMode(this.scene.atmosphere.lighting.mode),
       (modelLayer) => this.removeModelLayer(modelLayer)
     )
     this.cartographicToMatrix4(options.coordinates, {
@@ -706,6 +728,7 @@ export class Viewer {
     this.resize()
     this.controls.update()
     this.debugSettingsPanel?.update(deltaTime, time)
+    this.timeline?.update()
     this.syncAtmosphereInscatter()
     const currentHeight = this.syncFallbackAmbientLight()
     this.postProcessing.updateForCameraHeight(currentHeight)
@@ -762,6 +785,7 @@ export class Viewer {
     this.clearEventListeners()
     this.clearModelLayers()
     this.debugSettingsPanel?.dispose()
+    this.timeline?.dispose()
     this.heightSampler.dispose()
 
     this.postProcessing.dispose()
@@ -808,6 +832,18 @@ export class Viewer {
     }
   }
 
+  private resolveTimelineOptions(options: ViewerWidgetOptions['timeline']): TimelineOptions | null {
+    if (!options) return null
+    return options === true ? {} : options
+  }
+
+  private resolveWidgetOptions(options: ViewerOptions): ViewerWidgetOptions {
+    return {
+      ...options.widget,
+      ...options.widgets
+    }
+  }
+
   private clearFrameBuffer() {
     const renderTarget = this.renderer.getRenderTarget()
     this.renderer.setRenderTarget(null)
@@ -815,53 +851,76 @@ export class Viewer {
     this.renderer.setRenderTarget(renderTarget)
   }
 
-  private resolveSceneOptions(options: ViewerOptions['scene']): Required<NonNullable<ViewerOptions['scene']>> {
-    const atmosphereLightingMode = options?.atmosphereLightingMode ?? 'light-source'
+  private resolveSceneOptions(options: ViewerOptions['scene']): ResolvedSceneOptions {
+    const atmosphereLightingMode = options?.atmosphere?.lighting?.mode ?? 'light-source'
 
     return {
-      clouds: options?.clouds ?? true,
-      skyAtmosphere: options?.skyAtmosphere ?? true,
-      stars: options?.stars ?? true,
-      starsIntensity: options?.starsIntensity ?? 1,
-      starsPointSize: options?.starsPointSize ?? 1,
-      lensFlare: options?.lensFlare ?? true,
-      smaa: options?.smaa ?? true,
-      dithering: options?.dithering ?? false,
-      toneMappingExposure: options?.toneMappingExposure ?? 10,
-      cloudCoverage: options?.cloudCoverage ?? 0.3,
-      cloudSpeed: options?.cloudSpeed ?? 0.001,
-      atmosphereInscatterIntensity: options?.atmosphereInscatterIntensity ?? 0.6,
-      atmosphereInscatterHorizonBlend: options?.atmosphereInscatterHorizonBlend ?? true,
-      atmosphereInscatterHorizonRange: options?.atmosphereInscatterHorizonRange ?? [0, 0.6],
-      atmosphereCorrectAltitude: options?.atmosphereCorrectAltitude ?? true,
-      atmosphereCorrectGeometricError: options?.atmosphereCorrectGeometricError ?? true,
-      atmosphereLightingMode,
-      surfaceMaterialMode: options?.surfaceMaterialMode ?? 'auto',
-      atmosphereSunLightIntensity: options?.atmosphereSunLightIntensity ?? 1,
-      atmosphereSkyLightIntensity: options?.atmosphereSkyLightIntensity ?? 1,
-      atmosphereSunLight: options?.atmosphereSunLight ?? true,
-      atmosphereSkyLight: options?.atmosphereSkyLight ?? true,
-      atmosphereAlbedoScale: options?.atmosphereAlbedoScale ?? 1,
-      fallbackAmbientLight: options?.fallbackAmbientLight ?? true,
-      fallbackAmbientLightIntensity: options?.fallbackAmbientLightIntensity ?? 0.5
+      atmosphere: {
+        show: options?.atmosphere?.show ?? true,
+        lighting: {
+          mode: atmosphereLightingMode,
+          sunLight: options?.atmosphere?.lighting?.sunLight ?? true,
+          skyLight: options?.atmosphere?.lighting?.skyLight ?? true,
+          sunLightIntensity: options?.atmosphere?.lighting?.sunLightIntensity ?? 1,
+          skyLightIntensity: options?.atmosphere?.lighting?.skyLightIntensity ?? 1,
+          albedoScale: options?.atmosphere?.lighting?.albedoScale ?? 1
+        },
+        scattering: {
+          transmittance: options?.atmosphere?.scattering?.transmittance ?? true,
+          inscatter: options?.atmosphere?.scattering?.inscatter ?? true,
+          intensity: options?.atmosphere?.scattering?.intensity ?? 0.6,
+          horizonBlend: options?.atmosphere?.scattering?.horizonBlend ?? true,
+          horizonRange: options?.atmosphere?.scattering?.horizonRange ?? [0, 0.6],
+          correctAltitude: options?.atmosphere?.scattering?.correctAltitude ?? true,
+          correctGeometricError: options?.atmosphere?.scattering?.correctGeometricError ?? true,
+          solarIrradianceScale: options?.atmosphere?.scattering?.solarIrradianceScale ?? 1,
+          rayleighScatteringScale: options?.atmosphere?.scattering?.rayleighScatteringScale ?? 1,
+          mieScatteringScale: options?.atmosphere?.scattering?.mieScatteringScale ?? 1,
+          mieExtinctionScale: options?.atmosphere?.scattering?.mieExtinctionScale ?? 1,
+          miePhaseFunctionG: options?.atmosphere?.scattering?.miePhaseFunctionG ?? 0.8,
+          absorptionExtinctionScale: options?.atmosphere?.scattering?.absorptionExtinctionScale ?? 1,
+          groundAlbedo: options?.atmosphere?.scattering?.groundAlbedo ?? 0.1
+        },
+        sky: {
+          stars: options?.atmosphere?.sky?.stars ?? true,
+          starsIntensity: options?.atmosphere?.sky?.starsIntensity ?? 1,
+          starsPointSize: options?.atmosphere?.sky?.starsPointSize ?? 1,
+          sun: options?.atmosphere?.sky?.sun ?? true,
+          moon: options?.atmosphere?.sky?.moon ?? true,
+          ground: options?.atmosphere?.sky?.ground ?? true,
+          sunAngularRadius: options?.atmosphere?.sky?.sunAngularRadius ?? 0.004675,
+          moonAngularRadius: options?.atmosphere?.sky?.moonAngularRadius ?? 0.0045,
+          lunarRadianceScale: options?.atmosphere?.sky?.lunarRadianceScale ?? 1
+        },
+        shadow: {
+          radius: options?.atmosphere?.shadow?.radius ?? 3,
+          sampleCount: options?.atmosphere?.shadow?.sampleCount ?? 8
+        },
+        fallbackAmbientLight: {
+          show: options?.atmosphere?.fallbackAmbientLight?.show ?? true,
+          intensity: options?.atmosphere?.fallbackAmbientLight?.intensity ?? 0.5
+        }
+      },
+      clouds: {
+        show: options?.clouds?.show ?? true,
+        quality: options?.clouds?.quality,
+        coverage: options?.clouds?.coverage ?? 0.3,
+        speed: options?.clouds?.speed ?? 0.001,
+        layer: {
+          altitude: options?.clouds?.layer?.altitude ?? 1500,
+          height: options?.clouds?.layer?.height ?? 650
+        }
+      },
+      surface: {
+        materialMode: options?.surface?.materialMode ?? 'auto'
+      },
+      postProcess: {
+        lensFlare: options?.postProcess?.lensFlare ?? true,
+        smaa: options?.postProcess?.smaa ?? true,
+        dithering: options?.postProcess?.dithering ?? false,
+        toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 10
+      }
     }
-  }
-
-  private applyInitialAtmosphereOptions(options: Required<NonNullable<ViewerOptions['scene']>>) {
-    this.atmosphere.inscatterIntensity = options.atmosphereInscatterIntensity
-    this.atmosphere.inscatterHorizonBlend = options.atmosphereInscatterHorizonBlend
-    this.atmosphere.inscatterHorizonRange = options.atmosphereInscatterHorizonRange
-    this.atmosphere.correctAltitude = options.atmosphereCorrectAltitude
-    this.atmosphere.correctGeometricError = options.atmosphereCorrectGeometricError
-    this.atmosphere.lightingMode = options.atmosphereLightingMode
-    this.atmosphere.sunLightIntensity = options.atmosphereSunLightIntensity
-    this.atmosphere.skyLightIntensity = options.atmosphereSkyLightIntensity
-    this.atmosphere.sunLight = options.atmosphereSunLight
-    this.atmosphere.skyLight = options.atmosphereSkyLight
-    this.atmosphere.albedoScale = options.atmosphereAlbedoScale
-    this.atmosphere.starsVisible = options.stars
-    this.atmosphere.starsIntensity = options.starsIntensity
-    this.atmosphere.starsPointSize = options.starsPointSize
   }
 
   private createTransparentOverlayTexture() {
@@ -879,9 +938,9 @@ export class Viewer {
   }
 
   private syncAtmosphereInscatter() {
-    this.atmosphere.inscatterIntensity = this.scene.atmosphereInscatterIntensity
-    this.atmosphere.inscatterHorizonBlend = this.scene.atmosphereInscatterHorizonBlend
-    this.atmosphere.inscatterHorizonRange = this.scene.atmosphereInscatterHorizonRange
+    this.atmosphere.inscatterIntensity = this.scene.atmosphere.scattering.intensity
+    this.atmosphere.inscatterHorizonBlend = this.scene.atmosphere.scattering.horizonBlend
+    this.atmosphere.inscatterHorizonRange = this.scene.atmosphere.scattering.horizonRange
   }
 
   private syncFallbackAmbientLight() {
@@ -1061,11 +1120,11 @@ export class Viewer {
 
   private syncSurfaceMaterialMode() {
     this.tilesets.setSurfaceMaterialMode(
-      this.resolveSurfaceMaterialMode(this.scene.surfaceMaterialMode, this.scene.atmosphereLightingMode)
+      this.resolveSurfaceMaterialMode(this.scene.surface.materialMode, this.scene.atmosphere.lighting.mode)
     )
-    const contentMaterialMode = this.resolveSceneContentMaterialMode(this.scene.atmosphereLightingMode)
+    const contentMaterialMode = this.resolveSceneContentMaterialMode(this.scene.atmosphere.lighting.mode)
     this.tilesets.setSceneTilesetMaterialMode(contentMaterialMode)
-    const modelMaterialMode = this.resolveModelMaterialMode(this.scene.atmosphereLightingMode)
+    const modelMaterialMode = this.resolveModelMaterialMode(this.scene.atmosphere.lighting.mode)
     this.modelLayers.forEach((layer) => {
       layer.setMaterialMode(modelMaterialMode)
     })

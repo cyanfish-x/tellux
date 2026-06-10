@@ -83,18 +83,24 @@ if (globeContainer instanceof HTMLElement) {
       far: 8000000
     },
     scene: {
-      clouds: true,
-      skyAtmosphere: true,
-      cloudCoverage: 0.35,
-      lensFlare: true,
-      smaa: true,
-      toneMappingExposure: 8
+      atmosphere: {
+        show: true
+      },
+      clouds: {
+        show: true,
+        coverage: 0.35
+      },
+      postProcess: {
+        lensFlare: true,
+        smaa: true,
+        toneMappingExposure: 8
+      }
     },
     resolutionScale: Math.min(window.devicePixelRatio, 1.5)
   })
 
-  viewer.scene.cloudLayerAltitude = 1500
-  viewer.scene.cloudLayerHeight = 650
+  viewer.scene.clouds.layerAltitude = 1500
+  viewer.scene.clouds.layerHeight = 650
   viewer.clock.currentTime = HERO_CLOCK_TIME
   viewer.clock.animate = false
   ;(window as any).viewer = viewer

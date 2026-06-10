@@ -251,19 +251,23 @@ Tellux provides two atmosphere lighting modes. The default is `light-source`:
 ```ts
 const viewer = new tellux.Viewer(container, {
   scene: {
-    atmosphereLightingMode: 'light-source'
+    atmosphere: {
+      lighting: {
+        mode: 'light-source'
+      }
+    }
   }
 })
 ```
 
-`light-source` uses Takram's sun directional light and sky light probe in the Three.js scene. It is the best default for most 3D GIS scenes: 3D Tiles, terrain, imagery overlays, custom Three.js objects, and PBR materials can all use the normal Three.js lighting path. You can tune the light source intensity with `atmosphereSunLightIntensity` and `atmosphereSkyLightIntensity`:
+`light-source` uses Takram's sun directional light and sky light probe in the Three.js scene. It is the best default for most 3D GIS scenes: 3D Tiles, terrain, imagery overlays, custom Three.js objects, and PBR materials can all use the normal Three.js lighting path. You can tune the light source intensity with `scene.atmosphere.lighting`:
 
 ```ts
-viewer.scene.atmosphereLightingMode = 'light-source'
-viewer.scene.atmosphereSunLight = true
-viewer.scene.atmosphereSkyLight = true
-viewer.scene.atmosphereSunLightIntensity = 1.2
-viewer.scene.atmosphereSkyLightIntensity = 0.8
+viewer.scene.atmosphere.lighting.mode = 'light-source'
+viewer.scene.atmosphere.lighting.sunLight = true
+viewer.scene.atmosphere.lighting.skyLight = true
+viewer.scene.atmosphere.lighting.sunLightIntensity = 1.2
+viewer.scene.atmosphere.lighting.skyLightIntensity = 0.8
 ```
 
 `post-process` is Takram's native aerial-perspective post-process lighting path. It treats the rendered color buffer as surface albedo, then applies sun light, sky light, atmospheric transmittance, and in-scattering in `AerialPerspectiveEffect`. This mode is useful for advanced scenes that want a more unified atmospheric post-process look, but the input materials should be albedo materials unaffected by Three.js lights, such as `MeshBasicMaterial` or glTF `KHR_materials_unlit`.
@@ -271,10 +275,10 @@ viewer.scene.atmosphereSkyLightIntensity = 0.8
 When loading 3D Tiles, if the source data is not already unlit but you want it to participate in `post-process` lighting, use `materialMode: 'unlit'` explicitly:
 
 ```ts
-viewer.scene.atmosphereLightingMode = 'post-process'
-viewer.scene.atmosphereSunLight = true
-viewer.scene.atmosphereSkyLight = true
-viewer.scene.atmosphereAlbedoScale = 0.6
+viewer.scene.atmosphere.lighting.mode = 'post-process'
+viewer.scene.atmosphere.lighting.sunLight = true
+viewer.scene.atmosphere.lighting.skyLight = true
+viewer.scene.atmosphere.lighting.albedoScale = 0.6
 
 const layer = viewer.load3DTileset({
   type: 'url',
@@ -362,8 +366,8 @@ await model.ready
 viewer.flyToTarget(model.root)
 
 viewer.scene.clouds.show = false
-viewer.scene.skyAtmosphere.show = true
-viewer.scene.postProcessStages.smaa.enabled = true
+viewer.scene.atmosphere.show = true
+viewer.scene.postProcess.smaa.enabled = true
 viewer.toneMappingExposure = 8
 viewer.resolutionScale = 1.5
 

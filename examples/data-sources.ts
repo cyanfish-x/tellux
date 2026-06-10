@@ -253,8 +253,12 @@ const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
   layers: initialLayers,
   scene: {
-    clouds: false,
-    toneMappingExposure: 7,
+    clouds: {
+      show: false
+    },
+    postProcess: {
+      toneMappingExposure: 7
+    }
   },
   terrain: undefined,
 })

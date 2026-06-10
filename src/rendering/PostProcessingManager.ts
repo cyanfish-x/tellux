@@ -68,7 +68,7 @@ export class PostProcessingManager {
 
   private syncEffects(currentHeight: number | null, forceRecompile: boolean) {
     const nextEffects: ThreeEffectPass[] = []
-    const shouldRenderAtmosphere = this.scene.skyAtmosphere.show
+    const shouldRenderAtmosphere = this.scene.atmosphere.show
     const shouldRenderClouds =
       shouldRenderAtmosphere &&
       this.scene.clouds.show &&
@@ -76,9 +76,9 @@ export class PostProcessingManager {
     const effectsKey = [
       shouldRenderAtmosphere,
       shouldRenderClouds,
-      this.scene.postProcessStages.lensFlare.enabled,
-      this.scene.postProcessStages.smaa.enabled,
-      this.scene.postProcessStages.dithering.enabled
+      this.scene.postProcess.lensFlare.enabled,
+      this.scene.postProcess.smaa.enabled,
+      this.scene.postProcess.dithering.enabled
     ].join(':')
 
     this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
@@ -95,13 +95,13 @@ export class PostProcessingManager {
     } else if (shouldRenderAtmosphere) {
       nextEffects.push(this.atmosphereAdapter)
     }
-    if (this.scene.postProcessStages.lensFlare.enabled) {
+    if (this.scene.postProcess.lensFlare.enabled) {
       nextEffects.push(this.lensFlareAdapter)
     }
-    if (this.scene.postProcessStages.smaa.enabled) {
+    if (this.scene.postProcess.smaa.enabled) {
       nextEffects.push(this.smaaAdapter)
     }
-    if (this.scene.postProcessStages.dithering.enabled) {
+    if (this.scene.postProcess.dithering.enabled) {
       nextEffects.push(this.ditheringAdapter)
     }
 
