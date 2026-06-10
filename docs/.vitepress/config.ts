@@ -11,6 +11,10 @@ export default ({ command }: ConfigEnv) => defineConfig({
   lang: 'zh-CN',
   themeConfig: {
     logo: { text: 'T' },
+    logoLink:
+      command === 'serve'
+        ? 'http://127.0.0.1:5173/'
+        : '../../index.html',
     siteTitle: 'Tellux',
     nav: [
       { text: '指南', link: '/guide/getting-started' },

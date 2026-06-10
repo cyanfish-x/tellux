@@ -8,7 +8,24 @@ const arcgisWorldImageryUrl =
 tellux.baseUrl = '/tellux/'
 
 const nav = document.querySelector('.portal-nav')
+const docsLink = document.querySelector<HTMLAnchorElement>('[data-docs-link]')
 const globeContainer = document.querySelector('#portal-globe-viewer')
+
+const getDocsUrl = () => {
+  const isLocalExamplesDev =
+    (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') &&
+    window.location.port === '5173'
+
+  if (isLocalExamplesDev) {
+    return 'http://127.0.0.1:5174/docs/'
+  }
+
+  return new URL('./docs/', window.location.href).toString()
+}
+
+if (docsLink) {
+  docsLink.href = getDocsUrl()
+}
 
 if (nav instanceof HTMLElement) {
   const updateNavigationSurface = () => {
