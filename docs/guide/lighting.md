@@ -54,17 +54,20 @@ viewer.scene.atmosphereSkyLight = true
 viewer.scene.atmosphereAlbedoScale = 0.6
 ```
 
-加载 3D Tiles 时，如果数据本身不是 unlit 材质，但希望它参与 `post-process` 光照，可以显式使用 `materialMode: 'unlit'`：
+Tellux 会根据当前光照模式自动调整 Viewer 管理的基础地表、地形、`load3DTileset` 瓦片和 `addModel` 模型材质：`post-process` 使用不受 Three.js 光源影响的 basic 材质，`light-source` 使用 standard 材质。
+
+摄影测量 3D Tiles 的几何法线可能缺失或不稳定。此时可以为该 3D Tiles 图层重新生成折痕法线，让 `NormalPass` 为后处理光照提供更稳定的几何法线：
 
 ```ts
 const layer = viewer.load3DTileset({
-  type: 'url',
-  url: 'https://example.com/tileset.json',
-  materialMode: 'unlit'
+  type: 'cesium-ion',
+  assetId: 2275207,
+  apiToken,
+  creasedNormals: true
 })
 ```
 
-如果在 `post-process` 模式下仍使用 PBR 或其他受光材质，场景中的 Three.js 光源会被关闭，瓦片在进入后处理前可能已经变暗甚至变黑。此时要么改用默认的 `light-source`，要么为需要后处理光照的 3D Tiles 使用 `materialMode: 'unlit'`。
+如果应用明确希望某个 3D Tiles 图层始终不受 Three.js 光源影响，仍然可以使用 `materialMode: 'unlit'` 强制保持 basic 材质。强制 unlit 的图层不会随光照模式切回 standard。
 
 ## 常用光照参数
 

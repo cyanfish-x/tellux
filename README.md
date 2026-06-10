@@ -389,7 +389,7 @@ flowchart TB
 
   TilesetManager --> Sources["layers[].source<br/>xyz / cesium-ion / mvt / wms / geojson"]
   TilesetManager --> TilesRenderer["3d-tiles-renderer<br/>TilesRenderer / plugins"]
-  TilesetManager --> TilePlugins["本地插件<br/>TerrainFetchPlugin<br/>TileCreasedNormalsPlugin"]
+  TilesetManager --> TilePlugins["本地插件<br/>TerrainFetchPlugin<br/>图层级 TileCreasedNormalsPlugin"]
 
   AtmosphereManager --> Takram["@takram<br/>atmosphere / clouds / geospatial"]
   PostProcessingManager --> Postprocessing["postprocessing<br/>EffectPass / NormalPass"]

@@ -361,17 +361,6 @@ export interface ViewerOptions {
      * independent from {@link Clock.multiplier}.
      */
     cloudSpeed?: number
-    /**
-     * 是否为 3D Tiles 网格重新生成折痕法线，默认 `false`。
-     *
-     * 该处理会改善部分瓦片的光照边缘，但会增加瓦片加载时的 CPU 和内存成本。
-     *
-     * Regenerates creased normals for 3D Tiles meshes. Defaults to `false`.
-     *
-     * This can improve lighting edges for some tiles, but adds CPU and memory
-     * cost while tiles load.
-     */
-    creasedNormals?: boolean
   }
   /**
    * 为 `true` 时自动启动渲染循环。
@@ -628,11 +617,40 @@ export interface TerrainOptions {
 }
 
 /**
- * 通过 tileset JSON URL 加载 3D Tiles 的配置。
+ * 3D Tiles 图层渲染选项。
  *
- * Options for loading 3D Tiles from a tileset JSON URL.
+ * Rendering options shared by 3D Tiles layers.
  */
-export interface Url3DTilesetOptions {
+export interface ThreeDTilesRenderOptions {
+  /**
+   * 3D Tiles 材质模式。默认根据 Viewer 大气光照模式自动选择：`post-process` 使用 unlit，`light-source` 使用 standard。
+   *
+   * `unlit` 会把瓦片网格转换为不受 Three.js 光源影响的材质，适合把瓦片颜色作为 Takram 后处理光照的 albedo 输入。
+   *
+   * 3D Tiles material mode. By default, this follows the Viewer atmosphere
+   * lighting mode: `post-process` uses unlit materials, while `light-source`
+   * uses standard materials.
+   *
+   * `unlit` converts tile meshes to materials unaffected by Three.js light
+   * sources, suitable for using tile colors as albedo input for Takram
+   * post-process lighting.
+   */
+  materialMode?: 'unlit'
+  /**
+   * 是否为当前 3D Tiles 图层重新生成折痕法线，默认 `false`。
+   *
+   * 该处理适合摄影测量等法线缺失或不稳定的瓦片，可改善基于 NormalPass 的后处理光照边缘，但会增加瓦片加载时的 CPU 和内存成本。
+   *
+   * Regenerates creased normals for this 3D Tiles layer. Defaults to `false`.
+   *
+   * This is useful for photogrammetry tiles with missing or unstable normals and
+   * can improve NormalPass-based post-process lighting edges, but adds CPU and
+   * memory cost while tiles load.
+   */
+  creasedNormals?: boolean
+}
+
+export interface Url3DTilesetOptions extends ThreeDTilesRenderOptions {
   /** 数据源类型。Data source type. */
   type: 'url'
   /**
@@ -647,20 +665,6 @@ export interface Url3DTilesetOptions {
    * URL of the `tileset.json`.
    */
   url: string
-  /**
-   * 3D Tiles 材质模式。默认根据 Viewer 大气光照模式自动选择：`post-process` 使用 unlit，`light-source` 使用 standard。
-   *
-   * `unlit` 会把瓦片网格转换为不受 Three.js 光源影响的材质，适合把瓦片颜色作为 Takram 后处理光照的 albedo 输入。
-   *
-   * 3D Tiles material mode. By default, this follows the Viewer atmosphere
-   * lighting mode: `post-process` uses unlit materials, while `light-source`
-   * uses standard materials.
-   *
-   * `unlit` converts tile meshes to materials unaffected by Three.js light
-   * sources, suitable for using tile colors as albedo input for Takram
-   * post-process lighting.
-   */
-  materialMode?: 'unlit'
 }
 
 /**
@@ -668,7 +672,7 @@ export interface Url3DTilesetOptions {
  *
  * Options for loading 3D Tiles from a Cesium Ion asset.
  */
-export interface CesiumIon3DTilesetOptions {
+export interface CesiumIon3DTilesetOptions extends ThreeDTilesRenderOptions {
   /** 数据源类型。Data source type. */
   type: 'cesium-ion'
   /**
@@ -683,20 +687,6 @@ export interface CesiumIon3DTilesetOptions {
   assetId: string | number
   /** 是否自动刷新 Cesium Ion endpoint 授权，默认 `true`。Refreshes Cesium Ion endpoint authorization automatically. Defaults to `true`. */
   autoRefreshToken?: boolean
-  /**
-   * 3D Tiles 材质模式。默认根据 Viewer 大气光照模式自动选择：`post-process` 使用 unlit，`light-source` 使用 standard。
-   *
-   * `unlit` 会把瓦片网格转换为不受 Three.js 光源影响的材质，适合把瓦片颜色作为 Takram 后处理光照的 albedo 输入。
-   *
-   * 3D Tiles material mode. By default, this follows the Viewer atmosphere
-   * lighting mode: `post-process` uses unlit materials, while `light-source`
-   * uses standard materials.
-   *
-   * `unlit` converts tile meshes to materials unaffected by Three.js light
-   * sources, suitable for using tile colors as albedo input for Takram
-   * post-process lighting.
-   */
-  materialMode?: 'unlit'
 }
 
 /**

@@ -26,6 +26,7 @@ export class PostProcessingManager {
     private readonly getCurrentHeight: () => number | null
   ) {
     const normalPass = new NormalPass(threeScene, this.camera)
+    this.configureNormalPass(normalPass)
     this.atmosphere.aerialPerspectiveEffect.normalBuffer = normalPass.texture
 
     this.cloudAtmosphereAdapter = new EffectPassAdapter(
@@ -110,6 +111,13 @@ export class PostProcessingManager {
 
   private shouldRenderCloudsAtHeight(currentHeight: number | null) {
     return currentHeight !== null && Number.isFinite(currentHeight) && currentHeight < CLOUD_RENDER_MAX_HEIGHT
+  }
+
+  private configureNormalPass(normalPass: NormalPass) {
+    const pass = normalPass as NormalPass & {
+      renderTarget: THREE.WebGLRenderTarget
+    }
+    pass.renderTarget.texture.type = THREE.HalfFloatType
   }
 
   dispose() {

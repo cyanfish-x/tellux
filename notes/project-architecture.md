@@ -111,7 +111,7 @@ flowchart TB
   Common --> GLTF["GLTFExtensionsPlugin<br/>Draco / glTF 扩展"]
   Common --> Fade["TilesFadePlugin<br/>LOD fade"]
   Common --> UpdateOnChange["UpdateOnChangePlugin<br/>按需更新"]
-  Common --> Normals["TileCreasedNormalsPlugin<br/>可选折痕法线"]
+  SceneTiles --> Normals["TileCreasedNormalsPlugin<br/>图层级可选折痕法线"]
 
   TM --> Imagery["影像注册"]
   Imagery --> XYZ["XYZTilesOverlay"]
