@@ -18,9 +18,15 @@ importers:
       3d-tiles-renderer:
         specifier: ^0.4.27
         version: 0.4.27(@mapbox/vector-tile@2.0.5)(@react-three/fiber@9.6.1(@types/react@19.2.16)(react@19.2.7)(three@0.184.0))(pbf@4.0.2)(react@19.2.7)(three@0.184.0)
+      3d-tiles-rendererjs-3dgs-plugin:
+        specifier: ^0.1.13
+        version: 0.1.13(3d-tiles-renderer@0.4.27(@mapbox/vector-tile@2.0.5)(@react-three/fiber@9.6.1(@types/react@19.2.16)(react@19.2.7)(three@0.184.0))(pbf@4.0.2)(react@19.2.7)(three@0.184.0))(@sparkjsdev/spark@2.1.0(three@0.184.0))(three@0.184.0)
       '@mapbox/vector-tile':
         specifier: ^2.0.5
         version: 2.0.5
+      '@sparkjsdev/spark':
+        specifier: ^2.1.0
+        version: 2.1.0(three@0.184.0)
       '@takram/three-atmosphere':
         specifier: 0.19.1
         version: 0.19.1(@react-three/fiber@9.6.1(@types/react@19.2.16)(react@19.2.7)(three@0.184.0))(postprocessing@6.39.1(three@0.184.0))(react@19.2.7)(three@0.184.0)
@@ -100,6 +106,14 @@ packages:
         optional: true
       three:
         optional: true
+
+  3d-tiles-rendererjs-3dgs-plugin@0.1.13:
+    resolution: {integrity: sha512-qllQEEjVno1GWvZdkteLfMSQAkRkrszLsgswB0CasuqfG8IjHBX+I5EuMRiKGXkjqaFO30GnY4/7c9lqDK9F0w==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      3d-tiles-renderer: ^0.4.25
+      '@sparkjsdev/spark': ^2.1.0
+      three: '>=0.180.0'
 
   '@algolia/abtesting@1.19.0':
     resolution: {integrity: sha512-Lhnez3hhXHk25lfxLAMxvkP4fmN3+1RgADhD2ssMDBYuAsDVReeyP+3SGRx+ntq8ijMrLqUyfvO72TB6jsTteQ==}
@@ -566,6 +580,11 @@ packages:
 
   '@shikijs/vscode-textmate@10.0.2':
     resolution: {integrity: sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg==}
+
+  '@sparkjsdev/spark@2.1.0':
+    resolution: {integrity: sha512-BRw+MuMzx0B3K8fDLQygt2OHEhYUV+41RX7btq9pZ3rCVrq42o57jW34VAIvC7JO/84DJh/1AutACV9ym6BfVg==}
+    peerDependencies:
+      three: '>=0.180.0'
 
   '@takram/three-atmosphere@0.19.1':
     resolution: {integrity: sha512-k/QAgED7bMkjVzHiBu2QD1Cqg5lcgHLc8vxVeiTTzUE+glZcZOXTjjvi74yjb+eKQHW5wh1WL/DjxVvluAQU0Q==}
@@ -1440,6 +1459,12 @@ snapshots:
       react: 19.2.7
       three: 0.184.0
 
+  3d-tiles-rendererjs-3dgs-plugin@0.1.13(3d-tiles-renderer@0.4.27(@mapbox/vector-tile@2.0.5)(@react-three/fiber@9.6.1(@types/react@19.2.16)(react@19.2.7)(three@0.184.0))(pbf@4.0.2)(react@19.2.7)(three@0.184.0))(@sparkjsdev/spark@2.1.0(three@0.184.0))(three@0.184.0):
+    dependencies:
+      3d-tiles-renderer: 0.4.27(@mapbox/vector-tile@2.0.5)(@react-three/fiber@9.6.1(@types/react@19.2.16)(react@19.2.7)(three@0.184.0))(pbf@4.0.2)(react@19.2.7)(three@0.184.0)
+      '@sparkjsdev/spark': 2.1.0(three@0.184.0)
+      three: 0.184.0
+
   '@algolia/abtesting@1.19.0':
     dependencies:
       '@algolia/client-common': 5.53.0
@@ -1814,6 +1839,11 @@ snapshots:
       '@types/hast': 3.0.4
 
   '@shikijs/vscode-textmate@10.0.2': {}
+
+  '@sparkjsdev/spark@2.1.0(three@0.184.0)':
+    dependencies:
+      fflate: 0.8.3
+      three: 0.184.0
 
   '@takram/three-atmosphere@0.19.1(@react-three/fiber@9.6.1(@types/react@19.2.16)(react@19.2.7)(three@0.184.0))(postprocessing@6.39.1(three@0.184.0))(react@19.2.7)(three@0.184.0)':
     dependencies:
