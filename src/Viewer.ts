@@ -318,7 +318,7 @@ export class Viewer {
     this.scene = new Scene(
       sceneOptions,
       () => atmosphere?.cloudsEffect ?? null,
-      () => atmosphere ?? null,
+      (state) => atmosphere?.applyAtmosphereState(state),
       () => postProcessing?.applyEffects(),
       () => {
         if (tilesets) this.syncSurfaceMaterialMode()
@@ -729,7 +729,6 @@ export class Viewer {
     this.controls.update()
     this.debugSettingsPanel?.update(deltaTime, time)
     this.timeline?.update(deltaTime)
-    this.syncAtmosphereInscatter()
     const currentHeight = this.syncFallbackAmbientLight()
     this.postProcessing.updateForCameraHeight(currentHeight)
     this.tilesets.update()
@@ -935,12 +934,6 @@ export class Viewer {
 
   private syncControlsEllipsoid() {
     this.controls.setEllipsoid(this.tilesets.surfaceTileset.ellipsoid, this.tilesets.surfaceTileset.group)
-  }
-
-  private syncAtmosphereInscatter() {
-    this.atmosphere.inscatterIntensity = this.scene.atmosphere.scattering.intensity
-    this.atmosphere.inscatterHorizonBlend = this.scene.atmosphere.scattering.horizonBlend
-    this.atmosphere.inscatterHorizonRange = this.scene.atmosphere.scattering.horizonRange
   }
 
   private syncFallbackAmbientLight() {

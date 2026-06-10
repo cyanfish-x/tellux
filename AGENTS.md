@@ -22,7 +22,7 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 涉及项目主页、文档站点、示例站点或 Sandcastle 的改动前，优先阅读：
 
-- `notes/examples-architecture.md`
+- `notes/examples文档与Sandcastle架构.md`
 
 该文档是维护者架构说明，用于快速理解：
 
@@ -42,22 +42,25 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 `notes/` 存放项目级备忘、架构说明、能力调研和实现链路。遇到对应主题时，先读相关 notes，再进入源码细节。
 
-- 涉及 Viewer 创建流程、每帧渲染流程、TilesetManager、地形 / 影像 / surface tileset 生命周期时，先读 `notes/project-architecture.md`。
-- 涉及历史 bug、容易误判的实现方向、渲染循环抢占和高度采样副作用时，先读 `notes/project-pitfalls.md`。
-- 涉及 `sampleHeightMostDetailed`、地形高度采样、离屏采样、采样专用 tileset、LoadRegionPlugin 或 raycast 高度求交时，先读 `notes/sample-height-most-detailed.md`。
-- 涉及 3D Tiles 能力评估、数据格式、LOD、调试、性能、Cesium Ion、地形或影像瓦片能力时，先读 `notes/3d-tiles-renderer-capabilities.md`。
-- 涉及 3D Tiles plugin / overlay 取舍、认证插件、GLTFExtensionsPlugin、QuantizedMeshPlugin、ImageOverlayPlugin、TilesFadePlugin、UpdateOnChangePlugin、MVT / GeoJSON overlay 时，先读 `notes/3d-tiles-renderer-plugins-and-overlays.md`。
-- 涉及经纬高、椭球、大地坐标、瓦片坐标、STBN / typed array 资源加载或 geospatial shader 工具时，先读 `notes/takram-three-geospatial-capabilities.md`。
-- 涉及天空大气、空气透视、太阳 / 月亮方向、光源式光照、星空材质或与云层合成时，先读 `notes/takram-three-atmosphere-capabilities.md`。
-- 涉及体积云、云层建模、天气贴图、噪声纹理、程序化纹理、云影或云渲染性能时，先读 `notes/takram-three-clouds-capabilities.md`。
-- 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/takram-three-geospatial-effects-capabilities.md`。
-- 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/examples-architecture.md`。
+- 涉及 Viewer 创建流程、每帧渲染流程、TilesetManager、地形 / 影像 / surface tileset 生命周期时，先读 `notes/项目架构.md`。
+- 涉及历史 bug、容易误判的实现方向、渲染循环抢占和高度采样副作用时，先读 `notes/项目坑点记录.md`。
+- 涉及 `Scene` 运行时控制对象、`AtmosphereManager` 状态同步、大气用户态和底层 effect/light 状态边界时，先读 `notes/坑点记录/Scene与AtmosphereManager双状态坑点.md`。
+- 涉及 `sampleHeightMostDetailed`、地形高度采样、离屏采样、采样专用 tileset、LoadRegionPlugin 或 raycast 高度求交时，先读 `notes/sampleHeightMostDetailed实现链路.md`。
+- 涉及 3D Tiles 能力评估、数据格式、LOD、调试、性能、Cesium Ion、地形或影像瓦片能力时，先读 `notes/3d-tiles-renderer能力备忘.md`。
+- 涉及 3D Tiles plugin / overlay 取舍、认证插件、GLTFExtensionsPlugin、QuantizedMeshPlugin、ImageOverlayPlugin、TilesFadePlugin、UpdateOnChangePlugin、MVT / GeoJSON overlay 时，先读 `notes/3d-tiles-renderer插件与影像叠加能力备忘.md`。
+- 涉及经纬高、椭球、大地坐标、瓦片坐标、STBN / typed array 资源加载或 geospatial shader 工具时，先读 `notes/takram-three-geospatial能力备忘.md`。
+- 涉及天空大气、空气透视、太阳 / 月亮方向、光源式光照、星空材质或与云层合成时，先读 `notes/takram-three-atmosphere能力备忘.md`。
+- 涉及体积云、云层建模、天气贴图、噪声纹理、程序化纹理、云影或云渲染性能时，先读 `notes/takram-three-clouds能力备忘.md`。
+- 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/takram-three-geospatial-effects能力备忘.md`。
+- 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/examples文档与Sandcastle架构.md`。
 
 ## 模块化与文件大小
 
 - 避免继续膨胀 `src/Viewer.ts`。新增功能默认先判断是否属于 `controls/`、`models/`、`sampling/`、`rendering/`、`tiles/` 等高内聚模块；`Viewer` 只保留公开 API、生命周期编排和跨模块协调。
 - 单文件超过约 800 行时应优先评估拆分；超过约 1000 行时，除非是生成文件或高度集中声明文件，新增逻辑前应先拆分出职责明确的类、函数或子模块。
 - 拆分遵循面向对象设计原则和 Clean Code：单一职责、高内聚、低耦合、依赖显式注入、隐藏内部实现细节，避免模块之间互相读取不必要的私有状态。
+- 运行时控制对象和底层 manager 之间避免维护同构状态。公开控制层表达用户态，manager 通过 adapter 接收完整状态快照或明确 patch，并负责适配到底层 effect/light/uniform。
+- 不要把渲染循环作为用户参数同步兜底。初始化和运行时 setter 应通过明确状态通道同步到底层，`render/update` 只推进时间、相机、资源和渲染流程。
 - 新模块命名应表达领域职责，而不是技术步骤；优先使用 `*Manager`、`*Layer`、`*Sampler`、`*Controls` 等项目已有命名风格。
 - 对外 API 的 JSDoc 和类型继续保留在公开入口或导出的类型上；内部模块只导出必要类型和类，避免把实现细节扩大成公共 API。
 - 拆分时保持行为兼容，优先移动代码和收窄依赖，再做重构；不要把无关格式化、重命名或行为调整混入同一次改动。
@@ -89,7 +92,7 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 ## 参考能力
 
-能力实现需要参考 /notes/3d-tiles-renderer-capabilities.md 文档中的能力描述；本库主要做API使用侧的易用性封装。
+能力实现需要参考 /notes/3d-tiles-renderer能力备忘.md 文档中的能力描述；本库主要做API使用侧的易用性封装。
 
 ## 参考仓库
 
