@@ -104,6 +104,7 @@ export type {
   SampleHeightOptions,
   TerrainOptions,
   TerrainTileLoadingOptions,
+  ThreeDTilesRenderOptions,
   SurfaceMaterialMode,
   TilesetLayer,
   Url3DTilesetOptions,
@@ -324,7 +325,6 @@ export class Viewer {
       dracoLoader: this.dracoLoader,
       transparentOverlayTexture: this.transparentOverlayTexture,
       terrain: options.terrain,
-      creasedNormals: sceneOptions.creasedNormals,
       surfaceMaterialMode: this.resolveSurfaceMaterialMode(
         sceneOptions.surfaceMaterialMode,
         sceneOptions.atmosphereLightingMode
@@ -843,8 +843,7 @@ export class Viewer {
       atmosphereSkyLight: options?.atmosphereSkyLight ?? true,
       atmosphereAlbedoScale: options?.atmosphereAlbedoScale ?? 1,
       fallbackAmbientLight: options?.fallbackAmbientLight ?? true,
-      fallbackAmbientLightIntensity: options?.fallbackAmbientLightIntensity ?? 0.5,
-      creasedNormals: options?.creasedNormals ?? false
+      fallbackAmbientLightIntensity: options?.fallbackAmbientLightIntensity ?? 0.5
     }
   }
 

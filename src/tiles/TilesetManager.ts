@@ -142,6 +142,9 @@ const KHR_MATERIALS_UNLIT = 'KHR_materials_unlit'
 type MaterialParams = Record<string, unknown>
 type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
 type SceneTilesetMaterialMode = RenderMaterialMode
+type TileModelProcessingOptions = {
+  creasedNormals?: boolean
+}
 
 type UnlitCompatibilityPlugin = GLTFLoaderPlugin & {
   extendParams(materialParams: MaterialParams, materialDef: Record<string, any>, parser: GLTFParser): Promise<unknown[]>
@@ -254,7 +257,6 @@ export interface TilesetManagerOptions {
   dracoLoader: DRACOLoader
   transparentOverlayTexture: THREE.Texture
   terrain?: TerrainOptions
-  creasedNormals?: boolean
   surfaceMaterialMode: ResolvedSurfaceMaterialMode
   sceneTilesetMaterialMode: SceneTilesetMaterialMode
 }
@@ -362,7 +364,7 @@ export class TilesetManager {
     }
 
     const tileset = this.createSceneTileset(options)
-    this.registerCommonTilesetPlugins(tileset)
+    this.registerCommonTilesetPlugins(tileset, this.getSceneTilesetModelProcessingOptions(options))
     this.registerSceneTilesetMaterialPlugins(tileset, options)
     this.sceneTilesets.set(id, tileset)
     this.sceneTilesetOptions.set(id, { ...options, id })
@@ -412,7 +414,7 @@ export class TilesetManager {
         const poolKey = `tileset:${id}`
         const tileset = this.acquireHeightSamplingTileset(poolKey, () => {
           const samplingTileset = this.createSceneTileset(options)
-          this.registerSamplingTilesetPlugins(samplingTileset)
+          this.registerGltfExtensionsPlugin(samplingTileset)
           this.registerSceneTilesetMaterialPlugins(samplingTileset, options)
           this.configureHeightSamplingTileset(samplingTileset)
           return samplingTileset
@@ -533,22 +535,32 @@ export class TilesetManager {
     return tileset
   }
 
-  private registerCommonTilesetPlugins(tileset: TilesRenderer) {
-    this.registerSamplingTilesetPlugins(tileset)
+  private registerCommonTilesetPlugins(tileset: TilesRenderer, modelProcessing: TileModelProcessingOptions = {}) {
+    this.registerGltfExtensionsPlugin(tileset)
+    this.registerTileModelProcessingPlugins(tileset, modelProcessing)
     tileset.registerPlugin(new TilesFadePlugin())
     tileset.registerPlugin(new UpdateOnChangePlugin())
     tileset.setCamera(this.options.camera)
     tileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
   }
 
-  private registerSamplingTilesetPlugins(tileset: TilesRenderer) {
+  private registerGltfExtensionsPlugin(tileset: TilesRenderer) {
     tileset.registerPlugin(new GLTFExtensionsPlugin({
       dracoLoader: this.options.dracoLoader,
       plugins: [createMaterialsUnlitCompatibilityPlugin],
       autoDispose: false
     }))
-    if (this.options.creasedNormals) {
+  }
+
+  private registerTileModelProcessingPlugins(tileset: TilesRenderer, options: TileModelProcessingOptions) {
+    if (options.creasedNormals) {
       tileset.registerPlugin(new TileCreasedNormalsPlugin())
+    }
+  }
+
+  private getSceneTilesetModelProcessingOptions(options: Load3DTilesetOptions): TileModelProcessingOptions {
+    return {
+      creasedNormals: options.creasedNormals ?? false
     }
   }
 
@@ -623,7 +635,7 @@ export class TilesetManager {
   private createHeightSamplingTerrainTileset(terrain: TerrainOptions) {
     const tileset = new TilesRenderer(this.normalizeTerrainUrl(terrain.url))
     this.registerTerrainProvider(tileset, terrain)
-    this.registerSamplingTilesetPlugins(tileset)
+    this.registerGltfExtensionsPlugin(tileset)
     this.configureHeightSamplingTileset(tileset)
     return tileset
   }

@@ -299,7 +299,7 @@ Tellux 当前已使用：
 - `GLTFExtensionsPlugin`
   - 配置 Draco loader。
 - `TileCreasedNormalsPlugin`
-  - Tellux 本地插件，用于法线处理。
+  - Tellux 本地插件，用于按 3D Tiles 图层重新生成折痕法线。
 - `TilesFadePlugin`
   - LOD fade。
 - `UpdateOnChangePlugin`

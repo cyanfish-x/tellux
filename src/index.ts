@@ -63,6 +63,7 @@ export {
   type SpringControlOptions,
   type TerrainOptions,
   type TerrainTileLoadingOptions,
+  type ThreeDTilesRenderOptions,
   type TelluxConfig,
   type TilesetLayer,
   type Url3DTilesetOptions,

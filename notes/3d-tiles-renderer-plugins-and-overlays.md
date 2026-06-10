@@ -114,7 +114,7 @@ Tellux 当前默认注册：
 
 - 会遍历 mesh 并重建 geometry。
 - CPU 和内存成本较高。
-- 当前 Tellux 通过 `scene.creasedNormals` 控制，默认关闭。
+- 当前 Tellux 通过 `load3DTileset({ creasedNormals: true })` 对单个 3D Tiles 图层启用，默认关闭。
 
 ### 地形和表面生成
 
@@ -501,7 +501,7 @@ flowchart LR
    - 每个 imagery layer 包含 source、style、顺序和可见性。
 
 4. 性能敏感插件先做可选项。
-   - `TileCreasedNormalsPlugin` 当前已默认关闭。
+   - `TileCreasedNormalsPlugin` 当前按 3D Tiles 图层启用，默认关闭。
    - `UnloadTilesPlugin`、`TileCompressionPlugin`、`BatchedTilesPlugin` 接入前应先做示例和压测。
 
 5. 调试能力可以单独形成 debug API。

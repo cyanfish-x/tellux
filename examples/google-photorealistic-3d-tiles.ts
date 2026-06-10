@@ -136,7 +136,7 @@ function logTileMaterialDebug(event: { scene: THREE.Object3D; url?: string }) {
   console.info('[Tellux][google-photorealistic-3d-tiles] material debug', {
     tileIndex: materialDebugTileCount,
     url: event.url,
-    materialMode: 'unlit',
+    materialMode: viewer.scene.atmosphereLightingMode === 'post-process' ? 'basic' : 'standard',
     sceneLighting: {
       hourUTC: viewer.clock.hourUTC,
       atmosphereLightingMode: viewer.scene.atmosphereLightingMode,
@@ -199,7 +199,7 @@ function loadGooglePhotorealisticTiles() {
     id: 'google-photorealistic-3d-tiles',
     assetId: GOOGLE_PHOTOREALISTIC_ASSET_ID,
     apiToken,
-    materialMode: 'unlit'
+    creasedNormals: true
   })
   materialDebugTileCount = 0
   materialDebugTotalCount = 0
