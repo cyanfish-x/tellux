@@ -57,12 +57,26 @@ new tellux.Viewer(container, {
     {
       source: {
         type: 'cesium-ion',
-        assetId: 2275207,
+        assetId: 123456,
         apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
       }
     }
   ]
 })
+```
+
+The `type: 'cesium-ion'` source in `layers` is for Cesium Ion imagery assets. Google Photorealistic 3D Tiles is a 3D Tiles asset and should be loaded with `viewer.load3DTileset(...)`:
+
+```ts
+const photorealisticLayer = viewer.load3DTileset({
+  type: 'cesium-ion',
+  assetId: 2275207,
+  apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
+})
+
+// When using it as a global 3D basemap, hide the default base globe surface
+// to avoid overlap with the photogrammetry mesh.
+viewer.tileset.group.visible = false
 ```
 
 Imagery layers are managed through `viewer.layers`. Layers are drawn from bottom to top:

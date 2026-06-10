@@ -55,12 +55,25 @@ new tellux.Viewer(container, {
     {
       source: {
         type: 'cesium-ion',
-        assetId: 2275207,
+        assetId: 123456,
         apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
       }
     }
   ]
 })
+```
+
+`layers` 中的 `type: 'cesium-ion'` 用于 Cesium Ion 影像资源。Google Photorealistic 3D Tiles 这类 3D Tiles 资源应通过 `viewer.load3DTileset(...)` 加载：
+
+```ts
+const photorealisticLayer = viewer.load3DTileset({
+  type: 'cesium-ion',
+  assetId: 2275207,
+  apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
+})
+
+// 作为全球三维底图使用时，可隐藏默认基础地球表面，避免与摄影测量网格重叠。
+viewer.tileset.group.visible = false
 ```
 
 影像图层统一通过 `viewer.layers` 管理，图层顺序按数组从下到上绘制：
