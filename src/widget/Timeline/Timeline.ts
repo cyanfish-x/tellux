@@ -1,12 +1,18 @@
+import { SpringControl } from "../../SpringControl"
 import type { Viewer } from "../../Viewer"
 import { installTimelineStyles } from "./styles"
 import type { TimelineOptions } from "./types"
 
 const DEFAULT_SPEEDS = [1, 60, 600, 3600, 21600, 86400] as const
 const MILLISECONDS_PER_DAY = 86400000
+const DEFAULT_SPRING_OPTIONS = {
+  stiffness: 80,
+  damping: 18,
+  precision: 0.05,
+} as const
 
 interface TimelineHandle {
-  update(): void
+  update(deltaTime: number): void
   dispose(): void
 }
 
@@ -22,8 +28,8 @@ export class Timeline {
     this.handle = mountTimeline(viewer, options)
   }
 
-  update() {
-    this.handle.update()
+  update(deltaTime = 0) {
+    this.handle.update(deltaTime)
   }
 
   dispose() {
@@ -120,6 +126,8 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   shell.appendChild(root)
 
   let isDragging = false
+  let isSpringDrivingClock = false
+  const timeSpring = createTimelineSpring(initialTime, options.spring)
 
   const updateRangeBounds = () => {
     const durationSeconds = getRangeDurationSeconds(rangeStart, rangeEnd)
@@ -136,6 +144,18 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     updateRangeBounds()
   }
 
+  const syncSpringDrivenClock = (deltaTime: number) => {
+    if (!timeSpring || !isSpringDrivingClock) return
+
+    const nextTime = unixSecondsToDate(timeSpring.tick(deltaTime))
+    viewer.clock.currentTime = nextTime
+
+    if (timeSpring.settled) {
+      isSpringDrivingClock = false
+      timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
+    }
+  }
+
   const syncDisplay = () => {
     const currentTime = viewer.clock.currentTime
     syncDynamicRange(currentTime)
@@ -149,9 +169,20 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     syncSpeedOption(speedSelect, viewer.clock.multiplier)
   }
 
+  const setCurrentTime = (date: Date) => {
+    if (!timeSpring) {
+      viewer.clock.currentTime = date
+      return
+    }
+
+    timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
+    timeSpring.target = dateToUnixSeconds(date)
+    isSpringDrivingClock = true
+  }
+
   const setCurrentTimeFromInput = () => {
     const seconds = Number(input.value)
-    viewer.clock.currentTime = new Date(rangeStart.getTime() + seconds * 1000)
+    setCurrentTime(new Date(rangeStart.getTime() + seconds * 1000))
     syncDisplay()
   }
 
@@ -159,13 +190,17 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     const duration = rangeEnd.getTime() - rangeStart.getTime()
     rangeStart = new Date(rangeStart.getTime() + direction * duration)
     rangeEnd = new Date(rangeEnd.getTime() + direction * duration)
-    viewer.clock.currentTime = new Date(viewer.clock.currentTime.getTime() + direction * duration)
+    setCurrentTime(new Date(viewer.clock.currentTime.getTime() + direction * duration))
     updateRangeBounds()
     syncDisplay()
   }
 
   playButton.addEventListener("click", () => {
     viewer.clock.animate = !viewer.clock.animate
+    if (viewer.clock.animate && timeSpring) {
+      isSpringDrivingClock = false
+      timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
+    }
     syncDisplay()
   })
   previousButton.addEventListener("click", () => {
@@ -195,11 +230,26 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   syncDisplay()
 
   return {
-    update: syncDisplay,
+    update(deltaTime: number) {
+      syncSpringDrivenClock(deltaTime)
+      syncDisplay()
+    },
     dispose() {
       root.remove()
     },
   }
+}
+
+function createTimelineSpring(
+  initialTime: Date,
+  options: TimelineOptions["spring"]
+) {
+  if (options === false) return null
+
+  return new SpringControl(
+    dateToUnixSeconds(initialTime),
+    options === undefined || options === true ? DEFAULT_SPRING_OPTIONS : options
+  )
 }
 
 function createSpeedOptions(select: HTMLSelectElement, multiplier: number) {
@@ -253,6 +303,14 @@ function isTimeInsideRange(date: Date, start: Date, end: Date) {
 function dateToOffsetSeconds(date: Date, start: Date, end: Date) {
   const offset = Math.round((date.getTime() - start.getTime()) / 1000)
   return clamp(offset, 0, getRangeDurationSeconds(start, end))
+}
+
+function dateToUnixSeconds(date: Date) {
+  return date.getTime() / 1000
+}
+
+function unixSecondsToDate(seconds: number) {
+  return new Date(seconds * 1000)
 }
 
 function getRangeDurationSeconds(start: Date, end: Date) {

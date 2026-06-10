@@ -1,6 +1,7 @@
 import type { AnimationClip, Object3D } from 'three'
 import type { TilesRenderer } from '3d-tiles-renderer'
 import type { CameraFlightEasingFunction } from './Camera'
+import type { SpringControlOptions } from './SpringControl'
 import type { Viewer } from './Viewer'
 
 /**
@@ -140,6 +141,16 @@ export interface TimelineOptions {
    * multiplier when omitted.
    */
   multiplier?: number
+  /**
+   * 时间条跳转过渡弹簧配置，默认启用。
+   *
+   * 设为 `false` 可关闭平滑过渡；设为对象可调整弹簧参数。
+   *
+   * Spring configuration for timeline time jumps. Enabled by default.
+   *
+   * Set to `false` to disable smoothing, or pass an object to tune the spring.
+   */
+  spring?: boolean | SpringControlOptions
 }
 
 /**
