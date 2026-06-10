@@ -283,6 +283,19 @@ export interface ViewerOptions {
      */
     atmosphereSkyLight?: boolean
     /**
+     * 后处理光照的反照率缩放，默认 `1`。
+     *
+     * 仅在 `post-process` 光照模式下影响空气透视后处理。Google Photorealistic 3D Tiles
+     * 等带有烘焙光照和阴影的纹理，可通过降低该值减弱过强的明暗对比。
+     *
+     * Albedo scale for post-process lighting. Defaults to `1`.
+     *
+     * Only affects aerial-perspective post-process lighting in `post-process`
+     * mode. For textures with baked lighting and shadows, such as Google
+     * Photorealistic 3D Tiles, lowering this value can reduce excessive contrast.
+     */
+    atmosphereAlbedoScale?: number
+    /**
      * 太阳光源辐射强度缩放，默认 `1`。
      *
      * 主要作用于 `light-source` 模式下的 Takram 太阳光源。
@@ -635,11 +648,13 @@ export interface Url3DTilesetOptions {
    */
   url: string
   /**
-   * 3D Tiles 材质模式，默认保留数据源材质。
+   * 3D Tiles 材质模式。默认根据 Viewer 大气光照模式自动选择：`post-process` 使用 unlit，`light-source` 使用 standard。
    *
    * `unlit` 会把瓦片网格转换为不受 Three.js 光源影响的材质，适合把瓦片颜色作为 Takram 后处理光照的 albedo 输入。
    *
-   * 3D Tiles material mode. By default, source materials are preserved.
+   * 3D Tiles material mode. By default, this follows the Viewer atmosphere
+   * lighting mode: `post-process` uses unlit materials, while `light-source`
+   * uses standard materials.
    *
    * `unlit` converts tile meshes to materials unaffected by Three.js light
    * sources, suitable for using tile colors as albedo input for Takram
@@ -669,11 +684,13 @@ export interface CesiumIon3DTilesetOptions {
   /** 是否自动刷新 Cesium Ion endpoint 授权，默认 `true`。Refreshes Cesium Ion endpoint authorization automatically. Defaults to `true`. */
   autoRefreshToken?: boolean
   /**
-   * 3D Tiles 材质模式，默认保留数据源材质。
+   * 3D Tiles 材质模式。默认根据 Viewer 大气光照模式自动选择：`post-process` 使用 unlit，`light-source` 使用 standard。
    *
    * `unlit` 会把瓦片网格转换为不受 Three.js 光源影响的材质，适合把瓦片颜色作为 Takram 后处理光照的 albedo 输入。
    *
-   * 3D Tiles material mode. By default, source materials are preserved.
+   * 3D Tiles material mode. By default, this follows the Viewer atmosphere
+   * lighting mode: `post-process` uses unlit materials, while `light-source`
+   * uses standard materials.
    *
    * `unlit` converts tile meshes to materials unaffected by Three.js light
    * sources, suitable for using tile colors as albedo input for Takram

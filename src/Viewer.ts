@@ -9,7 +9,7 @@ import { telluxConfig } from './config'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import type { ThreeRendererWithEffects } from './effects'
 import { LayerManager } from './LayerManager'
-import { GltfModelLayer } from './models/GltfModelLayer'
+import { GltfModelLayer, type ModelMaterialMode } from './models/GltfModelLayer'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { CartographicPicker } from './sampling/CartographicPicker'
@@ -50,6 +50,7 @@ import type {
 import type { GlobeControls } from '3d-tiles-renderer'
 
 type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
+type SceneTilesetMaterialMode = 'basic' | 'standard'
 
 export { Camera } from './Camera'
 export { Clock } from './Clock'
@@ -327,7 +328,8 @@ export class Viewer {
       surfaceMaterialMode: this.resolveSurfaceMaterialMode(
         sceneOptions.surfaceMaterialMode,
         sceneOptions.atmosphereLightingMode
-      )
+      ),
+      sceneTilesetMaterialMode: this.resolveSceneContentMaterialMode(sceneOptions.atmosphereLightingMode)
     })
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
@@ -525,7 +527,13 @@ export class Viewer {
       throw new Error(`Viewer: model "${id}" already exists.`)
     }
 
-    const layer = new GltfModelLayer(id, options, this.gltfLoader, (modelLayer) => this.removeModelLayer(modelLayer))
+    const layer = new GltfModelLayer(
+      id,
+      options,
+      this.gltfLoader,
+      this.resolveModelMaterialMode(this.scene.atmosphereLightingMode),
+      (modelLayer) => this.removeModelLayer(modelLayer)
+    )
     this.cartographicToMatrix4(options.coordinates, {
       heading: options.heading,
       pitch: options.pitch,
@@ -833,6 +841,7 @@ export class Viewer {
       atmosphereSkyLightIntensity: options?.atmosphereSkyLightIntensity ?? 1,
       atmosphereSunLight: options?.atmosphereSunLight ?? true,
       atmosphereSkyLight: options?.atmosphereSkyLight ?? true,
+      atmosphereAlbedoScale: options?.atmosphereAlbedoScale ?? 1,
       fallbackAmbientLight: options?.fallbackAmbientLight ?? true,
       fallbackAmbientLightIntensity: options?.fallbackAmbientLightIntensity ?? 0.5,
       creasedNormals: options?.creasedNormals ?? false
@@ -850,6 +859,7 @@ export class Viewer {
     this.atmosphere.skyLightIntensity = options.atmosphereSkyLightIntensity
     this.atmosphere.sunLight = options.atmosphereSunLight
     this.atmosphere.skyLight = options.atmosphereSkyLight
+    this.atmosphere.albedoScale = options.atmosphereAlbedoScale
     this.atmosphere.starsVisible = options.stars
     this.atmosphere.starsIntensity = options.starsIntensity
     this.atmosphere.starsPointSize = options.starsPointSize
@@ -1054,6 +1064,20 @@ export class Viewer {
     this.tilesets.setSurfaceMaterialMode(
       this.resolveSurfaceMaterialMode(this.scene.surfaceMaterialMode, this.scene.atmosphereLightingMode)
     )
+    const contentMaterialMode = this.resolveSceneContentMaterialMode(this.scene.atmosphereLightingMode)
+    this.tilesets.setSceneTilesetMaterialMode(contentMaterialMode)
+    const modelMaterialMode = this.resolveModelMaterialMode(this.scene.atmosphereLightingMode)
+    this.modelLayers.forEach((layer) => {
+      layer.setMaterialMode(modelMaterialMode)
+    })
+  }
+
+  private resolveSceneContentMaterialMode(atmosphereLightingMode: AtmosphereLightingMode): SceneTilesetMaterialMode {
+    return atmosphereLightingMode === 'post-process' ? 'basic' : 'standard'
+  }
+
+  private resolveModelMaterialMode(atmosphereLightingMode: AtmosphereLightingMode): ModelMaterialMode {
+    return atmosphereLightingMode === 'post-process' ? 'basic' : 'standard'
   }
 
   private static resolveContainer(container: HTMLElement | string) {

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="sandcastle-order" content="2.2" />
+    <title>Tellux 城市级海量模型加载</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar toolbar--wide" aria-label="城市级海量模型加载 controls">
+        <header class="toolbar__header">
+          <h1>城市级海量模型加载</h1>
+          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+        </header>
+        <p>通过 <code>viewer.load3DTileset</code> 加载 Cesium Ion asset 2275207，并隐藏默认基础地球表面，将城市级摄影测量 3D Tiles 作为海量模型底图使用。</p>
+        <label class="field">
+          <span>Cesium Ion token</span>
+          <input id="ion-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
+        </label>
+        <p id="tileset-status" class="status" aria-live="polite"></p>
+        <div class="toolbar__row">
+          <button class="button" id="load-tileset" type="button">加载 3D Tiles</button>
+          <button class="button" id="fly-to-city" type="button">定位到东京</button>
+        </div>
+      </section>
+      <aside id="google-attributions" class="tile-attributions" aria-label="地图数据来源"></aside>
+    </main>
+    <script type="module" src="./google-photorealistic-3d-tiles.ts"></script>
+  </body>
+</html>

@@ -1,7 +1,10 @@
 import * as THREE from 'three'
 import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import type { AddModelOptions, ModelLayer } from '../types'
+import { applyMaterialModeToObject, type RenderMaterialMode } from '../materials/materialMode'
 import { disposeObject } from './disposeObject'
+
+export type ModelMaterialMode = RenderMaterialMode
 
 export class GltfModelLayer implements ModelLayer {
   readonly root = new THREE.Group()
@@ -19,6 +22,7 @@ export class GltfModelLayer implements ModelLayer {
     readonly id: string,
     private readonly options: AddModelOptions,
     private readonly loader: GLTFLoader,
+    private currentMaterialMode: ModelMaterialMode,
     private readonly removeLayer: (layer: GltfModelLayer) => void
   ) {
     this.root.name = id
@@ -54,6 +58,7 @@ export class GltfModelLayer implements ModelLayer {
 
       const model = gltf.scene
       this.applyModelTransform(model)
+      this.applyMaterialMode(model)
       this.root.add(model)
       this.currentModel = model
       this.animations.splice(0, this.animations.length, ...gltf.animations)
@@ -113,6 +118,15 @@ export class GltfModelLayer implements ModelLayer {
     this.currentAction = null
   }
 
+  setMaterialMode(mode: ModelMaterialMode) {
+    if (this.currentMaterialMode === mode) return
+
+    this.currentMaterialMode = mode
+    if (this.currentModel) {
+      this.applyMaterialMode(this.currentModel)
+    }
+  }
+
   remove() {
     if (this.isRemoved) return
 
@@ -138,5 +152,9 @@ export class GltfModelLayer implements ModelLayer {
         model.position.y -= box.min.y
       }
     }
+  }
+
+  private applyMaterialMode(model: THREE.Object3D) {
+    applyMaterialModeToObject(model, this.currentMaterialMode)
   }
 }
