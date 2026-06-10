@@ -14,6 +14,7 @@ import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { CartographicPicker } from './sampling/CartographicPicker'
 import { HeightSampler } from './sampling/HeightSampler'
+import { TilesetFeaturePicker } from './sampling/TilesetFeaturePicker'
 import { Scene, type ResolvedSceneOptions } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
@@ -36,6 +37,7 @@ import type {
   FlyToTargetTarget,
   Load3DTilesetOptions,
   ModelLayer,
+  Picked3DTilesFeature,
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
   SampleHeightOptions,
@@ -101,6 +103,7 @@ export type {
   MVTFeatureProperties,
   MVTFeatureStyle,
   MVTGetStyleCallback,
+  Picked3DTilesFeature,
   ScreenPosition,
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
@@ -109,6 +112,7 @@ export type {
   TerrainTileLoadingOptions,
   ThreeDTilesRenderOptions,
   SurfaceMaterialMode,
+  TilesetFeatureProperties,
   TilesetLayer,
   Url3DTilesetOptions,
   ViewerClickEvent,
@@ -224,6 +228,7 @@ export class Viewer {
   private readonly postProcessing: PostProcessingManager
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
+  private readonly tilesetFeaturePicker: TilesetFeaturePicker
   private readonly heightSampler: HeightSampler
   private debugSettingsPanel: DebugSettingsPanel | null = null
   private timeline: Timeline | null = null
@@ -246,13 +251,15 @@ export class Viewer {
       x: originalEvent.clientX - rect.left,
       y: originalEvent.clientY - rect.top
     }
+    const tilesetFeature = this.pick3DTilesFeature(position)
 
     return {
       type,
       viewer: this,
       originalEvent,
       position,
-      cartographic: this.pickCartographic(position)
+      cartographic: tilesetFeature?.cartographic ?? this.pickCartographic(position),
+      tilesetFeature
     }
   }
   private hasEventListeners(type: keyof ViewerEventMap) {
@@ -350,6 +357,7 @@ export class Viewer {
     })
     tilesets = this.tilesets
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
+    this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
     this.camera.setView(cameraOptions)
 
@@ -658,6 +666,22 @@ export class Viewer {
    */
   pickCartographic(position: ScreenPosition): CartographicCoordinates | null {
     return this.cartographicPicker.pick(position)
+  }
+
+  /**
+   * 拾取屏幕位置对应的已加载 3D Tiles feature。
+   *
+   * 传入的坐标相对于 canvas 左上角。方法只检查当前已经加载到场景中的
+   * 3D Tiles 内容，不会额外请求更高精度瓦片；未命中时返回 `null`。
+   *
+   * Picks the loaded 3D Tiles feature at a screen position.
+   *
+   * The input position is relative to the top-left corner of the canvas. The
+   * method only checks 3D Tiles content currently loaded in the scene and does
+   * not request more detailed tiles; returns `null` when nothing is hit.
+   */
+  pick3DTilesFeature(position: ScreenPosition): Picked3DTilesFeature | null {
+    return this.tilesetFeaturePicker.pick(position)
   }
 
   /**
