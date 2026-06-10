@@ -248,19 +248,23 @@ Tellux 提供两种大气光照模式，默认使用 `light-source`：
 ```ts
 const viewer = new tellux.Viewer(container, {
   scene: {
-    atmosphereLightingMode: 'light-source'
+    atmosphere: {
+      lighting: {
+        mode: 'light-source'
+      }
+    }
   }
 })
 ```
 
-`light-source` 会在 Three.js 场景中使用 Takram 的太阳方向光和天空光探针。它适合大多数 3D GIS 场景：3D Tiles、地形、overlay 影像、自定义 Three.js 模型和 PBR 材质都可以沿用 Three.js 的常规受光方式。可以通过 `atmosphereSunLightIntensity` 和 `atmosphereSkyLightIntensity` 调整光源强度：
+`light-source` 会在 Three.js 场景中使用 Takram 的太阳方向光和天空光探针。它适合大多数 3D GIS 场景：3D Tiles、地形、overlay 影像、自定义 Three.js 模型和 PBR 材质都可以沿用 Three.js 的常规受光方式。可以通过 `scene.atmosphere.lighting` 调整光源强度：
 
 ```ts
-viewer.scene.atmosphereLightingMode = 'light-source'
-viewer.scene.atmosphereSunLight = true
-viewer.scene.atmosphereSkyLight = true
-viewer.scene.atmosphereSunLightIntensity = 1.2
-viewer.scene.atmosphereSkyLightIntensity = 0.8
+viewer.scene.atmosphere.lighting.mode = 'light-source'
+viewer.scene.atmosphere.lighting.sunLight = true
+viewer.scene.atmosphere.lighting.skyLight = true
+viewer.scene.atmosphere.lighting.sunLightIntensity = 1.2
+viewer.scene.atmosphere.lighting.skyLightIntensity = 0.8
 ```
 
 `post-process` 是 Takram 的原生空气透视后处理光照路径。它会把渲染结果当作表面反照率（albedo），再在 `AerialPerspectiveEffect` 中应用太阳光、天空光、大气透射和空气散射。这个模式适合想获得更统一的大气后处理效果的高级场景，但输入材质应是不受 Three.js 光源影响的 albedo 材质，例如 `MeshBasicMaterial` 或 glTF 的 `KHR_materials_unlit`。
@@ -268,10 +272,10 @@ viewer.scene.atmosphereSkyLightIntensity = 0.8
 加载 3D Tiles 时，如果数据本身不是 unlit 材质，但希望它参与 `post-process` 光照，可以显式使用 `materialMode: 'unlit'`：
 
 ```ts
-viewer.scene.atmosphereLightingMode = 'post-process'
-viewer.scene.atmosphereSunLight = true
-viewer.scene.atmosphereSkyLight = true
-viewer.scene.atmosphereAlbedoScale = 0.6
+viewer.scene.atmosphere.lighting.mode = 'post-process'
+viewer.scene.atmosphere.lighting.sunLight = true
+viewer.scene.atmosphere.lighting.skyLight = true
+viewer.scene.atmosphere.lighting.albedoScale = 0.6
 
 const layer = viewer.load3DTileset({
   type: 'url',
@@ -359,8 +363,8 @@ await model.ready
 viewer.flyToTarget(model.root)
 
 viewer.scene.clouds.show = false
-viewer.scene.skyAtmosphere.show = true
-viewer.scene.postProcessStages.smaa.enabled = true
+viewer.scene.atmosphere.show = true
+viewer.scene.postProcess.smaa.enabled = true
 viewer.toneMappingExposure = 8
 viewer.resolutionScale = 1.5
 

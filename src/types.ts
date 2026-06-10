@@ -37,6 +37,13 @@ export type AtmosphereLightingMode = (typeof AtmosphereLightingMode)[keyof typeo
 export type SurfaceMaterialMode = 'auto' | 'basic' | 'standard'
 
 /**
+ * 体积云质量档位。
+ *
+ * Volumetric cloud quality preset.
+ */
+export type CloudQualityPreset = 'low' | 'medium' | 'high' | 'ultra'
+
+/**
  * Viewer 调试设置面板的初始值。
  *
  * Initial values for the Viewer debug settings panel.
@@ -95,6 +102,47 @@ export interface DebugSettingsPanelOptions {
 }
 
 /**
+ * Viewer 时间条控件配置。
+ *
+ * Timeline widget options for a Viewer.
+ */
+export interface TimelineOptions {
+  /**
+   * 时间条起始时间。默认使用当前时钟所在 UTC 日期的 00:00。
+   *
+   * Timeline start time. Defaults to 00:00 UTC on the current clock date.
+   */
+  startTime?: Date | string | number
+  /**
+   * 时间条结束时间。默认使用起始时间后 24 小时。
+   *
+   * Timeline end time. Defaults to 24 hours after the start time.
+   */
+  endTime?: Date | string | number
+  /**
+   * 初始当前时间。不传时沿用 {@link Viewer.clock} 的当前时间。
+   *
+   * Initial current time. Uses the current {@link Viewer.clock} time when
+   * omitted.
+   */
+  currentTime?: Date | string | number
+  /**
+   * 初始是否播放时间。不传时沿用 {@link Viewer.clock} 的当前状态。
+   *
+   * Initial time animation state. Uses the current {@link Viewer.clock} state
+   * when omitted.
+   */
+  animate?: boolean
+  /**
+   * 初始播放倍率。不传时沿用 {@link Viewer.clock} 的当前倍率。
+   *
+   * Initial playback multiplier. Uses the current {@link Viewer.clock}
+   * multiplier when omitted.
+   */
+  multiplier?: number
+}
+
+/**
  * Viewer 内置控件配置。
  *
  * Built-in Viewer widget options.
@@ -111,6 +159,226 @@ export interface ViewerWidgetOptions {
    * values for the current page.
    */
   settingPanel?: boolean | DebugSettingsPanelOptions
+  /**
+   * 是否挂载内置时间条，默认 `false`。
+   *
+   * 传入对象时会作为时间条初始配置。
+   *
+   * Whether to mount the built-in timeline. Defaults to `false`.
+   *
+   * Pass an object to provide initial timeline options.
+   */
+  timeline?: boolean | TimelineOptions
+}
+
+/**
+ * Viewer 场景配置。
+ *
+ * Viewer scene options.
+ */
+export interface ViewerSceneOptions {
+  /** 大气、天空和光照配置。Atmosphere, sky, and lighting options. */
+  atmosphere?: ViewerAtmosphereOptions
+  /** 体积云配置。Volumetric cloud options. */
+  clouds?: ViewerCloudOptions
+  /** 地表渲染配置。Surface rendering options. */
+  surface?: ViewerSurfaceOptions
+  /** 后处理配置。Post-processing options. */
+  postProcess?: ViewerPostProcessOptions
+}
+
+/**
+ * Viewer 大气配置。
+ *
+ * Viewer atmosphere options.
+ */
+export interface ViewerAtmosphereOptions {
+  /** 是否启用大气天空和空气透视，默认 `true`。Enables atmospheric sky and aerial perspective. Defaults to `true`. */
+  show?: boolean
+  /** 大气光照配置。Atmospheric lighting options. */
+  lighting?: ViewerAtmosphereLightingOptions
+  /** 空气散射配置。Atmospheric scattering options. */
+  scattering?: ViewerAtmosphereScatteringOptions
+  /** 天空元素配置。Sky element options. */
+  sky?: ViewerAtmosphereSkyOptions
+  /** 云影和大气阴影配置。Cloud shadow and atmosphere shadow options. */
+  shadow?: ViewerAtmosphereShadowOptions
+  /** 夜间兜底环境光配置。Nighttime fallback ambient light options. */
+  fallbackAmbientLight?: ViewerFallbackAmbientLightOptions
+}
+
+/**
+ * Viewer 大气光照配置。
+ *
+ * Viewer atmosphere lighting options.
+ */
+export interface ViewerAtmosphereLightingOptions {
+  /**
+   * 大气光照模式，默认 `light-source`。
+   *
+   * Atmosphere lighting mode. Defaults to `light-source`.
+   */
+  mode?: AtmosphereLightingMode
+  /** 是否应用太阳直射光照，默认 `true`。Applies direct sun irradiance. Defaults to `true`. */
+  sunLight?: boolean
+  /** 是否应用天空环境光照，默认 `true`。Applies sky irradiance. Defaults to `true`. */
+  skyLight?: boolean
+  /** 太阳光源辐射强度缩放，默认 `1`。Sun light source irradiance intensity scale. Defaults to `1`. */
+  sunLightIntensity?: number
+  /** 天空光探针辐射强度缩放，默认 `1`。Sky light probe irradiance intensity scale. Defaults to `1`. */
+  skyLightIntensity?: number
+  /**
+   * 后处理光照的反照率缩放，默认 `1`。
+   *
+   * Albedo scale for post-process lighting. Defaults to `1`.
+   */
+  albedoScale?: number
+}
+
+/**
+ * Viewer 空气散射配置。
+ *
+ * Viewer atmosphere scattering options.
+ */
+export interface ViewerAtmosphereScatteringOptions {
+  /** 是否应用大气透射衰减，默认 `true`。Applies atmospheric transmittance attenuation. Defaults to `true`. */
+  transmittance?: boolean
+  /** 是否应用进入视线的空气散射光，默认 `true`。Applies atmospheric in-scattered light. Defaults to `true`. */
+  inscatter?: boolean
+  /** 空气散射强度，范围 `0` 到 `1`，默认 `0.6`。Atmospheric in-scattering intensity from `0` to `1`. Defaults to `0.6`. */
+  intensity?: number
+  /** 是否按地平线和球体边缘混合空气散射，默认 `true`。Blends in-scattering by horizon and globe edge. Defaults to `true`. */
+  horizonBlend?: boolean
+  /** 空气散射地平线混合范围，默认 `[0, 0.6]`。Horizon blend range for in-scattering. Defaults to `[0, 0.6]`. */
+  horizonRange?: [number, number]
+  /** 是否修正相机高度和椭球高度误差，默认 `true`。Corrects camera altitude against the atmosphere ellipsoid. Defaults to `true`. */
+  correctAltitude?: boolean
+  /** 是否修正地表瓦片几何误差导致的光照伪影，默认 `true`。Corrects lighting artifacts caused by surface tile geometric error. Defaults to `true`. */
+  correctGeometricError?: boolean
+  /** 太阳入射光谱强度缩放，默认 `1`。Scale for top-of-atmosphere solar spectral irradiance. Defaults to `1`. */
+  solarIrradianceScale?: number
+  /** 瑞利散射系数缩放，默认 `1`。Scale for Rayleigh scattering coefficients. Defaults to `1`. */
+  rayleighScatteringScale?: number
+  /** 米氏散射系数缩放，默认 `1`。Scale for Mie scattering coefficients. Defaults to `1`. */
+  mieScatteringScale?: number
+  /** 米氏消光系数缩放，默认 `1`。Scale for Mie extinction coefficients. Defaults to `1`. */
+  mieExtinctionScale?: number
+  /** 米氏相函数不对称因子，默认 `0.8`。Mie phase function asymmetry factor. Defaults to `0.8`. */
+  miePhaseFunctionG?: number
+  /** 臭氧等吸收介质的消光系数缩放，默认 `1`。Scale for absorption extinction. Defaults to `1`. */
+  absorptionExtinctionScale?: number
+  /** 大气模型里的平均地表反照率，默认 `0.1`。Average ground albedo in the atmosphere model. Defaults to `0.1`. */
+  groundAlbedo?: number
+}
+
+/**
+ * Viewer 大气天空元素配置。
+ *
+ * Viewer atmospheric sky element options.
+ */
+export interface ViewerAtmosphereSkyOptions {
+  /** 是否启用星空，默认 `true`。Enables the star field. Defaults to `true`. */
+  stars?: boolean
+  /** 星空亮度缩放，默认 `1`。Star field brightness scale. Defaults to `1`. */
+  starsIntensity?: number
+  /** 星点大小（像素点），默认 `1`。Star point size in pixels. Defaults to `1`. */
+  starsPointSize?: number
+  /** 是否在天空中绘制太阳盘，默认 `true`。Renders the sun disc in the sky. Defaults to `true`. */
+  sun?: boolean
+  /** 是否在天空中绘制月亮，默认 `true`。Renders the moon in the sky. Defaults to `true`. */
+  moon?: boolean
+  /** 是否绘制大气天空里的地面，默认 `true`。Renders the ground term in the atmospheric sky. Defaults to `true`. */
+  ground?: boolean
+  /** 太阳角半径（弧度），默认 `0.004675`。Sun angular radius in radians. Defaults to `0.004675`. */
+  sunAngularRadius?: number
+  /** 月亮角半径（弧度），默认 `0.0045`。Moon angular radius in radians. Defaults to `0.0045`. */
+  moonAngularRadius?: number
+  /** 月光辐射亮度缩放，默认 `1`。Lunar radiance scale. Defaults to `1`. */
+  lunarRadianceScale?: number
+}
+
+/**
+ * Viewer 大气阴影配置。
+ *
+ * Viewer atmosphere shadow options.
+ */
+export interface ViewerAtmosphereShadowOptions {
+  /** 云影采样的屏幕模糊半径，默认 `3`。Screen-space blur radius for cloud shadow sampling. Defaults to `3`. */
+  radius?: number
+  /** 云影 PCF 采样数量，范围 `1` 到 `16`，默认 `8`。Cloud shadow PCF sample count from `1` to `16`. Defaults to `8`. */
+  sampleCount?: number
+}
+
+/**
+ * Viewer 夜间兜底环境光配置。
+ *
+ * Viewer nighttime fallback ambient light options.
+ */
+export interface ViewerFallbackAmbientLightOptions {
+  /** 是否启用夜间兜底环境光，默认 `true`。Enables the nighttime fallback ambient light. Defaults to `true`. */
+  show?: boolean
+  /** 夜间兜底环境光最大强度，默认 `0.5`。Nighttime fallback ambient light maximum intensity. Defaults to `0.5`. */
+  intensity?: number
+}
+
+/**
+ * Viewer 体积云配置。
+ *
+ * Viewer volumetric cloud options.
+ */
+export interface ViewerCloudOptions {
+  /** 是否启用体积云，默认 `true`。Enables volumetric clouds. Defaults to `true`. */
+  show?: boolean
+  /** 体积云质量档位。Volumetric cloud quality preset. */
+  quality?: CloudQualityPreset
+  /** 云覆盖率，范围 `0` 到 `1`，默认 `0.3`。Cloud coverage from `0` to `1`. Defaults to `0.3`. */
+  coverage?: number
+  /** 体积云天气纹理的水平运动速度，单位为 UV 偏移/秒，默认 `0.001`。Horizontal motion speed for the volumetric cloud weather texture. Defaults to `0.001`. */
+  speed?: number
+  /** 低云层组配置。Low cloud layer group options. */
+  layer?: ViewerCloudLayerOptions
+}
+
+/**
+ * Viewer 低云层组配置。
+ *
+ * Viewer low cloud layer group options.
+ */
+export interface ViewerCloudLayerOptions {
+  /** 低云层组云底高度（米），默认 `1500`。Base altitude of the low cloud layer group in meters. Defaults to `1500`. */
+  altitude?: number
+  /** 低云层组厚度（米），默认 `650`。Height of the low cloud layer group in meters. Defaults to `650`. */
+  height?: number
+}
+
+/**
+ * Viewer 地表渲染配置。
+ *
+ * Viewer surface rendering options.
+ */
+export interface ViewerSurfaceOptions {
+  /**
+   * 基础地球表面瓦片材质模式，默认 `auto`。
+   *
+   * Base globe surface tile material mode. Defaults to `auto`.
+   */
+  materialMode?: SurfaceMaterialMode
+}
+
+/**
+ * Viewer 后处理配置。
+ *
+ * Viewer post-processing options.
+ */
+export interface ViewerPostProcessOptions {
+  /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
+  lensFlare?: boolean
+  /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */
+  smaa?: boolean
+  /** 是否启用抖动后处理，默认 `false`。Enables dithering post-processing. Defaults to `false`. */
+  dithering?: boolean
+  /** 渲染器色调映射曝光值，默认 `10`。Renderer tone mapping exposure. Defaults to `10`. */
+  toneMappingExposure?: number
 }
 
 /**
@@ -175,193 +443,7 @@ export interface ViewerOptions {
    *
    * Initial scene and post-processing options.
    */
-  scene?: {
-    /** 是否启用体积云，默认 `true`。Enables volumetric clouds. Defaults to `true`. */
-    clouds?: boolean
-    /** 是否启用大气天空和空气透视，默认 `true`。Enables atmospheric sky and aerial perspective. Defaults to `true`. */
-    skyAtmosphere?: boolean
-    /** 是否启用星空，默认 `true`。Enables the star field. Defaults to `true`. */
-    stars?: boolean
-    /** 星空亮度缩放，默认 `1`。Star field brightness scale. Defaults to `1`. */
-    starsIntensity?: number
-    /** 星点大小（像素点），默认 `1`。Star point size in pixels. Defaults to `1`. */
-    starsPointSize?: number
-    /**
-     * 空气散射强度，范围 `0` 到 `1`，默认 `0.6`。
-     *
-     * 控制空气透视中沿视线进入镜头的散射光强度。降低后远景会更通透。
-     *
-     * Atmospheric in-scattering intensity from `0` to `1`. Defaults to `0.6`.
-     *
-     * Controls the light scattered into the view ray by aerial perspective.
-     * Lower values make distant imagery clearer.
-     */
-    atmosphereInscatterIntensity?: number
-    /**
-     * 是否按地平线和球体边缘混合空气散射，默认 `true`。
-     *
-     * 开启后，正俯视区域会减弱散射，越接近地平线或球体边缘散射越强。
-     *
-     * Blends atmospheric in-scattering by horizon and globe edge. Defaults to
-     * `true`.
-     *
-     * When enabled, in-scattering is reduced in top-down areas and strengthened
-     * toward the horizon or globe edge.
-     */
-    atmosphereInscatterHorizonBlend?: boolean
-    /**
-     * 空气散射地平线混合范围，默认 `[0, 0.6]`。
-     *
-     * 值基于视线与地表法线夹角的余弦。第一个值以内保留完整散射，第二个值以外接近无散射。
-     *
-     * Horizon blend range for in-scattering. Defaults to `[0, 0.6]`.
-     *
-     * Values are based on the cosine between the view ray and surface normal.
-     * At or below the first value, full in-scattering is preserved; at or above
-     * the second value, in-scattering approaches zero.
-     */
-    atmosphereInscatterHorizonRange?: [number, number]
-    /**
-     * 是否修正相机高度和椭球高度误差，默认 `true`。
-     *
-     * Corrects camera altitude against the ellipsoid used by the atmosphere.
-     * Defaults to `true`.
-     */
-    atmosphereCorrectAltitude?: boolean
-    /**
-     * 是否修正地表瓦片几何误差导致的光照伪影，默认 `true`。
-     *
-     * Corrects lighting artifacts caused by surface tile geometric error.
-     * Defaults to `true`.
-     */
-    atmosphereCorrectGeometricError?: boolean
-    /**
-     * 大气光照模式，默认 `light-source`。
-     *
-     * `post-process` 在空气透视后处理中应用太阳和天空光照；
-     * `light-source` 在场景中使用 Takram 的太阳直射光和天空光探针。
-     *
-     * Atmosphere lighting mode. Defaults to `light-source`.
-     *
-     * `post-process` applies sun and sky lighting in the aerial-perspective
-     * post-process; `light-source` uses Takram sun direct light and sky light
-     * probe in the scene.
-     */
-    atmosphereLightingMode?: AtmosphereLightingMode
-    /**
-     * 基础地球表面瓦片材质模式。
-     *
-     * 默认 `auto`。此时根据 `atmosphereLightingMode` 自动选择：
-     * `light-source` 使用 `standard`，`post-process` 使用 `basic`。
-     *
-     * Base globe surface tile material mode.
-     *
-     * Defaults to `auto`. In this mode it is derived from `atmosphereLightingMode`:
-     * `light-source` uses `standard`, while `post-process` uses `basic`.
-     */
-    surfaceMaterialMode?: SurfaceMaterialMode
-    /**
-     * 是否应用太阳直射光照，默认 `true`。
-     *
-     * 在 `post-process` 模式下作用于后处理光照；在 `light-source` 模式下作用于 Takram 太阳光源。
-     *
-     * Applies direct sun irradiance. Defaults to `true`.
-     *
-     * In `post-process` mode this controls post-process lighting; in
-     * `light-source` mode this controls the Takram sun light source.
-     */
-    atmosphereSunLight?: boolean
-    /**
-     * 是否应用天空环境光照，默认 `true`。
-     *
-     * 在 `post-process` 模式下作用于后处理光照；在 `light-source` 模式下作用于 Takram 天空光探针。
-     *
-     * Applies sky irradiance. Defaults to `true`.
-     *
-     * In `post-process` mode this controls post-process lighting; in
-     * `light-source` mode this controls the Takram sky light probe.
-     */
-    atmosphereSkyLight?: boolean
-    /**
-     * 后处理光照的反照率缩放，默认 `1`。
-     *
-     * 仅在 `post-process` 光照模式下影响空气透视后处理。Google Photorealistic 3D Tiles
-     * 等带有烘焙光照和阴影的纹理，可通过降低该值减弱过强的明暗对比。
-     *
-     * Albedo scale for post-process lighting. Defaults to `1`.
-     *
-     * Only affects aerial-perspective post-process lighting in `post-process`
-     * mode. For textures with baked lighting and shadows, such as Google
-     * Photorealistic 3D Tiles, lowering this value can reduce excessive contrast.
-     */
-    atmosphereAlbedoScale?: number
-    /**
-     * 太阳光源辐射强度缩放，默认 `1`。
-     *
-     * 主要作用于 `light-source` 模式下的 Takram 太阳光源。
-     *
-     * Sun light source irradiance intensity scale. Defaults to `1`.
-     *
-     * Mainly affects the Takram sun light source in `light-source` mode.
-     */
-    atmosphereSunLightIntensity?: number
-    /**
-     * 天空光探针辐射强度缩放，默认 `1`。
-     *
-     * 主要作用于 `light-source` 模式下的 Takram 天空光探针。
-     *
-     * Sky light probe irradiance intensity scale. Defaults to `1`.
-     *
-     * Mainly affects the Takram sky light probe in `light-source` mode.
-     */
-    atmosphereSkyLightIntensity?: number
-    /**
-     * 是否启用夜间兜底环境光，默认 `true`。
-     *
-     * 该全局漫反射光用于避免太阳和天空光过弱时场景完全变黑。
-     *
-     * Enables the nighttime fallback ambient light. Defaults to `true`.
-     *
-     * This global diffuse light prevents the scene from becoming fully black
-     * when sun and sky lighting are too weak.
-     */
-    fallbackAmbientLight?: boolean
-    /**
-     * 夜间兜底环境光强度，默认 `0.5`。
-     *
-     * 表示相机高度低于 `8000` 米时的最大强度；高度从 `7600000`
-     * 米下降到 `8000` 米时，实际光强从 `0` 线性增强到该值。
-     *
-     * Nighttime fallback ambient light intensity. Defaults to `0.5`.
-     *
-     * This is the maximum intensity below `8000` meters. As the camera descends
-     * from `7600000` meters to `8000` meters, the actual light intensity
-     * linearly increases from `0` to this value.
-     */
-    fallbackAmbientLightIntensity?: number
-    /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
-    lensFlare?: boolean
-    /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */
-    smaa?: boolean
-    /** 是否启用抖动后处理，默认 `false`。Enables dithering post-processing. Defaults to `false`. */
-    dithering?: boolean
-    /** 渲染器色调映射曝光值，默认 `10`。Renderer tone mapping exposure. Defaults to `10`. */
-    toneMappingExposure?: number
-    /** 云覆盖率，范围 `0` 到 `1`，默认 `0.3`。Cloud coverage from `0` to `1`. Defaults to `0.3`. */
-    cloudCoverage?: number
-    /**
-     * 体积云天气纹理的水平运动速度，单位为 UV 偏移/秒，默认 `0.001`。
-     *
-     * 设为 `0` 可停止云的纹理位移动画。该值独立于 {@link Clock.multiplier}。
-     *
-     * Horizontal motion speed for the volumetric cloud weather texture in UV
-     * offset per second. Defaults to `0.001`.
-     *
-     * Set this to `0` to stop the cloud texture offset animation. This value is
-     * independent from {@link Clock.multiplier}.
-     */
-    cloudSpeed?: number
-  }
+  scene?: ViewerSceneOptions
   /**
    * 为 `true` 时自动启动渲染循环。
    *
@@ -379,6 +461,18 @@ export interface ViewerOptions {
    * Built-in widget options.
    */
   widgets?: ViewerWidgetOptions
+  /**
+   * 内置控件配置别名。
+   *
+   * 与 {@link ViewerOptions.widgets} 等价；当两个字段同时存在时，
+   * `widgets` 中的同名配置优先生效。
+   *
+   * Alias for built-in widget options.
+   *
+   * Equivalent to {@link ViewerOptions.widgets}; when both fields are present,
+   * matching options from `widgets` take precedence.
+   */
+  widget?: ViewerWidgetOptions
   /**
    * 渲染器像素比，默认 `Math.min(window.devicePixelRatio, 2)`。
    *

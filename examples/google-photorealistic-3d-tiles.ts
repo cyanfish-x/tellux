@@ -32,17 +32,28 @@ const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: '/draco/gltf/',
   camera: TOKYO_VIEW,
   scene: {
-    clouds: false,
-    atmosphereLightingMode: 'post-process',
-    atmosphereSunLight: true,
-    atmosphereSkyLight: true,
-    atmosphereAlbedoScale: 0.6,
-    toneMappingExposure: 1
+    atmosphere: {
+      lighting: {
+        mode: 'post-process',
+        sunLight: true,
+        skyLight: true,
+        albedoScale: 0.6
+      }
+    },
+    clouds: {
+      show: true
+    },
+    postProcess: {
+      toneMappingExposure: 4
+    }
+  },
+  widget:{
+    timeline:true
   }
 })
 
 ;(window as any).viewer = viewer
-viewer.clock.hourUTC = 20
+viewer.clock.hourUTC = 21
 viewer.tileset.group.visible = false
 
 tokenInput.value = ''
@@ -133,28 +144,6 @@ function logTileMaterialDebug(event: { scene: THREE.Object3D; url?: string }) {
   materialDebugTotalCount += summary.total
   materialDebugBasicCount += summary.basic
 
-  console.info('[Tellux][google-photorealistic-3d-tiles] material debug', {
-    tileIndex: materialDebugTileCount,
-    url: event.url,
-    materialMode: viewer.scene.atmosphereLightingMode === 'post-process' ? 'basic' : 'standard',
-    sceneLighting: {
-      hourUTC: viewer.clock.hourUTC,
-      atmosphereLightingMode: viewer.scene.atmosphereLightingMode,
-      atmosphereSunLight: viewer.scene.atmosphereSunLight,
-      atmosphereSkyLight: viewer.scene.atmosphereSkyLight,
-      atmosphereAlbedoScale: viewer.scene.atmosphereAlbedoScale,
-      toneMappingExposure: viewer.toneMappingExposure
-    },
-    currentTile: summary,
-    accumulated: {
-      total: materialDebugTotalCount,
-      basic: materialDebugBasicCount,
-      nonBasic: materialDebugTotalCount - materialDebugBasicCount,
-      basicRatio: materialDebugTotalCount > 0
-        ? Number((materialDebugBasicCount / materialDebugTotalCount).toFixed(4))
-        : 0
-    }
-  })
 }
 
 function renderAttributions() {

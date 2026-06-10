@@ -51,8 +51,12 @@ const viewer = new tellux.Viewer(container, {
     roll: 0.00004544608651084398,
   },
   scene: {
-    clouds: false,
-    toneMappingExposure: 7,
+    clouds: {
+      show: false
+    },
+    postProcess: {
+      toneMappingExposure: 7
+    }
   },
 })
 

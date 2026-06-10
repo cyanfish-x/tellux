@@ -46,20 +46,28 @@ const viewer = new tellux.Viewer(container, {
     far: 8000000
   },
   scene: {
-    clouds: true,
-    skyAtmosphere: true,
-    cloudCoverage: 0.35,
-    atmosphereLightingMode: 'post-process',
-    toneMappingExposure: 8,
-    lensFlare: true,
-    smaa: true
+    atmosphere: {
+      show: true,
+      lighting: {
+        mode: 'post-process'
+      }
+    },
+    clouds: {
+      show: true,
+      coverage: 0.35
+    },
+    postProcess: {
+      toneMappingExposure: 8,
+      lensFlare: true,
+      smaa: true
+    }
   },
   resolutionScale: 1
 })
 
 viewer.clock.setHourUTC(initialDaytimeHourUTC)
-viewer.scene.cloudLayerAltitude = 2500
-viewer.scene.cloudLayerHeight = 650
+viewer.scene.clouds.layerAltitude = 2500
+viewer.scene.clouds.layerHeight = 650
 ;(window as any).viewer = viewer
 
 dujiangyanButton.addEventListener('click', () => {

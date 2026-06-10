@@ -1,4 +1,4 @@
-import { SpringControl } from "../../SpringControl"
+﻿import { SpringControl } from "../../SpringControl"
 import type { AtmosphereLightingMode } from "../../types"
 import type { Viewer } from "../../Viewer"
 import {
@@ -85,44 +85,44 @@ function mountDebugSettingsPanel(
   const skyToggle = createSwitchControl(
     "sky-atmosphere",
     "大气",
-    settings.skyAtmosphere ?? viewer.scene.skyAtmosphere.show
+    settings.skyAtmosphere ?? viewer.scene.atmosphere.show
   )
   const starsToggle = createSwitchControl(
     "stars",
     "星空",
-    settings.stars ?? viewer.scene.stars.show
+    settings.stars ?? viewer.scene.atmosphere.sky.stars.show
   )
   const transmittanceToggle = createSwitchControl(
     "atmosphere-transmittance",
     "透射衰减",
-    settings.atmosphereTransmittance ?? viewer.scene.atmosphereTransmittance
+    settings.atmosphereTransmittance ?? viewer.scene.atmosphere.scattering.transmittance
   )
   const nativeInscatterToggle = createSwitchControl(
     "atmosphere-inscatter",
     "原生散射",
-    settings.atmosphereInscatter ?? viewer.scene.atmosphereInscatter
+    settings.atmosphereInscatter ?? viewer.scene.atmosphere.scattering.inscatter
   )
   const lightingModeControl = createSelectControl({
     id: "atmosphere-lighting-mode",
     label: "光照模式",
     value:
-      settings.atmosphereLightingMode ?? viewer.scene.atmosphereLightingMode,
+      settings.atmosphereLightingMode ?? viewer.scene.atmosphere.lighting.mode,
     options: ["post-process", "light-source"] as const,
   })
   const inscatterHorizonToggle = createSwitchControl(
     "atmosphere-inscatter-horizon",
     "地平线散射",
-    viewer.scene.atmosphereInscatterHorizonBlend
+    viewer.scene.atmosphere.scattering.horizonBlend
   )
   const sunLightToggle = createSwitchControl(
     "atmosphere-sun-light",
     "太阳光照",
-    settings.atmosphereSunLight ?? viewer.scene.atmosphereSunLight
+    settings.atmosphereSunLight ?? viewer.scene.atmosphere.lighting.sunLight
   )
   const skyLightToggle = createSwitchControl(
     "atmosphere-sky-light",
     "天空光照",
-    settings.atmosphereSkyLight ?? viewer.scene.atmosphereSkyLight
+    settings.atmosphereSkyLight ?? viewer.scene.atmosphere.lighting.skyLight
   )
   const sunLightIntensityControl = createRangeControl({
     id: "atmosphere-sun-light-intensity",
@@ -132,7 +132,7 @@ function mountDebugSettingsPanel(
     step: 0.05,
     value:
       settings.atmosphereSunLightIntensity ??
-      viewer.scene.atmosphereSunLightIntensity,
+      viewer.scene.atmosphere.lighting.sunLightIntensity,
     format: (value) => value.toFixed(2),
   })
   const skyLightIntensityControl = createRangeControl({
@@ -143,13 +143,13 @@ function mountDebugSettingsPanel(
     step: 0.05,
     value:
       settings.atmosphereSkyLightIntensity ??
-      viewer.scene.atmosphereSkyLightIntensity,
+      viewer.scene.atmosphere.lighting.skyLightIntensity,
     format: (value) => value.toFixed(2),
   })
   const fallbackAmbientLightToggle = createSwitchControl(
     "fallback-ambient-light",
     "环境光",
-    settings.fallbackAmbientLight ?? viewer.scene.fallbackAmbientLight
+    settings.fallbackAmbientLight ?? viewer.scene.atmosphere.fallbackAmbientLight.show
   )
   const fallbackAmbientLightIntensityControl = createRangeControl({
     id: "fallback-ambient-light-intensity",
@@ -159,29 +159,29 @@ function mountDebugSettingsPanel(
     step: 0.01,
     value:
       settings.fallbackAmbientLightIntensity ??
-      viewer.scene.fallbackAmbientLightIntensity,
+      viewer.scene.atmosphere.fallbackAmbientLight.intensity,
     format: (value) => value.toFixed(2),
   })
   const sunDiscToggle = createSwitchControl(
     "atmosphere-sun-disc",
     "太阳盘",
-    settings.atmosphereSun ?? viewer.scene.atmosphereSun
+    settings.atmosphereSun ?? viewer.scene.atmosphere.sky.sun
   )
   const moonToggle = createSwitchControl(
     "atmosphere-moon",
     "月亮",
-    settings.atmosphereMoon ?? viewer.scene.atmosphereMoon
+    settings.atmosphereMoon ?? viewer.scene.atmosphere.sky.moon
   )
   const correctAltitudeToggle = createSwitchControl(
     "atmosphere-correct-altitude",
     "高度修正",
-    settings.atmosphereCorrectAltitude ?? viewer.scene.atmosphereCorrectAltitude
+    settings.atmosphereCorrectAltitude ?? viewer.scene.atmosphere.scattering.correctAltitude
   )
   const correctGeometricToggle = createSwitchControl(
     "atmosphere-correct-geometric",
     "瓦片法线修正",
     settings.atmosphereCorrectGeometricError ??
-      viewer.scene.atmosphereCorrectGeometricError
+      viewer.scene.atmosphere.scattering.correctGeometricError
   )
   const cloudToggle = createSwitchControl(
     "clouds",
@@ -191,17 +191,17 @@ function mountDebugSettingsPanel(
   const lensFlareToggle = createSwitchControl(
     "lens-flare",
     "镜头光晕",
-    settings.lensFlare ?? viewer.scene.postProcessStages.lensFlare.enabled
+    settings.lensFlare ?? viewer.scene.postProcess.lensFlare.enabled
   )
   const smaaToggle = createSwitchControl(
     "smaa",
     "SMAA",
-    settings.smaa ?? viewer.scene.postProcessStages.smaa.enabled
+    settings.smaa ?? viewer.scene.postProcess.smaa.enabled
   )
   const ditheringToggle = createSwitchControl(
     "dithering",
     "抖动",
-    settings.dithering ?? viewer.scene.postProcessStages.dithering.enabled
+    settings.dithering ?? viewer.scene.postProcess.dithering.enabled
   )
   const fpsToggle = createSwitchControl(
     "fps",
@@ -264,7 +264,7 @@ function mountDebugSettingsPanel(
     min: 0,
     max: 1,
     step: 0.01,
-    value: settings.cloudCoverage ?? viewer.scene.cloudCoverage,
+    value: settings.cloudCoverage ?? viewer.scene.clouds.coverage,
     format: (value) => value.toFixed(2),
   })
   const cloudSpeedControl = createRangeControl({
@@ -273,7 +273,7 @@ function mountDebugSettingsPanel(
     min: 0,
     max: 0.05,
     step: 0.0001,
-    value: settings.cloudSpeed ?? viewer.scene.cloudSpeed,
+    value: settings.cloudSpeed ?? viewer.scene.clouds.speed,
     format: (value) => value.toFixed(4),
   })
   const cloudAltitudeControl = createRangeControl({
@@ -282,7 +282,7 @@ function mountDebugSettingsPanel(
     min: 200,
     max: 4000,
     step: 50,
-    value: settings.cloudLayerAltitude ?? viewer.scene.cloudLayerAltitude,
+    value: settings.cloudLayerAltitude ?? viewer.scene.clouds.layerAltitude,
     format: (value) => `${Math.round(value)}m`,
   })
   const cloudHeightControl = createRangeControl({
@@ -291,7 +291,7 @@ function mountDebugSettingsPanel(
     min: 100,
     max: 3000,
     step: 50,
-    value: settings.cloudLayerHeight ?? viewer.scene.cloudLayerHeight,
+    value: settings.cloudLayerHeight ?? viewer.scene.clouds.layerHeight,
     format: (value) => `${Math.round(value)}m`,
   })
   const inscatterIntensityControl = createRangeControl({
@@ -302,12 +302,12 @@ function mountDebugSettingsPanel(
     step: 0.01,
     value:
       settings.atmosphereInscatterIntensity ??
-      viewer.scene.atmosphereInscatterIntensity,
+      viewer.scene.atmosphere.scattering.intensity,
     format: (value) => value.toFixed(2),
   })
   const horizonRange =
     settings.atmosphereInscatterHorizonRange ??
-    viewer.scene.atmosphereInscatterHorizonRange
+    viewer.scene.atmosphere.scattering.horizonRange
   const horizonStartControl = createRangeControl({
     id: "atmosphere-horizon-start",
     label: "边缘保留",
@@ -332,7 +332,7 @@ function mountDebugSettingsPanel(
     min: 0,
     max: 4,
     step: 0.01,
-    value: settings.atmosphereAlbedoScale ?? viewer.scene.atmosphereAlbedoScale,
+    value: settings.atmosphereAlbedoScale ?? viewer.scene.atmosphere.lighting.albedoScale,
     format: (value) => value.toFixed(2),
   })
   const sunAngularRadiusControl = createRangeControl({
@@ -343,7 +343,7 @@ function mountDebugSettingsPanel(
     step: 0.0005,
     value:
       settings.atmosphereSunAngularRadius ??
-      viewer.scene.atmosphereSunAngularRadius,
+      viewer.scene.atmosphere.sky.sunAngularRadius,
     format: formatRadians,
   })
   const moonAngularRadiusControl = createRangeControl({
@@ -354,7 +354,7 @@ function mountDebugSettingsPanel(
     step: 0.0005,
     value:
       settings.atmosphereMoonAngularRadius ??
-      viewer.scene.atmosphereMoonAngularRadius,
+      viewer.scene.atmosphere.sky.moonAngularRadius,
     format: formatRadians,
   })
   const lunarRadianceScaleControl = createRangeControl({
@@ -365,7 +365,7 @@ function mountDebugSettingsPanel(
     step: 0.05,
     value:
       settings.atmosphereLunarRadianceScale ??
-      viewer.scene.atmosphereLunarRadianceScale,
+      viewer.scene.atmosphere.sky.lunarRadianceScale,
     format: (value) => value.toFixed(2),
   })
   const shadowRadiusControl = createRangeControl({
@@ -375,7 +375,7 @@ function mountDebugSettingsPanel(
     max: 16,
     step: 0.25,
     value:
-      settings.atmosphereShadowRadius ?? viewer.scene.atmosphereShadowRadius,
+      settings.atmosphereShadowRadius ?? viewer.scene.atmosphere.shadow.radius,
     format: (value) => value.toFixed(2),
   })
   const shadowSampleCountControl = createRangeControl({
@@ -386,7 +386,7 @@ function mountDebugSettingsPanel(
     step: 1,
     value:
       settings.atmosphereShadowSampleCount ??
-      viewer.scene.atmosphereShadowSampleCount,
+      viewer.scene.atmosphere.shadow.sampleCount,
     format: (value) => String(Math.round(value)),
   })
   const starsIntensityControl = createRangeControl({
@@ -395,7 +395,7 @@ function mountDebugSettingsPanel(
     min: 0,
     max: 8,
     step: 0.05,
-    value: settings.starsIntensity ?? viewer.scene.starsIntensity,
+    value: settings.starsIntensity ?? viewer.scene.atmosphere.sky.starsIntensity,
     format: (value) => value.toFixed(2),
   })
   const starsPointSizeControl = createRangeControl({
@@ -404,7 +404,7 @@ function mountDebugSettingsPanel(
     min: 0.1,
     max: 4,
     step: 0.05,
-    value: settings.starsPointSize ?? viewer.scene.starsPointSize,
+    value: settings.starsPointSize ?? viewer.scene.atmosphere.sky.starsPointSize,
     format: (value) => value.toFixed(2),
   })
   const solarIrradianceControl = createRangeControl({
@@ -415,7 +415,7 @@ function mountDebugSettingsPanel(
     step: 0.01,
     value:
       settings.atmosphereSolarIrradianceScale ??
-      viewer.scene.atmosphereSolarIrradianceScale,
+      viewer.scene.atmosphere.scattering.solarIrradianceScale,
     format: (value) => value.toFixed(2),
   })
   const rayleighControl = createRangeControl({
@@ -426,7 +426,7 @@ function mountDebugSettingsPanel(
     step: 0.01,
     value:
       settings.atmosphereRayleighScatteringScale ??
-      viewer.scene.atmosphereRayleighScatteringScale,
+      viewer.scene.atmosphere.scattering.rayleighScatteringScale,
     format: (value) => value.toFixed(2),
   })
   const mieScatteringControl = createRangeControl({
@@ -437,7 +437,7 @@ function mountDebugSettingsPanel(
     step: 0.01,
     value:
       settings.atmosphereMieScatteringScale ??
-      viewer.scene.atmosphereMieScatteringScale,
+      viewer.scene.atmosphere.scattering.mieScatteringScale,
     format: (value) => value.toFixed(2),
   })
   const mieExtinctionControl = createRangeControl({
@@ -448,7 +448,7 @@ function mountDebugSettingsPanel(
     step: 0.01,
     value:
       settings.atmosphereMieExtinctionScale ??
-      viewer.scene.atmosphereMieExtinctionScale,
+      viewer.scene.atmosphere.scattering.mieExtinctionScale,
     format: (value) => value.toFixed(2),
   })
   const miePhaseControl = createRangeControl({
@@ -459,7 +459,7 @@ function mountDebugSettingsPanel(
     step: 0.01,
     value:
       settings.atmosphereMiePhaseFunctionG ??
-      viewer.scene.atmosphereMiePhaseFunctionG,
+      viewer.scene.atmosphere.scattering.miePhaseFunctionG,
     format: (value) => value.toFixed(2),
   })
   const absorptionControl = createRangeControl({
@@ -470,7 +470,7 @@ function mountDebugSettingsPanel(
     step: 0.01,
     value:
       settings.atmosphereAbsorptionExtinctionScale ??
-      viewer.scene.atmosphereAbsorptionExtinctionScale,
+      viewer.scene.atmosphere.scattering.absorptionExtinctionScale,
     format: (value) => value.toFixed(2),
   })
   const groundAlbedoControl = createRangeControl({
@@ -480,7 +480,7 @@ function mountDebugSettingsPanel(
     max: 1,
     step: 0.01,
     value:
-      settings.atmosphereGroundAlbedo ?? viewer.scene.atmosphereGroundAlbedo,
+      settings.atmosphereGroundAlbedo ?? viewer.scene.atmosphere.scattering.groundAlbedo,
     format: (value) => value.toFixed(2),
   })
 
@@ -668,45 +668,45 @@ function mountDebugSettingsPanel(
   }
 
   function applySmoothedControls(deltaTime: number) {
-    viewer.scene.starsIntensity = smooth.starsIntensity.tick(deltaTime)
-    viewer.scene.starsPointSize = smooth.starsPointSize.tick(deltaTime)
-    viewer.scene.atmosphereInscatterIntensity =
+    viewer.scene.atmosphere.sky.starsIntensity = smooth.starsIntensity.tick(deltaTime)
+    viewer.scene.atmosphere.sky.starsPointSize = smooth.starsPointSize.tick(deltaTime)
+    viewer.scene.atmosphere.scattering.intensity =
       smooth.atmosphereInscatterIntensity.tick(deltaTime)
-    viewer.scene.atmosphereInscatterHorizonRange = [
+    viewer.scene.atmosphere.scattering.horizonRange = [
       smooth.horizonStart.tick(deltaTime),
       smooth.horizonEnd.tick(deltaTime),
     ]
-    viewer.scene.atmosphereSunLightIntensity =
+    viewer.scene.atmosphere.lighting.sunLightIntensity =
       smooth.sunLightIntensity.tick(deltaTime)
-    viewer.scene.atmosphereSkyLightIntensity =
+    viewer.scene.atmosphere.lighting.skyLightIntensity =
       smooth.skyLightIntensity.tick(deltaTime)
-    viewer.scene.fallbackAmbientLightIntensity =
+    viewer.scene.atmosphere.fallbackAmbientLight.intensity =
       smooth.fallbackAmbientLightIntensity.tick(deltaTime)
-    viewer.scene.atmosphereSolarIrradianceScale =
+    viewer.scene.atmosphere.scattering.solarIrradianceScale =
       smooth.solarIrradianceScale.tick(deltaTime)
-    viewer.scene.atmosphereRayleighScatteringScale =
+    viewer.scene.atmosphere.scattering.rayleighScatteringScale =
       smooth.rayleighScatteringScale.tick(deltaTime)
-    viewer.scene.atmosphereMieScatteringScale =
+    viewer.scene.atmosphere.scattering.mieScatteringScale =
       smooth.mieScatteringScale.tick(deltaTime)
-    viewer.scene.atmosphereMieExtinctionScale =
+    viewer.scene.atmosphere.scattering.mieExtinctionScale =
       smooth.mieExtinctionScale.tick(deltaTime)
-    viewer.scene.atmosphereMiePhaseFunctionG =
+    viewer.scene.atmosphere.scattering.miePhaseFunctionG =
       smooth.miePhaseFunctionG.tick(deltaTime)
-    viewer.scene.atmosphereAbsorptionExtinctionScale =
+    viewer.scene.atmosphere.scattering.absorptionExtinctionScale =
       smooth.absorptionExtinctionScale.tick(deltaTime)
-    viewer.scene.atmosphereGroundAlbedo = smooth.groundAlbedo.tick(deltaTime)
-    viewer.scene.atmosphereAlbedoScale = smooth.albedoScale.tick(deltaTime)
-    viewer.scene.atmosphereSunAngularRadius =
+    viewer.scene.atmosphere.scattering.groundAlbedo = smooth.groundAlbedo.tick(deltaTime)
+    viewer.scene.atmosphere.lighting.albedoScale = smooth.albedoScale.tick(deltaTime)
+    viewer.scene.atmosphere.sky.sunAngularRadius =
       smooth.sunAngularRadius.tick(deltaTime)
-    viewer.scene.atmosphereMoonAngularRadius =
+    viewer.scene.atmosphere.sky.moonAngularRadius =
       smooth.moonAngularRadius.tick(deltaTime)
-    viewer.scene.atmosphereLunarRadianceScale =
+    viewer.scene.atmosphere.sky.lunarRadianceScale =
       smooth.lunarRadianceScale.tick(deltaTime)
-    viewer.scene.atmosphereShadowRadius = smooth.shadowRadius.tick(deltaTime)
-    viewer.scene.cloudCoverage = smooth.cloudCoverage.tick(deltaTime)
-    viewer.scene.cloudSpeed = smooth.cloudSpeed.tick(deltaTime)
-    viewer.scene.cloudLayerAltitude = smooth.cloudLayerAltitude.tick(deltaTime)
-    viewer.scene.cloudLayerHeight = smooth.cloudLayerHeight.tick(deltaTime)
+    viewer.scene.atmosphere.shadow.radius = smooth.shadowRadius.tick(deltaTime)
+    viewer.scene.clouds.coverage = smooth.cloudCoverage.tick(deltaTime)
+    viewer.scene.clouds.speed = smooth.cloudSpeed.tick(deltaTime)
+    viewer.scene.clouds.layerAltitude = smooth.cloudLayerAltitude.tick(deltaTime)
+    viewer.scene.clouds.layerHeight = smooth.cloudLayerHeight.tick(deltaTime)
     viewer.toneMappingExposure = smooth.toneMappingExposure.tick(deltaTime)
 
     if (!viewer.clock.animate) {
@@ -732,8 +732,8 @@ function mountDebugSettingsPanel(
     previousHourUTCValue = hourUTCValue
     status.textContent =
       `第 ${dayOfYearValue} 日 UTC ${formatHour(hourUTCValue)} / ` +
-      `云量 ${viewer.scene.cloudCoverage.toFixed(2)} / ` +
-      `散射 ${viewer.scene.atmosphereInscatterIntensity.toFixed(
+      `云量 ${viewer.scene.clouds.coverage.toFixed(2)} / ` +
+      `散射 ${viewer.scene.atmosphere.scattering.intensity.toFixed(
         2
       )} / 曝光 ${viewer.toneMappingExposure.toFixed(1)}`
   }
@@ -752,37 +752,37 @@ function mountDebugSettingsPanel(
       dayOfYearValue !== previousDayOfYearValue ||
       hourUTCValue !== previousHourUTCValue
 
-    viewer.scene.skyAtmosphere.show = skyToggle.input.checked
-    viewer.scene.stars.show = starsToggle.input.checked
+    viewer.scene.atmosphere.show = skyToggle.input.checked
+    viewer.scene.atmosphere.sky.stars.show = starsToggle.input.checked
     smooth.starsIntensity.target = Number(starsIntensityControl.input.value)
     smooth.starsPointSize.target = Number(starsPointSizeControl.input.value)
-    viewer.scene.atmosphereTransmittance = transmittanceToggle.input.checked
-    viewer.scene.atmosphereInscatter = nativeInscatterToggle.input.checked
+    viewer.scene.atmosphere.scattering.transmittance = transmittanceToggle.input.checked
+    viewer.scene.atmosphere.scattering.inscatter = nativeInscatterToggle.input.checked
     smooth.atmosphereInscatterIntensity.target = Number(
       inscatterIntensityControl.input.value
     )
-    viewer.scene.atmosphereInscatterHorizonBlend =
+    viewer.scene.atmosphere.scattering.horizonBlend =
       inscatterHorizonToggle.input.checked
     smooth.horizonStart.target = Number(horizonStartControl.input.value)
     smooth.horizonEnd.target = Number(horizonEndControl.input.value)
-    viewer.scene.atmosphereLightingMode =
+    viewer.scene.atmosphere.lighting.mode =
       lightingModeControl.input.value as AtmosphereLightingMode
-    viewer.scene.atmosphereSunLight = sunLightToggle.input.checked
-    viewer.scene.atmosphereSkyLight = skyLightToggle.input.checked
+    viewer.scene.atmosphere.lighting.sunLight = sunLightToggle.input.checked
+    viewer.scene.atmosphere.lighting.skyLight = skyLightToggle.input.checked
     smooth.sunLightIntensity.target = Number(
       sunLightIntensityControl.input.value
     )
     smooth.skyLightIntensity.target = Number(
       skyLightIntensityControl.input.value
     )
-    viewer.scene.fallbackAmbientLight = fallbackAmbientLightToggle.input.checked
+    viewer.scene.atmosphere.fallbackAmbientLight.show = fallbackAmbientLightToggle.input.checked
     smooth.fallbackAmbientLightIntensity.target = Number(
       fallbackAmbientLightIntensityControl.input.value
     )
-    viewer.scene.atmosphereSun = sunDiscToggle.input.checked
-    viewer.scene.atmosphereMoon = moonToggle.input.checked
-    viewer.scene.atmosphereCorrectAltitude = correctAltitudeToggle.input.checked
-    viewer.scene.atmosphereCorrectGeometricError =
+    viewer.scene.atmosphere.sky.sun = sunDiscToggle.input.checked
+    viewer.scene.atmosphere.sky.moon = moonToggle.input.checked
+    viewer.scene.atmosphere.scattering.correctAltitude = correctAltitudeToggle.input.checked
+    viewer.scene.atmosphere.scattering.correctGeometricError =
       correctGeometricToggle.input.checked
     smooth.solarIrradianceScale.target = Number(
       solarIrradianceControl.input.value
@@ -818,7 +818,7 @@ function mountDebugSettingsPanel(
     smooth.shadowRadius.target = Number(
       shadowRadiusControl.input.value
     )
-    viewer.scene.atmosphereShadowSampleCount = Number(
+    viewer.scene.atmosphere.shadow.sampleCount = Number(
       shadowSampleCountControl.input.value
     )
     viewer.scene.clouds.show = cloudToggle.input.checked
@@ -842,10 +842,10 @@ function mountDebugSettingsPanel(
     smooth.cloudLayerHeight.target = Number(cloudHeightControl.input.value)
     smooth.toneMappingExposure.target = Number(exposureControl.input.value)
     viewer.resolutionScale = Number(resolutionControl.input.value)
-    viewer.scene.postProcessStages.lensFlare.enabled =
+    viewer.scene.postProcess.lensFlare.enabled =
       lensFlareToggle.input.checked
-    viewer.scene.postProcessStages.smaa.enabled = smaaToggle.input.checked
-    viewer.scene.postProcessStages.dithering.enabled =
+    viewer.scene.postProcess.smaa.enabled = smaaToggle.input.checked
+    viewer.scene.postProcess.dithering.enabled =
       ditheringToggle.input.checked
     fpsHud.setVisible(fpsToggle.input.checked)
     saveStoredDebugSettings({
@@ -913,8 +913,8 @@ function mountDebugSettingsPanel(
     status.textContent =
       `第 ${getUTCDayOfYear(currentTime)} 日 UTC ${formatHour(
         getUTCHour(currentTime)
-      )} / 云量 ${viewer.scene.cloudCoverage.toFixed(2)} / ` +
-      `散射 ${viewer.scene.atmosphereInscatterIntensity.toFixed(
+      )} / 云量 ${viewer.scene.clouds.coverage.toFixed(2)} / ` +
+      `散射 ${viewer.scene.atmosphere.scattering.intensity.toFixed(
         2
       )} / 曝光 ${viewer.toneMappingExposure.toFixed(1)}`
   }
@@ -977,3 +977,4 @@ function sliderValueToClockMultiplier(value: number) {
 function toFinite(value: number, fallback: number) {
   return Number.isFinite(value) ? value : fallback
 }
+

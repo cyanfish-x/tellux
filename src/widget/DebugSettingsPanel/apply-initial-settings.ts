@@ -11,19 +11,19 @@ export function applyInitialDebugSettings(
   settings: DebugSettingsPanelOptions
 ) {
   if (settings.skyAtmosphere !== undefined) {
-    viewer.scene.skyAtmosphere.show = settings.skyAtmosphere
+    viewer.scene.atmosphere.show = settings.skyAtmosphere
   }
 
   if (settings.stars !== undefined) {
-    viewer.scene.stars.show = settings.stars
+    viewer.scene.atmosphere.sky.stars.show = settings.stars
   }
 
   if (settings.starsIntensity !== undefined) {
-    viewer.scene.starsIntensity = settings.starsIntensity
+    viewer.scene.atmosphere.sky.starsIntensity = settings.starsIntensity
   }
 
   if (settings.starsPointSize !== undefined) {
-    viewer.scene.starsPointSize = settings.starsPointSize
+    viewer.scene.atmosphere.sky.starsPointSize = settings.starsPointSize
   }
 
   if (settings.clockAnimate !== undefined) {
@@ -47,156 +47,156 @@ export function applyInitialDebugSettings(
   }
 
   if (settings.cloudCoverage !== undefined) {
-    viewer.scene.cloudCoverage = settings.cloudCoverage
+    viewer.scene.clouds.coverage = settings.cloudCoverage
   }
 
   if (settings.cloudSpeed !== undefined) {
-    viewer.scene.cloudSpeed = settings.cloudSpeed
+    viewer.scene.clouds.speed = settings.cloudSpeed
   }
 
   if (settings.cloudLayerAltitude !== undefined) {
-    viewer.scene.cloudLayerAltitude = settings.cloudLayerAltitude
+    viewer.scene.clouds.layerAltitude = settings.cloudLayerAltitude
   }
 
   if (settings.cloudLayerHeight !== undefined) {
-    viewer.scene.cloudLayerHeight = settings.cloudLayerHeight
+    viewer.scene.clouds.layerHeight = settings.cloudLayerHeight
   }
 
   if (settings.atmosphereInscatterIntensity !== undefined) {
-    viewer.scene.atmosphereInscatterIntensity =
+    viewer.scene.atmosphere.scattering.intensity =
       settings.atmosphereInscatterIntensity
   }
 
   if (settings.atmosphereInscatterHorizonBlend !== undefined) {
-    viewer.scene.atmosphereInscatterHorizonBlend =
+    viewer.scene.atmosphere.scattering.horizonBlend =
       settings.atmosphereInscatterHorizonBlend
   }
 
   if (settings.atmosphereInscatterHorizonRange !== undefined) {
-    viewer.scene.atmosphereInscatterHorizonRange =
+    viewer.scene.atmosphere.scattering.horizonRange =
       settings.atmosphereInscatterHorizonRange
   }
 
   if (settings.atmosphereCorrectAltitude !== undefined) {
-    viewer.scene.atmosphereCorrectAltitude = settings.atmosphereCorrectAltitude
+    viewer.scene.atmosphere.scattering.correctAltitude = settings.atmosphereCorrectAltitude
   }
 
   if (settings.atmosphereCorrectGeometricError !== undefined) {
-    viewer.scene.atmosphereCorrectGeometricError =
+    viewer.scene.atmosphere.scattering.correctGeometricError =
       settings.atmosphereCorrectGeometricError
   }
 
   if (settings.atmosphereTransmittance !== undefined) {
-    viewer.scene.atmosphereTransmittance = settings.atmosphereTransmittance
+    viewer.scene.atmosphere.scattering.transmittance = settings.atmosphereTransmittance
   }
 
   if (settings.atmosphereInscatter !== undefined) {
-    viewer.scene.atmosphereInscatter = settings.atmosphereInscatter
+    viewer.scene.atmosphere.scattering.inscatter = settings.atmosphereInscatter
   }
 
   if (settings.atmosphereLightingMode !== undefined) {
-    viewer.scene.atmosphereLightingMode = settings.atmosphereLightingMode
+    viewer.scene.atmosphere.lighting.mode = settings.atmosphereLightingMode
   }
 
   if (settings.atmosphereSunLight !== undefined) {
-    viewer.scene.atmosphereSunLight = settings.atmosphereSunLight
+    viewer.scene.atmosphere.lighting.sunLight = settings.atmosphereSunLight
   }
 
   if (settings.atmosphereSkyLight !== undefined) {
-    viewer.scene.atmosphereSkyLight = settings.atmosphereSkyLight
+    viewer.scene.atmosphere.lighting.skyLight = settings.atmosphereSkyLight
   }
 
   if (settings.atmosphereSunLightIntensity !== undefined) {
-    viewer.scene.atmosphereSunLightIntensity =
+    viewer.scene.atmosphere.lighting.sunLightIntensity =
       settings.atmosphereSunLightIntensity
   }
 
   if (settings.atmosphereSkyLightIntensity !== undefined) {
-    viewer.scene.atmosphereSkyLightIntensity =
+    viewer.scene.atmosphere.lighting.skyLightIntensity =
       settings.atmosphereSkyLightIntensity
   }
 
   if (settings.fallbackAmbientLight !== undefined) {
-    viewer.scene.fallbackAmbientLight = settings.fallbackAmbientLight
+    viewer.scene.atmosphere.fallbackAmbientLight.show = settings.fallbackAmbientLight
   }
 
   if (settings.fallbackAmbientLightIntensity !== undefined) {
-    viewer.scene.fallbackAmbientLightIntensity =
+    viewer.scene.atmosphere.fallbackAmbientLight.intensity =
       settings.fallbackAmbientLightIntensity
   }
 
   if (settings.atmosphereSun !== undefined) {
-    viewer.scene.atmosphereSun = settings.atmosphereSun
+    viewer.scene.atmosphere.sky.sun = settings.atmosphereSun
   }
 
   if (settings.atmosphereMoon !== undefined) {
-    viewer.scene.atmosphereMoon = settings.atmosphereMoon
+    viewer.scene.atmosphere.sky.moon = settings.atmosphereMoon
   }
 
   if (settings.atmosphereGround !== undefined) {
-    viewer.scene.atmosphereGround = settings.atmosphereGround
+    viewer.scene.atmosphere.sky.ground = settings.atmosphereGround
   }
 
   if (settings.atmosphereAlbedoScale !== undefined) {
-    viewer.scene.atmosphereAlbedoScale = settings.atmosphereAlbedoScale
+    viewer.scene.atmosphere.lighting.albedoScale = settings.atmosphereAlbedoScale
   }
 
   if (settings.atmosphereSunAngularRadius !== undefined) {
-    viewer.scene.atmosphereSunAngularRadius =
+    viewer.scene.atmosphere.sky.sunAngularRadius =
       settings.atmosphereSunAngularRadius
   }
 
   if (settings.atmosphereMoonAngularRadius !== undefined) {
-    viewer.scene.atmosphereMoonAngularRadius =
+    viewer.scene.atmosphere.sky.moonAngularRadius =
       settings.atmosphereMoonAngularRadius
   }
 
   if (settings.atmosphereLunarRadianceScale !== undefined) {
-    viewer.scene.atmosphereLunarRadianceScale =
+    viewer.scene.atmosphere.sky.lunarRadianceScale =
       settings.atmosphereLunarRadianceScale
   }
 
   if (settings.atmosphereShadowRadius !== undefined) {
-    viewer.scene.atmosphereShadowRadius = settings.atmosphereShadowRadius
+    viewer.scene.atmosphere.shadow.radius = settings.atmosphereShadowRadius
   }
 
   if (settings.atmosphereShadowSampleCount !== undefined) {
-    viewer.scene.atmosphereShadowSampleCount =
+    viewer.scene.atmosphere.shadow.sampleCount =
       settings.atmosphereShadowSampleCount
   }
 
   if (settings.atmosphereSolarIrradianceScale !== undefined) {
-    viewer.scene.atmosphereSolarIrradianceScale =
+    viewer.scene.atmosphere.scattering.solarIrradianceScale =
       settings.atmosphereSolarIrradianceScale
   }
 
   if (settings.atmosphereRayleighScatteringScale !== undefined) {
-    viewer.scene.atmosphereRayleighScatteringScale =
+    viewer.scene.atmosphere.scattering.rayleighScatteringScale =
       settings.atmosphereRayleighScatteringScale
   }
 
   if (settings.atmosphereMieScatteringScale !== undefined) {
-    viewer.scene.atmosphereMieScatteringScale =
+    viewer.scene.atmosphere.scattering.mieScatteringScale =
       settings.atmosphereMieScatteringScale
   }
 
   if (settings.atmosphereMieExtinctionScale !== undefined) {
-    viewer.scene.atmosphereMieExtinctionScale =
+    viewer.scene.atmosphere.scattering.mieExtinctionScale =
       settings.atmosphereMieExtinctionScale
   }
 
   if (settings.atmosphereMiePhaseFunctionG !== undefined) {
-    viewer.scene.atmosphereMiePhaseFunctionG =
+    viewer.scene.atmosphere.scattering.miePhaseFunctionG =
       settings.atmosphereMiePhaseFunctionG
   }
 
   if (settings.atmosphereAbsorptionExtinctionScale !== undefined) {
-    viewer.scene.atmosphereAbsorptionExtinctionScale =
+    viewer.scene.atmosphere.scattering.absorptionExtinctionScale =
       settings.atmosphereAbsorptionExtinctionScale
   }
 
   if (settings.atmosphereGroundAlbedo !== undefined) {
-    viewer.scene.atmosphereGroundAlbedo = settings.atmosphereGroundAlbedo
+    viewer.scene.atmosphere.scattering.groundAlbedo = settings.atmosphereGroundAlbedo
   }
 
   if (settings.toneMappingExposure !== undefined) {
@@ -208,14 +208,14 @@ export function applyInitialDebugSettings(
   }
 
   if (settings.lensFlare !== undefined) {
-    viewer.scene.postProcessStages.lensFlare.enabled = settings.lensFlare
+    viewer.scene.postProcess.lensFlare.enabled = settings.lensFlare
   }
 
   if (settings.smaa !== undefined) {
-    viewer.scene.postProcessStages.smaa.enabled = settings.smaa
+    viewer.scene.postProcess.smaa.enabled = settings.smaa
   }
 
   if (settings.dithering !== undefined) {
-    viewer.scene.postProcessStages.dithering.enabled = settings.dithering
+    viewer.scene.postProcess.dithering.enabled = settings.dithering
   }
 }

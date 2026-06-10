@@ -53,9 +53,17 @@ const viewer = new tellux.Viewer(container, {
     }
   ],
   scene: {
-    atmosphereLightingMode:'post-process',
-    clouds: false,
-    toneMappingExposure: 7
+    atmosphere: {
+      lighting: {
+        mode: 'post-process'
+      }
+    },
+    clouds: {
+      show: false
+    },
+    postProcess: {
+      toneMappingExposure: 7
+    }
   }
 })
 
