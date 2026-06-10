@@ -1,5 +1,7 @@
 import tellux from "../../src"
 import * as THREE from "three"
+import { TilesRenderer } from "3d-tiles-renderer"
+import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import {
   arcgisWorldImageryUrl,
@@ -126,6 +128,8 @@ function executeExampleScript(source: string) {
   const execute = new Function(
     "tellux",
     "THREE",
+    "TilesRenderer",
+    "GaussianSplatPlugin",
     "GLTFLoader",
     "arcgisWorldImageryUrl",
     "defaultTerrainUrl",
@@ -138,6 +142,8 @@ function executeExampleScript(source: string) {
   execute(
     tellux,
     THREE,
+    TilesRenderer,
+    GaussianSplatPlugin,
     GLTFLoader,
     arcgisWorldImageryUrl,
     defaultTerrainUrl,

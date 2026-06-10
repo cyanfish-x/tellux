@@ -26,6 +26,7 @@ pnpm examples
 - `http://127.0.0.1:5173/click.html`
 - `http://127.0.0.1:5173/data-sources.html`
 - `http://127.0.0.1:5173/3d-tiles.html`
+- `http://127.0.0.1:5173/gaussian-splat-3d-tiles.html`
 - `http://127.0.0.1:5173/terrain.html`
 - `http://127.0.0.1:5173/atmosphere.html`
 - `http://127.0.0.1:5173/threejs-interop.html`
@@ -47,6 +48,25 @@ https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWith
 VITE_3D_TILESET_URL=https://example.com/tileset.json
 VITE_CESIUM_ION_3D_TILESET_ASSET_ID=123456
 VITE_CESIUM_ION_TOKEN=your_token
+```
+
+## 高斯泼溅 3D Tiles 示例
+
+`gaussian-splat-3d-tiles.html` 在示例侧直接集成
+`3d-tiles-rendererjs-3dgs-plugin` 和 `@sparkjsdev/spark`，通过底层
+`TilesRenderer` 加载带 `KHR_gaussian_splatting` / SPZ 压缩扩展的 3DGS
+tileset，并挂到 Tellux 的 Three.js 场景中。
+
+示例默认使用插件仓库公开样例：
+
+```txt
+https://raw.githubusercontent.com/WilliamLiu-1997/3D-Tiles-RendererJS-3DGS-Plugin/main/data/gaussianSplat1/tileset.json
+```
+
+可以在项目根目录 `.env` 中替换默认地址：
+
+```txt
+VITE_GAUSSIAN_SPLAT_3D_TILESET_URL=https://example.com/3dgs/tileset.json
 ```
 
 ## Cesium 地形示例

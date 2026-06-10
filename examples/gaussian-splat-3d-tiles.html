@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="sandcastle-order" content="3" />
+    <title>Tellux Gaussian Splat 3D Tiles</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <section class="toolbar toolbar--wide" aria-label="Gaussian splat 3D Tiles controls">
+        <header class="toolbar__header">
+          <h1>高斯泼溅 3D Tiles</h1>
+          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+        </header>
+        <p>示例侧直接使用 <code>TilesRenderer</code> 与 <code>GaussianSplatPlugin</code> 加载 3DGS tileset，验证高斯泼溅瓦片和 Tellux 地球场景的组合。</p>
+        <label class="field">
+          <span>3DGS tileset.json URL</span>
+          <input id="splat-tileset-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="switch">
+          <input id="splat-visible" type="checkbox" checked />
+          <span>显示高斯泼溅</span>
+        </label>
+        <p id="splat-status" class="status" aria-live="polite"></p>
+        <div class="toolbar__row">
+          <button class="button" id="load-splat-tileset" type="button">加载</button>
+          <button class="button" id="fly-to-splat" type="button">飞行到目标</button>
+          <button class="button" id="remove-splat-tileset" type="button">移除</button>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./gaussian-splat-3d-tiles.ts"></script>
+  </body>
+</html>

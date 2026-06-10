@@ -56,7 +56,9 @@
   },
   "devDependencies": {
     "3d-tiles-renderer": "^0.4.27",
+    "3d-tiles-rendererjs-3dgs-plugin": "^0.1.13",
     "@mapbox/vector-tile": "^2.0.5",
+    "@sparkjsdev/spark": "^2.1.0",
     "@takram/three-atmosphere": "0.19.1",
     "@takram/three-clouds": "0.7.6",
     "@takram/three-geospatial": "0.9.1",

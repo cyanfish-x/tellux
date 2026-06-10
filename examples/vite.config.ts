@@ -10,6 +10,7 @@ const htmlInputs = {
   click: resolve(__dirname, "click.html"),
   dataSources: resolve(__dirname, "data-sources.html"),
   tiles3d: resolve(__dirname, "3d-tiles.html"),
+  gaussianSplat3dTiles: resolve(__dirname, "gaussian-splat-3d-tiles.html"),
   googlePhotorealistic3dTiles: resolve(__dirname, "google-photorealistic-3d-tiles.html"),
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
@@ -29,7 +30,7 @@ export default defineConfig(({ mode }) => {
     root: __dirname,
     envDir: projectRoot,
     optimizeDeps: {
-      include: ["@mapbox/vector-tile", "pbf"],
+      include: ["@mapbox/vector-tile", "pbf", "@sparkjsdev/spark", "3d-tiles-rendererjs-3dgs-plugin"],
     },
     server: {
       fs: {

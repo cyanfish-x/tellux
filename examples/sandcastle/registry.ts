@@ -20,6 +20,7 @@ const categoryById: Record<string, string> = {
   click: "Interaction",
   "data-sources": "Layers",
   "fly-to": "Camera",
+  "gaussian-splat-3d-tiles": "Tiles",
   "google-photorealistic-3d-tiles": "Tiles",
   "instanced-horses": "Models",
   "mixed-height-sampling-horses": "Sampling",
@@ -29,10 +30,12 @@ const categoryById: Record<string, string> = {
 
 const titleById: Record<string, string> = {
   blank: "纯净地球",
+  "gaussian-splat-3d-tiles": "高斯泼溅 3D Tiles",
 }
 
 const descriptionById: Record<string, string> = {
   blank: "创建一个 Tellux Viewer，加载干净的地球影像底图。",
+  "gaussian-splat-3d-tiles": "示例侧集成 3d-tiles-rendererjs-3dgs-plugin，在 Tellux 地球场景中加载高斯泼溅 3D Tiles。",
 }
 
 const tagByTerm: Array<[string, string]> = [
@@ -44,6 +47,7 @@ const tagByTerm: Array<[string, string]> = [
   ["cloud", "Clouds"],
   ["fly", "Flight"],
   ["geojson", "GeoJSON"],
+  ["gaussian", "3DGS"],
   ["google", "Google"],
   ["gltf", "glTF"],
   ["imagery", "Imagery"],
@@ -52,11 +56,13 @@ const tagByTerm: Array<[string, string]> = [
   ["morph", "Instancing"],
   ["mvt", "MVT"],
   ["sampleheight", "Sampling"],
+  ["splat", "3DGS"],
   ["terrain", "Terrain"],
   ["three.js", "Three.js"],
   ["wms", "WMS"],
   ["xyz", "XYZ"],
   ["体积云", "Clouds"],
+  ["高斯", "3DGS"],
   ["地形", "Terrain"],
   ["图层", "Layers"],
   ["模型", "Model"],
