@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { CloudsEffect } from '@takram/three-clouds'
-import type { AtmosphereRuntimeControls } from './rendering/AtmosphereManager'
+import type { AtmosphereRuntimeState } from './rendering/AtmosphereManager'
 import type { AtmosphereLightingMode, CloudQualityPreset, SurfaceMaterialMode } from './types'
 
 const FALLBACK_AMBIENT_LIGHT_MIN_HEIGHT = 8000
@@ -8,6 +8,8 @@ const FALLBACK_AMBIENT_LIGHT_MAX_HEIGHT = 7600000
 const DEFAULT_CLOUD_SPEED = 0.001
 const DEFAULT_CLOUD_LAYER_ALTITUDE = 1500
 const DEFAULT_CLOUD_LAYER_HEIGHT = 650
+
+type AtmosphereStateApplier = (state: AtmosphereRuntimeState) => void
 
 export interface ResolvedSceneOptions {
   atmosphere: {
@@ -312,133 +314,120 @@ export class CloudSceneControls {
 }
 
 export class AtmosphereLightingControls {
-  private readonly getAtmosphereControls: () => AtmosphereRuntimeControls | null
+  private readonly onStateChange: () => void
   private readonly onEffectsChange: () => void
   private readonly onSurfaceMaterialModeChange: () => void
 
   constructor(
     private readonly options: ResolvedSceneOptions['atmosphere']['lighting'],
-    getAtmosphereControls: () => AtmosphereRuntimeControls | null,
+    onStateChange: () => void,
     onEffectsChange: () => void,
     onSurfaceMaterialModeChange: () => void
   ) {
-    this.getAtmosphereControls = getAtmosphereControls
+    this.onStateChange = onStateChange
     this.onEffectsChange = onEffectsChange
     this.onSurfaceMaterialModeChange = onSurfaceMaterialModeChange
   }
 
   /** 大气光照模式。Atmosphere lighting mode. */
   get mode() {
-    return this.getAtmosphereControls()?.lightingMode ?? this.options.mode
+    return this.options.mode
   }
 
   set mode(value: AtmosphereLightingMode) {
+    if (this.options.mode === value) return
+
     this.options.mode = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere && atmosphere.lightingMode !== value) {
-      atmosphere.lightingMode = value
-      this.onEffectsChange()
-      this.onSurfaceMaterialModeChange()
-    }
+    this.onStateChange()
+    this.onEffectsChange()
+    this.onSurfaceMaterialModeChange()
   }
 
   /** 是否应用太阳直射光照。Applies direct sun irradiance. */
   get sunLight() {
-    return this.getAtmosphereControls()?.sunLight ?? this.options.sunLight
+    return this.options.sunLight
   }
 
   set sunLight(value: boolean) {
+    if (this.options.sunLight === value) return
+
     this.options.sunLight = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere && atmosphere.sunLight !== value) {
-      atmosphere.sunLight = value
-      this.onEffectsChange()
-    }
+    this.onStateChange()
+    this.onEffectsChange()
   }
 
   /** 是否应用天空环境光照。Applies sky irradiance. */
   get skyLight() {
-    return this.getAtmosphereControls()?.skyLight ?? this.options.skyLight
+    return this.options.skyLight
   }
 
   set skyLight(value: boolean) {
+    if (this.options.skyLight === value) return
+
     this.options.skyLight = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere && atmosphere.skyLight !== value) {
-      atmosphere.skyLight = value
-      this.onEffectsChange()
-    }
+    this.onStateChange()
+    this.onEffectsChange()
   }
 
   /** 太阳光源辐射强度缩放。Sun light source irradiance intensity scale. */
   get sunLightIntensity() {
-    return this.getAtmosphereControls()?.sunLightIntensity ?? this.options.sunLightIntensity
+    return this.options.sunLightIntensity
   }
 
   set sunLightIntensity(value: number) {
     this.options.sunLightIntensity = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.sunLightIntensity = value
+    this.onStateChange()
   }
 
   /** 天空光探针辐射强度缩放。Sky light probe irradiance intensity scale. */
   get skyLightIntensity() {
-    return this.getAtmosphereControls()?.skyLightIntensity ?? this.options.skyLightIntensity
+    return this.options.skyLightIntensity
   }
 
   set skyLightIntensity(value: number) {
     this.options.skyLightIntensity = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.skyLightIntensity = value
+    this.onStateChange()
   }
 
   /** 后处理光照使用的反照率缩放。Albedo scale used by post-process lighting. */
   get albedoScale() {
-    return this.getAtmosphereControls()?.albedoScale ?? this.options.albedoScale
+    return this.options.albedoScale
   }
 
   set albedoScale(value: number) {
     this.options.albedoScale = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.albedoScale = value
+    this.onStateChange()
   }
 
   apply() {
-    this.mode = this.options.mode
-    this.sunLight = this.options.sunLight
-    this.skyLight = this.options.skyLight
-    this.sunLightIntensity = this.options.sunLightIntensity
-    this.skyLightIntensity = this.options.skyLightIntensity
-    this.albedoScale = this.options.albedoScale
+    this.onStateChange()
   }
 }
 
 export class AtmosphereScatteringControls {
   constructor(
     private readonly options: ResolvedSceneOptions['atmosphere']['scattering'],
-    private readonly getAtmosphereControls: () => AtmosphereRuntimeControls | null
+    private readonly onStateChange: () => void
   ) {}
 
   /** 是否应用大气透射衰减。Applies atmospheric transmittance attenuation. */
   get transmittance() {
-    return this.getAtmosphereControls()?.transmittance ?? this.options.transmittance
+    return this.options.transmittance
   }
 
   set transmittance(value: boolean) {
     this.options.transmittance = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.transmittance = value
+    this.onStateChange()
   }
 
   /** 是否应用进入视线的空气散射光。Applies atmospheric in-scattered light. */
   get inscatter() {
-    return this.getAtmosphereControls()?.inscatter ?? this.options.inscatter
+    return this.options.inscatter
   }
 
   set inscatter(value: boolean) {
     this.options.inscatter = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.inscatter = value
+    this.onStateChange()
   }
 
   /** 空气散射强度。Atmospheric in-scattering intensity. */
@@ -448,6 +437,7 @@ export class AtmosphereScatteringControls {
 
   set intensity(value: number) {
     this.options.intensity = THREE.MathUtils.clamp(value, 0, 1)
+    this.onStateChange()
   }
 
   /** 是否按地平线和球体边缘混合空气散射。Blends atmospheric in-scattering by horizon and globe edge. */
@@ -457,6 +447,7 @@ export class AtmosphereScatteringControls {
 
   set horizonBlend(value: boolean) {
     this.options.horizonBlend = value
+    this.onStateChange()
   }
 
   /** 空气散射地平线混合范围。Horizon blend range for in-scattering. */
@@ -466,119 +457,101 @@ export class AtmosphereScatteringControls {
 
   set horizonRange(value: [number, number]) {
     this.options.horizonRange = [...value]
+    this.onStateChange()
   }
 
   /** 是否修正相机高度和椭球高度误差。Corrects camera altitude against the atmosphere ellipsoid. */
   get correctAltitude() {
-    return this.getAtmosphereControls()?.correctAltitude ?? this.options.correctAltitude
+    return this.options.correctAltitude
   }
 
   set correctAltitude(value: boolean) {
     this.options.correctAltitude = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.correctAltitude = value
+    this.onStateChange()
   }
 
   /** 是否修正地表瓦片几何误差导致的光照伪影。Corrects lighting artifacts caused by surface tile geometric error. */
   get correctGeometricError() {
-    return this.getAtmosphereControls()?.correctGeometricError ?? this.options.correctGeometricError
+    return this.options.correctGeometricError
   }
 
   set correctGeometricError(value: boolean) {
     this.options.correctGeometricError = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.correctGeometricError = value
+    this.onStateChange()
   }
 
   /** 太阳入射光谱强度缩放。Scale for top-of-atmosphere solar spectral irradiance. */
   get solarIrradianceScale() {
-    return this.getAtmosphereControls()?.solarIrradianceScale ?? this.options.solarIrradianceScale
+    return this.options.solarIrradianceScale
   }
 
   set solarIrradianceScale(value: number) {
     this.options.solarIrradianceScale = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.solarIrradianceScale = value
+    this.onStateChange()
   }
 
   /** 瑞利散射系数缩放。Scale for Rayleigh scattering coefficients. */
   get rayleighScatteringScale() {
-    return this.getAtmosphereControls()?.rayleighScatteringScale ?? this.options.rayleighScatteringScale
+    return this.options.rayleighScatteringScale
   }
 
   set rayleighScatteringScale(value: number) {
     this.options.rayleighScatteringScale = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.rayleighScatteringScale = value
+    this.onStateChange()
   }
 
   /** 米氏散射系数缩放。Scale for Mie scattering coefficients. */
   get mieScatteringScale() {
-    return this.getAtmosphereControls()?.mieScatteringScale ?? this.options.mieScatteringScale
+    return this.options.mieScatteringScale
   }
 
   set mieScatteringScale(value: number) {
     this.options.mieScatteringScale = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.mieScatteringScale = value
+    this.onStateChange()
   }
 
   /** 米氏消光系数缩放。Scale for Mie extinction coefficients. */
   get mieExtinctionScale() {
-    return this.getAtmosphereControls()?.mieExtinctionScale ?? this.options.mieExtinctionScale
+    return this.options.mieExtinctionScale
   }
 
   set mieExtinctionScale(value: number) {
     this.options.mieExtinctionScale = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.mieExtinctionScale = value
+    this.onStateChange()
   }
 
   /** 米氏相函数不对称因子。Mie phase function asymmetry factor. */
   get miePhaseFunctionG() {
-    return this.getAtmosphereControls()?.miePhaseFunctionG ?? this.options.miePhaseFunctionG
+    return this.options.miePhaseFunctionG
   }
 
   set miePhaseFunctionG(value: number) {
     this.options.miePhaseFunctionG = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.miePhaseFunctionG = value
+    this.onStateChange()
   }
 
   /** 臭氧等吸收介质的消光系数缩放。Scale for absorption extinction. */
   get absorptionExtinctionScale() {
-    return this.getAtmosphereControls()?.absorptionExtinctionScale ?? this.options.absorptionExtinctionScale
+    return this.options.absorptionExtinctionScale
   }
 
   set absorptionExtinctionScale(value: number) {
     this.options.absorptionExtinctionScale = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.absorptionExtinctionScale = value
+    this.onStateChange()
   }
 
   /** 大气模型里的平均地表反照率。Average ground albedo in the atmosphere model. */
   get groundAlbedo() {
-    return this.getAtmosphereControls()?.groundAlbedo ?? this.options.groundAlbedo
+    return this.options.groundAlbedo
   }
 
   set groundAlbedo(value: number) {
     this.options.groundAlbedo = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.groundAlbedo = value
+    this.onStateChange()
   }
 
   apply() {
-    this.transmittance = this.options.transmittance
-    this.inscatter = this.options.inscatter
-    this.correctAltitude = this.options.correctAltitude
-    this.correctGeometricError = this.options.correctGeometricError
-    this.solarIrradianceScale = this.options.solarIrradianceScale
-    this.rayleighScatteringScale = this.options.rayleighScatteringScale
-    this.mieScatteringScale = this.options.mieScatteringScale
-    this.mieExtinctionScale = this.options.mieExtinctionScale
-    this.miePhaseFunctionG = this.options.miePhaseFunctionG
-    this.absorptionExtinctionScale = this.options.absorptionExtinctionScale
-    this.groundAlbedo = this.options.groundAlbedo
+    this.onStateChange()
   }
 }
 
@@ -587,146 +560,124 @@ export class AtmosphereSkyControls {
 
   constructor(
     private readonly options: ResolvedSceneOptions['atmosphere']['sky'],
-    private readonly getAtmosphereControls: () => AtmosphereRuntimeControls | null
+    private readonly onStateChange: () => void
   ) {
-    this.stars = new SceneToggle(options.stars, () => {
-      const atmosphere = this.getAtmosphereControls()
-      if (atmosphere) atmosphere.starsVisible = this.stars.show
-    })
+    this.stars = new SceneToggle(options.stars, onStateChange)
   }
 
   /** 星空亮度缩放。Star field brightness scale. */
   get starsIntensity() {
-    return this.getAtmosphereControls()?.starsIntensity ?? this.options.starsIntensity
+    return this.options.starsIntensity
   }
 
   set starsIntensity(value: number) {
     this.options.starsIntensity = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.starsIntensity = value
+    this.onStateChange()
   }
 
   /** 星点大小（像素点）。Star point size in pixels. */
   get starsPointSize() {
-    return this.getAtmosphereControls()?.starsPointSize ?? this.options.starsPointSize
+    return this.options.starsPointSize
   }
 
   set starsPointSize(value: number) {
     this.options.starsPointSize = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.starsPointSize = value
+    this.onStateChange()
   }
 
   /** 是否在天空中绘制太阳盘。Renders the sun disc in the sky. */
   get sun() {
-    return this.getAtmosphereControls()?.sun ?? this.options.sun
+    return this.options.sun
   }
 
   set sun(value: boolean) {
     this.options.sun = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.sun = value
+    this.onStateChange()
   }
 
   /** 是否在天空中绘制月亮。Renders the moon in the sky. */
   get moon() {
-    return this.getAtmosphereControls()?.moon ?? this.options.moon
+    return this.options.moon
   }
 
   set moon(value: boolean) {
     this.options.moon = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.moon = value
+    this.onStateChange()
   }
 
   /** 是否绘制大气天空里的地面。Renders the ground term in the atmospheric sky. */
   get ground() {
-    return this.getAtmosphereControls()?.ground ?? this.options.ground
+    return this.options.ground
   }
 
   set ground(value: boolean) {
     this.options.ground = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.ground = value
+    this.onStateChange()
   }
 
   /** 太阳角半径（弧度）。Sun angular radius in radians. */
   get sunAngularRadius() {
-    return this.getAtmosphereControls()?.sunAngularRadius ?? this.options.sunAngularRadius
+    return this.options.sunAngularRadius
   }
 
   set sunAngularRadius(value: number) {
     this.options.sunAngularRadius = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.sunAngularRadius = value
+    this.onStateChange()
   }
 
   /** 月亮角半径（弧度）。Moon angular radius in radians. */
   get moonAngularRadius() {
-    return this.getAtmosphereControls()?.moonAngularRadius ?? this.options.moonAngularRadius
+    return this.options.moonAngularRadius
   }
 
   set moonAngularRadius(value: number) {
     this.options.moonAngularRadius = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.moonAngularRadius = value
+    this.onStateChange()
   }
 
   /** 月光辐射亮度缩放。Lunar radiance scale. */
   get lunarRadianceScale() {
-    return this.getAtmosphereControls()?.lunarRadianceScale ?? this.options.lunarRadianceScale
+    return this.options.lunarRadianceScale
   }
 
   set lunarRadianceScale(value: number) {
     this.options.lunarRadianceScale = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.lunarRadianceScale = value
+    this.onStateChange()
   }
 
   apply() {
-    this.stars.show = this.options.stars
-    this.starsIntensity = this.options.starsIntensity
-    this.starsPointSize = this.options.starsPointSize
-    this.sun = this.options.sun
-    this.moon = this.options.moon
-    this.ground = this.options.ground
-    this.sunAngularRadius = this.options.sunAngularRadius
-    this.moonAngularRadius = this.options.moonAngularRadius
-    this.lunarRadianceScale = this.options.lunarRadianceScale
+    this.onStateChange()
   }
 }
 
 export class AtmosphereShadowControls {
   constructor(
     private readonly options: ResolvedSceneOptions['atmosphere']['shadow'],
-    private readonly getAtmosphereControls: () => AtmosphereRuntimeControls | null
+    private readonly onStateChange: () => void
   ) {}
 
   /** 云影采样的屏幕模糊半径。Screen-space blur radius for cloud shadow sampling. */
   get radius() {
-    return this.getAtmosphereControls()?.shadowRadius ?? this.options.radius
+    return this.options.radius
   }
 
   set radius(value: number) {
     this.options.radius = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.shadowRadius = value
+    this.onStateChange()
   }
 
   /** 云影 PCF 采样数量，范围 `1` 到 `16`。Cloud shadow PCF sample count from `1` to `16`. */
   get sampleCount() {
-    return this.getAtmosphereControls()?.shadowSampleCount ?? this.options.sampleCount
+    return this.options.sampleCount
   }
 
   set sampleCount(value: number) {
     this.options.sampleCount = value
-    const atmosphere = this.getAtmosphereControls()
-    if (atmosphere) atmosphere.shadowSampleCount = value
+    this.onStateChange()
   }
 
   apply() {
-    this.radius = this.options.radius
-    this.sampleCount = this.options.sampleCount
+    this.onStateChange()
   }
 }
 
@@ -788,20 +739,23 @@ export class AtmosphereSceneControls {
   constructor(
     options: ResolvedSceneOptions['atmosphere'],
     fallbackAmbientLightSource: THREE.AmbientLight,
-    getAtmosphereControls: () => AtmosphereRuntimeControls | null,
+    private readonly applyAtmosphereState: AtmosphereStateApplier,
     onEffectsChange: () => void,
     onSurfaceMaterialModeChange: () => void
   ) {
+    const onStateChange = () => {
+      this.apply()
+    }
     this.visibility = new SceneToggle(options.show, onEffectsChange)
     this.lighting = new AtmosphereLightingControls(
       options.lighting,
-      getAtmosphereControls,
+      onStateChange,
       onEffectsChange,
       onSurfaceMaterialModeChange
     )
-    this.scattering = new AtmosphereScatteringControls(options.scattering, getAtmosphereControls)
-    this.sky = new AtmosphereSkyControls(options.sky, getAtmosphereControls)
-    this.shadow = new AtmosphereShadowControls(options.shadow, getAtmosphereControls)
+    this.scattering = new AtmosphereScatteringControls(options.scattering, onStateChange)
+    this.sky = new AtmosphereSkyControls(options.sky, onStateChange)
+    this.shadow = new AtmosphereShadowControls(options.shadow, onStateChange)
     this.fallbackAmbientLight = new FallbackAmbientLightControls(options.fallbackAmbientLight, fallbackAmbientLightSource)
   }
 
@@ -819,10 +773,43 @@ export class AtmosphereSceneControls {
   }
 
   apply() {
-    this.lighting.apply()
-    this.scattering.apply()
-    this.sky.apply()
-    this.shadow.apply()
+    this.applyAtmosphereState(this.getRuntimeState())
+  }
+
+  private getRuntimeState(): AtmosphereRuntimeState {
+    return {
+      inscatterIntensity: this.scattering.intensity,
+      inscatterHorizonBlend: this.scattering.horizonBlend,
+      inscatterHorizonRange: this.scattering.horizonRange,
+      correctAltitude: this.scattering.correctAltitude,
+      correctGeometricError: this.scattering.correctGeometricError,
+      transmittance: this.scattering.transmittance,
+      inscatter: this.scattering.inscatter,
+      lightingMode: this.lighting.mode,
+      sunLight: this.lighting.sunLight,
+      skyLight: this.lighting.skyLight,
+      sunLightIntensity: this.lighting.sunLightIntensity,
+      skyLightIntensity: this.lighting.skyLightIntensity,
+      sun: this.sky.sun,
+      moon: this.sky.moon,
+      ground: this.sky.ground,
+      albedoScale: this.lighting.albedoScale,
+      sunAngularRadius: this.sky.sunAngularRadius,
+      moonAngularRadius: this.sky.moonAngularRadius,
+      lunarRadianceScale: this.sky.lunarRadianceScale,
+      shadowRadius: this.shadow.radius,
+      shadowSampleCount: this.shadow.sampleCount,
+      starsVisible: this.sky.stars.show,
+      starsIntensity: this.sky.starsIntensity,
+      starsPointSize: this.sky.starsPointSize,
+      solarIrradianceScale: this.scattering.solarIrradianceScale,
+      rayleighScatteringScale: this.scattering.rayleighScatteringScale,
+      mieScatteringScale: this.scattering.mieScatteringScale,
+      mieExtinctionScale: this.scattering.mieExtinctionScale,
+      miePhaseFunctionG: this.scattering.miePhaseFunctionG,
+      absorptionExtinctionScale: this.scattering.absorptionExtinctionScale,
+      groundAlbedo: this.scattering.groundAlbedo
+    }
   }
 }
 
@@ -872,7 +859,7 @@ export class Scene {
   constructor(
     options: ResolvedSceneOptions,
     getCloudsEffect: () => CloudsEffect | null,
-    getAtmosphereControls: () => AtmosphereRuntimeControls | null,
+    applyAtmosphereState: AtmosphereStateApplier,
     onEffectsChange: () => void,
     onSurfaceMaterialModeChange: () => void
   ) {
@@ -880,7 +867,7 @@ export class Scene {
     this.atmosphere = new AtmosphereSceneControls(
       options.atmosphere,
       this.fallbackAmbientLightSource,
-      getAtmosphereControls,
+      applyAtmosphereState,
       onEffectsChange,
       onSurfaceMaterialModeChange
     )

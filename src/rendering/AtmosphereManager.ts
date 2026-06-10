@@ -45,7 +45,10 @@ interface AtmosphereUniformValue {
   ground_albedo: THREE.Color
 }
 
-export interface AtmosphereRuntimeControls {
+export interface AtmosphereRuntimeState {
+  inscatterIntensity: number
+  inscatterHorizonBlend: boolean
+  inscatterHorizonRange: [number, number]
   correctAltitude: boolean
   correctGeometricError: boolean
   transmittance: boolean
@@ -100,9 +103,6 @@ export class AtmosphereManager {
   private readonly baseAbsorptionExtinction = new THREE.Vector3()
   private readonly lightPosition = new THREE.Vector3()
   private lightSourceScene: THREE.Scene | null = null
-  private currentLightingMode: AtmosphereLightingMode = 'light-source'
-  private isSunLightEnabled = true
-  private isSkyLightEnabled = true
   private isDisposed = false
 
   constructor(
@@ -123,7 +123,6 @@ export class AtmosphereManager {
     this.sunLightSource.visible = false
     this.skyLightSource = new SkyLightProbe()
     this.skyLightSource.visible = false
-    this.applyLightingMode()
 
     this.cloudsEffect = new CloudsEffect(this.camera)
     this.cloudsEffect.localWeatherVelocity.set(0.001, 0)
@@ -189,272 +188,54 @@ export class AtmosphereManager {
     this.skyLightSource.update()
   }
 
-  get inscatterIntensity() {
-    return this.getInscatterIntensityUniform()?.value ?? 1
-  }
-
-  set inscatterIntensity(value: number) {
-    const uniform = this.getInscatterIntensityUniform()
-    if (uniform) uniform.value = THREE.MathUtils.clamp(value, 0, 1)
-  }
-
-  get inscatterHorizonBlend() {
-    return Boolean(this.getInscatterHorizonBlendUniform()?.value)
-  }
-
-  set inscatterHorizonBlend(value: boolean) {
-    const uniform = this.getInscatterHorizonBlendUniform()
-    if (uniform) uniform.value = value ? 1 : 0
-  }
-
-  get inscatterHorizonRange(): [number, number] {
-    const value = this.getInscatterHorizonRangeUniform()?.value
-    return value ? [value.x, value.y] : [0, 0.6]
-  }
-
-  set inscatterHorizonRange(value: [number, number]) {
-    const uniform = this.getInscatterHorizonRangeUniform()
-    if (uniform) {
-      const start = THREE.MathUtils.clamp(Math.min(value[0], value[1]), 0, 1)
-      const end = THREE.MathUtils.clamp(Math.max(value[0], value[1]), 0, 1)
-      uniform.value.set(
-        start,
-        end
-      )
-    }
-  }
-
-  get correctAltitude() {
-    return this.aerialPerspectiveEffect.correctAltitude
-  }
-
-  set correctAltitude(value: boolean) {
-    this.aerialPerspectiveEffect.correctAltitude = value
-    this.sunLightSource.correctAltitude = value
-    this.skyLightSource.correctAltitude = value
-  }
-
-  get correctGeometricError() {
-    return this.aerialPerspectiveEffect.correctGeometricError
-  }
-
-  set correctGeometricError(value: boolean) {
-    this.aerialPerspectiveEffect.correctGeometricError = value
-  }
-
-  get transmittance() {
-    return this.aerialPerspectiveEffect.transmittance
-  }
-
-  set transmittance(value: boolean) {
-    this.aerialPerspectiveEffect.transmittance = value
-  }
-
-  get inscatter() {
-    return this.aerialPerspectiveEffect.inscatter
-  }
-
-  set inscatter(value: boolean) {
-    this.aerialPerspectiveEffect.inscatter = value
-  }
-
-  get lightingMode() {
-    return this.currentLightingMode
-  }
-
-  set lightingMode(value: AtmosphereLightingMode) {
-    if (this.currentLightingMode === value) return
-    this.currentLightingMode = value
-    this.applyLightingMode()
-  }
-
-  get sunLight() {
-    return this.isSunLightEnabled
-  }
-
-  set sunLight(value: boolean) {
-    if (this.isSunLightEnabled === value) return
-    this.isSunLightEnabled = value
-    this.applyLightingMode()
-  }
-
-  get skyLight() {
-    return this.isSkyLightEnabled
-  }
-
-  set skyLight(value: boolean) {
-    if (this.isSkyLightEnabled === value) return
-    this.isSkyLightEnabled = value
-    this.applyLightingMode()
-  }
-
-  get sunLightIntensity() {
-    return this.sunLightSource.intensity
-  }
-
-  set sunLightIntensity(value: number) {
-    this.sunLightSource.intensity = Math.max(0, this.toFinite(value, 1))
-  }
-
-  get skyLightIntensity() {
-    return this.skyLightSource.intensity
-  }
-
-  set skyLightIntensity(value: number) {
-    this.skyLightSource.intensity = Math.max(0, this.toFinite(value, 1))
-  }
-
-  get sun() {
-    return this.aerialPerspectiveEffect.sun
-  }
-
-  set sun(value: boolean) {
-    this.aerialPerspectiveEffect.sun = value
-  }
-
-  get moon() {
-    return this.aerialPerspectiveEffect.moon
-  }
-
-  set moon(value: boolean) {
-    this.aerialPerspectiveEffect.moon = value
-  }
-
-  get ground() {
-    return this.aerialPerspectiveEffect.ground
-  }
-
-  set ground(value: boolean) {
-    this.aerialPerspectiveEffect.ground = value
-  }
-
-  get albedoScale() {
-    return this.aerialPerspectiveEffect.albedoScale
-  }
-
-  set albedoScale(value: number) {
-    this.aerialPerspectiveEffect.albedoScale = this.toFinite(value, 1)
-  }
-
-  get sunAngularRadius() {
-    return this.aerialPerspectiveEffect.sunAngularRadius
-  }
-
-  set sunAngularRadius(value: number) {
-    this.aerialPerspectiveEffect.sunAngularRadius = THREE.MathUtils.clamp(this.toFinite(value, 0.004675), 0, 0.1)
-  }
-
-  get moonAngularRadius() {
-    return this.aerialPerspectiveEffect.moonAngularRadius
-  }
-
-  set moonAngularRadius(value: number) {
-    this.aerialPerspectiveEffect.moonAngularRadius = THREE.MathUtils.clamp(this.toFinite(value, 0.0045), 0, 0.1)
-  }
-
-  get lunarRadianceScale() {
-    return this.aerialPerspectiveEffect.lunarRadianceScale
-  }
-
-  set lunarRadianceScale(value: number) {
-    this.aerialPerspectiveEffect.lunarRadianceScale = Math.max(0, this.toFinite(value, 1))
-  }
-
-  get shadowRadius() {
-    return this.aerialPerspectiveEffect.shadowRadius
-  }
-
-  set shadowRadius(value: number) {
-    this.aerialPerspectiveEffect.shadowRadius = Math.max(0, this.toFinite(value, 3))
-  }
-
-  get shadowSampleCount() {
-    return this.aerialPerspectiveEffect.shadowSampleCount
-  }
-
-  set shadowSampleCount(value: number) {
-    this.aerialPerspectiveEffect.shadowSampleCount = Math.round(THREE.MathUtils.clamp(this.toFinite(value, 8), 1, 16))
-  }
-
-  get starsVisible() {
-    return this.stars.visible
-  }
-
-  set starsVisible(value: boolean) {
-    this.stars.visible = value
-  }
-
-  get starsIntensity() {
-    return this.starsMaterial.intensity
-  }
-
-  set starsIntensity(value: number) {
-    this.starsMaterial.intensity = Math.max(0, this.toFinite(value, 1))
-  }
-
-  get starsPointSize() {
-    return this.starsMaterial.pointSize
-  }
-
-  set starsPointSize(value: number) {
-    this.starsMaterial.pointSize = Math.max(0, this.toFinite(value, 1))
-  }
-
-  get solarIrradianceScale() {
-    return this.getVectorScale('solar_irradiance', this.baseSolarIrradiance)
-  }
-
-  set solarIrradianceScale(value: number) {
-    this.setVectorScale('solar_irradiance', this.baseSolarIrradiance, value)
-  }
-
-  get rayleighScatteringScale() {
-    return this.getVectorScale('rayleigh_scattering', this.baseRayleighScattering)
-  }
-
-  set rayleighScatteringScale(value: number) {
-    this.setVectorScale('rayleigh_scattering', this.baseRayleighScattering, value)
-  }
-
-  get mieScatteringScale() {
-    return this.getVectorScale('mie_scattering', this.baseMieScattering)
-  }
-
-  set mieScatteringScale(value: number) {
-    this.setVectorScale('mie_scattering', this.baseMieScattering, value)
-  }
-
-  get mieExtinctionScale() {
-    return this.getVectorScale('mie_extinction', this.baseMieExtinction)
-  }
-
-  set mieExtinctionScale(value: number) {
-    this.setVectorScale('mie_extinction', this.baseMieExtinction, value)
-  }
-
-  get miePhaseFunctionG() {
-    return this.getAtmosphereUniform().mie_phase_function_g
-  }
-
-  set miePhaseFunctionG(value: number) {
-    this.getAtmosphereUniform().mie_phase_function_g = THREE.MathUtils.clamp(this.toFinite(value, 0.8), -0.99, 0.99)
-  }
-
-  get absorptionExtinctionScale() {
-    return this.getVectorScale('absorption_extinction', this.baseAbsorptionExtinction)
-  }
-
-  set absorptionExtinctionScale(value: number) {
-    this.setVectorScale('absorption_extinction', this.baseAbsorptionExtinction, value)
-  }
-
-  get groundAlbedo() {
-    const color = this.getAtmosphereUniform().ground_albedo
-    return (color.r + color.g + color.b) / 3
-  }
-
-  set groundAlbedo(value: number) {
-    this.getAtmosphereUniform().ground_albedo.setScalar(THREE.MathUtils.clamp(this.toFinite(value, 0.1), 0, 1))
+  applyAtmosphereState(state: AtmosphereRuntimeState) {
+    this.setInscatterIntensity(state.inscatterIntensity)
+    this.setInscatterHorizonBlend(state.inscatterHorizonBlend)
+    this.setInscatterHorizonRange(state.inscatterHorizonRange)
+    this.aerialPerspectiveEffect.correctAltitude = state.correctAltitude
+    this.sunLightSource.correctAltitude = state.correctAltitude
+    this.skyLightSource.correctAltitude = state.correctAltitude
+    this.aerialPerspectiveEffect.correctGeometricError = state.correctGeometricError
+    this.aerialPerspectiveEffect.transmittance = state.transmittance
+    this.aerialPerspectiveEffect.inscatter = state.inscatter
+    this.applyLightingMode(state.lightingMode, state.sunLight, state.skyLight)
+    this.sunLightSource.intensity = Math.max(0, this.toFinite(state.sunLightIntensity, 1))
+    this.skyLightSource.intensity = Math.max(0, this.toFinite(state.skyLightIntensity, 1))
+    this.aerialPerspectiveEffect.sun = state.sun
+    this.aerialPerspectiveEffect.moon = state.moon
+    this.aerialPerspectiveEffect.ground = state.ground
+    this.aerialPerspectiveEffect.albedoScale = this.toFinite(state.albedoScale, 1)
+    this.aerialPerspectiveEffect.sunAngularRadius = THREE.MathUtils.clamp(
+      this.toFinite(state.sunAngularRadius, 0.004675),
+      0,
+      0.1
+    )
+    this.aerialPerspectiveEffect.moonAngularRadius = THREE.MathUtils.clamp(
+      this.toFinite(state.moonAngularRadius, 0.0045),
+      0,
+      0.1
+    )
+    this.aerialPerspectiveEffect.lunarRadianceScale = Math.max(0, this.toFinite(state.lunarRadianceScale, 1))
+    this.aerialPerspectiveEffect.shadowRadius = Math.max(0, this.toFinite(state.shadowRadius, 3))
+    this.aerialPerspectiveEffect.shadowSampleCount = Math.round(
+      THREE.MathUtils.clamp(this.toFinite(state.shadowSampleCount, 8), 1, 16)
+    )
+    this.stars.visible = state.starsVisible
+    this.starsMaterial.intensity = Math.max(0, this.toFinite(state.starsIntensity, 1))
+    this.starsMaterial.pointSize = Math.max(0, this.toFinite(state.starsPointSize, 1))
+    this.setVectorScale('solar_irradiance', this.baseSolarIrradiance, state.solarIrradianceScale)
+    this.setVectorScale('rayleigh_scattering', this.baseRayleighScattering, state.rayleighScatteringScale)
+    this.setVectorScale('mie_scattering', this.baseMieScattering, state.mieScatteringScale)
+    this.setVectorScale('mie_extinction', this.baseMieExtinction, state.mieExtinctionScale)
+    this.getAtmosphereUniform().mie_phase_function_g = THREE.MathUtils.clamp(
+      this.toFinite(state.miePhaseFunctionG, 0.8),
+      -0.99,
+      0.99
+    )
+    this.setVectorScale('absorption_extinction', this.baseAbsorptionExtinction, state.absorptionExtinctionScale)
+    this.getAtmosphereUniform().ground_albedo.setScalar(
+      THREE.MathUtils.clamp(this.toFinite(state.groundAlbedo, 0.1), 0, 1)
+    )
   }
 
   async loadTextures() {
@@ -500,12 +281,12 @@ export class AtmosphereManager {
     this.loadedTextures.forEach((texture) => texture.dispose())
   }
 
-  private applyLightingMode() {
-    const usePostProcessLighting = this.currentLightingMode === 'post-process'
-    this.aerialPerspectiveEffect.sunLight = usePostProcessLighting && this.isSunLightEnabled
-    this.aerialPerspectiveEffect.skyLight = usePostProcessLighting && this.isSkyLightEnabled
-    this.sunLightSource.visible = !usePostProcessLighting && this.isSunLightEnabled
-    this.skyLightSource.visible = !usePostProcessLighting && this.isSkyLightEnabled
+  private applyLightingMode(mode: AtmosphereLightingMode, sunLight: boolean, skyLight: boolean) {
+    const usePostProcessLighting = mode === 'post-process'
+    this.aerialPerspectiveEffect.sunLight = usePostProcessLighting && sunLight
+    this.aerialPerspectiveEffect.skyLight = usePostProcessLighting && skyLight
+    this.sunLightSource.visible = !usePostProcessLighting && sunLight
+    this.skyLightSource.visible = !usePostProcessLighting && skyLight
   }
 
   private removeLightSourcesFromScene() {
@@ -537,14 +318,6 @@ export class AtmosphereManager {
     return this.aerialPerspectiveEffect.uniforms.get('ATMOSPHERE').value as AtmosphereUniformValue
   }
 
-  private getVectorScale(field: keyof Pick<
-    AtmosphereUniformValue,
-    'solar_irradiance' | 'rayleigh_scattering' | 'mie_scattering' | 'mie_extinction' | 'absorption_extinction'
-  >, base: THREE.Vector3) {
-    const current = this.getAtmosphereUniform()[field]
-    return base.x !== 0 ? current.x / base.x : 1
-  }
-
   private setVectorScale(field: keyof Pick<
     AtmosphereUniformValue,
     'solar_irradiance' | 'rayleigh_scattering' | 'mie_scattering' | 'mie_extinction' | 'absorption_extinction'
@@ -554,6 +327,25 @@ export class AtmosphereManager {
 
   private toFinite(value: number, fallback: number) {
     return Number.isFinite(value) ? value : fallback
+  }
+
+  private setInscatterIntensity(value: number) {
+    const uniform = this.getInscatterIntensityUniform()
+    if (uniform) uniform.value = THREE.MathUtils.clamp(value, 0, 1)
+  }
+
+  private setInscatterHorizonBlend(value: boolean) {
+    const uniform = this.getInscatterHorizonBlendUniform()
+    if (uniform) uniform.value = value ? 1 : 0
+  }
+
+  private setInscatterHorizonRange(value: [number, number]) {
+    const uniform = this.getInscatterHorizonRangeUniform()
+    if (!uniform) return
+
+    const start = THREE.MathUtils.clamp(Math.min(value[0], value[1]), 0, 1)
+    const end = THREE.MathUtils.clamp(Math.max(value[0], value[1]), 0, 1)
+    uniform.value.set(start, end)
   }
 
   private patchInscatterIntensity() {
