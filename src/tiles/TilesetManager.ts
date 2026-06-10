@@ -308,6 +308,10 @@ export class TilesetManager {
     return [...this.sceneTilesets.values()]
   }
 
+  get loadedSceneTilesetEntries() {
+    return Array.from(this.sceneTilesets, ([id, tileset]) => ({ id, tileset }))
+  }
+
   setSurfaceMaterialMode(mode: ResolvedSurfaceMaterialMode) {
     this.options.surfaceMaterialMode = mode
     this.surfaceMaterialPlugins.get(this.activeSurfaceTileset)?.setMode(mode, this.activeSurfaceTileset)

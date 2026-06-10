@@ -1,4 +1,4 @@
-import type { AnimationClip, Object3D } from 'three'
+import type { AnimationClip, Object3D, Vector3 } from 'three'
 import type { TilesRenderer } from '3d-tiles-renderer'
 import type { CameraFlightEasingFunction } from './Camera'
 import type { SpringControlOptions } from './SpringControl'
@@ -1364,6 +1364,39 @@ export interface CartographicCoordinates {
 }
 
 /**
+ * 3D Tiles feature 属性键值表。
+ *
+ * Property map for a 3D Tiles feature.
+ */
+export type TilesetFeatureProperties = Record<string, unknown>
+
+/**
+ * 3D Tiles feature 拾取结果。
+ *
+ * Pick result for a 3D Tiles feature.
+ */
+export interface Picked3DTilesFeature {
+  /** 命中的 3D Tiles 图层 id。Picked 3D Tiles layer id. */
+  readonly layerId: string
+  /** 命中的底层 3D Tiles renderer。Picked underlying 3D Tiles renderer. */
+  readonly tileset: TilesRenderer
+  /** 命中的 Three.js 对象。Picked Three.js object. */
+  readonly object: Object3D
+  /** 命中的世界坐标。Picked world position. */
+  readonly point: Vector3
+  /** 射线到命中点的距离。Distance from the ray origin to the picked point. */
+  readonly distance: number
+  /** 命中的三角面索引；不可用时为 `null`。Picked face index, or `null` when unavailable. */
+  readonly faceIndex: number | null
+  /** 命中的 feature id；数据未提供 feature id 时为 `null`。Picked feature id, or `null` when unavailable. */
+  readonly featureId: number | null
+  /** 命中 feature 的属性。Properties of the picked feature. */
+  readonly properties: TilesetFeatureProperties
+  /** 命中点经纬高。Cartographic coordinates of the picked point. */
+  readonly cartographic: CartographicCoordinates
+}
+
+/**
  * 经纬高输入，顺序为 `[经度, 纬度, 高度]`。
  *
  * Cartographic input as `[longitude, latitude, height]`.
@@ -1536,6 +1569,18 @@ export interface ViewerMouseEvent extends ViewerEvent {
    * 3D Tiles nor the ellipsoid is hit.
    */
   cartographic: CartographicCoordinates | null
+  /**
+   * 鼠标位置命中的 3D Tiles feature；未命中已加载 3D Tiles 时为 `null`。
+   *
+   * 该值只包含当前场景中已经加载的瓦片内容，不会额外请求更高精度瓦片。
+   *
+   * 3D Tiles feature hit by the mouse position, or `null` when no loaded 3D
+   * Tiles feature is hit.
+   *
+   * This only uses currently loaded tile content and does not request more
+   * detailed tiles.
+   */
+  tilesetFeature: Picked3DTilesFeature | null
 }
 
 /**

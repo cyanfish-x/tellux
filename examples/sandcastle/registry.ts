@@ -20,6 +20,7 @@ const categoryById: Record<string, string> = {
   click: "Interaction",
   "data-sources": "Layers",
   "fly-to": "Camera",
+  "3d-tiles-picking": "Tiles",
   "gaussian-splat-3d-tiles": "Tiles",
   "google-photorealistic-3d-tiles": "Tiles",
   "instanced-horses": "Models",

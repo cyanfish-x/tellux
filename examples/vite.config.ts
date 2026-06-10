@@ -10,6 +10,7 @@ const htmlInputs = {
   click: resolve(__dirname, "click.html"),
   dataSources: resolve(__dirname, "data-sources.html"),
   tiles3d: resolve(__dirname, "3d-tiles.html"),
+  tiles3dPicking: resolve(__dirname, "3d-tiles-picking.html"),
   gaussianSplat3dTiles: resolve(__dirname, "gaussian-splat-3d-tiles.html"),
   googlePhotorealistic3dTiles: resolve(__dirname, "google-photorealistic-3d-tiles.html"),
   terrain: resolve(__dirname, "terrain.html"),
