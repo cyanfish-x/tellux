@@ -21,8 +21,8 @@ import {
   applyInitialDebugSettings,
   DebugSettingsPanel,
   loadStoredDebugSettings
-} from './widget/DebugSettingsPanel'
-import { Timeline } from './widget/Timeline'
+} from './widgets/DebugSettingsPanel'
+import { Timeline } from './widgets/Timeline'
 import type {
   AddModelOptions,
   AnyViewerEventListener,
@@ -63,7 +63,7 @@ export { Scene } from './Scene'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
 export { telluxConfig, type TelluxConfig } from './config'
 export { AtmosphereLightingMode } from './types'
-export { DebugSettingsPanel, Timeline, type DebugSettingsPanelOptions, type TimelineOptions } from './widget'
+export { DebugSettingsPanel, Timeline, type DebugSettingsPanelOptions, type TimelineOptions } from './widgets'
 export type {
   CameraFlyToDestination,
   CameraFlyToOptions,
