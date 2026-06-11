@@ -3,6 +3,11 @@ import { LoadRegionPlugin, RayRegion } from '3d-tiles-renderer/plugins'
 import type { TilesRenderer } from '3d-tiles-renderer'
 import { DEG2RAD } from '../constants'
 import type { HeightSamplingTilesetEntry, TilesetManager } from '../tiles/TilesetManager'
+import {
+  TilesetSamplingAdapter,
+  type TilesetSamplingReadinessSummary,
+  type TilesetSamplingSnapshot
+} from '../tiles/TilesetSamplingAdapter'
 import type {
   CartographicCoordinateTuple,
   CartographicCoordinates,
@@ -12,6 +17,7 @@ import type {
   SampleHeightMostDetailedResult,
   SampleHeightOptions
 } from '../types'
+import { HeightSamplingBatcher } from './HeightSamplingBatcher'
 import { QuantizedMeshTerrainSampler } from './QuantizedMeshTerrainSampler'
 
 const DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT = -10000
@@ -21,81 +27,15 @@ const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES = 120
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_PASSES_PER_FRAME = 1
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE = 8
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_SCENE_REGION_BATCH_SIZE = 64
-const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RAYCAST_TIME_SLICE_MS = Number.POSITIVE_INFINITY
+// 默认不主动切分 raycast 阶段；历史测试中小时间片会显著降低大批量采样吞吐。
+const RAYCAST_TIME_SLICING_DISABLED = Number.POSITIVE_INFINITY
+const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_RAYCAST_TIME_SLICE_MS = RAYCAST_TIME_SLICING_DISABLED
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_BATCH_SPAN_DEGREES = 0.25
 const DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_REGION_ERROR_TARGET = 0
-const TILE_LOADING_STATE_FAILED = -1
-const TILE_LOADING_STATE_LOADED = 4
 
 type HeightSamplingLoadRegion = {
   plugin: InstanceType<typeof LoadRegionPlugin>
   region: InstanceType<typeof RayRegion>
-}
-
-type RaycastableTilesRenderer = TilesRenderer & {
-  raycast(raycaster: THREE.Raycaster, intersects: THREE.Intersection[]): void
-}
-
-type HeightSamplingHit = {
-  height: number
-  distance: number
-  depth: number
-  isTerrain: boolean
-}
-
-type HeightSamplingTile = {
-  geometricError: number
-  refine?: 'REPLACE' | 'ADD'
-  parent?: HeightSamplingTile | null
-  children?: HeightSamplingTile[]
-  engineData?: {
-    scene?: THREE.Object3D | null
-    boundingVolume?: {
-      intersectsRay(ray: THREE.Ray): boolean
-    }
-  }
-  internal?: {
-    hasContent: boolean
-    hasRenderableContent: boolean
-    hasUnrenderableContent: boolean
-    loadingState: number
-    depth: number
-  }
-  traversal?: {
-    error: number
-  }
-}
-
-type HeightSamplingTilesRenderer = TilesRenderer & {
-  root: HeightSamplingTile | null
-  errorTarget: number
-  maxDepth: number
-  activeTiles?: Set<HeightSamplingTile>
-}
-
-type HeightSamplingReadiness = {
-  intersects: boolean
-  ready: boolean
-}
-
-type HeightSamplingReadinessSummary = {
-  ready: boolean
-  intersectingRays: number
-  pendingRays: number
-}
-
-type HeightSamplingTilesetSnapshot = {
-  loading: boolean
-  loadProgress: number
-  queued: number
-  downloading: number
-  parsing: number
-  activeTiles: number
-  visibleTiles: number
-  loadingTiles: number
-  downloadQueueRunning: boolean
-  parseQueueRunning: boolean
-  processNodeQueueRunning: boolean
 }
 
 type HeightSamplingTask = {
@@ -156,8 +96,9 @@ export class HeightSampler {
   private readonly sampleTilesetRayOrigin = new THREE.Vector3()
   private readonly sampleTilesetRayTarget = new THREE.Vector3()
   private readonly sampleTarget = new THREE.Vector3()
-  private readonly sampleCartographicScratch = { lat: 0, lon: 0, height: 0 }
+  private readonly batcher = new HeightSamplingBatcher()
   private readonly terrainSampler = new QuantizedMeshTerrainSampler()
+  private readonly tilesetSampling = new TilesetSamplingAdapter()
   private readonly heightSamplingLoadRegionPlugins = new WeakMap<TilesRenderer, InstanceType<typeof LoadRegionPlugin>>()
   private readonly heightSamplingJobs: HeightSamplingJob[] = []
   private heightSamplingJobCursor = 0
@@ -467,58 +408,13 @@ export class HeightSampler {
   }
 
   private createHeightSamplingBatches(tasks: HeightSamplingTask[], entries: HeightSamplingTilesetEntry[]) {
-    const batches: HeightSamplingTask[][] = []
     const maxBatchSize = this.isSceneRegionSamplingEntries(entries)
       ? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_SCENE_REGION_BATCH_SIZE
       : DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_BATCH_SIZE
-    const maxSpan = DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_BATCH_SPAN_DEGREES
-    const sortedTasks = tasks.slice().sort((a, b) => {
-      const latitudeDelta = a.position[1] - b.position[1]
-      return latitudeDelta === 0 ? a.position[0] - b.position[0] : latitudeDelta
+    return this.batcher.createBatches(tasks, {
+      maxBatchSize,
+      maxSpanDegrees: DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_BATCH_SPAN_DEGREES
     })
-    let batch: HeightSamplingTask[] = []
-    let minLongitude = Infinity
-    let maxLongitude = -Infinity
-    let minLatitude = Infinity
-    let maxLatitude = -Infinity
-
-    const flushBatch = () => {
-      if (batch.length > 0) {
-        batches.push(batch)
-        batch = []
-        minLongitude = Infinity
-        maxLongitude = -Infinity
-        minLatitude = Infinity
-        maxLatitude = -Infinity
-      }
-    }
-
-    sortedTasks.forEach((task) => {
-      const nextMinLongitude = Math.min(minLongitude, task.position[0])
-      const nextMaxLongitude = Math.max(maxLongitude, task.position[0])
-      const nextMinLatitude = Math.min(minLatitude, task.position[1])
-      const nextMaxLatitude = Math.max(maxLatitude, task.position[1])
-      const exceedsSpan =
-        batch.length > 0 &&
-        (
-          nextMaxLongitude - nextMinLongitude > maxSpan ||
-          nextMaxLatitude - nextMinLatitude > maxSpan
-        )
-      const exceedsSize = batch.length >= maxBatchSize
-
-      if (exceedsSpan || exceedsSize) {
-        flushBatch()
-      }
-
-      batch.push(task)
-      minLongitude = Math.min(minLongitude, task.position[0])
-      maxLongitude = Math.max(maxLongitude, task.position[0])
-      minLatitude = Math.min(minLatitude, task.position[1])
-      maxLatitude = Math.max(maxLatitude, task.position[1])
-    })
-    flushBatch()
-
-    return batches
   }
 
   private isSceneRegionSamplingEntries(entries: HeightSamplingTilesetEntry[]) {
@@ -590,101 +486,7 @@ export class HeightSampler {
     this.sampleMatrix.copy(tileset.group.matrixWorld).invert()
     this.sampleLocalRay.copy(raycaster.ray).applyMatrix4(this.sampleMatrix)
 
-    const activeTileHit = this.sampleHeightFromActiveTiles(tileset, raycaster, this.sampleMatrix, this.sampleLocalRay)
-    if (activeTileHit) return activeTileHit
-
-    const hits: THREE.Intersection[] = []
-    ;(tileset as RaycastableTilesRenderer).raycast(raycaster, hits)
-    hits.sort((a, b) => a.distance - b.distance)
-    const hit = hits.find((item) => this.isSampleHeightSurfaceHit(item))
-    if (!hit) return null
-
-    return this.toHeightSamplingHit(tileset, hit, 0, this.sampleMatrix)
-  }
-
-  private sampleHeightFromActiveTiles(
-    tileset: TilesRenderer,
-    raycaster: THREE.Raycaster,
-    inverseMatrix: THREE.Matrix4,
-    localRay: THREE.Ray
-  ): HeightSamplingHit | null {
-    const renderer = tileset as HeightSamplingTilesRenderer
-    const activeTiles = renderer.activeTiles as unknown as Set<HeightSamplingTile> | undefined
-    if (!activeTiles?.size) return null
-
-    let closestHit: HeightSamplingHit | null = null
-    const hits: THREE.Intersection[] = []
-
-    activeTiles.forEach((tile) => {
-      const scene = tile.engineData?.scene
-      if (!scene) return
-      if (!this.heightSamplingTileIntersectsRay(tile, localRay)) return
-
-      hits.length = 0
-      raycaster.intersectObject(scene, true, hits)
-      for (const hit of hits) {
-        if (!this.isSampleHeightSurfaceHit(hit)) continue
-
-        const sampledHit = this.toHeightSamplingHit(tileset, hit, tile.internal?.depth ?? 0, inverseMatrix)
-        if (this.isBetterHeightSamplingHit(sampledHit, closestHit)) {
-          closestHit = sampledHit
-        }
-        break
-      }
-    })
-
-    return closestHit
-  }
-
-  private toHeightSamplingHit(
-    tileset: TilesRenderer,
-    hit: THREE.Intersection,
-    depth: number,
-    inverseMatrix: THREE.Matrix4
-  ): HeightSamplingHit {
-    this.samplePoint.copy(hit.point).applyMatrix4(inverseMatrix)
-    const cartographic = tileset.ellipsoid.getPositionToCartographic(this.samplePoint, this.sampleCartographicScratch)
-    return {
-      height: cartographic.height,
-      distance: hit.distance,
-      depth,
-      isTerrain: this.isQuantizedMeshTerrainHit(hit)
-    }
-  }
-
-  private isBetterHeightSamplingHit(candidate: HeightSamplingHit, current: HeightSamplingHit | null) {
-    if (!current) return true
-
-    if (candidate.isTerrain && current.isTerrain && candidate.depth !== current.depth) {
-      return candidate.depth > current.depth
-    }
-
-    return candidate.distance < current.distance
-  }
-
-  private isSampleHeightSurfaceHit(hit: THREE.Intersection) {
-    const mesh = hit.object as THREE.Mesh
-    const geometry = mesh.geometry
-
-    if (
-      !this.isQuantizedMeshTerrainHit(hit) ||
-      !geometry ||
-      geometry.groups.length === 0 ||
-      hit.faceIndex == null
-    ) {
-      return true
-    }
-
-    const surfaceGroup = geometry.groups[0]
-    const indexStart = hit.faceIndex * 3
-    return indexStart >= surfaceGroup.start && indexStart < surfaceGroup.start + surfaceGroup.count
-  }
-
-  private isQuantizedMeshTerrainHit(hit: THREE.Intersection) {
-    return (
-      typeof hit.object.userData.minHeight === 'number' &&
-      typeof hit.object.userData.maxHeight === 'number'
-    )
+    return this.tilesetSampling.sampleHeight(tileset, raycaster, this.sampleMatrix, this.sampleLocalRay)
   }
 
   private addHeightSamplingLoadRegions(
@@ -763,20 +565,20 @@ export class HeightSampler {
         : false
     }
 
-    const snapshots: HeightSamplingTilesetSnapshot[] = []
+    const snapshots: TilesetSamplingSnapshot[] = []
     let loading = false
     for (const entry of job.entries) {
       entry.tileset.update()
       if (job.debug) {
-        const snapshot = this.getTilesetLoadingSnapshot(entry.tileset)
+        const snapshot = this.tilesetSampling.getLoadingSnapshot(entry.tileset)
         snapshots.push(snapshot)
         loading = snapshot.loading || loading
       } else {
-        loading = this.isTilesetLoading(entry.tileset) || loading
+        loading = this.tilesetSampling.isLoading(entry.tileset) || loading
       }
     }
 
-    const hasRenderableTiles = job.entries.some((entry) => this.hasTilesetRenderableTiles(entry.tileset))
+    const hasRenderableTiles = job.entries.some((entry) => this.tilesetSampling.hasRenderableTiles(entry.tileset))
     const readinessSummaries = job.debug
       ? job.entries.map((entry) => this.getHeightSamplingBatchReadinessSummary(entry.tileset, batch.tasks))
       : null
@@ -871,7 +673,7 @@ export class HeightSampler {
       job.results[task.index] = height === undefined ? undefined : [task.position[0], task.position[1], height]
       batch.sampleCursor += 1
 
-      if (performance.now() - sliceStartedAt >= sliceBudget) {
+      if (this.shouldYieldRaycastSlice(sliceStartedAt, sliceBudget)) {
         break
       }
     }
@@ -882,6 +684,13 @@ export class HeightSampler {
 
     this.completeHeightSamplingBatch(job)
     return true
+  }
+
+  private shouldYieldRaycastSlice(sliceStartedAt: number, sliceBudgetMilliseconds: number) {
+    // Infinity 表示明确禁用 raycast 时间片，而不是依赖比较表达式的隐式行为。
+    if (!Number.isFinite(sliceBudgetMilliseconds)) return false
+
+    return performance.now() - sliceStartedAt >= sliceBudgetMilliseconds
   }
 
   private completeHeightSamplingBatch(job: HeightSamplingJob) {
@@ -964,177 +773,24 @@ export class HeightSampler {
     return closestHit?.height
   }
 
-  private hasTilesetRenderableTiles(tileset: TilesRenderer) {
-    const renderer = tileset as TilesRenderer & {
-      activeTiles?: Set<unknown>
-      visibleTiles?: Set<unknown>
-    }
-
-    return (renderer.activeTiles?.size ?? 0) > 0 || (renderer.visibleTiles?.size ?? 0) > 0
-  }
-
   private isHeightSamplingBatchMostDetailed(tileset: TilesRenderer, tasks: HeightSamplingTask[]) {
     return this.getHeightSamplingBatchReadinessSummary(tileset, tasks).ready
   }
 
-  private getHeightSamplingBatchReadinessSummary(tileset: TilesRenderer, tasks: HeightSamplingTask[]): HeightSamplingReadinessSummary {
-    const renderer = tileset as HeightSamplingTilesRenderer
-    const root = renderer.root
-    if (!root) {
-      return {
-        ready: false,
-        intersectingRays: 0,
-        pendingRays: tasks.length
-      }
-    }
-
-    let intersectingRays = 0
-    let pendingRays = 0
-    tasks.forEach((task) => {
-      const ray = this.getHeightSamplingRayInTilesetFrame(tileset, task.ray)
-      const readiness = this.getHeightSamplingTileReadiness(root, renderer, ray)
-      if (!readiness.intersects) return
-
-      intersectingRays += 1
-      if (!readiness.ready) pendingRays += 1
-    })
-    return {
-      ready: pendingRays === 0,
-      intersectingRays,
-      pendingRays
-    }
-  }
-
-  private getHeightSamplingTileReadiness(
-    tile: HeightSamplingTile,
-    renderer: HeightSamplingTilesRenderer,
-    ray: THREE.Ray
-  ): HeightSamplingReadiness {
-    if (!this.heightSamplingTileIntersectsRay(tile, ray)) {
-      return { intersects: false, ready: true }
-    }
-
-    if (!tile.internal || !tile.traversal || !this.isHeightSamplingTileDownloadFinished(tile)) {
-      return { intersects: true, ready: false }
-    }
-
-    if (this.isHeightSamplingTileReadyLeaf(tile, renderer)) {
-      return { intersects: true, ready: true }
-    }
-
-    const children = tile.children ?? []
-    if (!children[children.length - 1]?.traversal) {
-      return { intersects: true, ready: false }
-    }
-
-    let childIntersects = false
-    for (const child of children) {
-      const readiness = this.getHeightSamplingTileReadiness(child, renderer, ray)
-      childIntersects = childIntersects || readiness.intersects
-      if (readiness.intersects && !readiness.ready) {
-        return { intersects: true, ready: false }
-      }
-    }
-
-    return { intersects: true, ready: childIntersects ? true : this.isHeightSamplingTileDownloadFinished(tile) }
-  }
-
-  private heightSamplingTileIntersectsRay(tile: HeightSamplingTile, ray: THREE.Ray) {
-    const boundingVolume = tile.engineData?.boundingVolume
-    return boundingVolume ? boundingVolume.intersectsRay(ray) : true
-  }
-
-  private isHeightSamplingTileReadyLeaf(tile: HeightSamplingTile, renderer: HeightSamplingTilesRenderer) {
-    if (this.isHeightSamplingTileWithinErrorTarget(tile, renderer) && !this.canHeightSamplingTileUnconditionallyRefine(tile)) {
-      return true
-    }
-
-    if (renderer.maxDepth > 0 && tile.internal && tile.internal.depth + 1 >= renderer.maxDepth) {
-      return true
-    }
-
-    const children = tile.children ?? []
-    return children.length === 0
-  }
-
-  private isHeightSamplingTileWithinErrorTarget(tile: HeightSamplingTile, renderer: HeightSamplingTilesRenderer) {
-    return (tile.traversal?.error ?? Infinity) <= renderer.errorTarget
-  }
-
-  private canHeightSamplingTileUnconditionallyRefine(tile: HeightSamplingTile) {
-    return Boolean(tile.internal?.hasUnrenderableContent || (tile.parent && tile.parent.geometricError < tile.geometricError))
-  }
-
-  private isHeightSamplingTileDownloadFinished(tile: HeightSamplingTile) {
-    if (!tile.internal?.hasContent) return true
-
-    return (
-      tile.internal.loadingState === TILE_LOADING_STATE_LOADED ||
-      tile.internal.loadingState === TILE_LOADING_STATE_FAILED
-    )
-  }
-
-  private isTilesetLoading(tileset: TilesRenderer) {
-    return this.getTilesetLoadingSnapshot(tileset).loading
-  }
-
-  private getTilesetLoadingSnapshot(tileset: TilesRenderer): HeightSamplingTilesetSnapshot {
-    const renderer = tileset as TilesRenderer & {
-      isLoading?: boolean
-      activeTiles?: Set<unknown>
-      visibleTiles?: Set<unknown>
-      stats?: {
-        queued?: number
-        downloading?: number
-        parsing?: number
-      }
-      downloadQueue?: { running?: boolean }
-      parseQueue?: { running?: boolean }
-      processNodeQueue?: { running?: boolean }
-      loadingTiles?: Set<unknown>
-    }
-
-    const stats = renderer.stats
-    const queued = stats?.queued ?? 0
-    const downloading = stats?.downloading ?? 0
-    const parsing = stats?.parsing ?? 0
-    const loadingTiles = renderer.loadingTiles?.size ?? 0
-    const downloadQueueRunning = Boolean(renderer.downloadQueue?.running)
-    const parseQueueRunning = Boolean(renderer.parseQueue?.running)
-    const processNodeQueueRunning = Boolean(renderer.processNodeQueue?.running)
-    const loading = Boolean(
-      !tileset.root ||
-      renderer.isLoading ||
-      tileset.loadProgress < 1 ||
-      queued > 0 ||
-      downloading > 0 ||
-      parsing > 0 ||
-      downloadQueueRunning ||
-      parseQueueRunning ||
-      processNodeQueueRunning ||
-      loadingTiles > 0
-    )
-
-    return {
-      loading,
-      loadProgress: tileset.loadProgress,
-      queued,
-      downloading,
-      parsing,
-      activeTiles: renderer.activeTiles?.size ?? 0,
-      visibleTiles: renderer.visibleTiles?.size ?? 0,
-      loadingTiles,
-      downloadQueueRunning,
-      parseQueueRunning,
-      processNodeQueueRunning
-    }
+  private getHeightSamplingBatchReadinessSummary(
+    tileset: TilesRenderer,
+    tasks: HeightSamplingTask[]
+  ): TilesetSamplingReadinessSummary {
+    return this.tilesetSampling.getReadinessSummary(tileset, tasks, (task) => (
+      this.getHeightSamplingRayInTilesetFrame(tileset, task.ray)
+    ))
   }
 
   private logHeightSamplingBatchDebug(
     job: HeightSamplingJob,
     batch: HeightSamplingBatchState,
-    snapshots: HeightSamplingTilesetSnapshot[],
-    readinessSummaries: HeightSamplingReadinessSummary[] | null,
+    snapshots: TilesetSamplingSnapshot[],
+    readinessSummaries: TilesetSamplingReadinessSummary[] | null,
     status: {
       loading: boolean
       hasRenderableTiles: boolean
@@ -1165,7 +821,7 @@ export class HeightSampler {
       isMostDetailed: status.isMostDetailed,
       tilesets: snapshots.length > 0
         ? snapshots
-        : job.entries.map((entry) => this.getTilesetLoadingSnapshot(entry.tileset)),
+        : job.entries.map((entry) => this.tilesetSampling.getLoadingSnapshot(entry.tileset)),
       readiness: readinessSummaries ?? job.entries.map((entry) => (
         this.getHeightSamplingBatchReadinessSummary(entry.tileset, batch.tasks)
       ))

@@ -24,6 +24,7 @@ import {
   applyMaterialModeToObject,
   type RenderMaterialMode
 } from '../materials/materialMode'
+import { TilesetSamplingAdapter } from './TilesetSamplingAdapter'
 import type {
   ImageryLayerSourceOptions,
   ImageryLayerStyleOptions,
@@ -269,6 +270,7 @@ export class TilesetManager {
   private readonly sceneTilesetMaterialPlugins = new WeakMap<TilesRenderer, SceneTilesetMaterialPlugin>()
   private readonly surfaceMaterialPlugins = new WeakMap<TilesRenderer, SurfaceMaterialPlugin>()
   private readonly heightSamplingTilesetPool = new Map<string, TilesRenderer[]>()
+  private readonly heightSamplingAdapter = new TilesetSamplingAdapter()
   private readonly imageryOverlayContexts = new WeakMap<TilesRenderer, ImageryOverlayContext>()
   private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
@@ -673,18 +675,7 @@ export class TilesetManager {
   }
 
   private isHeightSamplingTilesetReusable(tileset: TilesRenderer) {
-    const renderer = tileset as TilesRenderer & {
-      isLoading?: boolean
-      loadingTiles?: Set<unknown>
-    }
-
-    return !(
-      renderer.isLoading ||
-      renderer.downloadQueue.running ||
-      renderer.parseQueue.running ||
-      renderer.processNodeQueue.running ||
-      (renderer.loadingTiles?.size ?? 0) > 0
-    )
+    return this.heightSamplingAdapter.isReusableForHeightSampling(tileset)
   }
 
   private invalidateHeightSamplingTilesetPool() {
