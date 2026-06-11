@@ -324,8 +324,8 @@ export class Viewer {
     let tilesets: TilesetManager | null = null
     this.scene = new Scene(
       sceneOptions,
-      () => atmosphere?.cloudsEffect ?? null,
       (state) => atmosphere?.applyAtmosphereState(state),
+      (state) => atmosphere?.applyCloudsState(state),
       () => postProcessing?.applyEffects(),
       () => {
         if (tilesets) this.syncSurfaceMaterialMode()
