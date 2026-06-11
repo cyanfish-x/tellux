@@ -19,14 +19,11 @@ const telluxSourceModules = import.meta.glob("../../src/**/*.ts", {
   import: "default",
 }) as Record<string, string>
 
-const exampleSourceModules = import.meta.glob(
-  ["../*.ts", "../settings-panel/**/*.ts"],
-  {
-    eager: true,
-    query: "?raw",
-    import: "default",
-  }
-) as Record<string, string>
+const exampleSourceModules = import.meta.glob("../*.ts", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>
 
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
