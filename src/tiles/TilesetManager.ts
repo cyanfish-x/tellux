@@ -287,7 +287,6 @@ export class TilesetManager {
       this.options.scene.add(this.activeTerrainTileset.group)
     }
     this.syncSurfaceVisibility()
-    this.syncActiveTilesetReference()
   }
 
   get tileset() {
@@ -594,7 +593,6 @@ export class TilesetManager {
       this.options.scene.add(this.activeTerrainTileset.group)
     }
     this.syncSurfaceVisibility()
-    this.syncActiveTilesetReference()
     this.resize()
   }
 
@@ -610,12 +608,7 @@ export class TilesetManager {
       this.options.scene.add(nextTileset.group)
     }
     this.syncSurfaceVisibility()
-    this.syncActiveTilesetReference()
     this.resize()
-  }
-
-  private syncActiveTilesetReference() {
-    this.options.camera.userData.tilesRenderer = this.tileset
   }
 
   private syncSurfaceVisibility() {
