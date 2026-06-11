@@ -174,33 +174,14 @@ function updateSplatStatus() {
   )
 }
 
-function withHiddenCameraTilesRenderer(callback: () => void) {
-  const camera = viewer.camera.threeCamera
-  const hasTilesRenderer = Object.prototype.hasOwnProperty.call(camera.userData, "tilesRenderer")
-  const tilesRenderer = camera.userData.tilesRenderer
-  delete camera.userData.tilesRenderer
-
-  try {
-    callback()
-  } finally {
-    if (hasTilesRenderer) {
-      camera.userData.tilesRenderer = tilesRenderer
-    } else {
-      delete camera.userData.tilesRenderer
-    }
-  }
-}
-
 function frame(time: number) {
   const camera = viewer.camera.threeCamera
   activeTileset?.setResolutionFromRenderer(camera, viewer.renderer)
-  withHiddenCameraTilesRenderer(() => {
-    if (activeTileset?.group.visible) {
-      activeTileset.update()
-    }
-    updateSplatStatus()
-    viewer.render(time)
-  })
+  if (activeTileset?.group.visible) {
+    activeTileset.update()
+  }
+  updateSplatStatus()
+  viewer.render(time)
   animationFrame = window.requestAnimationFrame(frame)
 }
 

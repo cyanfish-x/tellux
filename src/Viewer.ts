@@ -65,6 +65,8 @@ export { telluxConfig, type TelluxConfig } from './config'
 export { AtmosphereLightingMode } from './types'
 export { DebugSettingsPanel, Timeline, type DebugSettingsPanelOptions, type TimelineOptions } from './widgets'
 export type {
+  CameraEllipsoid,
+  CameraEllipsoidProvider,
   CameraFlyToDestination,
   CameraFlyToOptions,
   CameraFlightEasingFunction,
@@ -305,9 +307,12 @@ export class Viewer {
       ...DEFAULT_CAMERA,
       ...options.camera
     }
+    let atmosphere: AtmosphereManager | null = null
+    let postProcessing: PostProcessingManager | null = null
+    let tilesets: TilesetManager | null = null
 
     this.threeCamera = new THREE.PerspectiveCamera(cameraOptions.fov, width / height, cameraOptions.near, cameraOptions.far)
-    this.camera = new Camera(this.threeCamera)
+    this.camera = new Camera(this.threeCamera, () => tilesets?.tileset.ellipsoid ?? null)
     this.renderer = new THREE.WebGLRenderer({
       alpha: options.transparent ?? false,
       outputBufferType: THREE.HalfFloatType
@@ -319,9 +324,6 @@ export class Viewer {
     resolvedContainer.appendChild(this.renderer.domElement)
     this.transparentOverlayTexture = this.createTransparentOverlayTexture()
 
-    let atmosphere: AtmosphereManager | null = null
-    let postProcessing: PostProcessingManager | null = null
-    let tilesets: TilesetManager | null = null
     this.scene = new Scene(
       sceneOptions,
       (state) => atmosphere?.applyAtmosphereState(state),
