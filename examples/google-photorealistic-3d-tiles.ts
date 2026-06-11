@@ -51,7 +51,7 @@ const viewer = new tellux.Viewer(container, {
       toneMappingExposure: 4,
     },
   },
-  widget: {
+  widgets: {
     timeline: true,
   },
 })

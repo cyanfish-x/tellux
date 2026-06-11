@@ -473,18 +473,6 @@ export interface ViewerOptions {
    */
   widgets?: ViewerWidgetOptions
   /**
-   * 内置控件配置别名。
-   *
-   * 与 {@link ViewerOptions.widgets} 等价；当两个字段同时存在时，
-   * `widgets` 中的同名配置优先生效。
-   *
-   * Alias for built-in widget options.
-   *
-   * Equivalent to {@link ViewerOptions.widgets}; when both fields are present,
-   * matching options from `widgets` take precedence.
-   */
-  widget?: ViewerWidgetOptions
-  /**
    * 渲染器像素比，默认 `Math.min(window.devicePixelRatio, 2)`。
    *
    * Renderer pixel ratio. Defaults to `Math.min(window.devicePixelRatio, 2)`.

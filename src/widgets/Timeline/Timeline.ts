@@ -125,8 +125,8 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   root.append(controls, track, status)
   shell.appendChild(root)
 
-  let isDragging = false
   let isSpringDrivingClock = false
+  let isSeeking = false
   const timeSpring = createTimelineSpring(initialTime, options.spring)
 
   const updateRangeBounds = () => {
@@ -160,7 +160,7 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     const currentTime = viewer.clock.currentTime
     syncDynamicRange(currentTime)
 
-    if (!isDragging) {
+    if (!isSeeking && !isSpringDrivingClock) {
       input.value = String(dateToOffsetSeconds(currentTime, rangeStart, rangeEnd))
     }
     timeOutput.textContent = formatUTCDateTime(currentTime)
@@ -172,17 +172,29 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   const setCurrentTime = (date: Date) => {
     if (!timeSpring) {
       viewer.clock.currentTime = date
+      isSpringDrivingClock = false
       return
     }
 
-    timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
+    if (!isSpringDrivingClock) {
+      timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
+    }
     timeSpring.target = dateToUnixSeconds(date)
     isSpringDrivingClock = true
   }
 
-  const setCurrentTimeFromInput = () => {
+  const setCurrentTimeFromInput = (keepSeeking = true) => {
     const seconds = Number(input.value)
+    isSeeking = keepSeeking
     setCurrentTime(new Date(rangeStart.getTime() + seconds * 1000))
+    syncDisplay()
+  }
+
+  const stopSeeking = () => {
+    if (!isSeeking) return
+
+    isSeeking = false
+    setCurrentTimeFromInput(false)
     syncDisplay()
   }
 
@@ -213,18 +225,22 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     viewer.clock.multiplier = Number(speedSelect.value)
     syncDisplay()
   })
-  input.addEventListener("pointerdown", () => {
-    isDragging = true
+  input.addEventListener("pointerdown", (event) => {
+    isSeeking = true
+    try {
+      input.setPointerCapture?.(event.pointerId)
+    } catch {
+      // Native range inputs may reject capture on some browsers.
+    }
   })
-  input.addEventListener("pointerup", () => {
-    isDragging = false
+  input.addEventListener("input", () => {
     setCurrentTimeFromInput()
   })
-  input.addEventListener("input", setCurrentTimeFromInput)
-  input.addEventListener("change", () => {
-    isDragging = false
-    setCurrentTimeFromInput()
-  })
+  input.addEventListener("change", stopSeeking)
+  input.addEventListener("pointerup", stopSeeking)
+  input.addEventListener("pointercancel", stopSeeking)
+  window.addEventListener("pointerup", stopSeeking)
+  window.addEventListener("blur", stopSeeking)
 
   updateRangeBounds()
   syncDisplay()
@@ -235,6 +251,8 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
       syncDisplay()
     },
     dispose() {
+      window.removeEventListener("pointerup", stopSeeking)
+      window.removeEventListener("blur", stopSeeking)
       root.remove()
     },
   }

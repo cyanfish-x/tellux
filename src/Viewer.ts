@@ -861,10 +861,7 @@ export class Viewer {
   }
 
   private resolveWidgetOptions(options: ViewerOptions): ViewerWidgetOptions {
-    return {
-      ...options.widget,
-      ...options.widgets
-    }
+    return options.widgets ?? {}
   }
 
   private clearFrameBuffer() {

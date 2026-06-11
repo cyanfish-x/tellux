@@ -98,7 +98,6 @@ function sanitizeStoredDebugSettings(
   }
 
   copyNumberSetting(value, settings, "dayOfYear")
-  copyNumberSetting(value, settings, "hourUTC")
 
   return settings as DebugSettingsPanelOptions
 }
