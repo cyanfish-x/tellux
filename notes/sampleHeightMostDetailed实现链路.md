@@ -59,6 +59,7 @@ terrain 直采不创建离屏相机，不创建采样 tileset，也不会调用 
 直采链路会复用 Tellux terrain 加载的一些约定：
 
 - terrain URL 上的 query 参数会继承到 `layer.json` 和 `.terrain` 请求。
+- Cesium Ion terrain 会先解析 asset endpoint，确认 asset type 为 `TERRAIN`，再用 endpoint 返回的 terrain URL 和 Bearer token 请求 `layer.json` 与 `.terrain`。
 - `.terrain` 请求会带 `Accept: application/vnd.quantized-mesh,application/octet-stream;q=0.9;extensions=octvertexnormals-watermask-metadata`。
 - 如果 `.terrain` 返回 gzip 字节但服务端没有设置 `Content-Encoding: gzip`，会用 `DecompressionStream('gzip')` 做兜底解压。
 

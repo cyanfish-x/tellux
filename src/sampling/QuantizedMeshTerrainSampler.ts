@@ -1,4 +1,10 @@
-import type { CartographicCoordinateTuple, SampleHeightMostDetailedResult, TerrainOptions } from '../types'
+import type {
+  CartographicCoordinateTuple,
+  CesiumIonTerrainOptions,
+  SampleHeightMostDetailedResult,
+  TerrainOptions,
+  UrlTerrainOptions
+} from '../types'
 
 const GZIP_ID1 = 0x1f
 const GZIP_ID2 = 0x8b
@@ -50,15 +56,34 @@ type TerrainTileData = {
 }
 
 type TerrainLayerState = {
-  rootUrl: string
+  resource: TerrainResource
   layerUrl: string
-  inheritedSearchParams: URLSearchParams
   layer: QuantizedMeshLayer
   available: Array<TerrainAvailabilityLevel | null>
   loadedMetadataTiles: Set<string>
   metadataAvailability: number
   maxLevel: number
   projection: TerrainProjection
+}
+
+type TerrainResource = {
+  cacheKey: string
+  rootUrl: string
+  inheritedSearchParams: URLSearchParams
+  headers?: Record<string, string>
+  cesiumIon?: CesiumIonTerrainResource
+}
+
+type CesiumIonTerrainResource = {
+  endpointUrl: string
+  apiToken: string
+  autoRefreshToken: boolean
+}
+
+type CesiumIonTerrainEndpoint = {
+  type?: string
+  url?: string
+  accessToken?: string
 }
 
 type TerrainProjection = {
@@ -96,7 +121,7 @@ export class QuantizedMeshTerrainSampler {
     const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
     if (positions.length === 0) return results
 
-    const state = await this.getLayerState(terrain.url)
+    const state = await this.getLayerState(terrain)
     const requests = await Promise.all(
       positions.map(async (position, index): Promise<TerrainSampleRequest | null> => {
         const coordinate = await this.findMostDetailedTileForPosition(state, position)
@@ -137,21 +162,24 @@ export class QuantizedMeshTerrainSampler {
     this.tileCache.clear()
   }
 
-  private getLayerState(terrainUrl: string) {
-    const rootUrl = this.normalizeTerrainRootUrl(terrainUrl)
-    let promise = this.layerCache.get(rootUrl)
+  private getLayerState(terrain: TerrainOptions) {
+    const cacheKey = this.getTerrainCacheKey(terrain)
+    let promise = this.layerCache.get(cacheKey)
     if (!promise) {
-      promise = this.loadLayerState(rootUrl, terrainUrl)
-      this.layerCache.set(rootUrl, promise)
+      promise = this.loadLayerState(terrain)
+      this.layerCache.set(cacheKey, promise)
     }
 
     return promise
   }
 
-  private async loadLayerState(rootUrl: string, terrainUrl: string): Promise<TerrainLayerState> {
-    const inheritedSearchParams = new URL(terrainUrl, location.href).searchParams
-    const layerUrl = this.preprocessTerrainUrl(new URL('layer.json', rootUrl), inheritedSearchParams)
-    const response = await fetch(layerUrl)
+  private async loadLayerState(terrain: TerrainOptions): Promise<TerrainLayerState> {
+    const resource = await this.resolveTerrainResource(terrain)
+    const layerUrl = this.preprocessTerrainUrl(
+      new URL('layer.json', resource.rootUrl),
+      resource.inheritedSearchParams
+    )
+    const response = await this.fetchTerrainResource(resource, layerUrl)
     if (!response.ok) {
       throw new Error(`Tellux terrain sampler: failed to load layer.json (${response.status} ${response.statusText}).`)
     }
@@ -166,15 +194,127 @@ export class QuantizedMeshTerrainSampler {
     const maxLevel = layer.maxzoom ?? Math.max(available.length - 1, 0)
 
     return {
-      rootUrl,
+      resource,
       layerUrl,
-      inheritedSearchParams,
       layer,
       available,
       loadedMetadataTiles: new Set(),
       metadataAvailability: layer.metadataAvailability ?? -1,
       maxLevel,
       projection
+    }
+  }
+
+  private async resolveTerrainResource(terrain: TerrainOptions): Promise<TerrainResource> {
+    if (this.isCesiumIonTerrainOptions(terrain)) {
+      return this.resolveCesiumIonTerrainResource(terrain)
+    }
+
+    return this.resolveUrlTerrainResource(terrain)
+  }
+
+  private resolveUrlTerrainResource(terrain: UrlTerrainOptions): TerrainResource {
+    const rootUrl = this.normalizeTerrainRootUrl(terrain.url)
+    return {
+      cacheKey: rootUrl,
+      rootUrl,
+      inheritedSearchParams: new URL(terrain.url, location.href).searchParams
+    }
+  }
+
+  private async resolveCesiumIonTerrainResource(terrain: CesiumIonTerrainOptions): Promise<TerrainResource> {
+    const endpointUrl = this.getCesiumIonEndpointUrl(terrain)
+    const endpoint = await this.fetchCesiumIonTerrainEndpoint(endpointUrl, terrain.apiToken)
+    const resource: TerrainResource = {
+      cacheKey: this.getTerrainCacheKey(terrain),
+      rootUrl: '',
+      inheritedSearchParams: new URLSearchParams(),
+      cesiumIon: {
+        endpointUrl,
+        apiToken: terrain.apiToken,
+        autoRefreshToken: terrain.autoRefreshToken ?? true
+      }
+    }
+
+    this.applyCesiumIonTerrainEndpoint(resource, endpoint)
+    return resource
+  }
+
+  private async fetchTerrainResource(
+    resource: TerrainResource,
+    url: string,
+    options: RequestInit = {}
+  ) {
+    let response = await fetch(url, this.createTerrainRequestOptions(resource, options))
+    if (!this.shouldRefreshCesiumIonTerrainResource(resource, response)) {
+      return response
+    }
+
+    await this.refreshCesiumIonTerrainResource(resource)
+    response = await fetch(url, this.createTerrainRequestOptions(resource, options))
+    return response
+  }
+
+  private createTerrainRequestOptions(resource: TerrainResource, options: RequestInit) {
+    const headers = new Headers(resource.headers)
+    new Headers(options.headers).forEach((value, key) => {
+      headers.set(key, value)
+    })
+
+    return {
+      ...options,
+      headers
+    }
+  }
+
+  private shouldRefreshCesiumIonTerrainResource(resource: TerrainResource, response: Response) {
+    return (
+      resource.cesiumIon?.autoRefreshToken === true &&
+      response.status >= 400 &&
+      response.status <= 499
+    )
+  }
+
+  private async refreshCesiumIonTerrainResource(resource: TerrainResource) {
+    if (!resource.cesiumIon) return
+
+    const endpoint = await this.fetchCesiumIonTerrainEndpoint(
+      resource.cesiumIon.endpointUrl,
+      resource.cesiumIon.apiToken
+    )
+    this.applyCesiumIonTerrainEndpoint(resource, endpoint)
+  }
+
+  private async fetchCesiumIonTerrainEndpoint(endpointUrl: string, apiToken: string): Promise<CesiumIonTerrainEndpoint> {
+    const url = new URL(endpointUrl)
+    url.searchParams.set('access_token', apiToken)
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`Tellux terrain sampler: failed to load Cesium Ion terrain endpoint (${response.status} ${response.statusText}).`)
+    }
+
+    const endpoint = await response.json() as CesiumIonTerrainEndpoint
+    if (endpoint.type !== 'TERRAIN') {
+      throw new Error(`Tellux terrain sampler: Cesium Ion asset type "${endpoint.type}" is not supported by terrain sampling.`)
+    }
+    if (typeof endpoint.url !== 'string' || endpoint.url.length === 0) {
+      throw new Error('Tellux terrain sampler: Cesium Ion terrain endpoint does not contain a terrain URL.')
+    }
+    if (typeof endpoint.accessToken !== 'string' || endpoint.accessToken.length === 0) {
+      throw new Error('Tellux terrain sampler: Cesium Ion terrain endpoint does not contain an access token.')
+    }
+
+    return endpoint
+  }
+
+  private applyCesiumIonTerrainEndpoint(
+    resource: TerrainResource,
+    endpoint: CesiumIonTerrainEndpoint
+  ) {
+    resource.rootUrl = this.normalizeTerrainRootUrl(endpoint.url!)
+    resource.inheritedSearchParams = new URL(endpoint.url!, location.href).searchParams
+    resource.headers = {
+      Authorization: `Bearer ${endpoint.accessToken}`
     }
   }
 
@@ -295,9 +435,9 @@ export class QuantizedMeshTerrainSampler {
   ): Promise<TerrainTileData> {
     const url = this.preprocessTerrainUrl(
       new URL(this.getContentUrl(state.layer, coordinate), state.layerUrl),
-      state.inheritedSearchParams
+      state.resource.inheritedSearchParams
     )
-    const response = await fetch(url, {
+    const response = await this.fetchTerrainResource(state.resource, url, {
       headers: {
         Accept: TERRAIN_ACCEPT_HEADER
       }
@@ -629,7 +769,7 @@ export class QuantizedMeshTerrainSampler {
   }
 
   private getTileKey(state: TerrainLayerState, coordinate: TerrainTileCoordinate) {
-    return `${state.rootUrl}|${this.getCoordinateKey(coordinate)}`
+    return `${state.resource.cacheKey}|${this.getCoordinateKey(coordinate)}`
   }
 
   private getCoordinateKey(coordinate: TerrainTileCoordinate) {
@@ -644,6 +784,27 @@ export class QuantizedMeshTerrainSampler {
     })
 
     return url.toString()
+  }
+
+  private getTerrainCacheKey(terrain: TerrainOptions) {
+    if (this.isCesiumIonTerrainOptions(terrain)) {
+      return [
+        'cesium-ion',
+        String(terrain.assetId),
+        terrain.apiToken,
+        terrain.autoRefreshToken ?? true
+      ].join(':')
+    }
+
+    return this.normalizeTerrainRootUrl(terrain.url)
+  }
+
+  private getCesiumIonEndpointUrl(terrain: CesiumIonTerrainOptions) {
+    return `https://api.cesium.com/v1/assets/${encodeURIComponent(String(terrain.assetId))}/endpoint`
+  }
+
+  private isCesiumIonTerrainOptions(terrain: TerrainOptions): terrain is CesiumIonTerrainOptions {
+    return terrain.type === 'cesium-ion'
   }
 
   private normalizeTerrainRootUrl(url: string) {

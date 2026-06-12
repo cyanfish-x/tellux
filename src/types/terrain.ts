@@ -42,17 +42,11 @@ export interface TerrainTileLoadingOptions {
 }
 
 /**
- * Cesium quantized-mesh 地形配置，用于 {@link ViewerOptions.terrain}。
+ * Cesium quantized-mesh 地形通用渲染配置。
  *
- * Cesium quantized-mesh terrain options used by {@link ViewerOptions.terrain}.
+ * Shared Cesium quantized-mesh terrain rendering options.
  */
-export interface TerrainOptions {
-  /**
-   * 地形根 URL 或 `layer.json` URL。
-   *
-   * Terrain root URL or `layer.json` URL.
-   */
-  url: string
+export interface TerrainRenderOptions {
   /**
    * 地形瓦片加载参数。
    *
@@ -96,6 +90,52 @@ export interface TerrainOptions {
    */
   solid?: boolean
 }
+
+/**
+ * URL 形式的 Cesium quantized-mesh 地形配置，用于 {@link ViewerOptions.terrain}。
+ *
+ * URL-based Cesium quantized-mesh terrain options used by
+ * {@link ViewerOptions.terrain}.
+ */
+export interface UrlTerrainOptions extends TerrainRenderOptions {
+  /**
+   * 数据源类型。不传时按 URL 地形处理，用于兼容旧配置。
+   *
+   * Data source type. When omitted, the terrain is treated as URL-based terrain
+   * for backward compatibility.
+   */
+  type?: 'url'
+  /**
+   * 地形根 URL 或 `layer.json` URL。
+   *
+   * Terrain root URL or `layer.json` URL.
+   */
+  url: string
+}
+
+/**
+ * Cesium Ion quantized-mesh 地形配置，用于 {@link ViewerOptions.terrain}。
+ *
+ * Cesium Ion quantized-mesh terrain options used by
+ * {@link ViewerOptions.terrain}.
+ */
+export interface CesiumIonTerrainOptions extends TerrainRenderOptions {
+  /** 数据源类型。Data source type. */
+  type: 'cesium-ion'
+  /** Cesium Ion 访问令牌。Cesium Ion access token. */
+  apiToken: string
+  /** Cesium Ion 地形资源 id。Cesium Ion terrain asset id. */
+  assetId: string | number
+  /** 是否自动刷新 Cesium Ion endpoint 授权，默认 `true`。Refreshes Cesium Ion endpoint authorization automatically. Defaults to `true`. */
+  autoRefreshToken?: boolean
+}
+
+/**
+ * Viewer 支持的地形配置。
+ *
+ * Terrain options supported by Viewer.
+ */
+export type TerrainOptions = UrlTerrainOptions | CesiumIonTerrainOptions
 
 /**
  * 3D Tiles 图层渲染选项。

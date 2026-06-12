@@ -37,11 +37,29 @@ const viewer = new tellux.Viewer('viewer', {
 })
 ```
 
-`terrain.url` 支持 Cesium quantized-mesh 地形根目录，也可以直接传入 `layer.json` 地址。运行时可以热切换地形：
+`terrain.url` 支持 Cesium quantized-mesh 地形根目录，也可以直接传入 `layer.json` 地址。也可以在初始化或运行时选择 Cesium Ion 地形资源：
+
+```ts
+const viewer = new tellux.Viewer('viewer', {
+  terrain: {
+    type: 'cesium-ion',
+    assetId: 1,
+    apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
+  }
+})
+```
+
+运行时可以热切换地形：
 
 ```ts
 viewer.setTerrain({
   url: 'https://example.com/another-terrain/layer.json'
+})
+
+viewer.setTerrain({
+  type: 'cesium-ion',
+  assetId: 1,
+  apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
 })
 
 viewer.setTerrain(null)

@@ -81,6 +81,7 @@ export interface AtmosphereRuntimeState {
 
 export interface CloudRuntimeState {
   quality: CloudQualityPreset | undefined
+  lightShafts: boolean
   coverage: number
   speed: number
   layerAltitude: number
@@ -254,6 +255,7 @@ export class AtmosphereManager {
     if (state.quality !== undefined) {
       this.cloudsEffect.qualityPreset = state.quality
     }
+    this.cloudsEffect.lightShafts = state.lightShafts
     this.cloudsEffect.coverage = this.toFinite(state.coverage, DEFAULT_CLOUD_COVERAGE)
     this.cloudsEffect.localWeatherVelocity.set(Math.max(0, this.toFinite(state.speed, DEFAULT_CLOUD_SPEED)), 0)
 

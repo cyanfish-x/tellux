@@ -61,6 +61,7 @@ export interface ResolvedSceneOptions {
   clouds: {
     show: boolean
     quality: CloudQualityPreset | undefined
+    lightShafts: boolean
     coverage: number
     speed: number
     layer: {
@@ -178,6 +179,7 @@ export class CloudSceneControls {
   private readonly applyCloudsState: CloudStateApplier
   private readonly onEffectsChange: () => void
   private currentQuality: CloudQualityPreset | undefined
+  private currentLightShafts: boolean
   private currentCoverage: number
   private currentSpeed: number
   private currentLayerAltitude: number
@@ -192,6 +194,7 @@ export class CloudSceneControls {
     this.onEffectsChange = onEffectsChange
     this.visibility = new SceneToggle(options.show, onEffectsChange)
     this.currentQuality = options.quality
+    this.currentLightShafts = options.lightShafts
     this.currentCoverage = options.coverage
     this.currentSpeed = toNonNegativeFinite(options.speed, DEFAULT_CLOUD_SPEED)
     this.currentLayerAltitude = options.layer.altitude
@@ -224,6 +227,23 @@ export class CloudSceneControls {
     if (this.currentQuality === value) return
 
     this.currentQuality = value
+    this.apply()
+    this.onEffectsChange()
+  }
+
+  /**
+   * 是否启用体积云光柱。
+   *
+   * Whether volumetric cloud light shafts are enabled.
+   */
+  get lightShafts() {
+    return this.currentLightShafts
+  }
+
+  set lightShafts(value: boolean) {
+    if (this.currentLightShafts === value) return
+
+    this.currentLightShafts = value
     this.apply()
     this.onEffectsChange()
   }
@@ -301,6 +321,7 @@ export class CloudSceneControls {
   private getRuntimeState(): CloudRuntimeState {
     return {
       quality: this.currentQuality,
+      lightShafts: this.currentLightShafts,
       coverage: this.currentCoverage,
       speed: this.currentSpeed,
       layerAltitude: this.currentLayerAltitude,
