@@ -1493,10 +1493,10 @@ body.sandcastle-page {
 
 .sandcastle-card {
   display: grid;
-  grid-template-columns: 94px minmax(0, 1fr);
+  grid-template-columns: 144px minmax(0, 1fr);
   gap: 12px;
   width: 100%;
-  min-height: 126px;
+  min-height: 124px;
   padding: 8px;
   border: 1px solid rgba(215, 224, 233, 0.11);
   border-radius: 8px;
@@ -1518,7 +1518,8 @@ body.sandcastle-page {
 
 .sandcastle-card__thumb {
   display: block;
-  min-height: 108px;
+  aspect-ratio: 4 / 3;
+  width: 100%;
   border: 1px dashed rgba(215, 224, 233, 0.18);
   border-radius: 6px;
   background:
@@ -2117,7 +2118,7 @@ body.sandcastle-page {
   }
 
   .sandcastle-card {
-    grid-template-columns: 82px minmax(0, 1fr);
+    grid-template-columns: 112px minmax(0, 1fr);
   }
 
   .sandcastle-stage {
