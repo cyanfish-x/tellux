@@ -1,7 +1,9 @@
 import tellux from '../src'
 
-const DEFAULT_TERRAIN_URL = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ''
 const HERO_CLOCK_TIME = new Date(1780747337456)
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? '1'
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ''
 const arcgisWorldImageryUrl =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 
@@ -56,9 +58,11 @@ document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((link) => {
 if (globeContainer instanceof HTMLElement) {
   const viewer = new tellux.Viewer(globeContainer, {
     dracoDecoderPath: '/draco/gltf/',
-    terrain: DEFAULT_TERRAIN_URL
+    terrain: DEFAULT_ION_TOKEN
       ? {
-          url: DEFAULT_TERRAIN_URL,
+          type: 'cesium-ion',
+          assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+          apiToken: DEFAULT_ION_TOKEN,
           tileLoading: {
             enableTileSplitting: true
           }

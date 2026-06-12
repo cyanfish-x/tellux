@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import tellux from "../src"
-import { arcgisWorldImageryUrl, defaultTerrainUrl } from "./shared"
+import { arcgisWorldImageryUrl } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
@@ -16,6 +16,9 @@ const HORSE_MODEL_URL = "https://threejs.org/examples/models/gltf/Horse.glb"
 const EARTH_RADIUS_METERS = 6378137
 const DEG2RAD = Math.PI / 180
 const RAD2DEG = 180 / Math.PI
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 type PlacementPoint = {
   longitude: number
@@ -60,9 +63,14 @@ if (!flyToButton || !toggleAnimationButton || !regenerateButton) {
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: defaultTerrainUrl
+  terrain: DEFAULT_ION_TOKEN
     ? {
-        url: defaultTerrainUrl,
+        type: "cesium-ion",
+        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+        apiToken: DEFAULT_ION_TOKEN,
+        tileLoading: {
+          enableTileSplitting: true,
+        },
       }
     : undefined,
   layers: [

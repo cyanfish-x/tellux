@@ -1,5 +1,5 @@
 import tellux from "../src"
-import { arcgisWorldImageryUrl, defaultTerrainUrl } from "./shared"
+import { arcgisWorldImageryUrl } from "./shared"
 import { formatHeight, mountLocationReadout } from "./location-readout"
 import type { ViewerClickEvent } from "../src"
 
@@ -15,6 +15,8 @@ const clearButton = document.querySelector("#clear")
 const cesiumIonToken = import.meta.env.VITE_CESIUM_ION_TOKEN as
   | string
   | undefined
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -28,9 +30,14 @@ if (tokenStatus) {
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: defaultTerrainUrl
+  terrain: cesiumIonToken
     ? {
-        url: defaultTerrainUrl,
+        type: "cesium-ion",
+        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+        apiToken: cesiumIonToken,
+        tileLoading: {
+          enableTileSplitting: true,
+        },
       }
     : undefined,
   layers: [
