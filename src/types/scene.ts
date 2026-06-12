@@ -198,6 +198,8 @@ export interface ViewerCloudOptions {
   show?: boolean
   /** 体积云质量档位。Volumetric cloud quality preset. */
   quality?: CloudQualityPreset
+  /** 是否启用体积云光柱，默认 `true`。Enables volumetric cloud light shafts. Defaults to `true`. */
+  lightShafts?: boolean
   /** 云覆盖率，范围 `0` 到 `1`，默认 `0.3`。Cloud coverage from `0` to `1`. Defaults to `0.3`. */
   coverage?: number
   /** 体积云天气纹理的水平运动速度，单位为 UV 偏移/秒，默认 `0.001`。Horizontal motion speed for the volumetric cloud weather texture. Defaults to `0.001`. */
