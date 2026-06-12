@@ -83,7 +83,7 @@ VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
 ## 体积云与大气示例
 
 `atmosphere.html` 演示默认体积云、大气天空和后处理组合。左上角面板可以切换大气与云层，
-并调整 UTC 时间、云覆盖率和渲染曝光。
+并调整日期、云覆盖率和渲染曝光。
 
 ## Three.js 原生互操作示例
 

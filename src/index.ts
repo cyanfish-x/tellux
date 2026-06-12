@@ -23,6 +23,8 @@ export {
   Timeline,
   SpringControl,
   Viewer,
+  type CameraEllipsoid,
+  type CameraEllipsoidProvider,
   type CameraFlyToDestination,
   type CameraFlyToOptions,
   type CameraFlightEasingFunction,

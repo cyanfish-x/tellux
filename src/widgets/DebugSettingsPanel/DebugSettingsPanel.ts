@@ -11,7 +11,6 @@ import { mountDebugFpsHud } from "./fps"
 import { saveStoredDebugSettings } from "./storage"
 import { installDebugSettingsPanelStyles } from "./styles"
 import {
-  createUTCDateFromControls,
   formatHour,
   formatRadians,
   formatUTCMonthDay,
@@ -229,7 +228,6 @@ function mountDebugSettingsPanel(
   const initialYearUTC = initialClockTime.getUTCFullYear()
   const initialDayOfYear =
     settings.dayOfYear ?? getUTCDayOfYear(initialClockTime)
-  const initialHourUTC = settings.hourUTC ?? getUTCHour(initialClockTime)
   const dayOfYearControl = createRangeControl({
     id: "day-of-year",
     label: "年内日",
@@ -239,22 +237,12 @@ function mountDebugSettingsPanel(
     value: initialDayOfYear,
     format: (value) => formatUTCMonthDay(initialYearUTC, value),
   })
-  const utcControl = createRangeControl({
-    id: "utc-time",
-    label: "UTC 时间",
-    min: 0,
-    max: 24,
-    step: 0.05,
-    value: initialHourUTC,
-    format: formatHour,
-  })
 
   content.appendChild(
     createGroup("日期和时间", [
       clockAnimateToggle.element,
       clockMultiplierControl.element,
       dayOfYearControl.element,
-      utcControl.element,
     ])
   )
 
@@ -630,7 +618,6 @@ function mountDebugSettingsPanel(
   const fpsHud = mountDebugFpsHud(shell, fpsToggle.input.checked)
   let shouldApplyTimeControls = true
   let previousDayOfYearValue = Number(dayOfYearControl.input.value)
-  let previousHourUTCValue = Number(utcControl.input.value)
   let previousClockAnimateValue = clockAnimateToggle.input.checked
   let isSyncingAnimatedTime = false
   const smooth = {
@@ -664,7 +651,6 @@ function mountDebugSettingsPanel(
     cloudLayerHeight: createSpringControl(cloudHeightControl.input),
     toneMappingExposure: createSpringControl(exposureControl.input),
     dayOfYear: createSpringControl(dayOfYearControl.input),
-    hourUTC: createSpringControl(utcControl.input),
   }
 
   function applySmoothedControls(deltaTime: number) {
@@ -710,10 +696,9 @@ function mountDebugSettingsPanel(
     viewer.toneMappingExposure = smooth.toneMappingExposure.tick(deltaTime)
 
     if (!viewer.clock.animate) {
-      viewer.clock.currentTime = createUTCDateFromSmoothedControls(
-        viewer.clock.currentTime.getUTCFullYear(),
-        smooth.dayOfYear.tick(deltaTime),
-        smooth.hourUTC.tick(deltaTime)
+      viewer.clock.currentTime = createUTCDatePreservingTimeOfDay(
+        viewer.clock.currentTime,
+        smooth.dayOfYear.tick(deltaTime)
       )
     }
   }
@@ -726,10 +711,8 @@ function mountDebugSettingsPanel(
     const hourUTCValue = getUTCHour(currentTime)
     isSyncingAnimatedTime = true
     dayOfYearControl.setValue(dayOfYearValue)
-    utcControl.setValue(hourUTCValue)
     isSyncingAnimatedTime = false
     previousDayOfYearValue = dayOfYearValue
-    previousHourUTCValue = hourUTCValue
     status.textContent =
       `第 ${dayOfYearValue} 日 UTC ${formatHour(hourUTCValue)} / ` +
       `云量 ${viewer.scene.clouds.coverage.toFixed(2)} / ` +
@@ -742,15 +725,12 @@ function mountDebugSettingsPanel(
     if (isSyncingAnimatedTime) return
 
     const dayOfYearValue = Number(dayOfYearControl.input.value)
-    const hourUTCValue = Number(utcControl.input.value)
     const clockMultiplierValue = sliderValueToClockMultiplier(
       Number(clockMultiplierControl.input.value)
     )
     const clockAnimateValue = clockAnimateToggle.input.checked
     const clockAnimateChanged = clockAnimateValue !== previousClockAnimateValue
-    const timeControlsChanged =
-      dayOfYearValue !== previousDayOfYearValue ||
-      hourUTCValue !== previousHourUTCValue
+    const timeControlsChanged = dayOfYearValue !== previousDayOfYearValue
 
     viewer.scene.atmosphere.show = skyToggle.input.checked
     viewer.scene.atmosphere.sky.stars.show = starsToggle.input.checked
@@ -826,14 +806,11 @@ function mountDebugSettingsPanel(
     viewer.clock.multiplier = clockMultiplierValue
     if (shouldApplyTimeControls || timeControlsChanged) {
       smooth.dayOfYear.target = dayOfYearValue
-      smooth.hourUTC.target = hourUTCValue
       previousDayOfYearValue = dayOfYearValue
-      previousHourUTCValue = hourUTCValue
       shouldApplyTimeControls = false
     }
     if (clockAnimateChanged && !clockAnimateValue) {
       smooth.dayOfYear.reset(dayOfYearValue)
-      smooth.hourUTC.reset(hourUTCValue)
     }
     previousClockAnimateValue = clockAnimateValue
     smooth.cloudCoverage.target = Number(coverageControl.input.value)
@@ -856,7 +833,6 @@ function mountDebugSettingsPanel(
       clockAnimate: clockAnimateToggle.input.checked,
       clockMultiplier: clockMultiplierValue,
       dayOfYear: dayOfYearValue,
-      hourUTC: hourUTCValue,
       clouds: cloudToggle.input.checked,
       cloudCoverage: Number(coverageControl.input.value),
       cloudSpeed: Number(cloudSpeedControl.input.value),
@@ -955,16 +931,10 @@ function createSpringControl(input: HTMLInputElement) {
   return new SpringControl(Number(input.value))
 }
 
-function createUTCDateFromSmoothedControls(
-  year: number,
-  dayOfYear: number,
-  hourUTC: number
-) {
-  return createUTCDateFromControls(
-    year,
-    Math.round(dayOfYear),
-    hourUTC
-  )
+function createUTCDatePreservingTimeOfDay(date: Date, dayOfYear: number) {
+  const nextDate = new Date(date)
+  nextDate.setUTCMonth(0, clamp(Math.round(dayOfYear), 1, getDaysInUTCYear(date.getUTCFullYear())))
+  return nextDate
 }
 
 function sliderValueToClockMultiplier(value: number) {
@@ -976,5 +946,9 @@ function sliderValueToClockMultiplier(value: number) {
 
 function toFinite(value: number, fallback: number) {
   return Number.isFinite(value) ? value : fallback
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
 }
 
