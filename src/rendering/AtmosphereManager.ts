@@ -23,7 +23,7 @@ import {
 } from '@takram/three-atmosphere'
 import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
 import { getTelluxAssetUrl } from '../config'
-import type { AtmosphereLightingMode } from '../types'
+import type { AtmosphereLightingMode, CloudQualityPreset } from '../types'
 
 type TextureApplyCallback<T extends THREE.Texture> = (texture: T) => void
 
@@ -79,10 +79,22 @@ export interface AtmosphereRuntimeState {
   groundAlbedo: number
 }
 
+export interface CloudRuntimeState {
+  quality: CloudQualityPreset | undefined
+  coverage: number
+  speed: number
+  layerAltitude: number
+  layerHeight: number
+}
+
 const CLOUD_COMPOSITION_PROPERTIES = new Set(['atmosphereOverlay', 'atmosphereShadow', 'atmosphereShadowLength'])
 const INSCATTER_INTENSITY_UNIFORM = 'telluxInscatterIntensity'
 const INSCATTER_HORIZON_BLEND_UNIFORM = 'telluxInscatterHorizonBlend'
 const INSCATTER_HORIZON_RANGE_UNIFORM = 'telluxInscatterHorizonRange'
+const DEFAULT_CLOUD_COVERAGE = 0.3
+const DEFAULT_CLOUD_SPEED = 0.001
+const CLOUD_LAYER_OFFSETS = [0, 250]
+const CLOUD_LAYER_HEIGHT_SCALES = [1, 1200 / 650]
 
 export class AtmosphereManager {
   readonly aerialPerspectiveEffect: AerialPerspectiveEffect
@@ -125,7 +137,7 @@ export class AtmosphereManager {
     this.skyLightSource.visible = false
 
     this.cloudsEffect = new CloudsEffect(this.camera)
-    this.cloudsEffect.localWeatherVelocity.set(0.001, 0)
+    this.cloudsEffect.localWeatherVelocity.set(DEFAULT_CLOUD_SPEED, 0)
     this.cloudsEffect.shadow.farScale = 0.25
     this.cloudsEffect.shadow.maxFar = 1e5
     this.cloudsEffect.shadow.cascadeCount = 2
@@ -236,6 +248,22 @@ export class AtmosphereManager {
     this.getAtmosphereUniform().ground_albedo.setScalar(
       THREE.MathUtils.clamp(this.toFinite(state.groundAlbedo, 0.1), 0, 1)
     )
+  }
+
+  applyCloudsState(state: CloudRuntimeState) {
+    if (state.quality !== undefined) {
+      this.cloudsEffect.qualityPreset = state.quality
+    }
+    this.cloudsEffect.coverage = this.toFinite(state.coverage, DEFAULT_CLOUD_COVERAGE)
+    this.cloudsEffect.localWeatherVelocity.set(Math.max(0, this.toFinite(state.speed, DEFAULT_CLOUD_SPEED)), 0)
+
+    CLOUD_LAYER_OFFSETS.forEach((offset, index) => {
+      const layer = this.cloudsEffect.cloudLayers[index]
+      if (!layer) return
+
+      layer.altitude = this.toFinite(state.layerAltitude, 1500) + offset
+      layer.height = this.toFinite(state.layerHeight, 650) * CLOUD_LAYER_HEIGHT_SCALES[index]
+    })
   }
 
   async loadTextures() {

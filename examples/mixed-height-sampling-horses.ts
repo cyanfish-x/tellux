@@ -100,9 +100,6 @@ const viewer = new tellux.Viewer(container, {
   scene: {
     atmosphere: {
       show: true,
-      lighting: {
-        mode: "light-source"
-      },
       fallbackAmbientLight: {
         intensity: 0.9
       }
@@ -160,7 +157,6 @@ async function initializeMixedSamplingScene() {
     type: "url",
     id: "mixed-height-sampling-tileset",
     url: MIXED_TILESET_URL,
-    materialMode: "unlit",
   })
   flyToTilesetButton.disabled = false
 
