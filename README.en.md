@@ -39,11 +39,29 @@ const viewer = new tellux.Viewer('viewer', {
 })
 ```
 
-`terrain.url` accepts a Cesium quantized-mesh terrain root directory or a direct `layer.json` URL. You can switch terrain at runtime:
+`terrain.url` accepts a Cesium quantized-mesh terrain root directory or a direct `layer.json` URL. You can also select a Cesium Ion terrain asset during initialization or at runtime:
+
+```ts
+const viewer = new tellux.Viewer('viewer', {
+  terrain: {
+    type: 'cesium-ion',
+    assetId: 1,
+    apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
+  }
+})
+```
+
+You can switch terrain at runtime:
 
 ```ts
 viewer.setTerrain({
   url: 'https://example.com/another-terrain/layer.json'
+})
+
+viewer.setTerrain({
+  type: 'cesium-ion',
+  assetId: 1,
+  apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
 })
 
 viewer.setTerrain(null)

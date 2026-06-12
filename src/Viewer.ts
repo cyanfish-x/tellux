@@ -79,6 +79,7 @@ export type {
   CartographicCoordinates,
   CartographicHeightTuple,
   CartographicInput,
+  CesiumIonTerrainOptions,
   CesiumIon3DTilesetOptions,
   CesiumIonImagerySourceOptions,
   FlyToTargetOffset,
@@ -108,6 +109,7 @@ export type {
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
   SampleHeightOptions,
+  TerrainRenderOptions,
   TerrainOptions,
   TerrainTileLoadingOptions,
   ThreeDTilesRenderOptions,
@@ -115,6 +117,7 @@ export type {
   TilesetFeatureProperties,
   TilesetLayer,
   Url3DTilesetOptions,
+  UrlTerrainOptions,
   ViewerClickEvent,
   ViewerEvent,
   ViewerEventListener,
@@ -604,12 +607,12 @@ export class Viewer {
   }
 
   /**
-   * 运行时切换 Cesium quantized-mesh 地形，并保留当前影像、相机、控制器和渲染器状态。
+   * 运行时切换 Cesium quantized-mesh 地形或 Cesium Ion 地形，并保留当前影像、相机、控制器和渲染器状态。
    *
    * 传入 `null` 可移除当前地形并回到无地形模式。
    *
-   * Switches Cesium quantized-mesh terrain at runtime while preserving the current
-   * imagery, camera, controls, and renderer state.
+   * Switches Cesium quantized-mesh terrain or Cesium Ion terrain at runtime while
+   * preserving the current imagery, camera, controls, and renderer state.
    *
    * Pass `null` to remove the current terrain and return to the non-terrain mode.
    */
@@ -927,6 +930,7 @@ export class Viewer {
       clouds: {
         show: options?.clouds?.show ?? true,
         quality: options?.clouds?.quality,
+        lightShafts: options?.clouds?.lightShafts ?? true,
         coverage: options?.clouds?.coverage ?? 0.3,
         speed: options?.clouds?.speed ?? 0.001,
         layer: {
