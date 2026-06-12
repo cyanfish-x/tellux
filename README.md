@@ -285,6 +285,31 @@ viewer.scene.atmosphere.lighting.sunLightIntensity = 1.2
 viewer.scene.atmosphere.lighting.skyLightIntensity = 0.8
 ```
 
+Tellux 还会自动应用夜间光照：当当前视角所在地的太阳低于地平线时，会根据月亮方向和月相叠加冷色低强度月光，并加少量冷色环境补光，避免夜晚完全变黑。夜间效果会同时作用于天空、月盘/月晕、星空、体积云和地表；`light-source` 模式下地表会使用 Three.js 月光方向光和环境光，`post-process` 模式下地表会在 `AerialPerspectiveEffect` 中基于表面 albedo 补充月光和环境补光。可以通过 `scene.atmosphere.night` 调整：
+
+```ts
+const viewer = new tellux.Viewer(container, {
+  scene: {
+    atmosphere: {
+      lighting: {
+        mode: 'light-source'
+      },
+      night: {
+        enabled: true,
+        color: 0x9bbcff,
+        moonLightIntensity: 0.18,
+        ambientIntensity: 0.08,
+        useMoonPhase: true,
+        transitionRange: [-0.08, 0.05]
+      }
+    }
+  }
+})
+
+viewer.scene.atmosphere.night.moonLightIntensity = 0.22
+viewer.scene.atmosphere.night.ambientIntensity = 0.1
+```
+
 `post-process` 是 Takram 的原生空气透视后处理光照路径。它会把渲染结果当作表面反照率（albedo），再在 `AerialPerspectiveEffect` 中应用太阳光、天空光、大气透射和空气散射。这个模式适合想获得更统一的大气后处理效果的高级场景，但输入材质应是不受 Three.js 光源影响的 albedo 材质，例如 `MeshBasicMaterial` 或 glTF 的 `KHR_materials_unlit`。
 
 加载 3D Tiles 时，如果数据本身不是 unlit 材质，但希望它参与 `post-process` 光照，可以显式使用 `materialMode: 'unlit'`：

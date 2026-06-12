@@ -1,5 +1,5 @@
 import tellux from '../src'
-import { arcgisWorldImageryUrl, defaultTerrainUrl } from './shared'
+import { arcgisWorldImageryUrl } from './shared'
 
 const container = document.querySelector('#viewer')
 const dujiangyanButton = document.querySelector<HTMLButtonElement>('#dujiangyan')
@@ -7,6 +7,9 @@ const pacificButton = document.querySelector<HTMLButtonElement>('#pacific')
 const himalayaButton = document.querySelector<HTMLButtonElement>('#himalaya')
 
 const initialDaytimeHourUTC = 5
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? '1'
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ''
 
 const dujiangyanView = {
   latitude: 31.025122345612274,
@@ -27,9 +30,14 @@ if (!dujiangyanButton || !pacificButton || !himalayaButton) {
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: '/draco/gltf/',
-  terrain: defaultTerrainUrl
+  terrain: DEFAULT_ION_TOKEN
     ? {
-        url: defaultTerrainUrl
+        type: 'cesium-ion',
+        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+        apiToken: DEFAULT_ION_TOKEN,
+        tileLoading: {
+          enableTileSplitting: true
+        }
       }
     : undefined,
   layers: [

@@ -1,6 +1,10 @@
 import tellux from '../src'
-import { arcgisWorldImageryUrl, defaultTerrainUrl, showTokenNotice } from './shared'
+import { arcgisWorldImageryUrl, showTokenNotice } from './shared'
 import type { CameraFlyToOptions } from '../src'
+
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? '1'
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ''
 
 const container = document.querySelector('#viewer')
 const tokenStatus = document.querySelector<HTMLElement>('#token-status')
@@ -15,9 +19,14 @@ showTokenNotice(tokenStatus)
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: '/draco/gltf/',
-  terrain: defaultTerrainUrl
+  terrain: DEFAULT_ION_TOKEN
     ? {
-        url: defaultTerrainUrl
+        type: 'cesium-ion',
+        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+        apiToken: DEFAULT_ION_TOKEN,
+        tileLoading: {
+          enableTileSplitting: true
+        }
       }
     : undefined,
   layers: [

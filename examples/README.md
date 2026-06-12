@@ -12,6 +12,14 @@
 https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
 ```
 
+所有普通示例会在检测到 `VITE_CESIUM_ION_TOKEN` 时默认加载 Cesium Ion 地形。默认地形
+asset id 是 `1`（Cesium World Terrain），可以通过 `.env` 覆盖：
+
+```txt
+VITE_CESIUM_ION_TERRAIN_ASSET_ID=1
+VITE_CESIUM_ION_TOKEN=your_token
+```
+
 ## 运行
 
 ```bash
@@ -74,12 +82,13 @@ VITE_GAUSSIAN_SPLAT_3D_TILESET_URL=https://example.com/3dgs/tileset.json
 `terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.setTerrain(...)`。它支持输入 Cesium
 quantized-mesh 地形根目录或 `layer.json` 地址，也支持通过 Cesium Ion terrain asset 加载地形。
 
-可以在项目根目录 `.env` 中配置默认地形地址或 Cesium Ion 默认值：
+可以在项目根目录 `.env` 中配置 Cesium Ion 默认值。未配置 Ion token 时，示例仍支持回退到
+URL 地形：
 
 ```txt
-VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
 VITE_CESIUM_ION_TERRAIN_ASSET_ID=1
 VITE_CESIUM_ION_TOKEN=your_token
+VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
 ```
 
 ## 体积云与大气示例
