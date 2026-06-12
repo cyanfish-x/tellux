@@ -12,6 +12,9 @@ const openInfraMapUrl = "https://openinframap.org/tiles/{z}/{x}/{y}.pbf"
 const nasaGIBSWMSUrl =
   "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
 const nasaGIBSLandCoverTime = "2024-01-01"
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -251,6 +254,16 @@ const initialLayers: ImageryLayerOptions[] = [
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
+  terrain: DEFAULT_ION_TOKEN
+    ? {
+        type: "cesium-ion",
+        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+        apiToken: DEFAULT_ION_TOKEN,
+        tileLoading: {
+          enableTileSplitting: true,
+        },
+      }
+    : undefined,
   layers: initialLayers,
   scene: {
     clouds: {
@@ -260,7 +273,6 @@ const viewer = new tellux.Viewer(container, {
       toneMappingExposure: 7
     }
   },
-  terrain: undefined,
 })
 
 ;(window as any).viewer = viewer

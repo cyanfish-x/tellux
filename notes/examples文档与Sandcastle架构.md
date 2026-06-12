@@ -135,6 +135,8 @@ runner 的 iframe 使用 `sandbox="allow-scripts allow-same-origin"`。它隔离
 
 示例资源路径应以 `examples/public/` 的静态服务规则为准。Tellux 自身静态资源优先放到 `examples/public/tellux/`，并通过 `tellux.baseUrl = '/tellux/'` 使用。
 
+示例源码是面向用户的 API 教程，不要为了减少重复把关键 Viewer 配置隐藏到默认 helper 里。比如默认 Cesium Ion 地形配置应在每个示例的 `new tellux.Viewer(...)` 附近显式写出 `terrain: { type: 'cesium-ion', assetId, apiToken, ... }` 的形状，让用户打开单个示例文件时能直接看懂配置结构。公共 `examples/shared.ts` 只适合放通用资源 URL、简单展示文案等不会遮蔽核心 API 的内容。
+
 面向用户的教程、API 和能力说明放在 `docs/`；维护者备忘、调研资料和项目架构说明放在 `notes/`。
 
 文档站点构建输出会进入 `examples/public/docs/`，不要手动编辑该目录下的生成内容。

@@ -1,30 +1,48 @@
-import type { TilesetLayer } from '../src'
-import tellux from '../src'
-import { arcgisWorldImageryUrl, defaultTerrainUrl } from './shared'
+import type { TilesetLayer } from "../src"
+import tellux from "../src"
+import { arcgisWorldImageryUrl } from "./shared"
 
-const container = document.querySelector('#viewer')
-const tilesetUrlInput = document.querySelector<HTMLInputElement>('#tileset-url')
-const ionAssetIdInput = document.querySelector<HTMLInputElement>('#ion-asset-id')
-const ionTokenInput = document.querySelector<HTMLInputElement>('#ion-token')
-const visibleToggle = document.querySelector<HTMLInputElement>('#tileset-visible')
-const flyToToggle = document.querySelector<HTMLInputElement>('#tileset-fly-to')
-const statusElement = document.querySelector<HTMLElement>('#tileset-status')
-const loadUrlButton = document.querySelector<HTMLButtonElement>('#load-url-tileset')
-const loadIonButton = document.querySelector<HTMLButtonElement>('#load-ion-tileset')
-const removeButton = document.querySelector<HTMLButtonElement>('#remove-tileset')
+const container = document.querySelector("#viewer")
+const tilesetUrlInput = document.querySelector<HTMLInputElement>("#tileset-url")
+const ionAssetIdInput =
+  document.querySelector<HTMLInputElement>("#ion-asset-id")
+const ionTokenInput = document.querySelector<HTMLInputElement>("#ion-token")
+const visibleToggle =
+  document.querySelector<HTMLInputElement>("#tileset-visible")
+const flyToToggle = document.querySelector<HTMLInputElement>("#tileset-fly-to")
+const statusElement = document.querySelector<HTMLElement>("#tileset-status")
+const loadUrlButton =
+  document.querySelector<HTMLButtonElement>("#load-url-tileset")
+const loadIonButton =
+  document.querySelector<HTMLButtonElement>("#load-ion-tileset")
+const removeButton =
+  document.querySelector<HTMLButtonElement>("#remove-tileset")
 
 const PUBLIC_SAMPLE_TILESET_URL =
-  'https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json'
-const DEFAULT_TILESET_URL = import.meta.env.VITE_3D_TILESET_URL ?? PUBLIC_SAMPLE_TILESET_URL
-const DEFAULT_ION_ASSET_ID = import.meta.env.VITE_CESIUM_ION_3D_TILESET_ASSET_ID ?? ''
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ''
+  "https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json"
+const DEFAULT_TILESET_URL =
+  import.meta.env.VITE_3D_TILESET_URL ?? PUBLIC_SAMPLE_TILESET_URL
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const DEFAULT_ION_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_3D_TILESET_ASSET_ID ?? ""
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 if (!(container instanceof HTMLElement)) {
-  throw new Error('Viewer container not found.')
+  throw new Error("Viewer container not found.")
 }
 
-if (!tilesetUrlInput || !ionAssetIdInput || !ionTokenInput || !visibleToggle || !flyToToggle || !loadUrlButton || !loadIonButton || !removeButton) {
-  throw new Error('3D Tiles controls not found.')
+if (
+  !tilesetUrlInput ||
+  !ionAssetIdInput ||
+  !ionTokenInput ||
+  !visibleToggle ||
+  !flyToToggle ||
+  !loadUrlButton ||
+  !loadIonButton ||
+  !removeButton
+) {
+  throw new Error("3D Tiles controls not found.")
 }
 
 const tilesetUrlField = tilesetUrlInput
@@ -37,43 +55,53 @@ const loadIonControl = loadIonButton
 const removeControl = removeButton
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: '/draco/gltf/',
-  terrain: defaultTerrainUrl
+  dracoDecoderPath: "/draco/gltf/",
+  terrain: DEFAULT_ION_TOKEN
     ? {
-        url: defaultTerrainUrl
+        type: "cesium-ion",
+        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+        apiToken: DEFAULT_ION_TOKEN,
+        tileLoading: {
+          enableTileSplitting: true,
+        },
       }
     : undefined,
   layers: [
     {
       source: {
-        type: 'xyz',
+        type: "xyz",
         url: arcgisWorldImageryUrl,
-        levels: 19
-      }
-    }
+        levels: 19,
+      },
+    },
   ],
   scene: {
     atmosphere: {
       lighting: {
-        mode: 'post-process'
-      }
+        mode: "post-process",
+      },
     },
     clouds: {
-      show: false
+      show: false,
     },
     postProcess: {
-      toneMappingExposure: 7
-    }
-  }
+      toneMappingExposure: 7,
+    },
+  },
+  widgets: {
+    timeline: true,
+  },
 })
 
 ;(window as any).viewer = viewer
-viewer.clock.hourUTC = 10 
+viewer.clock.hourUTC = 10
 
 tilesetUrlField.value = DEFAULT_TILESET_URL
 ionAssetIdField.value = DEFAULT_ION_ASSET_ID
-ionTokenField.value = ''
-ionTokenField.placeholder = DEFAULT_ION_TOKEN ? '留空使用默认 token' : '输入 Cesium Ion token'
+ionTokenField.value = ""
+ionTokenField.placeholder = DEFAULT_ION_TOKEN
+  ? "留空使用默认 token"
+  : "输入 Cesium Ion token"
 
 let activeLayer: TilesetLayer | null = null
 
@@ -98,7 +126,7 @@ function activateLayer(layer: TilesetLayer, description: string) {
   if (flyToTilesetToggle.checked) {
     viewer.flyToTarget(layer.tileset, {
       heading: 0,
-      pitch: -30
+      pitch: -30,
     })
   }
   setStatus(`${description} 已加入场景。图层 id：${layer.id}`)
@@ -107,67 +135,75 @@ function activateLayer(layer: TilesetLayer, description: string) {
 function loadUrlTileset() {
   const url = tilesetUrlField.value.trim()
   if (!url) {
-    setStatus('请先输入 tileset.json URL，或在 .env 中配置 VITE_3D_TILESET_URL。')
+    setStatus(
+      "请先输入 tileset.json URL，或在 .env 中配置 VITE_3D_TILESET_URL。"
+    )
     return
   }
 
   clearActiveLayer()
   activateLayer(
     viewer.load3DTileset({
-      type: 'url',
-      id: 'example-3d-tiles',
-      url
+      type: "url",
+      id: "example-3d-tiles",
+      url,
     }),
-    'URL 3D Tiles'
+    "URL 3D Tiles"
   )
 }
 
-loadUrlControl.addEventListener('click', loadUrlTileset)
+loadUrlControl.addEventListener("click", loadUrlTileset)
 
-loadIonControl.addEventListener('click', () => {
+loadIonControl.addEventListener("click", () => {
   const assetId = ionAssetIdField.value.trim()
   const apiToken = ionTokenField.value.trim() || DEFAULT_ION_TOKEN
 
   if (!assetId || !apiToken) {
-    setStatus('请先输入 Cesium Ion asset id 和 token，或在 .env 中配置默认值。')
+    setStatus("请先输入 Cesium Ion asset id 和 token，或在 .env 中配置默认值。")
     return
   }
 
   clearActiveLayer()
   activateLayer(
     viewer.load3DTileset({
-      type: 'cesium-ion',
-      id: 'example-3d-tiles',
+      type: "cesium-ion",
+      id: "example-3d-tiles",
       assetId,
-      apiToken
+      apiToken,
     }),
-    'Cesium Ion 3D Tiles'
+    "Cesium Ion 3D Tiles"
   )
 })
 
-tilesetVisibleToggle.addEventListener('change', () => {
+tilesetVisibleToggle.addEventListener("change", () => {
   syncLayerVisibility()
-  setStatus(activeLayer ? `3D Tiles 已${tilesetVisibleToggle.checked ? '显示' : '隐藏'}。` : '还没有加载 3D Tiles。')
+  setStatus(
+    activeLayer
+      ? `3D Tiles 已${tilesetVisibleToggle.checked ? "显示" : "隐藏"}。`
+      : "还没有加载 3D Tiles。"
+  )
 })
 
-removeControl.addEventListener('click', () => {
+removeControl.addEventListener("click", () => {
   clearActiveLayer()
-  setStatus('3D Tiles 已移除。')
+  setStatus("3D Tiles 已移除。")
 })
 
 if (DEFAULT_TILESET_URL) {
   loadUrlTileset()
   setStatus(
     DEFAULT_TILESET_URL === PUBLIC_SAMPLE_TILESET_URL
-      ? '已自动加载 CesiumGS 公开 3D Tiles 示例；也可以替换 URL 后重新加载。'
-      : '已从 VITE_3D_TILESET_URL 自动加载默认 3D Tiles。'
+      ? "已自动加载 CesiumGS 公开 3D Tiles 示例；也可以替换 URL 后重新加载。"
+      : "已从 VITE_3D_TILESET_URL 自动加载默认 3D Tiles。"
   )
 } else if (DEFAULT_ION_ASSET_ID && DEFAULT_ION_TOKEN) {
-  setStatus('已读取 Cesium Ion 默认配置，可点击“加载 Cesium Ion”。')
+  setStatus("已读取 Cesium Ion 默认配置，可点击“加载 Cesium Ion”。")
 } else {
-  setStatus('输入 tileset.json URL，或配置 Cesium Ion asset id 和 token 后加载。')
+  setStatus(
+    "输入 tileset.json URL，或配置 Cesium Ion asset id 和 token 后加载。"
+  )
 }
 
-window.addEventListener('beforeunload', () => {
+window.addEventListener("beforeunload", () => {
   viewer.destroy()
 })

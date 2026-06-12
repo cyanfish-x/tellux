@@ -288,6 +288,31 @@ viewer.scene.atmosphere.lighting.sunLightIntensity = 1.2
 viewer.scene.atmosphere.lighting.skyLightIntensity = 0.8
 ```
 
+Tellux also applies automatic nighttime lighting: when the sun is below the local horizon for the current view, it adds low-intensity cool moonlight based on the moon direction and phase, plus a small cool ambient fill so the scene does not become fully black. The nighttime effect applies to the sky, moon disc and halo, stars, volumetric clouds, and the ground surface. In `light-source` mode the ground uses a Three.js moon directional light and ambient light; in `post-process` mode the ground receives moonlight and ambient fill from `AerialPerspectiveEffect` based on surface albedo. Tune this with `scene.atmosphere.night`:
+
+```ts
+const viewer = new tellux.Viewer(container, {
+  scene: {
+    atmosphere: {
+      lighting: {
+        mode: 'light-source'
+      },
+      night: {
+        enabled: true,
+        color: 0x9bbcff,
+        moonLightIntensity: 0.18,
+        ambientIntensity: 0.08,
+        useMoonPhase: true,
+        transitionRange: [-0.08, 0.05]
+      }
+    }
+  }
+})
+
+viewer.scene.atmosphere.night.moonLightIntensity = 0.22
+viewer.scene.atmosphere.night.ambientIntensity = 0.1
+```
+
 `post-process` is Takram's native aerial-perspective post-process lighting path. It treats the rendered color buffer as surface albedo, then applies sun light, sky light, atmospheric transmittance, and in-scattering in `AerialPerspectiveEffect`. This mode is useful for advanced scenes that want a more unified atmospheric post-process look, but the input materials should be albedo materials unaffected by Three.js lights, such as `MeshBasicMaterial` or glTF `KHR_materials_unlit`.
 
 When loading 3D Tiles, if the source data is not already unlit but you want it to participate in `post-process` lighting, use `materialMode: 'unlit'` explicitly:

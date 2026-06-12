@@ -15,6 +15,9 @@ const PUBLIC_SAMPLE_TILESET_URL =
   "https://raw.githubusercontent.com/WilliamLiu-1997/3D-Tiles-RendererJS-3DGS-Plugin/main/data/gaussianSplat1/tileset.json"
 const DEFAULT_SPLAT_TILESET_URL =
   import.meta.env.VITE_GAUSSIAN_SPLAT_3D_TILESET_URL ?? PUBLIC_SAMPLE_TILESET_URL
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 const SAMPLE_VIEW = {
   latitude: -38.5822,
   longitude: 142.8343,
@@ -40,6 +43,16 @@ const removeControl = removeButton
 
 const viewer = new tellux.Viewer(container, {
   useDefaultRenderLoop: false,
+  terrain: DEFAULT_ION_TOKEN
+    ? {
+        type: "cesium-ion",
+        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+        apiToken: DEFAULT_ION_TOKEN,
+        tileLoading: {
+          enableTileSplitting: true,
+        },
+      }
+    : undefined,
   camera: SAMPLE_VIEW,
   layers: [
     {

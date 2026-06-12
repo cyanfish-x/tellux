@@ -83,7 +83,7 @@ terrainUrlField.value = ""
 terrainUrlField.placeholder = DEFAULT_TERRAIN_URL
   ? "留空使用 VITE_CESIUM_TERRAIN_URL"
   : "输入地形根目录或 layer.json 地址"
-terrainSourceField.value = DEFAULT_TERRAIN_URL || !DEFAULT_ION_TOKEN ? "url" : "cesium-ion"
+terrainSourceField.value = DEFAULT_ION_TOKEN ? "cesium-ion" : "url"
 ionTerrainAssetIdField.value = DEFAULT_ION_TERRAIN_ASSET_ID
 ionTerrainTokenField.value = ""
 ionTerrainTokenField.placeholder = DEFAULT_ION_TOKEN
@@ -220,12 +220,14 @@ ionTerrainTokenField.addEventListener("keydown", (event) => {
 
 syncTerrainSourceFields()
 
-if (DEFAULT_TERRAIN_URL) {
+if (DEFAULT_ION_TOKEN) {
   terrainEnabledControl.checked = true
   enableSelectedTerrain()
-  setStatus("已从 VITE_CESIUM_TERRAIN_URL 自动加载 URL 地形，也可以切换到 Cesium Ion 地形。")
-} else if (DEFAULT_ION_TOKEN) {
-  setStatus("已读取 Cesium Ion token，可使用 asset id 1 加载 Cesium World Terrain，或替换为其它地形资源。")
+  setStatus("已从 Cesium Ion 默认配置自动加载地形；也可以切换到 URL 地形。")
+} else if (DEFAULT_TERRAIN_URL) {
+  terrainEnabledControl.checked = true
+  enableSelectedTerrain()
+  setStatus("未检测到 Cesium Ion token，已从 VITE_CESIUM_TERRAIN_URL 自动加载 URL 地形。")
 } else {
   setStatus("输入 terrain URL，或提供 Cesium Ion terrain asset id 和 token 后加载。")
 }

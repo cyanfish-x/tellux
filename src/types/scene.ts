@@ -64,6 +64,8 @@ export interface ViewerAtmosphereOptions {
   show?: boolean
   /** 大气光照配置。Atmospheric lighting options. */
   lighting?: ViewerAtmosphereLightingOptions
+  /** 夜间光照配置。Nighttime lighting options. */
+  night?: ViewerAtmosphereNightOptions
   /** 空气散射配置。Atmospheric scattering options. */
   scattering?: ViewerAtmosphereScatteringOptions
   /** 天空元素配置。Sky element options. */
@@ -100,6 +102,35 @@ export interface ViewerAtmosphereLightingOptions {
    * Albedo scale for post-process lighting. Defaults to `1`.
    */
   albedoScale?: number
+}
+
+/**
+ * Viewer 夜间光照配置。
+ *
+ * Viewer nighttime lighting options.
+ */
+export interface ViewerAtmosphereNightOptions {
+  /** 是否启用自动夜间光照，默认 `true`。Enables automatic nighttime lighting. Defaults to `true`. */
+  enabled?: boolean
+  /** 是否启用月光照明，默认 `true`。Enables moonlight illumination. Defaults to `true`. */
+  moonLight?: boolean
+  /** 是否启用冷色环境补光，默认 `true`。Enables cool ambient fill light. Defaults to `true`. */
+  ambientLight?: boolean
+  /** 夜间光照颜色，默认 `0x9bbcff`。Nighttime light color. Defaults to `0x9bbcff`. */
+  color?: import('three').ColorRepresentation
+  /** 月光最大强度，默认 `0.18`。Maximum moonlight intensity. Defaults to `0.18`. */
+  moonLightIntensity?: number
+  /** 夜间环境补光最大强度，默认 `0.08`。Maximum nighttime ambient fill intensity. Defaults to `0.08`. */
+  ambientIntensity?: number
+  /** 是否按月相衰减月光强度，默认 `true`。Attenuates moonlight by moon phase. Defaults to `true`. */
+  useMoonPhase?: boolean
+  /**
+   * 昼夜过渡范围，基于本地地表法线与太阳方向点积，默认 `[-0.08, 0.05]`。
+   *
+   * Day/night transition range based on the dot product between the local
+   * surface normal and sun direction. Defaults to `[-0.08, 0.05]`.
+   */
+  transitionRange?: [number, number]
 }
 
 /**
