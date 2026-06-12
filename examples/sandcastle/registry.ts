@@ -131,6 +131,16 @@ function getOrder(html: string) {
   return Number.isFinite(order) ? order : undefined
 }
 
+function getThumbnail(html: string) {
+  const document = parseHtmlDocument(html)
+  return (
+    document
+      .querySelector('meta[name="sandcastle-thumbnail"]')
+      ?.getAttribute("content")
+      ?.trim() || undefined
+  )
+}
+
 function getTags(text: string) {
   const normalizedText = text.toLowerCase()
   const tags = tagByTerm
@@ -154,10 +164,12 @@ function createExample(path: string, html: string): SandcastleExample | null {
   const title = getTitle(id, html)
   const description = getDescription(id, html)
   const order = getOrder(html)
+  const thumbnail = getThumbnail(html)
   return {
     id,
     title,
     ...(order === undefined ? {} : { order }),
+    ...(thumbnail === undefined ? {} : { thumbnail }),
     category: categoryById[id] ?? "Example",
     description,
     tags: getTags(`${title} ${description} ${javascript}`),

@@ -1,6 +1,5 @@
 import * as THREE from 'three'
-import type { CloudsEffect } from '@takram/three-clouds'
-import type { AtmosphereRuntimeState } from './rendering/AtmosphereManager'
+import type { AtmosphereRuntimeState, CloudRuntimeState } from './rendering/AtmosphereManager'
 import type { AtmosphereLightingMode, CloudQualityPreset, SurfaceMaterialMode } from './types'
 
 const FALLBACK_AMBIENT_LIGHT_MIN_HEIGHT = 8000
@@ -10,6 +9,7 @@ const DEFAULT_CLOUD_LAYER_ALTITUDE = 1500
 const DEFAULT_CLOUD_LAYER_HEIGHT = 650
 
 type AtmosphereStateApplier = (state: AtmosphereRuntimeState) => void
+type CloudStateApplier = (state: CloudRuntimeState) => void
 
 export interface ResolvedSceneOptions {
   atmosphere: {
@@ -186,10 +186,8 @@ export class SurfaceSceneControls {
 
 export class CloudSceneControls {
   private readonly visibility: SceneToggle
-  private readonly getCloudsEffect: () => CloudsEffect | null
+  private readonly applyCloudsState: CloudStateApplier
   private readonly onEffectsChange: () => void
-  private readonly layerOffsets = [0, 250]
-  private readonly layerHeightScales = [1, 1200 / 650]
   private currentQuality: CloudQualityPreset | undefined
   private currentLightShafts: boolean
   private currentCoverage: number
@@ -199,10 +197,10 @@ export class CloudSceneControls {
 
   constructor(
     options: ResolvedSceneOptions['clouds'],
-    getCloudsEffect: () => CloudsEffect | null,
+    applyCloudsState: CloudStateApplier,
     onEffectsChange: () => void
   ) {
-    this.getCloudsEffect = getCloudsEffect
+    this.applyCloudsState = applyCloudsState
     this.onEffectsChange = onEffectsChange
     this.visibility = new SceneToggle(options.show, onEffectsChange)
     this.currentQuality = options.quality
@@ -236,15 +234,11 @@ export class CloudSceneControls {
   }
 
   set quality(value: CloudQualityPreset | undefined) {
-    this.currentQuality = value
-    if (value === undefined) return
+    if (this.currentQuality === value) return
 
-    const clouds = this.getCloudsEffect()
-    if (clouds) {
-      clouds.qualityPreset = value
-      clouds.lightShafts = this.currentLightShafts
-      this.onEffectsChange()
-    }
+    this.currentQuality = value
+    this.apply()
+    this.onEffectsChange()
   }
 
   /**
@@ -257,12 +251,11 @@ export class CloudSceneControls {
   }
 
   set lightShafts(value: boolean) {
+    if (this.currentLightShafts === value) return
+
     this.currentLightShafts = value
-    const clouds = this.getCloudsEffect()
-    if (clouds) {
-      clouds.lightShafts = value
-      this.onEffectsChange()
-    }
+    this.apply()
+    this.onEffectsChange()
   }
 
   /**
@@ -275,9 +268,10 @@ export class CloudSceneControls {
   }
 
   set coverage(value: number) {
+    if (this.currentCoverage === value) return
+
     this.currentCoverage = value
-    const clouds = this.getCloudsEffect()
-    if (clouds) clouds.coverage = value
+    this.apply()
   }
 
   /**
@@ -291,9 +285,11 @@ export class CloudSceneControls {
   }
 
   set speed(value: number) {
-    this.currentSpeed = toNonNegativeFinite(value, DEFAULT_CLOUD_SPEED)
-    const clouds = this.getCloudsEffect()
-    if (clouds) clouds.localWeatherVelocity.set(this.currentSpeed, 0)
+    const nextSpeed = toNonNegativeFinite(value, DEFAULT_CLOUD_SPEED)
+    if (this.currentSpeed === nextSpeed) return
+
+    this.currentSpeed = nextSpeed
+    this.apply()
   }
 
   /**
@@ -306,8 +302,10 @@ export class CloudSceneControls {
   }
 
   set layerAltitude(value: number) {
+    if (this.currentLayerAltitude === value) return
+
     this.currentLayerAltitude = value
-    this.updateLowCloudLayers()
+    this.apply()
   }
 
   /**
@@ -320,29 +318,25 @@ export class CloudSceneControls {
   }
 
   set layerHeight(value: number) {
+    if (this.currentLayerHeight === value) return
+
     this.currentLayerHeight = value
-    this.updateLowCloudLayers()
+    this.apply()
   }
 
   apply() {
-    this.quality = this.currentQuality
-    this.lightShafts = this.currentLightShafts
-    this.coverage = this.currentCoverage
-    this.speed = this.currentSpeed
-    this.updateLowCloudLayers()
+    this.applyCloudsState(this.getRuntimeState())
   }
 
-  private updateLowCloudLayers() {
-    const clouds = this.getCloudsEffect()
-    if (!clouds) return
-
-    this.layerOffsets.forEach((offset, index) => {
-      const layer = clouds.cloudLayers[index]
-      if (!layer) return
-
-      layer.altitude = this.currentLayerAltitude + offset
-      layer.height = this.currentLayerHeight * this.layerHeightScales[index]
-    })
+  private getRuntimeState(): CloudRuntimeState {
+    return {
+      quality: this.currentQuality,
+      lightShafts: this.currentLightShafts,
+      coverage: this.currentCoverage,
+      speed: this.currentSpeed,
+      layerAltitude: this.currentLayerAltitude,
+      layerHeight: this.currentLayerHeight
+    }
   }
 }
 
@@ -1002,8 +996,8 @@ export class Scene {
 
   constructor(
     options: ResolvedSceneOptions,
-    getCloudsEffect: () => CloudsEffect | null,
     applyAtmosphereState: AtmosphereStateApplier,
+    applyCloudsState: CloudStateApplier,
     onEffectsChange: () => void,
     onSurfaceMaterialModeChange: () => void
   ) {
@@ -1015,7 +1009,7 @@ export class Scene {
       onEffectsChange,
       onSurfaceMaterialModeChange
     )
-    this.clouds = new CloudSceneControls(options.clouds, getCloudsEffect, onEffectsChange)
+    this.clouds = new CloudSceneControls(options.clouds, applyCloudsState, onEffectsChange)
     this.surface = new SurfaceSceneControls(options.surface, onSurfaceMaterialModeChange)
     this.postProcess = new PostProcessControls(options.postProcess, onEffectsChange)
     this.threeScene.add(this.fallbackAmbientLightSource)

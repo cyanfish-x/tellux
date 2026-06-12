@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import { TilesRenderer } from '3d-tiles-renderer'
 import { CAMERA_FRAME, DEFAULT_CAMERA, DEG2RAD } from './constants'
 
 /**
@@ -79,6 +78,44 @@ export interface CameraSetViewOptions {
   roll?: number
 }
 
+/**
+ * 相机经纬高计算所需的地球椭球能力。
+ *
+ * Globe ellipsoid capabilities required by camera cartographic calculations.
+ */
+export interface CameraEllipsoid {
+  radius: THREE.Vector3
+  getObjectFrame(
+    lat: number,
+    lon: number,
+    height: number,
+    az: number,
+    el: number,
+    roll: number,
+    target: THREE.Matrix4,
+    frame?: number
+  ): THREE.Matrix4
+  getCartographicFromObjectFrame(
+    matrix: THREE.Matrix4,
+    target: object,
+    frame?: number
+  ): {
+    lat: number
+    lon: number
+    height: number
+    azimuth: number
+    elevation: number
+    roll: number
+  }
+}
+
+/**
+ * 返回当前相机应使用的活动地球椭球。
+ *
+ * Returns the active globe ellipsoid used by camera calculations.
+ */
+export type CameraEllipsoidProvider = () => CameraEllipsoid | null
+
 interface CameraViewState {
   latitude: number
   longitude: number
@@ -120,7 +157,10 @@ export class Camera {
 
   private currentFlight: CameraFlight | null = null
 
-  constructor(camera: THREE.PerspectiveCamera) {
+  constructor(
+    camera: THREE.PerspectiveCamera,
+    private readonly getActiveEllipsoid: CameraEllipsoidProvider = () => null
+  ) {
     this.threeCamera = camera
   }
 
@@ -286,10 +326,10 @@ export class Camera {
   }
 
   private getEllipsoid() {
-    return (this.threeCamera.userData.tilesRenderer as TilesRenderer | undefined)?.ellipsoid
+    return this.getActiveEllipsoid()
   }
 
-  private getCurrentView(ellipsoid: TilesRenderer['ellipsoid']): CameraViewState {
+  private getCurrentView(ellipsoid: CameraEllipsoid): CameraViewState {
     this.threeCamera.updateMatrix()
     const cartographic = ellipsoid.getCartographicFromObjectFrame(this.threeCamera.matrix, SCRATCH_CARTOGRAPHIC, CAMERA_FRAME)
 
@@ -315,7 +355,7 @@ export class Camera {
     }
   }
 
-  private computeFlightDuration(start: CameraViewState, target: CameraViewState, ellipsoid: TilesRenderer['ellipsoid']) {
+  private computeFlightDuration(start: CameraViewState, target: CameraViewState, ellipsoid: CameraEllipsoid) {
     const radius = Math.max(ellipsoid.radius.x, ellipsoid.radius.y, ellipsoid.radius.z)
     const angularDistance = computeAngularDistance(start, target)
     const surfaceDistance = angularDistance * radius
@@ -325,7 +365,7 @@ export class Camera {
     return clamp(DEFAULT_FLIGHT_DURATION * Math.sqrt(distanceRatio), MIN_FLIGHT_DURATION, MAX_FLIGHT_DURATION)
   }
 
-  private computeMaximumHeight(start: CameraViewState, target: CameraViewState, ellipsoid: TilesRenderer['ellipsoid']) {
+  private computeMaximumHeight(start: CameraViewState, target: CameraViewState, ellipsoid: CameraEllipsoid) {
     const radius = Math.max(ellipsoid.radius.x, ellipsoid.radius.y, ellipsoid.radius.z)
     const surfaceDistance = computeAngularDistance(start, target) * radius
     const baseHeight = Math.max(start.height, target.height)
