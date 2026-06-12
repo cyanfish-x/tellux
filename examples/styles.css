@@ -37,6 +37,10 @@ a {
   color: inherit;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html.portal-page {
     scroll-behavior: auto;
@@ -764,6 +768,15 @@ a {
   background: rgba(15, 23, 42, 0.72);
   font: inherit;
   font-size: 13px;
+}
+
+select.field__input {
+  appearance: none;
+  padding-right: 34px;
+  background:
+    linear-gradient(45deg, transparent 50%, #cbd5e1 50%) right 18px center / 6px 6px no-repeat,
+    linear-gradient(135deg, #cbd5e1 50%, transparent 50%) right 14px center / 6px 6px no-repeat,
+    rgba(15, 23, 42, 0.72);
 }
 
 .field__input:focus {
