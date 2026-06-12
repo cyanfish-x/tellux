@@ -93,9 +93,6 @@ const viewer = new tellux.Viewer(container, {
   scene: {
     atmosphere: {
       show: true,
-      lighting: {
-        mode: "light-source"
-      },
       fallbackAmbientLight: {
         intensity: 0.85
       }

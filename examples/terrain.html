@@ -1,49 +1,54 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="sandcastle-order" content="3" />
-    <title>Tellux Cesium Terrain</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <main class="viewer-shell">
-      <div id="viewer"></div>
-      <section class="toolbar toolbar--wide" aria-label="Terrain controls">
-        <header class="toolbar__header">
-          <h1>Cesium 地形热切换</h1>
-          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
-        </header>
-        <p>选择地形来源后勾选“启用地形”，通过 <code>viewer.setTerrain</code> 在 URL quantized-mesh 和 Cesium Ion 地形之间切换。</p>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="3" />
+  <meta name="sandcastle-thumbnail" content="https://picture.cyanfish.site/20260612224329334.png" />
+  <title>Tellux Cesium Terrain</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="toolbar toolbar--wide" aria-label="Terrain controls">
+      <header class="toolbar__header">
+        <h1>Cesium 地形热切换</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>选择地形来源后勾选“启用地形”，通过 <code>viewer.setTerrain</code> 在 URL quantized-mesh 和 Cesium Ion 地形之间切换。</p>
+      <label class="field">
+        <span>地形来源</span>
+        <select id="terrain-source" class="field__input">
+          <option value="url">URL quantized-mesh</option>
+          <option value="cesium-ion">Cesium Ion terrain</option>
+        </select>
+      </label>
+      <label id="url-terrain-field" class="field">
+        <span>URL 地形根目录或 layer.json</span>
+        <input id="terrain-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
+      </label>
+      <div id="ion-terrain-fields" class="toolbar__row">
         <label class="field">
-          <span>地形来源</span>
-          <select id="terrain-source" class="field__input">
-            <option value="url">URL quantized-mesh</option>
-            <option value="cesium-ion">Cesium Ion terrain</option>
-          </select>
+          <span>Cesium Ion terrain asset id</span>
+          <input id="ion-terrain-asset-id" class="field__input" type="text" inputmode="numeric" autocomplete="off"
+            spellcheck="false" />
         </label>
-        <label id="url-terrain-field" class="field">
-          <span>URL 地形根目录或 layer.json</span>
-          <input id="terrain-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
+        <label class="field">
+          <span>Cesium Ion token</span>
+          <input id="ion-terrain-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
         </label>
-        <div id="ion-terrain-fields" class="toolbar__row">
-          <label class="field">
-            <span>Cesium Ion terrain asset id</span>
-            <input id="ion-terrain-asset-id" class="field__input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" />
-          </label>
-          <label class="field">
-            <span>Cesium Ion token</span>
-            <input id="ion-terrain-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
-          </label>
-        </div>
-        <label class="switch">
-          <input id="terrain-enabled" type="checkbox" />
-          <span>启用地形</span>
-        </label>
-        <p id="terrain-status" class="status" aria-live="polite"></p>
-      </section>
-    </main>
-    <script type="module" src="./terrain.ts"></script>
-  </body>
+      </div>
+      <label class="switch">
+        <input id="terrain-enabled" type="checkbox" />
+        <span>启用地形</span>
+      </label>
+      <p id="terrain-status" class="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script type="module" src="./terrain.ts"></script>
+</body>
+
 </html>

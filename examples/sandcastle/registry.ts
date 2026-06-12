@@ -17,7 +17,6 @@ const categoryById: Record<string, string> = {
   atmosphere: "Rendering",
   basic: "Viewer",
   blank: "Viewer",
-  click: "Interaction",
   "data-sources": "Layers",
   "fly-to": "Camera",
   "3d-tiles-picking": "Tiles",
