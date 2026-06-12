@@ -83,6 +83,7 @@ export {
   type ViewerMouseEvent,
   type ViewerMouseMoveEvent,
   type ViewerAtmosphereLightingOptions,
+  type ViewerAtmosphereNightOptions,
   type ViewerAtmosphereOptions,
   type ViewerAtmosphereScatteringOptions,
   type ViewerAtmosphereShadowOptions,

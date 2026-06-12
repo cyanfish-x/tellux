@@ -125,6 +125,7 @@ export type {
   ViewerMouseEvent,
   ViewerMouseMoveEvent,
   ViewerAtmosphereLightingOptions,
+  ViewerAtmosphereNightOptions,
   ViewerAtmosphereOptions,
   ViewerAtmosphereScatteringOptions,
   ViewerAtmosphereShadowOptions,
@@ -890,6 +891,16 @@ export class Viewer {
           sunLightIntensity: options?.atmosphere?.lighting?.sunLightIntensity ?? 1,
           skyLightIntensity: options?.atmosphere?.lighting?.skyLightIntensity ?? 1,
           albedoScale: options?.atmosphere?.lighting?.albedoScale ?? 1
+        },
+        night: {
+          enabled: options?.atmosphere?.night?.enabled ?? true,
+          moonLight: options?.atmosphere?.night?.moonLight ?? true,
+          ambientLight: options?.atmosphere?.night?.ambientLight ?? true,
+          color: options?.atmosphere?.night?.color ?? 0x9bbcff,
+          moonLightIntensity: options?.atmosphere?.night?.moonLightIntensity ?? 0.18,
+          ambientIntensity: options?.atmosphere?.night?.ambientIntensity ?? 0.08,
+          useMoonPhase: options?.atmosphere?.night?.useMoonPhase ?? true,
+          transitionRange: options?.atmosphere?.night?.transitionRange ?? [-0.08, 0.05]
         },
         scattering: {
           transmittance: options?.atmosphere?.scattering?.transmittance ?? true,

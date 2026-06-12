@@ -22,6 +22,16 @@ export interface ResolvedSceneOptions {
       skyLightIntensity: number
       albedoScale: number
     }
+    night: {
+      enabled: boolean
+      moonLight: boolean
+      ambientLight: boolean
+      color: THREE.ColorRepresentation
+      moonLightIntensity: number
+      ambientIntensity: number
+      useMoonPhase: boolean
+      transitionRange: [number, number]
+    }
     scattering: {
       transmittance: boolean
       inscatter: boolean
@@ -427,6 +437,105 @@ export class AtmosphereLightingControls {
   }
 }
 
+export class AtmosphereNightControls {
+  constructor(
+    private readonly options: ResolvedSceneOptions['atmosphere']['night'],
+    private readonly onStateChange: () => void
+  ) {}
+
+  /** 是否启用自动夜间光照。Enables automatic nighttime lighting. */
+  get enabled() {
+    return this.options.enabled
+  }
+
+  set enabled(value: boolean) {
+    if (this.options.enabled === value) return
+
+    this.options.enabled = value
+    this.onStateChange()
+  }
+
+  /** 是否启用月光照明。Enables moonlight illumination. */
+  get moonLight() {
+    return this.options.moonLight
+  }
+
+  set moonLight(value: boolean) {
+    if (this.options.moonLight === value) return
+
+    this.options.moonLight = value
+    this.onStateChange()
+  }
+
+  /** 是否启用冷色环境补光。Enables cool ambient fill light. */
+  get ambientLight() {
+    return this.options.ambientLight
+  }
+
+  set ambientLight(value: boolean) {
+    if (this.options.ambientLight === value) return
+
+    this.options.ambientLight = value
+    this.onStateChange()
+  }
+
+  /** 夜间光照颜色。Nighttime light color. */
+  get color() {
+    return this.options.color
+  }
+
+  set color(value: THREE.ColorRepresentation) {
+    this.options.color = value
+    this.onStateChange()
+  }
+
+  /** 月光最大强度。Maximum moonlight intensity. */
+  get moonLightIntensity() {
+    return this.options.moonLightIntensity
+  }
+
+  set moonLightIntensity(value: number) {
+    this.options.moonLightIntensity = value
+    this.onStateChange()
+  }
+
+  /** 夜间环境补光最大强度。Maximum nighttime ambient fill intensity. */
+  get ambientIntensity() {
+    return this.options.ambientIntensity
+  }
+
+  set ambientIntensity(value: number) {
+    this.options.ambientIntensity = value
+    this.onStateChange()
+  }
+
+  /** 是否按月相衰减月光强度。Attenuates moonlight by moon phase. */
+  get useMoonPhase() {
+    return this.options.useMoonPhase
+  }
+
+  set useMoonPhase(value: boolean) {
+    if (this.options.useMoonPhase === value) return
+
+    this.options.useMoonPhase = value
+    this.onStateChange()
+  }
+
+  /** 昼夜过渡范围。Day/night transition range. */
+  get transitionRange(): [number, number] {
+    return [...this.options.transitionRange]
+  }
+
+  set transitionRange(value: [number, number]) {
+    this.options.transitionRange = [...value]
+    this.onStateChange()
+  }
+
+  apply() {
+    this.onStateChange()
+  }
+}
+
 export class AtmosphereScatteringControls {
   constructor(
     private readonly options: ResolvedSceneOptions['atmosphere']['scattering'],
@@ -753,6 +862,7 @@ export class FallbackAmbientLightControls {
 
 export class AtmosphereSceneControls {
   readonly lighting: AtmosphereLightingControls
+  readonly night: AtmosphereNightControls
   readonly scattering: AtmosphereScatteringControls
   readonly sky: AtmosphereSkyControls
   readonly shadow: AtmosphereShadowControls
@@ -776,6 +886,7 @@ export class AtmosphereSceneControls {
       onEffectsChange,
       onSurfaceMaterialModeChange
     )
+    this.night = new AtmosphereNightControls(options.night, onStateChange)
     this.scattering = new AtmosphereScatteringControls(options.scattering, onStateChange)
     this.sky = new AtmosphereSkyControls(options.sky, onStateChange)
     this.shadow = new AtmosphereShadowControls(options.shadow, onStateChange)
@@ -813,6 +924,16 @@ export class AtmosphereSceneControls {
       skyLight: this.lighting.skyLight,
       sunLightIntensity: this.lighting.sunLightIntensity,
       skyLightIntensity: this.lighting.skyLightIntensity,
+      night: {
+        enabled: this.night.enabled,
+        moonLight: this.night.moonLight,
+        ambientLight: this.night.ambientLight,
+        color: this.night.color,
+        moonLightIntensity: this.night.moonLightIntensity,
+        ambientIntensity: this.night.ambientIntensity,
+        useMoonPhase: this.night.useMoonPhase,
+        transitionRange: this.night.transitionRange
+      },
       sun: this.sky.sun,
       moon: this.sky.moon,
       ground: this.sky.ground,
