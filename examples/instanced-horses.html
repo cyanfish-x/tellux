@@ -1,41 +1,45 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tellux Instanced Horses</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <main class="viewer-shell">
-      <div id="viewer"></div>
-      <section class="toolbar toolbar--wide" aria-label="Instanced horse controls">
-        <header class="toolbar__header">
-          <h1>若尔盖草原奔马实例化</h1>
-          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
-        </header>
-        <p>
-          在若尔盖大草原附近生成 1000 个带最小间距的随机经纬度点，使用
-          <code>sampleHeightMostDetailed</code> 采样地形高度后加载 Three.js morph target 奔马实例。
-        </p>
-        <p id="horse-status" class="status" aria-live="polite">正在准备若尔盖草原点位...</p>
-        <dl class="click-readout">
-          <dt>Center</dt>
-          <dd>102.434637, 33.568156</dd>
-          <dt>Instances</dt>
-          <dd id="horse-count">-</dd>
-          <dt>Spacing</dt>
-          <dd>最小 34 米</dd>
-          <dt>Animation</dt>
-          <dd id="horse-animation-status">-</dd>
-        </dl>
-        <div class="toolbar__row">
-          <button class="button" id="fly-to-horses" type="button">飞到马群</button>
-          <button class="button" id="toggle-horses" type="button">暂停动画</button>
-          <button class="button" id="regenerate-horses" type="button">重新生成</button>
-        </div>
-      </section>
-    </main>
-    <script type="module" src="./instanced-horses.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-thumbnail" content="https://picture.cyanfish.site/20260612230336353.png" />
+  <title>Tellux Instanced Horses</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="toolbar toolbar--wide" aria-label="Instanced horse controls">
+      <header class="toolbar__header">
+        <h1>若尔盖草原奔马实例化</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>
+        在若尔盖大草原附近生成 1000 个带最小间距的随机经纬度点，使用
+        <code>sampleHeightMostDetailed</code> 采样地形高度后加载 Three.js morph target 奔马实例。
+      </p>
+      <p id="horse-status" class="status" aria-live="polite">正在准备若尔盖草原点位...</p>
+      <dl class="click-readout">
+        <dt>Center</dt>
+        <dd>102.434637, 33.568156</dd>
+        <dt>Instances</dt>
+        <dd id="horse-count">-</dd>
+        <dt>Spacing</dt>
+        <dd>最小 34 米</dd>
+        <dt>Animation</dt>
+        <dd id="horse-animation-status">-</dd>
+      </dl>
+      <div class="toolbar__row">
+        <button class="button" id="fly-to-horses" type="button">飞到马群</button>
+        <button class="button" id="toggle-horses" type="button">暂停动画</button>
+        <button class="button" id="regenerate-horses" type="button">重新生成</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./instanced-horses.ts"></script>
+</body>
+
 </html>

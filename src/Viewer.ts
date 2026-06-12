@@ -878,7 +878,7 @@ export class Viewer {
   }
 
   private resolveSceneOptions(options: ViewerOptions['scene']): ResolvedSceneOptions {
-    const atmosphereLightingMode = options?.atmosphere?.lighting?.mode ?? 'light-source'
+    const atmosphereLightingMode = options?.atmosphere?.lighting?.mode ?? 'post-process'
 
     return {
       atmosphere: {

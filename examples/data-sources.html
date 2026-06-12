@@ -1,23 +1,27 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tellux Imagery Data Sources</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <main class="viewer-shell">
-      <div id="viewer"></div>
-      <section class="layer-manager" aria-label="图层管理器">
-        <header class="layer-manager__header">
-          <h1>图层管理器</h1>
-          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
-        </header>
-        <div id="overlay-list" class="layer-manager__list"></div>
-        <p id="layer-status" class="layer-manager__status" aria-live="polite"></p>
-      </section>
-    </main>
-    <script type="module" src="./data-sources.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-thumbnail" content="https://picture.cyanfish.site/20260612230616136.png" />
+  <title>Tellux Imagery Data Sources</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="layer-manager" aria-label="图层管理器">
+      <header class="layer-manager__header">
+        <h1>图层管理器</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <div id="overlay-list" class="layer-manager__list"></div>
+      <p id="layer-status" class="layer-manager__status" aria-live="polite"></p>
+    </section>
+  </main>
+  <script type="module" src="./data-sources.ts"></script>
+</body>
+
 </html>

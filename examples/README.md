@@ -31,9 +31,9 @@ pnpm examples
 - `http://127.0.0.1:5173/`
 - `http://127.0.0.1:5173/basic.html`
 - `http://127.0.0.1:5173/fly-to.html`
-- `http://127.0.0.1:5173/click.html`
 - `http://127.0.0.1:5173/data-sources.html`
 - `http://127.0.0.1:5173/3d-tiles.html`
+- `http://127.0.0.1:5173/3d-tiles-picking.html`
 - `http://127.0.0.1:5173/gaussian-splat-3d-tiles.html`
 - `http://127.0.0.1:5173/terrain.html`
 - `http://127.0.0.1:5173/atmosphere.html`

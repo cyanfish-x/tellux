@@ -7,6 +7,7 @@ import type {
   ViewerMouseMoveEvent,
 } from "../src"
 import { arcgisWorldImageryUrl } from "./shared"
+import { mountLocationReadout } from "./location-readout"
 
 const container = document.querySelector("#viewer")
 const assetIdInput = document.querySelector<HTMLInputElement>("#ion-asset-id")
@@ -87,6 +88,10 @@ tokenInput.placeholder = DEFAULT_TOKEN ? "留空使用默认 token" : "输入 Ce
 let activeLayer: TilesetLayer | null = null
 let selectedKey: string | null = null
 let hoverKey: string | null = null
+const locationReadout = mountLocationReadout(viewer, {
+  parent: container.parentElement ?? document.body,
+  position: "left-bottom",
+})
 
 function setStatus(message: string) {
   if (statusElement) statusElement.textContent = message
@@ -416,5 +421,6 @@ window.addEventListener("beforeunload", () => {
   clearActiveLayer()
   hoverHighlight.clear()
   selectedHighlight.clear()
+  locationReadout.destroy()
   viewer.destroy()
 })

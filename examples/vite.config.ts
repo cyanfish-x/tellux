@@ -7,7 +7,6 @@ const htmlInputs = {
   blank: resolve(__dirname, "blank.html"),
   basic: resolve(__dirname, "basic.html"),
   flyTo: resolve(__dirname, "fly-to.html"),
-  click: resolve(__dirname, "click.html"),
   dataSources: resolve(__dirname, "data-sources.html"),
   tiles3d: resolve(__dirname, "3d-tiles.html"),
   tiles3dPicking: resolve(__dirname, "3d-tiles-picking.html"),

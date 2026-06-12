@@ -1193,6 +1193,11 @@ select.field__input {
   backdrop-filter: blur(12px);
 }
 
+.location-panel--left {
+  right: auto;
+  left: 16px;
+}
+
 .location-panel h2 {
   margin: 0 0 8px;
   font-size: 14px;

@@ -1,41 +1,44 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="sandcastle-order" content="3" />
-     <meta name="sandcastle-thumbnail" content="./images/pick.png" />
-    <title>Tellux 3D Tiles Picking</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <main class="viewer-shell">
-      <div id="viewer"></div>
-      <section class="toolbar toolbar--wide" aria-label="3D Tiles picking controls">
-        <header class="toolbar__header">
-          <h1>3D Tiles 拾取高亮</h1>
-          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
-        </header>
-        <p>移动鼠标高亮已加载的 3D Tiles feature；点击后锁定选择并展示属性。</p>
-        <div class="toolbar__row">
-          <label class="field">
-            <span>Cesium Ion asset id</span>
-            <input id="ion-asset-id" class="field__input" type="text" autocomplete="off" spellcheck="false" />
-          </label>
-          <label class="field">
-            <span>Cesium Ion token</span>
-            <input id="ion-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
-          </label>
-        </div>
-        <p id="pick-status" class="status" aria-live="polite"></p>
-        <div class="toolbar__row">
-          <button class="button" id="load-tileset" type="button">加载</button>
-          <button class="button" id="clear-selection" type="button">清除选择</button>
-        </div>
-      </section>
-      <div id="feature-hover" class="feature-hover" hidden></div>
-      <aside id="feature-popup" class="feature-popup" hidden aria-live="polite"></aside>
-    </main>
-    <script type="module" src="./3d-tiles-picking.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="3" />
+  <meta name="sandcastle-thumbnail" content="./images/pick.png" />
+  <title>Tellux 拾取与高亮</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="toolbar toolbar--wide" aria-label="3D Tiles picking controls">
+      <header class="toolbar__header">
+        <h1>拾取与高亮</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>移动鼠标高亮已加载的 3D Tiles feature；点击后锁定选择并展示属性。</p>
+      <div class="toolbar__row">
+        <label class="field">
+          <span>Cesium Ion asset id</span>
+          <input id="ion-asset-id" class="field__input" type="text" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="field">
+          <span>Cesium Ion token</span>
+          <input id="ion-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
+        </label>
+      </div>
+      <p id="pick-status" class="status" aria-live="polite"></p>
+      <div class="toolbar__row">
+        <button class="button" id="load-tileset" type="button">加载</button>
+        <button class="button" id="clear-selection" type="button">清除选择</button>
+      </div>
+    </section>
+    <div id="feature-hover" class="feature-hover" hidden></div>
+    <aside id="feature-popup" class="feature-popup" hidden aria-live="polite"></aside>
+  </main>
+  <script type="module" src="./3d-tiles-picking.ts"></script>
+</body>
+
 </html>

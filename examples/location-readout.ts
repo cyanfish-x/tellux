@@ -4,6 +4,7 @@ export interface LocationReadoutOptions {
   parent: HTMLElement
   title?: string
   ariaLabel?: string
+  position?: "left-bottom" | "right-bottom"
 }
 
 export interface LocationReadoutHandle {
@@ -16,7 +17,10 @@ export function mountLocationReadout(
   options: LocationReadoutOptions
 ): LocationReadoutHandle {
   const panel = document.createElement("section")
-  panel.className = "location-panel"
+  panel.className =
+    options.position === "left-bottom"
+      ? "location-panel location-panel--left"
+      : "location-panel"
   panel.setAttribute(
     "aria-label",
     options.ariaLabel ?? "Mouse position readout"

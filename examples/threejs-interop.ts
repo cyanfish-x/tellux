@@ -66,9 +66,6 @@ const viewer = new tellux.Viewer(container, {
   scene: {
     atmosphere: {
       show: true,
-      lighting: {
-        mode: "light-source"
-      },
       fallbackAmbientLight: {
         intensity: 0.8
       }
@@ -80,6 +77,9 @@ const viewer = new tellux.Viewer(container, {
       toneMappingExposure: 7
     }
   },
+  widgets:{
+    timeline:true
+  }
 })
 
 ;(window as any).viewer = viewer
