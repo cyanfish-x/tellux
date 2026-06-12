@@ -72,12 +72,14 @@ VITE_GAUSSIAN_SPLAT_3D_TILESET_URL=https://example.com/3dgs/tileset.json
 ## Cesium 地形示例
 
 `terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.setTerrain(...)`。它支持输入 Cesium
-quantized-mesh 地形根目录或 `layer.json` 地址，并通过左上角面板开关热切换地形。
+quantized-mesh 地形根目录或 `layer.json` 地址，也支持通过 Cesium Ion terrain asset 加载地形。
 
-可以在项目根目录 `.env` 中配置默认地形地址：
+可以在项目根目录 `.env` 中配置默认地形地址或 Cesium Ion 默认值：
 
 ```txt
 VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
+VITE_CESIUM_ION_TERRAIN_ASSET_ID=1
+VITE_CESIUM_ION_TOKEN=your_token
 ```
 
 ## 体积云与大气示例
