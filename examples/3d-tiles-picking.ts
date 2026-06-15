@@ -69,6 +69,11 @@ const viewer = new tellux.Viewer(container, {
     roll: 0.0716951918898415,
   },
   scene: {
+    atmosphere:{
+      lighting:{
+        mode:'light-source'
+      }
+    },
     clouds: {
       show: false,
     },
