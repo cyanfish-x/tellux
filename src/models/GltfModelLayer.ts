@@ -39,6 +39,10 @@ export class GltfModelLayer implements ModelLayer {
     return this.currentModel
   }
 
+  get preservesMaterial() {
+    return this.shouldPreserveMaterial()
+  }
+
   get show() {
     return this.root.visible
   }
@@ -122,6 +126,8 @@ export class GltfModelLayer implements ModelLayer {
     if (this.currentMaterialMode === mode) return
 
     this.currentMaterialMode = mode
+    if (this.shouldPreserveMaterial()) return
+
     if (this.currentModel) {
       this.applyMaterialMode(this.currentModel)
     }
@@ -155,6 +161,12 @@ export class GltfModelLayer implements ModelLayer {
   }
 
   private applyMaterialMode(model: THREE.Object3D) {
+    if (this.shouldPreserveMaterial()) return
+
     applyMaterialModeToObject(model, this.currentMaterialMode)
+  }
+
+  private shouldPreserveMaterial() {
+    return this.options.materialMode === 'preserve'
   }
 }

@@ -22,7 +22,9 @@ import {
   getSunDirectionECEF
 } from '@takram/three-atmosphere'
 import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { getTelluxAssetUrl } from '../config'
+import { disposeObject } from '../models/disposeObject'
 import type { AtmosphereLightingMode, CloudQualityPreset } from '../types'
 
 type TextureApplyCallback<T extends THREE.Texture> = (texture: T) => void
@@ -132,6 +134,9 @@ const NIGHT_SKY_MOON_GLOW_SCALE = 0.45
 const NIGHT_CLOUD_AMBIENT_SCALE = 0.8
 const NIGHT_CLOUD_MOON_SCALE = 1.8
 const NIGHT_STARS_INTENSITY_BOOST = 2.5
+const MATERIAL_ENVIRONMENT_INTENSITY = 1.35
+const POST_PROCESS_MATERIAL_NIGHT_MOON_BOOST = 2.2
+const POST_PROCESS_MATERIAL_NIGHT_AMBIENT_BOOST = 4
 const STARS_ALTITUDE_FADE_START = 80000
 const STARS_ALTITUDE_FADE_END = 600000
 const DEFAULT_NIGHT_RUNTIME_STATE: AtmosphereNightRuntimeState = {
@@ -161,6 +166,9 @@ export class AtmosphereManager {
 
   private readonly loadedTextures: THREE.Texture[] = []
   private readonly texturesGenerator: PrecomputedTexturesGenerator
+  private readonly materialEnvironmentGenerator: THREE.PMREMGenerator
+  private readonly materialEnvironmentTarget: THREE.WebGLRenderTarget
+  private readonly materialEnvironment: THREE.Texture
   private readonly textureAbortController = new AbortController()
   private readonly inertialToECEFMatrix = new THREE.Matrix4()
   private readonly baseSolarIrradiance = new THREE.Vector3()
@@ -180,9 +188,15 @@ export class AtmosphereManager {
     ...DEFAULT_NIGHT_RUNTIME_STATE,
     transitionRange: [...DEFAULT_NIGHT_RUNTIME_STATE.transitionRange]
   }
+  private currentLightingMode: AtmosphereLightingMode = 'post-process'
+  private currentSunLight = true
+  private currentSkyLight = true
   private isUsingPostProcessLighting = false
   private isUsingLightSourceLighting = false
+  private isUsingMaterialLightSources = false
+  private usePostProcessMaterialLights = false
   private lightSourceScene: THREE.Scene | null = null
+  private previousEnvironmentIntensity: number | null = null
   private isDisposed = false
 
   constructor(
@@ -222,6 +236,11 @@ export class AtmosphereManager {
     this.cloudsEffect.events.addEventListener('change', this.handleCloudsChange)
 
     this.texturesGenerator = new PrecomputedTexturesGenerator(renderer)
+    this.materialEnvironmentGenerator = new THREE.PMREMGenerator(renderer)
+    const materialEnvironmentScene = new RoomEnvironment()
+    this.materialEnvironmentTarget = this.materialEnvironmentGenerator.fromScene(materialEnvironmentScene, 0.04)
+    this.materialEnvironment = this.materialEnvironmentTarget.texture
+    disposeObject(materialEnvironmentScene)
   }
 
   addLightSourcesTo(scene: THREE.Scene) {
@@ -249,6 +268,15 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.overlay = this.cloudsEffect.atmosphereOverlay
     this.aerialPerspectiveEffect.shadow = this.cloudsEffect.atmosphereShadow
     this.aerialPerspectiveEffect.shadowLength = this.cloudsEffect.atmosphereShadowLength
+  }
+
+  setPostProcessMaterialLights(enabled: boolean) {
+    if (this.usePostProcessMaterialLights === enabled) return
+
+    this.usePostProcessMaterialLights = enabled
+    this.syncMaterialEnvironment()
+    this.syncLightSourceVisibility()
+    this.updateNightLights()
   }
 
   updateSunDirection(currentTime: Date) {
@@ -392,22 +420,58 @@ export class AtmosphereManager {
     this.isDisposed = true
     this.textureAbortController.abort()
     this.cloudsEffect.events.removeEventListener('change', this.handleCloudsChange)
+    this.clearMaterialEnvironment()
     this.removeLightSourcesFromScene()
     this.stars.geometry.dispose()
     this.starsMaterial.dispose()
     this.texturesGenerator.dispose({ textures: true })
+    this.materialEnvironmentTarget.dispose()
+    this.materialEnvironmentGenerator.dispose()
     this.loadedTextures.forEach((texture) => texture.dispose())
   }
 
   private applyLightingMode(mode: AtmosphereLightingMode, sunLight: boolean, skyLight: boolean) {
-    const usePostProcessLighting = mode === 'post-process'
+    this.currentLightingMode = mode
+    this.currentSunLight = sunLight
+    this.currentSkyLight = skyLight
+    this.syncLightSourceVisibility()
+    this.updateNightLights()
+  }
+
+  private syncLightSourceVisibility() {
+    const usePostProcessLighting = this.currentLightingMode === 'post-process'
     this.isUsingPostProcessLighting = usePostProcessLighting
     this.isUsingLightSourceLighting = !usePostProcessLighting
-    this.aerialPerspectiveEffect.sunLight = usePostProcessLighting && sunLight
-    this.aerialPerspectiveEffect.skyLight = usePostProcessLighting && skyLight
-    this.sunLightSource.visible = !usePostProcessLighting && sunLight
-    this.skyLightSource.visible = !usePostProcessLighting && skyLight
-    this.updateNightLights()
+    this.isUsingMaterialLightSources = !usePostProcessLighting || this.usePostProcessMaterialLights
+    this.aerialPerspectiveEffect.sunLight = usePostProcessLighting && this.currentSunLight
+    this.aerialPerspectiveEffect.skyLight = usePostProcessLighting && this.currentSkyLight
+    this.sunLightSource.visible = this.isUsingMaterialLightSources && this.currentSunLight
+    this.skyLightSource.visible = this.isUsingMaterialLightSources && this.currentSkyLight
+  }
+
+  private syncMaterialEnvironment() {
+    if (!this.lightSourceScene) return
+
+    if (!this.usePostProcessMaterialLights) {
+      this.clearMaterialEnvironment()
+      return
+    }
+
+    if (!this.lightSourceScene.environment) {
+      this.lightSourceScene.environment = this.materialEnvironment
+      this.previousEnvironmentIntensity = this.lightSourceScene.environmentIntensity
+      this.lightSourceScene.environmentIntensity = MATERIAL_ENVIRONMENT_INTENSITY
+    }
+  }
+
+  private clearMaterialEnvironment() {
+    if (!this.lightSourceScene || this.lightSourceScene.environment !== this.materialEnvironment) return
+
+    this.lightSourceScene.environment = null
+    if (this.previousEnvironmentIntensity !== null) {
+      this.lightSourceScene.environmentIntensity = this.previousEnvironmentIntensity
+      this.previousEnvironmentIntensity = null
+    }
   }
 
   private applyNightState(state: AtmosphereNightRuntimeState) {
@@ -442,8 +506,18 @@ export class AtmosphereManager {
         ? Math.max(0, this.toFinite(state.ambientIntensity, DEFAULT_NIGHT_RUNTIME_STATE.ambientIntensity)) * nightFactor
         : 0
 
-    const lightSourceMoonIntensity = this.isUsingLightSourceLighting ? moonIntensity : 0
-    const lightSourceAmbientIntensity = this.isUsingLightSourceLighting ? ambientIntensity : 0
+    const materialNightLightBoost =
+      this.isUsingPostProcessLighting && this.usePostProcessMaterialLights
+        ? POST_PROCESS_MATERIAL_NIGHT_MOON_BOOST
+        : 1
+    const materialNightAmbientBoost =
+      this.isUsingPostProcessLighting && this.usePostProcessMaterialLights
+        ? POST_PROCESS_MATERIAL_NIGHT_AMBIENT_BOOST
+        : 1
+    const lightSourceMoonIntensity = this.isUsingMaterialLightSources ? moonIntensity * materialNightLightBoost : 0
+    const lightSourceAmbientIntensity = this.isUsingMaterialLightSources
+      ? ambientIntensity * materialNightAmbientBoost
+      : 0
     const postProcessMoonIntensity = this.isUsingPostProcessLighting ? moonIntensity : 0
     const postProcessAmbientIntensity = this.isUsingPostProcessLighting ? ambientIntensity : 0
     const nightSkyAltitudeFactor = normal ? this.getNightSkyAltitudeFactor(cameraHeight) : 0

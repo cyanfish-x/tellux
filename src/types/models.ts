@@ -6,6 +6,8 @@ import type { CartographicInput } from './spatial'
  *
  * Options for loading a glTF / GLB model.
  */
+export type GltfModelMaterialMode = 'auto' | 'preserve'
+
 export interface GltfModelOptions {
   /** 模型类型。Model type. */
   type: 'gltf'
@@ -17,6 +19,15 @@ export interface GltfModelOptions {
   id?: string
   /** glTF 或 GLB 文件 URL。URL of the glTF or GLB file. */
   url: string
+  /**
+   * 模型材质处理方式。默认 `auto`，Tellux 会按场景光照模式调整材质；
+   * `preserve` 会保留 glTF / GLB 自带材质。
+   *
+   * Model material handling. Defaults to `auto`, where Tellux adjusts
+   * materials based on the scene lighting mode; `preserve` keeps the
+   * original glTF / GLB materials.
+   */
+  materialMode?: GltfModelMaterialMode
   /**
    * 模型放置坐标。数组输入顺序为 `[经度, 纬度, 高度]`；对象输入使用
    * `{ longitude, latitude, height }`。

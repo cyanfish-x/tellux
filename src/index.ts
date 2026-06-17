@@ -52,6 +52,7 @@ export {
   type GeoJSONGeometry,
   type GeoJSONGetStyleCallback,
   type GeoJSONImagerySourceOptions,
+  type GltfModelMaterialMode,
   type GltfModelOptions,
   type ImageryLayerOptions,
   type ImageryLayerSourceOptions,

@@ -96,6 +96,7 @@ export type {
   GeoJSONGeometry,
   GeoJSONGetStyleCallback,
   GeoJSONImagerySourceOptions,
+  GltfModelMaterialMode,
   GltfModelOptions,
   ImageryLayerOptions,
   ImageryLayerSourceOptions,
@@ -578,6 +579,7 @@ export class Viewer {
     layer.root.matrixWorldNeedsUpdate = true
     this.modelLayers.set(id, layer)
     this.scene.threeScene.add(layer.root)
+    this.syncPostProcessMaterialLights()
     void layer.load()
     return layer
   }
@@ -994,6 +996,7 @@ export class Viewer {
   private removeModelLayer(layer: GltfModelLayer) {
     this.modelLayers.delete(layer.id)
     this.scene.threeScene.remove(layer.root)
+    this.syncPostProcessMaterialLights()
   }
 
   private clearModelLayers() {
@@ -1001,6 +1004,13 @@ export class Viewer {
       layer.remove()
     })
     this.modelLayers.clear()
+    this.syncPostProcessMaterialLights()
+  }
+
+  private syncPostProcessMaterialLights() {
+    this.atmosphere.setPostProcessMaterialLights(
+      Array.from(this.modelLayers.values()).some((layer) => layer.preservesMaterial)
+    )
   }
 
   private createModelId() {
