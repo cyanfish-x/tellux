@@ -4,35 +4,37 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { TilesRenderer } from '3d-tiles-renderer'
 import { Camera } from './Camera'
 import { Clock } from './Clock'
-import { CAMERA_FRAME, DEFAULT_CAMERA, DEG2RAD, RAD2DEG } from './constants'
+import { CAMERA_FRAME, DEG2RAD, RAD2DEG } from './constants'
 import { telluxConfig } from './config'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import type { ThreeRendererWithEffects } from './effects'
 import { LayerManager } from './LayerManager'
-import { GltfModelLayer, type ModelMaterialMode } from './models/GltfModelLayer'
+import { ModelManager } from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
+import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { CartographicPicker } from './sampling/CartographicPicker'
 import { HeightSampler } from './sampling/HeightSampler'
 import { TilesetFeaturePicker } from './sampling/TilesetFeaturePicker'
-import { Scene, type ResolvedSceneOptions } from './Scene'
+import { Scene } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
-  applyInitialDebugSettings,
-  DebugSettingsPanel,
-  loadStoredDebugSettings
-} from './widgets/DebugSettingsPanel'
-import { Timeline } from './widgets/Timeline'
+  resolveModelMaterialMode,
+  resolveSceneContentMaterialMode,
+  resolveSurfaceMaterialMode,
+  resolveViewerCameraOptions,
+  resolveViewerResolutionScale,
+  resolveViewerSceneOptions
+} from './ViewerOptionsResolver'
+import { WidgetManager } from './widgets/WidgetManager'
 import type {
   AddModelOptions,
   AnyViewerEventListener,
-  AtmosphereLightingMode,
   CartographicFrameOptions,
   CartographicCoordinates,
   CartographicCoordinateTuple,
   CartographicHeightTuple,
   CartographicInput,
-  DebugSettingsPanelOptions,
   FlyToTargetOptions,
   FlyToTargetTarget,
   Load3DTilesetOptions,
@@ -42,19 +44,13 @@ import type {
   SampleHeightMostDetailedResult,
   SampleHeightOptions,
   ScreenPosition,
-  SurfaceMaterialMode,
-  TimelineOptions,
   TilesetLayer,
   ViewerEventListener,
   ViewerEventMap,
   ViewerMouseEvent,
-  ViewerOptions,
-  ViewerWidgetOptions
+  ViewerOptions
 } from './types'
 import type { GlobeControls } from '3d-tiles-renderer'
-
-type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
-type SceneTilesetMaterialMode = 'basic' | 'standard'
 
 export { Camera } from './Camera'
 export { Clock } from './Clock'
@@ -229,7 +225,7 @@ export class Viewer {
   private readonly flyToTargetCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly gltfLoader: GLTFLoader
-  private readonly modelLayers = new Map<string, GltfModelLayer>()
+  private readonly models: ModelManager
   private readonly resizeObserver: ResizeObserver
   private readonly atmosphere: AtmosphereManager
   private readonly postProcessing: PostProcessingManager
@@ -237,8 +233,8 @@ export class Viewer {
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
   private readonly heightSampler: HeightSampler
-  private debugSettingsPanel: DebugSettingsPanel | null = null
-  private timeline: Timeline | null = null
+  private readonly widgets: WidgetManager
+  private readonly renderLoop: ViewerRenderLoop
   private readonly handleWindowResize = () => {
     this.resize()
   }
@@ -281,14 +277,9 @@ export class Viewer {
     this.dispatchEvent('mousemove', this.createMouseEvent('mousemove', originalEvent))
   }
 
-  private previousTime = 0
   private isDestroyed = false
-  private isUsingDefaultRenderLoop = false
-  private isHeightSamplingUpdateScheduled = false
-  private heightSamplingUpdateFrameId = 0
   private currentResolutionScale: number
   private currentToneMappingExposure: number
-  private nextModelId = 0
 
   /**
    * 在非空容器元素内创建 viewer。传入字符串时，会将其作为元素 ID 获取容器。
@@ -299,19 +290,13 @@ export class Viewer {
   constructor(container: HTMLElement | string, options: ViewerOptions = {}) {
     const resolvedContainer = Viewer.resolveContainer(container)
     this.container = resolvedContainer
-    this.currentResolutionScale = options.resolutionScale ?? Math.min(window.devicePixelRatio, 2)
-    const widgetOptions = this.resolveWidgetOptions(options)
-    const debugSettings = this.resolveSettingPanelOptions(widgetOptions.settingPanel)
-    const timelineOptions = this.resolveTimelineOptions(widgetOptions.timeline)
-    const sceneOptions = this.resolveSceneOptions(options.scene)
+    this.currentResolutionScale = resolveViewerResolutionScale(options)
+    const sceneOptions = resolveViewerSceneOptions(options.scene)
     this.currentToneMappingExposure = sceneOptions.postProcess.toneMappingExposure
 
     const width = resolvedContainer.clientWidth || 1
     const height = resolvedContainer.clientHeight || 1
-    const cameraOptions = {
-      ...DEFAULT_CAMERA,
-      ...options.camera
-    }
+    const cameraOptions = resolveViewerCameraOptions(options.camera)
     let atmosphere: AtmosphereManager | null = null
     let postProcessing: PostProcessingManager | null = null
     let tilesets: TilesetManager | null = null
@@ -356,11 +341,11 @@ export class Viewer {
       dracoLoader: this.dracoLoader,
       transparentOverlayTexture: this.transparentOverlayTexture,
       terrain: options.terrain,
-      surfaceMaterialMode: this.resolveSurfaceMaterialMode(
+      surfaceMaterialMode: resolveSurfaceMaterialMode(
         sceneOptions.surface.materialMode,
         sceneOptions.atmosphere.lighting.mode
       ),
-      sceneTilesetMaterialMode: this.resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode)
+      sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode)
     })
     tilesets = this.tilesets
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
@@ -398,9 +383,28 @@ export class Viewer {
       () => this.camera.getCurrentHeight()
     )
     postProcessing = this.postProcessing
-    if (debugSettings) {
-      applyInitialDebugSettings(this, debugSettings)
-    }
+    this.models = new ModelManager({
+      scene: this.scene.threeScene,
+      loader: this.gltfLoader,
+      getMaterialMode: () => resolveModelMaterialMode(this.scene.atmosphere.lighting.mode),
+      applyModelMatrix: (modelOptions, target) => {
+        this.cartographicToMatrix4(modelOptions.coordinates, {
+          heading: modelOptions.heading,
+          pitch: modelOptions.pitch,
+          roll: modelOptions.roll
+        }, target)
+      },
+      setPostProcessMaterialLights: (enabled) => {
+        this.atmosphere.setPostProcessMaterialLights(enabled)
+      }
+    })
+    this.widgets = new WidgetManager(this, options.widgets)
+    this.widgets.applyInitialSettings()
+    this.renderLoop = new ViewerRenderLoop({
+      renderer: this.renderer,
+      heightSampler: this.heightSampler,
+      renderFrame: (deltaTime, time) => this.renderFrame(deltaTime, time)
+    })
     this.postProcessing.applyEffects()
     this.atmosphere.loadTextures()
     this.atmosphere.updateSunDirection(this.clock.currentTime)
@@ -412,12 +416,7 @@ export class Viewer {
     window.addEventListener('resize', this.handleWindowResize)
     this.resize()
 
-    if (debugSettings) {
-      this.debugSettingsPanel = new DebugSettingsPanel(this, debugSettings)
-    }
-    if (timelineOptions) {
-      this.timeline = new Timeline(this, timelineOptions)
-    }
+    this.widgets.mount()
 
     if (options.useDefaultRenderLoop !== false) {
       this.useDefaultRenderLoop = true
@@ -430,12 +429,11 @@ export class Viewer {
    * Whether Tellux owns the animation loop.
    */
   get useDefaultRenderLoop() {
-    return this.isUsingDefaultRenderLoop
+    return this.renderLoop.useDefaultRenderLoop
   }
 
   set useDefaultRenderLoop(value: boolean) {
-    this.isUsingDefaultRenderLoop = value
-    this.renderer.setAnimationLoop(value ? (time) => this.render(time) : null)
+    this.renderLoop.useDefaultRenderLoop = value
   }
 
   /**
@@ -555,33 +553,7 @@ export class Viewer {
    * `animationChannel` to choose another channel.
    */
   addModel(options: AddModelOptions): ModelLayer {
-    if (options.type !== 'gltf') {
-      throw new Error(`Viewer: unsupported model type "${String(options.type)}".`)
-    }
-
-    const id = options.id ?? this.createModelId()
-    if (this.modelLayers.has(id)) {
-      throw new Error(`Viewer: model "${id}" already exists.`)
-    }
-
-    const layer = new GltfModelLayer(
-      id,
-      options,
-      this.gltfLoader,
-      this.resolveModelMaterialMode(this.scene.atmosphere.lighting.mode),
-      (modelLayer) => this.removeModelLayer(modelLayer)
-    )
-    this.cartographicToMatrix4(options.coordinates, {
-      heading: options.heading,
-      pitch: options.pitch,
-      roll: options.roll
-    }, layer.root.matrix)
-    layer.root.matrixWorldNeedsUpdate = true
-    this.modelLayers.set(id, layer)
-    this.scene.threeScene.add(layer.root)
-    this.syncPostProcessMaterialLights()
-    void layer.load()
-    return layer
+    return this.models.add(options)
   }
 
   /**
@@ -751,24 +723,7 @@ export class Viewer {
    * Call this manually when {@link Viewer.useDefaultRenderLoop} is `false`.
    */
   render(time = performance.now()) {
-    const deltaTime = this.previousTime === 0 ? 0 : (time - this.previousTime) / 1000
-    this.previousTime = time
-
-    this.clearFrameBuffer()
-    this.clock.tick(deltaTime)
-    this.postProcessing.setDeltaTime(deltaTime)
-    this.resize()
-    this.controls.update()
-    this.debugSettingsPanel?.update(deltaTime, time)
-    this.timeline?.update(deltaTime)
-    const currentHeight = this.syncFallbackAmbientLight()
-    this.postProcessing.updateForCameraHeight(currentHeight)
-    this.tilesets.update()
-    this.atmosphere.updateLightSources()
-    this.updateModelLayers(deltaTime)
-    this.renderer.render(this.scene.threeScene, this.threeCamera)
-    this.scheduleHeightSamplingUpdate()
-    return deltaTime
+    return this.renderLoop.render(time)
   }
 
   /**
@@ -799,12 +754,7 @@ export class Viewer {
 
     this.isDestroyed = true
     this.camera.cancelFlight()
-    this.useDefaultRenderLoop = false
-    if (this.heightSamplingUpdateFrameId !== 0) {
-      cancelAnimationFrame(this.heightSamplingUpdateFrameId)
-      this.heightSamplingUpdateFrameId = 0
-      this.isHeightSamplingUpdateScheduled = false
-    }
+    this.renderLoop.dispose()
     window.removeEventListener('resize', this.handleWindowResize)
     this.resizeObserver.disconnect()
     this.renderer.domElement.removeEventListener('pointerdown', this.handleCameraInteraction)
@@ -814,9 +764,8 @@ export class Viewer {
     this.renderer.domElement.removeEventListener('click', this.handleCanvasClick)
     this.renderer.domElement.removeEventListener('mousemove', this.handleCanvasMouseMove)
     this.clearEventListeners()
-    this.clearModelLayers()
-    this.debugSettingsPanel?.dispose()
-    this.timeline?.dispose()
+    this.models.dispose()
+    this.widgets.dispose()
     this.heightSampler.dispose()
 
     this.postProcessing.dispose()
@@ -832,44 +781,19 @@ export class Viewer {
     }
   }
 
-  private scheduleHeightSamplingUpdate() {
-    if (
-      this.isDestroyed ||
-      this.isHeightSamplingUpdateScheduled ||
-      !this.heightSampler.hasPendingMostDetailedSampling
-    ) {
-      return
-    }
-
-    this.isHeightSamplingUpdateScheduled = true
-    this.heightSamplingUpdateFrameId = requestAnimationFrame(() => {
-      this.isHeightSamplingUpdateScheduled = false
-      this.heightSamplingUpdateFrameId = 0
-      if (this.isDestroyed) return
-
-      this.heightSampler.updateMostDetailedSampling()
-    })
-  }
-
-  private resolveSettingPanelOptions(options: ViewerWidgetOptions['settingPanel']): DebugSettingsPanelOptions | null {
-    if (!options) return null
-
-    const storedSettings = loadStoredDebugSettings()
-    if (options === true) return storedSettings
-
-    return {
-      ...options,
-      ...storedSettings
-    }
-  }
-
-  private resolveTimelineOptions(options: ViewerWidgetOptions['timeline']): TimelineOptions | null {
-    if (!options) return null
-    return options === true ? {} : options
-  }
-
-  private resolveWidgetOptions(options: ViewerOptions): ViewerWidgetOptions {
-    return options.widgets ?? {}
+  private renderFrame(deltaTime: number, time: number) {
+    this.clearFrameBuffer()
+    this.clock.tick(deltaTime)
+    this.postProcessing.setDeltaTime(deltaTime)
+    this.resize()
+    this.controls.update()
+    this.widgets.update(deltaTime, time)
+    const currentHeight = this.syncFallbackAmbientLight()
+    this.postProcessing.updateForCameraHeight(currentHeight)
+    this.tilesets.update()
+    this.atmosphere.updateLightSources()
+    this.models.update(deltaTime)
+    this.renderer.render(this.scene.threeScene, this.threeCamera)
   }
 
   private clearFrameBuffer() {
@@ -877,89 +801,6 @@ export class Viewer {
     this.renderer.setRenderTarget(null)
     this.renderer.clear(true, true, true)
     this.renderer.setRenderTarget(renderTarget)
-  }
-
-  private resolveSceneOptions(options: ViewerOptions['scene']): ResolvedSceneOptions {
-    const atmosphereLightingMode = options?.atmosphere?.lighting?.mode ?? 'post-process'
-
-    return {
-      atmosphere: {
-        show: options?.atmosphere?.show ?? true,
-        lighting: {
-          mode: atmosphereLightingMode,
-          sunLight: options?.atmosphere?.lighting?.sunLight ?? true,
-          skyLight: options?.atmosphere?.lighting?.skyLight ?? true,
-          sunLightIntensity: options?.atmosphere?.lighting?.sunLightIntensity ?? 1,
-          skyLightIntensity: options?.atmosphere?.lighting?.skyLightIntensity ?? 1,
-          albedoScale: options?.atmosphere?.lighting?.albedoScale ?? 1
-        },
-        night: {
-          enabled: options?.atmosphere?.night?.enabled ?? false,
-          moonLight: options?.atmosphere?.night?.moonLight ?? true,
-          ambientLight: options?.atmosphere?.night?.ambientLight ?? true,
-          color: options?.atmosphere?.night?.color ?? 0x9bbcff,
-          moonLightIntensity: options?.atmosphere?.night?.moonLightIntensity ?? 0.18,
-          ambientIntensity: options?.atmosphere?.night?.ambientIntensity ?? 0.08,
-          useMoonPhase: options?.atmosphere?.night?.useMoonPhase ?? true,
-          transitionRange: options?.atmosphere?.night?.transitionRange ?? [-0.08, 0.05]
-        },
-        scattering: {
-          transmittance: options?.atmosphere?.scattering?.transmittance ?? true,
-          inscatter: options?.atmosphere?.scattering?.inscatter ?? true,
-          intensity: options?.atmosphere?.scattering?.intensity ?? 0.6,
-          horizonBlend: options?.atmosphere?.scattering?.horizonBlend ?? true,
-          horizonRange: options?.atmosphere?.scattering?.horizonRange ?? [0, 0.6],
-          correctAltitude: options?.atmosphere?.scattering?.correctAltitude ?? true,
-          correctGeometricError: options?.atmosphere?.scattering?.correctGeometricError ?? true,
-          solarIrradianceScale: options?.atmosphere?.scattering?.solarIrradianceScale ?? 1,
-          rayleighScatteringScale: options?.atmosphere?.scattering?.rayleighScatteringScale ?? 1,
-          mieScatteringScale: options?.atmosphere?.scattering?.mieScatteringScale ?? 1,
-          mieExtinctionScale: options?.atmosphere?.scattering?.mieExtinctionScale ?? 1,
-          miePhaseFunctionG: options?.atmosphere?.scattering?.miePhaseFunctionG ?? 0.8,
-          absorptionExtinctionScale: options?.atmosphere?.scattering?.absorptionExtinctionScale ?? 1,
-          groundAlbedo: options?.atmosphere?.scattering?.groundAlbedo ?? 0.1
-        },
-        sky: {
-          stars: options?.atmosphere?.sky?.stars ?? true,
-          starsIntensity: options?.atmosphere?.sky?.starsIntensity ?? 1,
-          starsPointSize: options?.atmosphere?.sky?.starsPointSize ?? 1,
-          sun: options?.atmosphere?.sky?.sun ?? true,
-          moon: options?.atmosphere?.sky?.moon ?? true,
-          ground: options?.atmosphere?.sky?.ground ?? true,
-          sunAngularRadius: options?.atmosphere?.sky?.sunAngularRadius ?? 0.004675,
-          moonAngularRadius: options?.atmosphere?.sky?.moonAngularRadius ?? 0.0045,
-          lunarRadianceScale: options?.atmosphere?.sky?.lunarRadianceScale ?? 1
-        },
-        shadow: {
-          radius: options?.atmosphere?.shadow?.radius ?? 3,
-          sampleCount: options?.atmosphere?.shadow?.sampleCount ?? 8
-        },
-        fallbackAmbientLight: {
-          show: options?.atmosphere?.fallbackAmbientLight?.show ?? true,
-          intensity: options?.atmosphere?.fallbackAmbientLight?.intensity ?? 0.5
-        }
-      },
-      clouds: {
-        show: options?.clouds?.show ?? true,
-        quality: options?.clouds?.quality,
-        lightShafts: options?.clouds?.lightShafts ?? true,
-        coverage: options?.clouds?.coverage ?? 0.3,
-        speed: options?.clouds?.speed ?? 0.001,
-        layer: {
-          altitude: options?.clouds?.layer?.altitude ?? 1500,
-          height: options?.clouds?.layer?.height ?? 650
-        }
-      },
-      surface: {
-        materialMode: options?.surface?.materialMode ?? 'auto'
-      },
-      postProcess: {
-        lensFlare: options?.postProcess?.lensFlare ?? true,
-        smaa: options?.postProcess?.smaa ?? true,
-        dithering: options?.postProcess?.dithering ?? false,
-        toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 10
-      }
-    }
   }
 
   private createTransparentOverlayTexture() {
@@ -985,40 +826,6 @@ export class Viewer {
     )
     this.scene.updateFallbackAmbientLight(cartographic.height)
     return cartographic.height
-  }
-
-  private updateModelLayers(deltaTime: number) {
-    this.modelLayers.forEach((layer) => {
-      layer.update(deltaTime)
-    })
-  }
-
-  private removeModelLayer(layer: GltfModelLayer) {
-    this.modelLayers.delete(layer.id)
-    this.scene.threeScene.remove(layer.root)
-    this.syncPostProcessMaterialLights()
-  }
-
-  private clearModelLayers() {
-    Array.from(this.modelLayers.values()).forEach((layer) => {
-      layer.remove()
-    })
-    this.modelLayers.clear()
-    this.syncPostProcessMaterialLights()
-  }
-
-  private syncPostProcessMaterialLights() {
-    this.atmosphere.setPostProcessMaterialLights(
-      Array.from(this.modelLayers.values()).some((layer) => layer.preservesMaterial)
-    )
-  }
-
-  private createModelId() {
-    do {
-      this.nextModelId += 1
-    } while (this.modelLayers.has(`model-${this.nextModelId}`))
-
-    return `model-${this.nextModelId}`
   }
 
   private resolveCartographicInput(input: CartographicInput): CartographicCoordinates {
@@ -1151,32 +958,13 @@ export class Viewer {
     this.eventListeners.clear()
   }
 
-  private resolveSurfaceMaterialMode(
-    surfaceMaterialMode: SurfaceMaterialMode,
-    atmosphereLightingMode: AtmosphereLightingMode
-  ): ResolvedSurfaceMaterialMode {
-    if (surfaceMaterialMode !== 'auto') return surfaceMaterialMode
-    return atmosphereLightingMode === 'light-source' ? 'standard' : 'basic'
-  }
-
   private syncSurfaceMaterialMode() {
     this.tilesets.setSurfaceMaterialMode(
-      this.resolveSurfaceMaterialMode(this.scene.surface.materialMode, this.scene.atmosphere.lighting.mode)
+      resolveSurfaceMaterialMode(this.scene.surface.materialMode, this.scene.atmosphere.lighting.mode)
     )
-    const contentMaterialMode = this.resolveSceneContentMaterialMode(this.scene.atmosphere.lighting.mode)
+    const contentMaterialMode = resolveSceneContentMaterialMode(this.scene.atmosphere.lighting.mode)
     this.tilesets.setSceneTilesetMaterialMode(contentMaterialMode)
-    const modelMaterialMode = this.resolveModelMaterialMode(this.scene.atmosphere.lighting.mode)
-    this.modelLayers.forEach((layer) => {
-      layer.setMaterialMode(modelMaterialMode)
-    })
-  }
-
-  private resolveSceneContentMaterialMode(atmosphereLightingMode: AtmosphereLightingMode): SceneTilesetMaterialMode {
-    return atmosphereLightingMode === 'post-process' ? 'basic' : 'standard'
-  }
-
-  private resolveModelMaterialMode(atmosphereLightingMode: AtmosphereLightingMode): ModelMaterialMode {
-    return atmosphereLightingMode === 'post-process' ? 'basic' : 'standard'
+    this.models.setMaterialMode(resolveModelMaterialMode(this.scene.atmosphere.lighting.mode))
   }
 
   private static resolveContainer(container: HTMLElement | string) {
