@@ -10,6 +10,11 @@ export interface TargetFlightControllerOptions {
   tilesets: TilesetManager
 }
 
+type PendingRootLoadFlight = {
+  target: TilesRenderer
+  listener: () => void
+}
+
 export class TargetFlightController {
   private readonly targetSphere = new THREE.Sphere()
   private readonly targetBox = new THREE.Box3()
@@ -20,20 +25,50 @@ export class TargetFlightController {
   private readonly targetUp = new THREE.Vector3()
   private readonly targetCamera = new THREE.PerspectiveCamera()
   private readonly targetCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
+  private pendingRootLoadFlight: PendingRootLoadFlight | null = null
+  private isDisposed = false
 
   constructor(private readonly options: TargetFlightControllerOptions) {}
 
   flyToTarget(target: FlyToTargetTarget, options: FlyToTargetOptions) {
+    if (this.isDisposed) return
+
+    this.clearPendingRootLoadFlight()
     if (this.applyTargetFlight(target, options)) return
 
     if (target instanceof TilesRenderer) {
+      let pending: PendingRootLoadFlight
       const handleRootLoaded = () => {
-        target.removeEventListener('load-root-tileset', handleRootLoaded)
+        if (this.pendingRootLoadFlight !== pending) return
+
+        this.clearPendingRootLoadFlight()
+        if (this.isDisposed) return
+
         this.applyTargetFlight(target, options)
       }
 
+      pending = {
+        target,
+        listener: handleRootLoaded
+      }
+      this.pendingRootLoadFlight = pending
       target.addEventListener('load-root-tileset', handleRootLoaded)
     }
+  }
+
+  dispose() {
+    if (this.isDisposed) return
+
+    this.isDisposed = true
+    this.clearPendingRootLoadFlight()
+  }
+
+  private clearPendingRootLoadFlight() {
+    const pending = this.pendingRootLoadFlight
+    if (!pending) return
+
+    pending.target.removeEventListener('load-root-tileset', pending.listener)
+    this.pendingRootLoadFlight = null
   }
 
   private applyTargetFlight(target: FlyToTargetTarget, options: FlyToTargetOptions) {

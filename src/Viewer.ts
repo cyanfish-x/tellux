@@ -691,6 +691,7 @@ export class Viewer {
     this.models.dispose()
     this.widgets.dispose()
     this.heightSampler.dispose()
+    this.targetFlights.dispose()
 
     this.postProcessing.dispose()
     this.atmosphere.dispose()
