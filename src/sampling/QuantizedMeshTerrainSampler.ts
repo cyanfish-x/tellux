@@ -5,6 +5,16 @@ import type {
   TerrainOptions,
   UrlTerrainOptions
 } from '../types'
+import type {
+  CesiumIonTerrainEndpoint,
+  QuantizedMeshLayer,
+  TerrainAvailabilityLevel,
+  TerrainLayerState,
+  TerrainProjection,
+  TerrainResource,
+  TerrainTileCoordinate,
+  TerrainTileData
+} from './QuantizedMeshTerrainTypes'
 
 const GZIP_ID1 = 0x1f
 const GZIP_ID2 = 0x8b
@@ -13,84 +23,6 @@ const TERRAIN_ACCEPT_HEADER =
   'application/vnd.quantized-mesh,application/octet-stream;q=0.9;extensions=octvertexnormals-watermask-metadata'
 const DEFAULT_TERRAIN_VERSION = 1
 const TRIANGLE_EPSILON = 1e-7
-
-type QuantizedMeshLayer = {
-  tiles: string[]
-  projection?: string
-  available?: TerrainAvailabilityLevel[] | null
-  metadataAvailability?: number
-  maxzoom?: number | null
-}
-
-type TerrainAvailabilityRange = {
-  startX: number
-  startY: number
-  endX: number
-  endY: number
-}
-
-type TerrainAvailabilityLevel = TerrainAvailabilityRange[]
-
-type TerrainTileCoordinate = {
-  level: number
-  x: number
-  y: number
-}
-
-type TerrainTileData = {
-  coordinate: TerrainTileCoordinate
-  bounds: [west: number, south: number, east: number, north: number]
-  header: {
-    minHeight: number
-    maxHeight: number
-  }
-  indices: Uint16Array | Uint32Array
-  vertexData: {
-    u: Float32Array
-    v: Float32Array
-    height: Float32Array
-  }
-  metadata?: {
-    available?: TerrainAvailabilityLevel[]
-  }
-}
-
-type TerrainLayerState = {
-  resource: TerrainResource
-  layerUrl: string
-  layer: QuantizedMeshLayer
-  available: Array<TerrainAvailabilityLevel | null>
-  loadedMetadataTiles: Set<string>
-  metadataAvailability: number
-  maxLevel: number
-  projection: TerrainProjection
-}
-
-type TerrainResource = {
-  cacheKey: string
-  rootUrl: string
-  inheritedSearchParams: URLSearchParams
-  headers?: Record<string, string>
-  cesiumIon?: CesiumIonTerrainResource
-}
-
-type CesiumIonTerrainResource = {
-  endpointUrl: string
-  apiToken: string
-  autoRefreshToken: boolean
-}
-
-type CesiumIonTerrainEndpoint = {
-  type?: string
-  url?: string
-  accessToken?: string
-}
-
-type TerrainProjection = {
-  scheme: string
-  rootTileX: number
-  rootTileY: number
-}
 
 type TerrainSampleRequest = {
   index: number

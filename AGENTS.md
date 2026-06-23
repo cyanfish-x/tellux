@@ -54,17 +54,6 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 - 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/takram-three-geospatial-effects能力备忘.md`。
 - 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/examples文档与Sandcastle架构.md`。
 
-## 模块化与文件大小
-
-- 避免继续膨胀 `src/Viewer.ts`。新增功能默认先判断是否属于 `controls/`、`models/`、`sampling/`、`rendering/`、`tiles/` 等高内聚模块；`Viewer` 只保留公开 API、生命周期编排和跨模块协调。
-- 单文件超过约 800 行时应优先评估拆分；超过约 1000 行时，除非是生成文件或高度集中声明文件，新增逻辑前应先拆分出职责明确的类、函数或子模块。
-- 拆分遵循面向对象设计原则和 Clean Code：单一职责、高内聚、低耦合、依赖显式注入、隐藏内部实现细节，避免模块之间互相读取不必要的私有状态。
-- 运行时控制对象和底层 manager 之间避免维护同构状态。公开控制层表达用户态，manager 通过 adapter 接收完整状态快照或明确 patch，并负责适配到底层 effect/light/uniform。
-- 不要把渲染循环作为用户参数同步兜底。初始化和运行时 setter 应通过明确状态通道同步到底层，`render/update` 只推进时间、相机、资源和渲染流程。
-- 新模块命名应表达领域职责，而不是技术步骤；优先使用 `*Manager`、`*Layer`、`*Sampler`、`*Controls` 等项目已有命名风格。
-- 对外 API 的 JSDoc 和类型继续保留在公开入口或导出的类型上；内部模块只导出必要类型和类，避免把实现细节扩大成公共 API。
-- 拆分时保持行为兼容，优先移动代码和收窄依赖，再做重构；不要把无关格式化、重命名或行为调整混入同一次改动。
-
 ## 公开 API 方向
 
 命名、API设计可参考对齐 Cesium、mapboxgl 风格。方便gis人快速理解迁移。
@@ -79,7 +68,6 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 - 对可能增长的能力，先设计稳定的领域边界，再填具体参数。
 - 对外 API 不要直接反映内部实现步骤；它应该表达用户理解的领域概念。
 - 快速迭代期发现公开 API 形状不对，要尽早破坏式修正。等示例、文档、面板、插件和用户代码扩散后，改动成本会远高于早期重构。
-- 内部缓存结构可以为了历史数据暂时保留旧 key，但不能把旧 key 继续暴露成公开 API。
 
 新增或调整公开 API 前，至少检查：
 

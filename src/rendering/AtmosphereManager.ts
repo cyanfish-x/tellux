@@ -1,4 +1,4 @@
-import * as THREE from 'three'
+﻿import * as THREE from 'three'
 import {
   CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
   CLOUD_SHAPE_TEXTURE_SIZE,
@@ -25,23 +25,37 @@ import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { getTelluxAssetUrl } from '../config'
 import { disposeObject } from '../models/disposeObject'
-import type { AtmosphereLightingMode, CloudQualityPreset } from '../types'
+import {
+  CLOUDS_DAY_LIGHT_FACTOR_UNIFORM,
+  CLOUDS_NIGHT_AMBIENT_INTENSITY_UNIFORM,
+  CLOUDS_NIGHT_COLOR_UNIFORM,
+  CLOUDS_NIGHT_MOON_DIRECTION_UNIFORM,
+  CLOUDS_NIGHT_MOON_INTENSITY_UNIFORM,
+  INSCATTER_HORIZON_BLEND_UNIFORM,
+  INSCATTER_HORIZON_RANGE_UNIFORM,
+  INSCATTER_INTENSITY_UNIFORM,
+  POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM,
+  POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM,
+  POST_PROCESS_NIGHT_COLOR_UNIFORM,
+  POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM,
+  POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM,
+  POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM,
+  STARS_DAY_LIGHT_FACTOR_UNIFORM,
+  getCloudsMaterialUniform,
+  getEffectUniform,
+  getStarsMaterialUniform,
+  patchAerialPerspectiveShader,
+  patchCloudsNightLighting,
+  patchStarsRendering
+} from './AtmosphereShaderPatches'
+import type {
+  AtmosphereNightRuntimeState,
+  AtmosphereRuntimeState,
+  CloudRuntimeState
+} from './AtmosphereRuntimeState'
+import type { AtmosphereLightingMode } from '../types'
 
 type TextureApplyCallback<T extends THREE.Texture> = (texture: T) => void
-
-interface PatchableEffectShader {
-  getFragmentShader(): string
-  setFragmentShader(fragmentShader: string): void
-  setChanged(): void
-}
-
-interface PatchableShaderMaterial {
-  fragmentShader: string
-  uniforms: Record<string, THREE.Uniform>
-  needsUpdate: boolean
-}
-
-type DynamicUniforms = Map<string, THREE.Uniform>
 
 interface AtmosphereUniformValue {
   solar_irradiance: THREE.Vector3
@@ -53,77 +67,7 @@ interface AtmosphereUniformValue {
   ground_albedo: THREE.Color
 }
 
-export interface AtmosphereNightRuntimeState {
-  enabled: boolean
-  moonLight: boolean
-  ambientLight: boolean
-  color: THREE.ColorRepresentation
-  moonLightIntensity: number
-  ambientIntensity: number
-  useMoonPhase: boolean
-  transitionRange: [number, number]
-}
-
-export interface AtmosphereRuntimeState {
-  inscatterIntensity: number
-  inscatterHorizonBlend: boolean
-  inscatterHorizonRange: [number, number]
-  correctAltitude: boolean
-  correctGeometricError: boolean
-  transmittance: boolean
-  inscatter: boolean
-  lightingMode: AtmosphereLightingMode
-  sunLight: boolean
-  skyLight: boolean
-  sunLightIntensity: number
-  skyLightIntensity: number
-  night: AtmosphereNightRuntimeState
-  sun: boolean
-  moon: boolean
-  ground: boolean
-  albedoScale: number
-  sunAngularRadius: number
-  moonAngularRadius: number
-  lunarRadianceScale: number
-  shadowRadius: number
-  shadowSampleCount: number
-  starsVisible: boolean
-  starsIntensity: number
-  starsPointSize: number
-  solarIrradianceScale: number
-  rayleighScatteringScale: number
-  mieScatteringScale: number
-  mieExtinctionScale: number
-  miePhaseFunctionG: number
-  absorptionExtinctionScale: number
-  groundAlbedo: number
-}
-
-export interface CloudRuntimeState {
-  quality: CloudQualityPreset | undefined
-  lightShafts: boolean
-  coverage: number
-  speed: number
-  layerAltitude: number
-  layerHeight: number
-}
-
 const CLOUD_COMPOSITION_PROPERTIES = new Set(['atmosphereOverlay', 'atmosphereShadow', 'atmosphereShadowLength'])
-const INSCATTER_INTENSITY_UNIFORM = 'telluxInscatterIntensity'
-const INSCATTER_HORIZON_BLEND_UNIFORM = 'telluxInscatterHorizonBlend'
-const INSCATTER_HORIZON_RANGE_UNIFORM = 'telluxInscatterHorizonRange'
-const POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM = 'telluxPostProcessNightMoonIntensity'
-const POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM = 'telluxPostProcessNightAmbientIntensity'
-const POST_PROCESS_NIGHT_COLOR_UNIFORM = 'telluxPostProcessNightColor'
-const POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM = 'telluxPostProcessNightSkyIntensity'
-const POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM = 'telluxPostProcessNightMoonGlowIntensity'
-const POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM = 'telluxPostProcessDayLightFactor'
-const CLOUDS_NIGHT_MOON_INTENSITY_UNIFORM = 'telluxCloudsNightMoonIntensity'
-const CLOUDS_NIGHT_AMBIENT_INTENSITY_UNIFORM = 'telluxCloudsNightAmbientIntensity'
-const CLOUDS_NIGHT_COLOR_UNIFORM = 'telluxCloudsNightColor'
-const CLOUDS_NIGHT_MOON_DIRECTION_UNIFORM = 'telluxCloudsNightMoonDirection'
-const CLOUDS_DAY_LIGHT_FACTOR_UNIFORM = 'telluxCloudsDayLightFactor'
-const STARS_DAY_LIGHT_FACTOR_UNIFORM = 'telluxStarsDayLightFactor'
 const DEFAULT_NIGHT_TRANSITION_RANGE: [number, number] = [-0.08, 0.05]
 const MOON_HORIZON_TRANSITION_RANGE: [number, number] = [0, 0.08]
 const NIGHT_SKY_ALTITUDE_FADE_START = 80000
@@ -206,11 +150,11 @@ export class AtmosphereManager {
   ) {
     this.aerialPerspectiveEffect = new AerialPerspectiveEffect(this.camera)
     this.aerialPerspectiveEffect.sky = true
-    this.patchAerialPerspectiveShader()
+    patchAerialPerspectiveShader(this.aerialPerspectiveEffect, this.nightColor)
     this.captureAtmosphereDefaults()
 
     this.starsMaterial = new StarsMaterial()
-    this.patchStarsRendering()
+    patchStarsRendering(this.starsMaterial)
     this.stars = new THREE.Points(new THREE.BufferGeometry(), this.starsMaterial)
     this.stars.frustumCulled = false
 
@@ -225,7 +169,7 @@ export class AtmosphereManager {
     this.nightAmbientLightSource.visible = false
 
     this.cloudsEffect = new CloudsEffect(this.camera)
-    this.patchCloudsNightLighting()
+    patchCloudsNightLighting(this.cloudsEffect, this.nightColor)
     this.cloudsEffect.localWeatherVelocity.set(DEFAULT_CLOUD_SPEED, 0)
     this.cloudsEffect.shadow.farScale = 0.25
     this.cloudsEffect.shadow.maxFar = 1e5
@@ -664,307 +608,8 @@ export class AtmosphereManager {
     uniform.value.set(start, end)
   }
 
-  private patchStarsRendering() {
-    const material = this.starsMaterial as unknown as PatchableShaderMaterial
-    material.uniforms[STARS_DAY_LIGHT_FACTOR_UNIFORM] = new THREE.Uniform(1)
 
-    if (material.fragmentShader.includes(STARS_DAY_LIGHT_FACTOR_UNIFORM)) return
 
-    const withUniform = material.fragmentShader.replace(
-      'uniform vec3 sunDirection;',
-      [
-        'uniform vec3 sunDirection;',
-        `uniform float ${STARS_DAY_LIGHT_FACTOR_UNIFORM};`
-      ].join('\n')
-    )
-    if (withUniform === material.fragmentShader) {
-      console.warn('Tellux stars shader patch failed: uniform hook was not found.')
-      material.needsUpdate = true
-      return
-    }
-
-    const withPointMask = withUniform.replace(
-      'in vec3 vColor;\n\nvoid main() {',
-      [
-        'in vec3 vColor;',
-        '',
-        'void main() {',
-        '  vec2 telluxStarPoint = gl_PointCoord * 2.0 - 1.0;',
-        '  float telluxStarPointRadius = dot(telluxStarPoint, telluxStarPoint);',
-        '  if (telluxStarPointRadius > 1.0) {',
-        '    discard;',
-        '  }',
-        '  float telluxStarSoftMask = 1.0 - smoothstep(0.18, 1.0, telluxStarPointRadius);',
-        '  float telluxStarBrightness = max(max(vColor.r, vColor.g), vColor.b);',
-        '  float telluxStarVisibility = smoothstep(0.006, 0.035, telluxStarBrightness);',
-        '  if (telluxStarVisibility <= 0.0) {',
-        '    discard;',
-        '  }',
-        '  vec3 telluxStarColor = vec3(1.0) * telluxStarSoftMask * (0.75 + 0.75 * telluxStarVisibility);'
-      ].join('\n')
-    )
-    if (withPointMask === withUniform) {
-      console.warn('Tellux stars shader patch failed: point mask hook was not found.')
-      material.needsUpdate = true
-      return
-    }
-
-    const withBackgroundStarColor = withPointMask.replace(
-      '  radiance += transmittance * vColor;',
-      [
-        `  radiance *= ${STARS_DAY_LIGHT_FACTOR_UNIFORM};`,
-        `  radiance += mix(vec3(1.0), transmittance, ${STARS_DAY_LIGHT_FACTOR_UNIFORM}) * telluxStarColor;`
-      ].join('\n')
-    )
-    if (withBackgroundStarColor === withPointMask) {
-      console.warn('Tellux stars shader patch failed: background color hook was not found.')
-      material.needsUpdate = true
-      return
-    }
-
-    const patchedShader = withBackgroundStarColor.replace(
-      '  outputColor = vec4(vColor, 1.0);',
-      '  outputColor = vec4(telluxStarColor, 1.0);'
-    )
-
-    material.fragmentShader = patchedShader
-    material.needsUpdate = true
-  }
-
-  private patchAerialPerspectiveShader() {
-    const effect = this.aerialPerspectiveEffect
-    const uniforms = effect.uniforms as unknown as DynamicUniforms
-    uniforms.set(INSCATTER_INTENSITY_UNIFORM, new THREE.Uniform(1))
-    uniforms.set(INSCATTER_HORIZON_BLEND_UNIFORM, new THREE.Uniform(1))
-    uniforms.set(INSCATTER_HORIZON_RANGE_UNIFORM, new THREE.Uniform(new THREE.Vector2(0, 0.6)))
-    uniforms.set(POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM, new THREE.Uniform(0))
-    uniforms.set(POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM, new THREE.Uniform(0))
-    uniforms.set(POST_PROCESS_NIGHT_COLOR_UNIFORM, new THREE.Uniform(this.nightColor.clone()))
-    uniforms.set(POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM, new THREE.Uniform(0))
-    uniforms.set(POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM, new THREE.Uniform(0))
-    uniforms.set(POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM, new THREE.Uniform(1))
-
-    const shaderEffect = effect as unknown as PatchableEffectShader
-    const fragmentShader = shaderEffect.getFragmentShader()
-    if (fragmentShader.includes(INSCATTER_INTENSITY_UNIFORM)) return
-
-    const withUniform = fragmentShader.replace(
-      'uniform float albedoScale;',
-      [
-        'uniform float albedoScale;',
-        `uniform float ${INSCATTER_INTENSITY_UNIFORM};`,
-        `uniform float ${INSCATTER_HORIZON_BLEND_UNIFORM};`,
-        `uniform vec2 ${INSCATTER_HORIZON_RANGE_UNIFORM};`,
-        `uniform float ${POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM};`,
-        `uniform float ${POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM};`,
-        `uniform vec3 ${POST_PROCESS_NIGHT_COLOR_UNIFORM};`,
-        `uniform float ${POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM};`,
-        `uniform float ${POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM};`,
-        `uniform float ${POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM};`
-      ].join('\n')
-    )
-    if (withUniform === fragmentShader) {
-      console.warn('Tellux atmosphere shader patch failed: uniform hook was not found.')
-      shaderEffect.setChanged()
-      return
-    }
-
-    const withDaySky = withUniform.replace(
-      '    outputColor.rgb = getSkyRadiance(\n      vCameraPosition,\n      rayDirection,\n      shadowLength,\n      sunDirection,\n      moonDirection,\n      moonAngularRadius,\n      lunarRadianceScale,\n      fragmentAngle\n    );',
-      [
-        '    outputColor.rgb = getSkyRadiance(',
-        '      vCameraPosition,',
-        '      rayDirection,',
-        '      shadowLength,',
-        '      sunDirection,',
-        '      moonDirection,',
-        '      moonAngularRadius,',
-        '      lunarRadianceScale,',
-        '      fragmentAngle',
-        '    );',
-        `    outputColor.rgb *= ${POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM};`
-      ].join('\n')
-    )
-    if (withDaySky === withUniform) {
-      console.warn('Tellux atmosphere shader patch failed: day sky hook was not found.')
-    }
-
-    const shaderWithDaySky = withDaySky === withUniform ? withUniform : withDaySky
-    const withNightSky = shaderWithDaySky.replace(
-      '    outputColor.a = 1.0;\n    #else // SKY',
-      [
-        `    if (${POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM} > 0.0 || ${POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM} > 0.0) {`,
-        '      vec3 telluxSkyNormal = normalize(vCameraPosition / vEllipsoidRadiiSquared);',
-        '      float telluxRayUp = clamp(dot(rayDirection, telluxSkyNormal), 0.0, 1.0);',
-        '      float telluxHorizonGlow = pow(1.0 - telluxRayUp, 1.7);',
-        '      float telluxZenithGlow = pow(telluxRayUp, 0.35);',
-        '      float telluxMoonViewDot = max(dot(rayDirection, moonDirection), 0.0);',
-        '      float telluxMoonHalo = pow(telluxMoonViewDot, 64.0) * 0.55 + pow(telluxMoonViewDot, 512.0) * 2.2;',
-        '      float telluxMoonDiscRadius = max(moonAngularRadius * 1.35, fragmentAngle);',
-        '      float telluxMoonDisc = smoothstep(cos(telluxMoonDiscRadius + fragmentAngle), cos(max(0.0, moonAngularRadius - fragmentAngle)), telluxMoonViewDot);',
-        `      vec3 telluxNightSkyRadiance = ${POST_PROCESS_NIGHT_COLOR_UNIFORM} * ${POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM} * (0.18 + 0.62 * telluxHorizonGlow + 0.28 * telluxZenithGlow);`,
-        `      telluxNightSkyRadiance += ${POST_PROCESS_NIGHT_COLOR_UNIFORM} * ${POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM} * telluxMoonHalo;`,
-        `      telluxNightSkyRadiance += vec3(1.0, 0.96, 0.86) * ${POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM} * telluxMoonDisc * 2.0;`,
-        '      outputColor.rgb += telluxNightSkyRadiance;',
-        '    }',
-        '    outputColor.a = 1.0;',
-        '    #else // SKY'
-      ].join('\n')
-    )
-    if (withNightSky === shaderWithDaySky) {
-      console.warn('Tellux atmosphere shader patch failed: night sky hook was not found.')
-    }
-
-    const shaderWithNightSky = withNightSky === shaderWithDaySky ? shaderWithDaySky : withNightSky
-    const withPostProcessNightLighting = shaderWithNightSky.replace(
-      '#endif // defined(SUN_LIGHT) || defined(SKY_LIGHT)\n\n  #if defined(TRANSMITTANCE) || defined(INSCATTER)',
-      [
-        '#endif // defined(SUN_LIGHT) || defined(SKY_LIGHT)',
-        '',
-        `  if (!degenerateNormal) {`,
-        `    radiance *= ${POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM};`,
-        `  }`,
-        `  if (!degenerateNormal && (${POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM} > 0.0 || ${POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM} > 0.0)) {`,
-        '    vec3 telluxNightDiffuse = inputColor.rgb * albedoScale * RECIPROCAL_PI;',
-        '    float telluxNightMoonDiffuse = max(dot(normalize(normalECEF), moonDirection), 0.0);',
-        `    vec3 telluxNightRadiance = telluxNightDiffuse * ${POST_PROCESS_NIGHT_COLOR_UNIFORM} * (${POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM} + ${POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM} * telluxNightMoonDiffuse);`,
-        '    #ifdef HAS_LIGHTING_MASK',
-        '    telluxNightRadiance *= texture(lightingMaskBuffer, uv).LIGHTING_MASK_CHANNEL_;',
-        '    #endif // HAS_LIGHTING_MASK',
-        '    radiance += telluxNightRadiance;',
-        '  }',
-        '',
-        '  #if defined(TRANSMITTANCE) || defined(INSCATTER)'
-      ].join('\n')
-    )
-    if (withPostProcessNightLighting === shaderWithNightSky) {
-      console.warn('Tellux atmosphere shader patch failed: post-process night lighting hook was not found.')
-    }
-
-    const shaderWithNightLighting =
-      withPostProcessNightLighting === shaderWithNightSky ? shaderWithNightSky : withPostProcessNightLighting
-    const patchedShader = shaderWithNightLighting.replace(
-      'radiance = radiance + inscatter;',
-      [
-        'vec3 telluxGlobeNormal = normalize(positionECEF / vEllipsoidRadiiSquared);',
-        'float telluxViewNormalCos = clamp(dot(telluxGlobeNormal, normalize(vCameraPosition - positionECEF)), 0.0, 1.0);',
-        `float telluxHorizonMask = 1.0 - smoothstep(${INSCATTER_HORIZON_RANGE_UNIFORM}.x, ${INSCATTER_HORIZON_RANGE_UNIFORM}.y, telluxViewNormalCos);`,
-        `float telluxInscatterMask = mix(1.0, telluxHorizonMask, ${INSCATTER_HORIZON_BLEND_UNIFORM});`,
-        `radiance = radiance + inscatter * ${INSCATTER_INTENSITY_UNIFORM} * telluxInscatterMask * ${POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM};`
-      ].join('\n  ')
-    )
-
-    if (patchedShader === shaderWithNightLighting) {
-      console.warn('Tellux atmosphere shader patch failed: inscatter intensity hook was not found.')
-      shaderEffect.setChanged()
-      return
-    }
-
-    shaderEffect.setFragmentShader(patchedShader)
-  }
-
-  private patchCloudsNightLighting() {
-    const material = this.cloudsEffect.cloudsPass.currentMaterial as unknown as PatchableShaderMaterial
-    material.uniforms[CLOUDS_NIGHT_MOON_INTENSITY_UNIFORM] = new THREE.Uniform(0)
-    material.uniforms[CLOUDS_NIGHT_AMBIENT_INTENSITY_UNIFORM] = new THREE.Uniform(0)
-    material.uniforms[CLOUDS_NIGHT_COLOR_UNIFORM] = new THREE.Uniform(this.nightColor.clone())
-    material.uniforms[CLOUDS_NIGHT_MOON_DIRECTION_UNIFORM] = new THREE.Uniform(new THREE.Vector3())
-    material.uniforms[CLOUDS_DAY_LIGHT_FACTOR_UNIFORM] = new THREE.Uniform(1)
-
-    if (material.fragmentShader.includes(CLOUDS_NIGHT_MOON_INTENSITY_UNIFORM)) return
-
-    const withUniform = material.fragmentShader.replace(
-      'uniform float powderExponent;',
-      [
-        'uniform float powderExponent;',
-        `uniform float ${CLOUDS_NIGHT_MOON_INTENSITY_UNIFORM};`,
-        `uniform float ${CLOUDS_NIGHT_AMBIENT_INTENSITY_UNIFORM};`,
-        `uniform vec3 ${CLOUDS_NIGHT_COLOR_UNIFORM};`,
-        `uniform vec3 ${CLOUDS_NIGHT_MOON_DIRECTION_UNIFORM};`,
-        `uniform float ${CLOUDS_DAY_LIGHT_FACTOR_UNIFORM};`
-      ].join('\n')
-    )
-    if (withUniform === material.fragmentShader) {
-      console.warn('Tellux clouds shader patch failed: uniform hook was not found.')
-      material.needsUpdate = true
-      return
-    }
-
-    const withGroundDayLight = withUniform.replace(
-      '  vec3 skyIrradiance;\n  vec3 sunIrradiance = getGroundSunSkyIrradiance(position, surfaceNormal, height, skyIrradiance);',
-      [
-        '  vec3 skyIrradiance;',
-        '  vec3 sunIrradiance = getGroundSunSkyIrradiance(position, surfaceNormal, height, skyIrradiance);',
-        `  sunIrradiance *= ${CLOUDS_DAY_LIGHT_FACTOR_UNIFORM};`,
-        `  skyIrradiance *= ${CLOUDS_DAY_LIGHT_FACTOR_UNIFORM};`
-      ].join('\n')
-    )
-    if (withGroundDayLight === withUniform) {
-      console.warn('Tellux clouds shader patch failed: ground day lighting hook was not found.')
-    }
-
-    const shaderWithGroundDayLight =
-      withGroundDayLight === withUniform ? withUniform : withGroundDayLight
-    const withCloudDayLight = shaderWithGroundDayLight.replace(
-      '      vec3 skyIrradiance;\n      vec3 sunIrradiance = getCloudsSunSkyIrradiance(position, height, skyIrradiance);',
-      [
-        '      vec3 skyIrradiance;',
-        '      vec3 sunIrradiance = getCloudsSunSkyIrradiance(position, height, skyIrradiance);',
-        `      sunIrradiance *= ${CLOUDS_DAY_LIGHT_FACTOR_UNIFORM};`,
-        `      skyIrradiance *= ${CLOUDS_DAY_LIGHT_FACTOR_UNIFORM};`
-      ].join('\n')
-    )
-    if (withCloudDayLight === shaderWithGroundDayLight) {
-      console.warn('Tellux clouds shader patch failed: cloud day lighting hook was not found.')
-    }
-
-    const shaderWithCloudDayLight =
-      withCloudDayLight === shaderWithGroundDayLight ? shaderWithGroundDayLight : withCloudDayLight
-    const withHazeDayLight = shaderWithCloudDayLight.replace(
-      '  vec3 skyIrradiance = vGroundIrradiance.sky;\n  vec3 sunIrradiance = vGroundIrradiance.sun;',
-      [
-        `  vec3 skyIrradiance = vGroundIrradiance.sky * ${CLOUDS_DAY_LIGHT_FACTOR_UNIFORM};`,
-        `  vec3 sunIrradiance = vGroundIrradiance.sun * ${CLOUDS_DAY_LIGHT_FACTOR_UNIFORM};`
-      ].join('\n')
-    )
-    if (withHazeDayLight === shaderWithCloudDayLight) {
-      console.warn('Tellux clouds shader patch failed: haze day lighting hook was not found.')
-    }
-
-    const shaderWithHazeDayLight =
-      withHazeDayLight === shaderWithCloudDayLight ? shaderWithCloudDayLight : withHazeDayLight
-    const withAerialPerspectiveDayLight = shaderWithHazeDayLight.replace(
-      '  color.rgb = color.rgb * transmittance + inscatter * color.a;',
-      `  color.rgb = color.rgb * transmittance + inscatter * color.a * ${CLOUDS_DAY_LIGHT_FACTOR_UNIFORM};`
-    )
-    if (withAerialPerspectiveDayLight === shaderWithHazeDayLight) {
-      console.warn('Tellux clouds shader patch failed: aerial perspective day lighting hook was not found.')
-    }
-
-    const shaderWithDayLighting =
-      withAerialPerspectiveDayLight === shaderWithHazeDayLight ? shaderWithHazeDayLight : withAerialPerspectiveDayLight
-    const patchedShader = shaderWithDayLighting.replace(
-      'radiance += skyIrradiance * RECIPROCAL_PI4 * skyGradient * skyLightScale;',
-      [
-        'radiance += skyIrradiance * RECIPROCAL_PI4 * skyGradient * skyLightScale;',
-        `if (${CLOUDS_NIGHT_MOON_INTENSITY_UNIFORM} > 0.0 || ${CLOUDS_NIGHT_AMBIENT_INTENSITY_UNIFORM} > 0.0) {`,
-        `  float telluxCloudMoonDiffuse = max(dot(surfaceNormal, ${CLOUDS_NIGHT_MOON_DIRECTION_UNIFORM}), 0.0);`,
-        `  float telluxCloudMoonPhase = approximateMultipleScattering(opticalDepth * 0.35, dot(${CLOUDS_NIGHT_MOON_DIRECTION_UNIFORM}, rayDirection));`,
-        `  vec3 telluxCloudNightRadiance = ${CLOUDS_NIGHT_COLOR_UNIFORM} * ${CLOUDS_NIGHT_AMBIENT_INTENSITY_UNIFORM} * (0.35 + 0.85 * skyGradient);`,
-        `  telluxCloudNightRadiance += ${CLOUDS_NIGHT_COLOR_UNIFORM} * ${CLOUDS_NIGHT_MOON_INTENSITY_UNIFORM} * (0.25 + 0.75 * telluxCloudMoonDiffuse) * telluxCloudMoonPhase;`,
-        '  radiance += telluxCloudNightRadiance;',
-        '}'
-      ].join('\n      ')
-    )
-    if (patchedShader === shaderWithDayLighting) {
-      console.warn('Tellux clouds shader patch failed: night lighting hook was not found.')
-      material.needsUpdate = true
-      return
-    }
-
-    material.fragmentShader = patchedShader
-    material.needsUpdate = true
-  }
 
   private setPostProcessNightLighting(moonIntensity: number, ambientIntensity: number) {
     const moonUniform = this.getPostProcessNightMoonIntensityUniform()
@@ -1021,53 +666,39 @@ export class AtmosphereManager {
   }
 
   private getInscatterIntensityUniform(): THREE.Uniform<number> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(INSCATTER_INTENSITY_UNIFORM) ??
-      null) as THREE.Uniform<number> | null
+    return getEffectUniform<number>(this.aerialPerspectiveEffect, INSCATTER_INTENSITY_UNIFORM)
   }
 
   private getInscatterHorizonBlendUniform(): THREE.Uniform<number> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(INSCATTER_HORIZON_BLEND_UNIFORM) ??
-      null) as THREE.Uniform<number> | null
+    return getEffectUniform<number>(this.aerialPerspectiveEffect, INSCATTER_HORIZON_BLEND_UNIFORM)
   }
 
   private getInscatterHorizonRangeUniform(): THREE.Uniform<THREE.Vector2> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(INSCATTER_HORIZON_RANGE_UNIFORM) ??
-      null) as THREE.Uniform<THREE.Vector2> | null
+    return getEffectUniform<THREE.Vector2>(this.aerialPerspectiveEffect, INSCATTER_HORIZON_RANGE_UNIFORM)
   }
 
   private getPostProcessNightMoonIntensityUniform(): THREE.Uniform<number> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(
-      POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM
-    ) ?? null) as THREE.Uniform<number> | null
+    return getEffectUniform<number>(this.aerialPerspectiveEffect, POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM)
   }
 
   private getPostProcessNightAmbientIntensityUniform(): THREE.Uniform<number> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(
-      POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM
-    ) ?? null) as THREE.Uniform<number> | null
+    return getEffectUniform<number>(this.aerialPerspectiveEffect, POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM)
   }
 
   private getPostProcessNightColorUniform(): THREE.Uniform<THREE.Color> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(POST_PROCESS_NIGHT_COLOR_UNIFORM) ??
-      null) as THREE.Uniform<THREE.Color> | null
+    return getEffectUniform<THREE.Color>(this.aerialPerspectiveEffect, POST_PROCESS_NIGHT_COLOR_UNIFORM)
   }
 
   private getPostProcessNightSkyIntensityUniform(): THREE.Uniform<number> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(
-      POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM
-    ) ?? null) as THREE.Uniform<number> | null
+    return getEffectUniform<number>(this.aerialPerspectiveEffect, POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM)
   }
 
   private getPostProcessNightMoonGlowIntensityUniform(): THREE.Uniform<number> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(
-      POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM
-    ) ?? null) as THREE.Uniform<number> | null
+    return getEffectUniform<number>(this.aerialPerspectiveEffect, POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM)
   }
 
   private getPostProcessDayLightFactorUniform(): THREE.Uniform<number> | null {
-    return ((this.aerialPerspectiveEffect.uniforms as unknown as DynamicUniforms).get(
-      POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM
-    ) ?? null) as THREE.Uniform<number> | null
+    return getEffectUniform<number>(this.aerialPerspectiveEffect, POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM)
   }
 
   private getCloudsNightMoonIntensityUniform(): THREE.Uniform<number> | null {
@@ -1097,8 +728,7 @@ export class AtmosphereManager {
   }
 
   private getCloudsMaterialUniform(name: string): THREE.Uniform | null {
-    const material = this.cloudsEffect.cloudsPass.currentMaterial as unknown as PatchableShaderMaterial
-    return material.uniforms[name] ?? null
+    return getCloudsMaterialUniform(this.cloudsEffect, name)
   }
 
   private getStarsDayLightFactorUniform(): THREE.Uniform<number> | null {
@@ -1106,8 +736,7 @@ export class AtmosphereManager {
   }
 
   private getStarsMaterialUniform(name: string): THREE.Uniform | null {
-    const material = this.starsMaterial as unknown as PatchableShaderMaterial
-    return material.uniforms[name] ?? null
+    return getStarsMaterialUniform(this.starsMaterial, name)
   }
 
   private loadCloudTexture(url: string, applyTexture: TextureApplyCallback<THREE.Texture>) {
@@ -1212,3 +841,4 @@ export class AtmosphereManager {
     console.warn(`Tellux atmosphere texture load failed: ${label}`, error)
   }
 }
+
