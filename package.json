@@ -27,6 +27,8 @@
     "docs:dev": "vitepress dev docs --host 127.0.0.1 --port 5174 --strictPort",
     "docs:preview": "vitepress preview docs --host 127.0.0.1 --port 4174 --strictPort",
     "preview": "vite preview --config examples/vite.config.ts --host 127.0.0.1 --port 4173 --strictPort",
+    "test": "vitest",
+    "test:run": "vitest run",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
     "dev": "concurrently -n examples,docs -c cyan,green \"vite examples --host 127.0.0.1 --port 5173 --strictPort\" \"vitepress dev docs --host 127.0.0.1 --port 5174 --strictPort\"",
@@ -73,7 +75,8 @@
     "three": "^0.184.0",
     "typescript": "~5.2.2",
     "vite": "^5.4.19",
-    "vitepress": "^1.6.4"
+    "vitepress": "^1.6.4",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
