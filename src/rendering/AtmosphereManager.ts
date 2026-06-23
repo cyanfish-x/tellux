@@ -21,10 +21,11 @@ import {
   getMoonDirectionECEF,
   getSunDirectionECEF
 } from '@takram/three-atmosphere'
-import { DEFAULT_STBN_URL, STBNLoader } from '@takram/three-geospatial'
+import { DEFAULT_STBN_URL } from '@takram/three-geospatial'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { getTelluxAssetUrl } from '../config'
 import { disposeObject } from '../models/disposeObject'
+import { AtmosphereTextureLoader } from './AtmosphereTextureLoader'
 import {
   CLOUDS_DAY_LIGHT_FACTOR_UNIFORM,
   CLOUDS_NIGHT_AMBIENT_INTENSITY_UNIFORM,
@@ -54,8 +55,6 @@ import type {
   CloudRuntimeState
 } from './AtmosphereRuntimeState'
 import type { AtmosphereLightingMode } from '../types'
-
-type TextureApplyCallback<T extends THREE.Texture> = (texture: T) => void
 
 interface AtmosphereUniformValue {
   solar_irradiance: THREE.Vector3
@@ -108,12 +107,11 @@ export class AtmosphereManager {
   readonly moonLightSource: SunDirectionalLight
   readonly nightAmbientLightSource: THREE.AmbientLight
 
-  private readonly loadedTextures: THREE.Texture[] = []
   private readonly texturesGenerator: PrecomputedTexturesGenerator
   private readonly materialEnvironmentGenerator: THREE.PMREMGenerator
   private readonly materialEnvironmentTarget: THREE.WebGLRenderTarget
   private readonly materialEnvironment: THREE.Texture
-  private readonly textureAbortController = new AbortController()
+  private readonly textureLoader = new AtmosphereTextureLoader()
   private readonly inertialToECEFMatrix = new THREE.Matrix4()
   private readonly baseSolarIrradiance = new THREE.Vector3()
   private readonly baseRayleighScattering = new THREE.Vector3()
@@ -340,21 +338,29 @@ export class AtmosphereManager {
       this.skyLightSource.irradianceTexture = textures.irradianceTexture
 
       this.loadStarsData(getTelluxAssetUrl(DEFAULT_STARS_DATA_URL))
-      this.loadCloudTexture(getTelluxAssetUrl(DEFAULT_LOCAL_WEATHER_URL), (texture) => {
+      this.textureLoader.loadCloudTexture(getTelluxAssetUrl(DEFAULT_LOCAL_WEATHER_URL), (texture) => {
         this.cloudsEffect.localWeatherTexture = texture
       })
-      this.loadCloudTexture(getTelluxAssetUrl(DEFAULT_TURBULENCE_URL), (texture) => {
+      this.textureLoader.loadCloudTexture(getTelluxAssetUrl(DEFAULT_TURBULENCE_URL), (texture) => {
         this.cloudsEffect.turbulenceTexture = texture
       })
-      this.loadData3DTexture(getTelluxAssetUrl(DEFAULT_SHAPE_URL), CLOUD_SHAPE_TEXTURE_SIZE, (texture) => {
-        this.cloudsEffect.shapeTexture = texture
-      })
-      this.loadData3DTexture(getTelluxAssetUrl(DEFAULT_SHAPE_DETAIL_URL), CLOUD_SHAPE_DETAIL_TEXTURE_SIZE, (texture) => {
-        this.cloudsEffect.shapeDetailTexture = texture
-      })
+      this.textureLoader.loadData3DTexture(
+        getTelluxAssetUrl(DEFAULT_SHAPE_URL),
+        CLOUD_SHAPE_TEXTURE_SIZE,
+        (texture) => {
+          this.cloudsEffect.shapeTexture = texture
+        }
+      )
+      this.textureLoader.loadData3DTexture(
+        getTelluxAssetUrl(DEFAULT_SHAPE_DETAIL_URL),
+        CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
+        (texture) => {
+          this.cloudsEffect.shapeDetailTexture = texture
+        }
+      )
       this.loadSTBNTexture(getTelluxAssetUrl(DEFAULT_STBN_URL))
     } catch (error) {
-      this.warnTextureLoadFailure('precomputed atmosphere textures', error)
+      this.textureLoader.warnLoadFailure('precomputed atmosphere textures', error)
     }
   }
 
@@ -362,7 +368,7 @@ export class AtmosphereManager {
     if (this.isDisposed) return
 
     this.isDisposed = true
-    this.textureAbortController.abort()
+    this.textureLoader.dispose()
     this.cloudsEffect.events.removeEventListener('change', this.handleCloudsChange)
     this.clearMaterialEnvironment()
     this.removeLightSourcesFromScene()
@@ -371,7 +377,6 @@ export class AtmosphereManager {
     this.texturesGenerator.dispose({ textures: true })
     this.materialEnvironmentTarget.dispose()
     this.materialEnvironmentGenerator.dispose()
-    this.loadedTextures.forEach((texture) => texture.dispose())
   }
 
   private applyLightingMode(mode: AtmosphereLightingMode, sunLight: boolean, skyLight: boolean) {
@@ -739,106 +744,19 @@ export class AtmosphereManager {
     return getStarsMaterialUniform(this.starsMaterial, name)
   }
 
-  private loadCloudTexture(url: string, applyTexture: TextureApplyCallback<THREE.Texture>) {
-    const loader = new THREE.TextureLoader()
-    loader.load(
-      url,
-      (texture) => {
-        if (this.isDisposed) {
-          texture.dispose()
-          return
-        }
-
-        texture.minFilter = THREE.LinearMipMapLinearFilter
-        texture.magFilter = THREE.LinearFilter
-        texture.wrapS = THREE.RepeatWrapping
-        texture.wrapT = THREE.RepeatWrapping
-        texture.colorSpace = THREE.NoColorSpace
-        texture.needsUpdate = true
-        this.loadedTextures.push(texture)
-        applyTexture(texture)
-      },
-      undefined,
-      (error) => {
-        this.warnTextureLoadFailure(url, error)
-      }
-    )
-  }
-
-  private async loadData3DTexture(url: string, size: number, applyTexture: TextureApplyCallback<THREE.Data3DTexture>) {
-    try {
-      const response = await fetch(url, { signal: this.textureAbortController.signal })
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ${response.statusText}`)
-      }
-
-      const buffer = await response.arrayBuffer()
-      if (this.isDisposed) return
-
-      const texture = new THREE.Data3DTexture(new Uint8Array(buffer), size, size, size)
-      texture.format = THREE.RedFormat
-      texture.minFilter = THREE.LinearFilter
-      texture.magFilter = THREE.LinearFilter
-      texture.wrapS = THREE.RepeatWrapping
-      texture.wrapT = THREE.RepeatWrapping
-      texture.wrapR = THREE.RepeatWrapping
-      texture.colorSpace = THREE.NoColorSpace
-      texture.needsUpdate = true
-      this.loadedTextures.push(texture)
-      applyTexture(texture)
-    } catch (error) {
-      if (this.isAbortError(error)) return
-      this.warnTextureLoadFailure(url, error)
-    }
-  }
-
   private loadSTBNTexture(url: string) {
-    new STBNLoader().load(
-      url,
-      (texture) => {
-        if (this.isDisposed) {
-          texture.dispose()
-          return
-        }
-
-        this.loadedTextures.push(texture)
-        this.cloudsEffect.stbnTexture = texture
-        this.aerialPerspectiveEffect.stbnTexture = texture
-      },
-      undefined,
-      (error) => {
-        this.warnTextureLoadFailure(url, error)
-      }
-    )
+    this.textureLoader.loadSTBNTexture(url, (texture) => {
+      this.cloudsEffect.stbnTexture = texture
+      this.aerialPerspectiveEffect.stbnTexture = texture
+    })
   }
 
-  private async loadStarsData(url: string) {
-    try {
-      const response = await fetch(url, { signal: this.textureAbortController.signal })
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ${response.statusText}`)
-      }
-
-      const buffer = await response.arrayBuffer()
-      if (this.isDisposed) return
-
+  private loadStarsData(url: string) {
+    this.textureLoader.loadBuffer(url, (buffer) => {
       const previousGeometry = this.stars.geometry
       this.stars.geometry = new StarsGeometry(buffer)
       previousGeometry.dispose()
-    } catch (error) {
-      if (this.isAbortError(error)) return
-      this.warnTextureLoadFailure(url, error)
-    }
-  }
-
-  private isAbortError(error: unknown) {
-    return error instanceof DOMException && error.name === 'AbortError'
-  }
-
-  private warnTextureLoadFailure(label: string, error: unknown) {
-    if (this.isDisposed) return
-
-    console.warn(`Tellux atmosphere texture load failed: ${label}`, error)
+    })
   }
 }
 

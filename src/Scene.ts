@@ -1,20 +1,20 @@
 ﻿import * as THREE from 'three'
 import {
-  AtmosphereSceneControls,
-  CloudSceneControls,
-  PostProcessControls,
-  SurfaceSceneControls,
+  AtmosphereSettings,
+  CloudSettings,
+  PostProcessSettings,
+  SurfaceSettings,
   type AtmosphereStateApplier,
   type CloudStateApplier,
   type ResolvedSceneOptions
-} from './scene/SceneControls'
+} from './scene/SceneSettings'
 
 /**
- * 场景级控制项和底层 Three.js 场景。
+ * 场景级运行时设置和底层 Three.js 场景。
  *
  * 通常通过 {@link Viewer.scene} 访问。
  *
- * Scene-level controls and the underlying Three.js scene.
+ * Scene-level runtime settings and the underlying Three.js scene.
  *
  * Access this through {@link Viewer.scene}.
  */
@@ -26,29 +26,29 @@ export class Scene {
    */
   readonly threeScene = new THREE.Scene()
   /**
-   * 大气、天空和光照控制项。
+   * 大气、天空和光照运行时设置。
    *
-   * Atmosphere, sky, and lighting controls.
+   * Atmosphere, sky, and lighting runtime settings.
    */
-  readonly atmosphere: AtmosphereSceneControls
+  readonly atmosphere: AtmosphereSettings
   /**
-   * 体积云控制项。
+   * 体积云运行时设置。
    *
-   * Volumetric cloud controls.
+   * Volumetric cloud runtime settings.
    */
-  readonly clouds: CloudSceneControls
+  readonly clouds: CloudSettings
   /**
-   * 地表渲染控制项。
+   * 地表渲染运行时设置。
    *
-   * Surface rendering controls.
+   * Surface rendering runtime settings.
    */
-  readonly surface: SurfaceSceneControls
+  readonly surface: SurfaceSettings
   /**
-   * 后处理阶段控制项。
+   * 后处理阶段运行时设置。
    *
-   * Post-processing stage controls.
+   * Post-processing stage runtime settings.
    */
-  readonly postProcess: PostProcessControls
+  readonly postProcess: PostProcessSettings
 
   private readonly fallbackAmbientLightSource: THREE.AmbientLight
 
@@ -60,24 +60,24 @@ export class Scene {
     onSurfaceMaterialModeChange: () => void
   ) {
     this.fallbackAmbientLightSource = new THREE.AmbientLight(0xffffff, 0)
-    this.atmosphere = new AtmosphereSceneControls(
+    this.atmosphere = new AtmosphereSettings(
       options.atmosphere,
       this.fallbackAmbientLightSource,
       applyAtmosphereState,
       onEffectsChange,
       onSurfaceMaterialModeChange
     )
-    this.clouds = new CloudSceneControls(options.clouds, applyCloudsState, onEffectsChange)
-    this.surface = new SurfaceSceneControls(options.surface, onSurfaceMaterialModeChange)
-    this.postProcess = new PostProcessControls(options.postProcess, onEffectsChange)
+    this.clouds = new CloudSettings(options.clouds, applyCloudsState, onEffectsChange)
+    this.surface = new SurfaceSettings(options.surface, onSurfaceMaterialModeChange)
+    this.postProcess = new PostProcessSettings(options.postProcess, onEffectsChange)
     this.threeScene.add(this.fallbackAmbientLightSource)
   }
 
   /**
-   * 将已缓存的场景控制项同步到底层大气和云效果。
+   * 将已缓存的场景运行时设置同步到底层大气和云效果。
    *
-   * Synchronizes cached scene controls to the underlying atmosphere and cloud
-   * effects.
+   * Synchronizes cached scene runtime settings to the underlying atmosphere
+   * and cloud effects.
    */
   syncRuntimeEffects() {
     this.atmosphere.apply()
@@ -95,5 +95,5 @@ export class Scene {
   }
 }
 
-export type { ResolvedSceneOptions } from './scene/SceneControls'
+export type { ResolvedSceneOptions } from './scene/SceneSettings'
 
