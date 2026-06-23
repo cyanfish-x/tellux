@@ -1,28 +1,29 @@
-import tellux from '../src'
+import tellux from "../src"
 
 const HERO_CLOCK_TIME = new Date(1780747337456)
 const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? '1'
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ''
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 const arcgisWorldImageryUrl =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
-tellux.baseUrl = '/tellux/'
+tellux.baseUrl = "/tellux/"
 
-const nav = document.querySelector('.portal-nav')
-const docsLink = document.querySelector<HTMLAnchorElement>('[data-docs-link]')
-const globeContainer = document.querySelector('#portal-globe-viewer')
+const nav = document.querySelector(".portal-nav")
+const docsLink = document.querySelector<HTMLAnchorElement>("[data-docs-link]")
+const globeContainer = document.querySelector("#portal-globe-viewer")
 
 const getDocsUrl = () => {
   const isLocalExamplesDev =
-    (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') &&
-    window.location.port === '5173'
+    (window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "localhost") &&
+    window.location.port === "5173"
 
   if (isLocalExamplesDev) {
-    return 'http://127.0.0.1:5174/docs/'
+    return "http://127.0.0.1:5174/docs/"
   }
 
-  return new URL('./docs/', window.location.href).toString()
+  return new URL("./docs/", window.location.href).toString()
 }
 
 if (docsLink) {
@@ -31,17 +32,17 @@ if (docsLink) {
 
 if (nav instanceof HTMLElement) {
   const updateNavigationSurface = () => {
-    nav.toggleAttribute('data-scrolled', window.scrollY > 24)
+    nav.toggleAttribute("data-scrolled", window.scrollY > 24)
   }
 
   updateNavigationSurface()
-  window.addEventListener('scroll', updateNavigationSurface, { passive: true })
+  window.addEventListener("scroll", updateNavigationSurface, { passive: true })
 }
 
 document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((link) => {
-  link.addEventListener('click', (event) => {
-    const targetId = link.getAttribute('href')
-    if (!targetId || targetId === '#') {
+  link.addEventListener("click", (event) => {
+    const targetId = link.getAttribute("href")
+    if (!targetId || targetId === "#") {
       return
     }
 
@@ -51,31 +52,31 @@ document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((link) => {
     }
 
     event.preventDefault()
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    target.scrollIntoView({ behavior: "smooth", block: "start" })
   })
 })
 
 if (globeContainer instanceof HTMLElement) {
   const viewer = new tellux.Viewer(globeContainer, {
-    dracoDecoderPath: '/draco/gltf/',
+    dracoDecoderPath: "/draco/gltf/",
     terrain: DEFAULT_ION_TOKEN
       ? {
-          type: 'cesium-ion',
+          type: "cesium-ion",
           assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
           apiToken: DEFAULT_ION_TOKEN,
           tileLoading: {
-            enableTileSplitting: true
-          }
+            enableTileSplitting: true,
+          },
         }
       : undefined,
     layers: [
       {
         source: {
-          type: 'xyz',
+          type: "xyz",
           url: arcgisWorldImageryUrl,
-          levels: 19
-        }
-      }
+          levels: 19,
+        },
+      },
     ],
     camera: {
       latitude: 22.43553679586459,
@@ -84,23 +85,23 @@ if (globeContainer instanceof HTMLElement) {
       heading: -34.957906111869555,
       pitch: -39.21757772672109,
       roll: 0.021620386152015957,
-      far: 8000000
+      far: 8000000,
     },
     scene: {
       atmosphere: {
-        show: true
+        show: true,
       },
       clouds: {
         show: true,
-        coverage: 0.35
+        coverage: 0.35,
       },
       postProcess: {
         lensFlare: true,
         smaa: true,
-        toneMappingExposure: 8
-      }
+        toneMappingExposure: 8,
+      },
     },
-    resolutionScale: Math.min(window.devicePixelRatio, 1.5)
+    resolutionScale: Math.min(window.devicePixelRatio, 1.5),
   })
 
   viewer.scene.clouds.layerAltitude = 1500
@@ -110,7 +111,7 @@ if (globeContainer instanceof HTMLElement) {
   ;(window as any).viewer = viewer
   ;(window as any).portalViewer = viewer
 
-  window.addEventListener('beforeunload', () => {
+  window.addEventListener("beforeunload", () => {
     viewer.destroy()
   })
 }

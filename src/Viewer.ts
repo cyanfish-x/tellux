@@ -894,7 +894,7 @@ export class Viewer {
           albedoScale: options?.atmosphere?.lighting?.albedoScale ?? 1
         },
         night: {
-          enabled: options?.atmosphere?.night?.enabled ?? true,
+          enabled: options?.atmosphere?.night?.enabled ?? false,
           moonLight: options?.atmosphere?.night?.moonLight ?? true,
           ambientLight: options?.atmosphere?.night?.ambientLight ?? true,
           color: options?.atmosphere?.night?.color ?? 0x9bbcff,
