@@ -1,17 +1,19 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { TilesRenderer } from '3d-tiles-renderer'
 import { Camera } from './Camera'
 import { Clock } from './Clock'
-import { CAMERA_FRAME, DEG2RAD, RAD2DEG } from './constants'
+import { CAMERA_FRAME, DEG2RAD } from './constants'
 import { telluxConfig } from './config'
+import { TargetFlightController } from './controls/TargetFlightController'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
+import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
 import type { ThreeRendererWithEffects } from './effects'
 import { LayerManager } from './LayerManager'
 import { ModelManager } from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
+import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { CartographicPicker } from './sampling/CartographicPicker'
 import { HeightSampler } from './sampling/HeightSampler'
@@ -29,7 +31,6 @@ import {
 import { WidgetManager } from './widgets/WidgetManager'
 import type {
   AddModelOptions,
-  AnyViewerEventListener,
   CartographicFrameOptions,
   CartographicCoordinates,
   CartographicCoordinateTuple,
@@ -47,7 +48,6 @@ import type {
   TilesetLayer,
   ViewerEventListener,
   ViewerEventMap,
-  ViewerMouseEvent,
   ViewerOptions
 } from './types'
 import type { GlobeControls } from '3d-tiles-renderer'
@@ -211,72 +211,21 @@ export class Viewer {
 
   private readonly threeCamera: THREE.PerspectiveCamera
   private readonly dracoLoader: DRACOLoader
-  private readonly rendererSize = new THREE.Vector2()
   private readonly transparentOverlayTexture: THREE.CanvasTexture
-  private readonly flyToTargetSphere = new THREE.Sphere()
-  private readonly flyToTargetBox = new THREE.Box3()
-  private readonly flyToTargetCenter = new THREE.Vector3()
-  private readonly flyToTargetDirection = new THREE.Vector3()
-  private readonly flyToTargetEast = new THREE.Vector3()
-  private readonly flyToTargetNorth = new THREE.Vector3()
-  private readonly flyToTargetUp = new THREE.Vector3()
-  private readonly flyToTargetCamera = new THREE.PerspectiveCamera()
   private readonly cameraCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
-  private readonly flyToTargetCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
-  private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
   private readonly gltfLoader: GLTFLoader
   private readonly models: ModelManager
-  private readonly resizeObserver: ResizeObserver
+  private readonly viewport: ViewportResizeManager
   private readonly atmosphere: AtmosphereManager
   private readonly postProcessing: PostProcessingManager
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
   private readonly heightSampler: HeightSampler
+  private readonly targetFlights: TargetFlightController
+  private readonly interactions: ViewerInteractionManager
   private readonly widgets: WidgetManager
   private readonly renderLoop: ViewerRenderLoop
-  private readonly handleWindowResize = () => {
-    this.resize()
-  }
-  private readonly handleCameraInteraction = () => {
-    this.camera.cancelFlight()
-  }
-  private readonly enableAdjustHeight = () => {
-    this.controls.adjustHeight = true
-    this.renderer.domElement.removeEventListener('pointerdown', this.enableAdjustHeight)
-    this.renderer.domElement.removeEventListener('wheel', this.enableAdjustHeight)
-  }
-  private createMouseEvent(type: 'click', originalEvent: MouseEvent): ViewerEventMap['click']
-  private createMouseEvent(type: 'mousemove', originalEvent: MouseEvent): ViewerEventMap['mousemove']
-  private createMouseEvent(type: ViewerMouseEvent['type'], originalEvent: MouseEvent): ViewerMouseEvent {
-    const rect = this.renderer.domElement.getBoundingClientRect()
-    const position = {
-      x: originalEvent.clientX - rect.left,
-      y: originalEvent.clientY - rect.top
-    }
-    const tilesetFeature = this.pick3DTilesFeature(position)
-
-    return {
-      type,
-      viewer: this,
-      originalEvent,
-      position,
-      cartographic: tilesetFeature?.cartographic ?? this.pickCartographic(position),
-      tilesetFeature
-    }
-  }
-  private hasEventListeners(type: keyof ViewerEventMap) {
-    return Boolean(this.eventListeners.get(type)?.size)
-  }
-  private readonly handleCanvasClick = (originalEvent: MouseEvent) => {
-    this.dispatchEvent('click', this.createMouseEvent('click', originalEvent))
-  }
-  private readonly handleCanvasMouseMove = (originalEvent: MouseEvent) => {
-    if (!this.hasEventListeners('mousemove')) return
-
-    this.dispatchEvent('mousemove', this.createMouseEvent('mousemove', originalEvent))
-  }
-
   private isDestroyed = false
   private currentResolutionScale: number
   private currentToneMappingExposure: number
@@ -351,6 +300,16 @@ export class Viewer {
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
+    this.targetFlights = new TargetFlightController({
+      camera: this.camera,
+      tilesets: this.tilesets
+    })
+    this.viewport = new ViewportResizeManager({
+      container: this.container,
+      camera: this.threeCamera,
+      renderer: this.renderer,
+      tilesets: this.tilesets
+    })
     this.camera.setView(cameraOptions)
 
     this.controls = new TelluxGlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
@@ -367,12 +326,14 @@ export class Viewer {
     })
     this.controls.enableDamping = true
     this.controls.adjustHeight = false
-    this.renderer.domElement.addEventListener('pointerdown', this.handleCameraInteraction)
-    this.renderer.domElement.addEventListener('wheel', this.handleCameraInteraction)
-    this.renderer.domElement.addEventListener('pointerdown', this.enableAdjustHeight)
-    this.renderer.domElement.addEventListener('wheel', this.enableAdjustHeight)
-    this.renderer.domElement.addEventListener('click', this.handleCanvasClick)
-    this.renderer.domElement.addEventListener('mousemove', this.handleCanvasMouseMove)
+    this.interactions = new ViewerInteractionManager({
+      viewer: this,
+      camera: this.camera,
+      controls: this.controls,
+      domElement: this.renderer.domElement,
+      pickCartographic: (position) => this.pickCartographic(position),
+      pick3DTilesFeature: (position) => this.pick3DTilesFeature(position)
+    })
 
     this.postProcessing = new PostProcessingManager(
       this.renderer,
@@ -409,11 +370,6 @@ export class Viewer {
     this.atmosphere.loadTextures()
     this.atmosphere.updateSunDirection(this.clock.currentTime)
 
-    this.resizeObserver = new ResizeObserver(() => {
-      this.resize()
-    })
-    this.resizeObserver.observe(this.container)
-    window.addEventListener('resize', this.handleWindowResize)
     this.resize()
 
     this.widgets.mount()
@@ -471,13 +427,7 @@ export class Viewer {
    * Registers a Viewer event listener.
    */
   on<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
-    let listeners = this.eventListeners.get(type)
-    if (!listeners) {
-      listeners = new Set()
-      this.eventListeners.set(type, listeners)
-    }
-
-    listeners.add(listener as AnyViewerEventListener)
+    this.interactions.on(type, listener)
     return this
   }
 
@@ -487,7 +437,7 @@ export class Viewer {
    * Removes a Viewer event listener.
    */
   off<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
-    this.eventListeners.get(type)?.delete(listener as AnyViewerEventListener)
+    this.interactions.off(type, listener)
     return this
   }
 
@@ -569,17 +519,7 @@ export class Viewer {
    * loaded yet, Viewer runs the flight after the root tileset finishes loading.
    */
   flyToTarget(target: FlyToTargetTarget, options: FlyToTargetOptions = {}) {
-    if (this.applyTargetFlight(target, options)) return this
-
-    if (target instanceof TilesRenderer) {
-      const handleRootLoaded = () => {
-        target.removeEventListener('load-root-tileset', handleRootLoaded)
-        this.applyTargetFlight(target, options)
-      }
-
-      target.addEventListener('load-root-tileset', handleRootLoaded)
-    }
-
+    this.targetFlights.flyToTarget(target, options)
     return this
   }
 
@@ -732,16 +672,7 @@ export class Viewer {
    * Resizes the renderer and camera to match the container.
    */
   resize() {
-    const { clientWidth, clientHeight } = this.container
-    if (!clientWidth || !clientHeight) return
-
-    this.renderer.getSize(this.rendererSize)
-    if (this.rendererSize.width === clientWidth && this.rendererSize.height === clientHeight) return
-
-    this.threeCamera.aspect = clientWidth / clientHeight
-    this.threeCamera.updateProjectionMatrix()
-    this.renderer.setSize(clientWidth, clientHeight)
-    this.tilesets.resize()
+    this.viewport.resize()
   }
 
   /**
@@ -755,15 +686,8 @@ export class Viewer {
     this.isDestroyed = true
     this.camera.cancelFlight()
     this.renderLoop.dispose()
-    window.removeEventListener('resize', this.handleWindowResize)
-    this.resizeObserver.disconnect()
-    this.renderer.domElement.removeEventListener('pointerdown', this.handleCameraInteraction)
-    this.renderer.domElement.removeEventListener('wheel', this.handleCameraInteraction)
-    this.renderer.domElement.removeEventListener('pointerdown', this.enableAdjustHeight)
-    this.renderer.domElement.removeEventListener('wheel', this.enableAdjustHeight)
-    this.renderer.domElement.removeEventListener('click', this.handleCanvasClick)
-    this.renderer.domElement.removeEventListener('mousemove', this.handleCanvasMouseMove)
-    this.clearEventListeners()
+    this.viewport.dispose()
+    this.interactions.dispose()
     this.models.dispose()
     this.widgets.dispose()
     this.heightSampler.dispose()
@@ -842,120 +766,6 @@ export class Viewer {
       latitude: input.latitude,
       height: input.height
     }
-  }
-
-  private applyTargetFlight(target: FlyToTargetTarget, options: FlyToTargetOptions) {
-    const resolvedTarget = this.resolveFlyToTarget(target)
-    if (!resolvedTarget) return false
-
-    const ellipsoid = this.tilesets.tileset.ellipsoid
-    const targetCartographic = ellipsoid.getPositionToCartographic(
-      resolvedTarget.center,
-      this.flyToTargetCartographicScratch
-    )
-    const distance = options.distance ?? Math.max(resolvedTarget.radius * 2.8, 500)
-    const heading = options.heading ?? 0
-    const pitch = options.pitch ?? -30
-    const roll = options.roll ?? 0
-
-    ellipsoid.getEastNorthUpAxes(
-      targetCartographic.lat,
-      targetCartographic.lon,
-      this.flyToTargetEast,
-      this.flyToTargetNorth,
-      this.flyToTargetUp
-    )
-
-    this.flyToTargetDirection
-      .copy(this.flyToTargetEast)
-      .multiplyScalar(Math.sin(heading * DEG2RAD) * Math.cos(pitch * DEG2RAD))
-      .addScaledVector(this.flyToTargetNorth, Math.cos(heading * DEG2RAD) * Math.cos(pitch * DEG2RAD))
-      .addScaledVector(this.flyToTargetUp, Math.sin(pitch * DEG2RAD))
-      .normalize()
-
-    this.flyToTargetCamera.position
-      .copy(resolvedTarget.center)
-      .addScaledVector(this.flyToTargetDirection, -Math.max(distance, 1))
-    this.flyToTargetCamera.up.copy(this.flyToTargetUp)
-    this.flyToTargetCamera.lookAt(resolvedTarget.center)
-    this.flyToTargetCamera.rotateZ(roll * DEG2RAD)
-    this.flyToTargetCamera.updateMatrixWorld(true)
-
-    const cameraCartographic = ellipsoid.getCartographicFromObjectFrame(
-      this.flyToTargetCamera.matrixWorld,
-      this.flyToTargetCartographicScratch,
-      CAMERA_FRAME
-    )
-
-    this.camera.flyTo({
-      destination: {
-        latitude: cameraCartographic.lat * RAD2DEG,
-        longitude: cameraCartographic.lon * RAD2DEG,
-        height: cameraCartographic.height
-      },
-      orientation: {
-        heading: cameraCartographic.azimuth * RAD2DEG,
-        pitch: cameraCartographic.elevation * RAD2DEG,
-        roll: cameraCartographic.roll * RAD2DEG
-      },
-      duration: options.duration,
-      maximumHeight: options.maximumHeight,
-      complete: options.complete,
-      cancel: options.cancel,
-      easingFunction: options.easingFunction
-    })
-    return true
-  }
-
-  private resolveFlyToTarget(target: FlyToTargetTarget) {
-    if (target instanceof TilesRenderer) {
-      target.group.updateMatrixWorld(true)
-      if (!target.getBoundingBox(this.flyToTargetBox)) return null
-
-      this.flyToTargetCenter
-        .copy(this.flyToTargetBox.getCenter(this.flyToTargetCenter))
-        .applyMatrix4(target.group.matrixWorld)
-      this.flyToTargetBox.getBoundingSphere(this.flyToTargetSphere)
-      return {
-        center: this.flyToTargetCenter,
-        radius: Math.max(this.flyToTargetSphere.radius * target.group.matrixWorld.getMaxScaleOnAxis(), 1)
-      }
-    }
-
-    if (target instanceof THREE.Object3D) {
-      target.updateMatrixWorld(true)
-      this.flyToTargetBox.setFromObject(target)
-      if (this.flyToTargetBox.isEmpty()) return null
-
-      this.flyToTargetBox.getCenter(this.flyToTargetCenter)
-      this.flyToTargetBox.getBoundingSphere(this.flyToTargetSphere)
-      return {
-        center: this.flyToTargetCenter,
-        radius: Math.max(this.flyToTargetSphere.radius, 1)
-      }
-    }
-
-    this.tilesets.tileset.ellipsoid.getCartographicToPosition(
-      target.latitude * DEG2RAD,
-      target.longitude * DEG2RAD,
-      target.height,
-      this.flyToTargetCenter
-    )
-    return {
-      center: this.flyToTargetCenter,
-      radius: 1
-    }
-  }
-
-  private dispatchEvent<T extends keyof ViewerEventMap>(type: T, event: ViewerEventMap[T]) {
-    this.eventListeners.get(type)?.forEach((listener) => {
-      listener(event)
-    })
-  }
-
-  private clearEventListeners() {
-    this.eventListeners.forEach((listeners) => listeners.clear())
-    this.eventListeners.clear()
   }
 
   private syncSurfaceMaterialMode() {
