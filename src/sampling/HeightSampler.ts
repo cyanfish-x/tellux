@@ -224,10 +224,14 @@ export class HeightSampler {
     return this.hasPendingMostDetailedSampling
   }
 
-  dispose() {
+  cancelMostDetailedSampling() {
     while (this.heightSamplingJobs.length > 0) {
       this.cancelHeightSamplingJob(this.heightSamplingJobs[0])
     }
+  }
+
+  dispose() {
+    this.cancelMostDetailedSampling()
     this.terrainSampler.clear()
   }
 

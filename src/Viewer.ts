@@ -316,6 +316,7 @@ export class Viewer {
     this.syncControlsEllipsoid()
     this.layers = new LayerManager(options.layers, (layers, change) => {
       if (change.type === 'structure') {
+        this.cancelMostDetailedHeightSampling()
         this.tilesets.setImageryLayers(layers)
         this.syncControlsEllipsoid()
       } else if (change.type === 'order') {
@@ -534,6 +535,7 @@ export class Viewer {
    * Pass `null` to remove the current terrain and return to the non-terrain mode.
    */
   setTerrain(terrain: ViewerOptions['terrain'] | null) {
+    this.cancelMostDetailedHeightSampling()
     this.tilesets.setTerrain(terrain)
     return this
   }
@@ -551,7 +553,7 @@ export class Viewer {
    * imagery overlay pipeline.
    */
   load3DTileset(options: Load3DTilesetOptions): TilesetLayer {
-    return this.tilesets.load3DTileset(options)
+    return this.wrapTilesetLayer(this.tilesets.load3DTileset(options))
   }
 
   /**
@@ -569,6 +571,7 @@ export class Viewer {
    * Removes a loaded 3D Tiles layer by id.
    */
   remove3DTileset(id: string) {
+    this.cancelMostDetailedHeightSampling()
     return this.tilesets.remove3DTileset(id)
   }
 
@@ -776,6 +779,27 @@ export class Viewer {
     const contentMaterialMode = resolveSceneContentMaterialMode(this.scene.atmosphere.lighting.mode)
     this.tilesets.setSceneTilesetMaterialMode(contentMaterialMode)
     this.models.setMaterialMode(resolveModelMaterialMode(this.scene.atmosphere.lighting.mode))
+  }
+
+  private cancelMostDetailedHeightSampling() {
+    this.heightSampler.cancelMostDetailedSampling()
+  }
+
+  private wrapTilesetLayer(layer: TilesetLayer): TilesetLayer {
+    return {
+      id: layer.id,
+      tileset: layer.tileset,
+      get show() {
+        return layer.show
+      },
+      set show(value: boolean) {
+        layer.show = value
+      },
+      remove: () => {
+        this.cancelMostDetailedHeightSampling()
+        layer.remove()
+      }
+    }
   }
 
   private static resolveContainer(container: HTMLElement | string) {
