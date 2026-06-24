@@ -155,8 +155,8 @@ const chinaProvinceOverlay: ImageryLayerOptions["source"] = {
 
 const chinaProvinceStyle: ImageryLayerOptions["style"] = {
   fill: "rgba(20, 184, 166, 0.14)",
-  stroke: "#5eead4",
-  strokeWidth: 1.4,
+  stroke: "#ff0000",
+  strokeWidth: 3,
   getStyle(_feature, properties) {
     if (properties?.province_type === "直辖市") {
       return {

@@ -92,7 +92,7 @@ if (globeContainer instanceof HTMLElement) {
         show: true,
       },
       clouds: {
-        show: true,
+        show: false,
         coverage: 0.35,
       },
       postProcess: {
