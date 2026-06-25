@@ -102,6 +102,7 @@ export {
   type WMSImagerySourceOptions,
   type XYZImagerySourceOptions
 } from './Viewer'
+export { telluxAssetFileNames, telluxAssetUrls, type TelluxAssetName } from './assets'
 
 /**
  * Tellux 库入口对象。

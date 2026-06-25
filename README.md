@@ -352,9 +352,12 @@ new Viewer(container, {
 
 ## 静态资源目录
 
-Tellux 默认会从上游资源地址加载云、STBN 和星空资源。内网部署时，可以把
+Tellux 随 npm 包内置云、STBN 和星空资源。使用 Vite、Webpack、Rollup 等现代打包器时，直接
+`new tellux.Viewer(...)` 即可，打包器会把这些资源复制到应用构建产物中。
+
+如果你的项目需要从 CDN、内网静态目录或非打包环境加载资源，可以把
 `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`
-放到自己的静态目录，并在创建 Viewer 前设置 `tellux.baseUrl`：
+放到自己的静态目录，并在创建 Viewer 前设置 `tellux.baseUrl` 覆盖默认资源地址：
 
 ```ts
 import tellux from 'tellux'
@@ -362,6 +365,14 @@ import tellux from 'tellux'
 tellux.baseUrl = '/assets/tellux/'
 
 new tellux.Viewer(container)
+```
+
+也可以按需读取 Tellux 默认资源 URL：
+
+```ts
+import { telluxAssetUrls } from 'tellux/assets'
+
+console.log(telluxAssetUrls.stbn)
 ```
 
 ## API

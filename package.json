@@ -18,10 +18,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./assets": {
+      "types": "./dist/assets.d.ts",
+      "import": "./dist/assets.js"
     }
   },
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.types.json",
+    "build": "vite build && node actions/copy-assets.js && tsc -p tsconfig.types.json",
     "build:examples": "vitepress build docs && vite build --config examples/vite.config.ts",
     "docs:build": "vitepress build docs",
     "docs:dev": "vitepress dev docs --host 127.0.0.1 --port 5174 --strictPort",

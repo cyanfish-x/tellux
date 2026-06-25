@@ -3,15 +3,10 @@ import {
   CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
   CLOUD_SHAPE_TEXTURE_SIZE,
   CloudsEffect,
-  type CloudsEffectChangeEvent,
-  DEFAULT_LOCAL_WEATHER_URL,
-  DEFAULT_SHAPE_DETAIL_URL,
-  DEFAULT_SHAPE_URL,
-  DEFAULT_TURBULENCE_URL
+  type CloudsEffectChangeEvent
 } from '@takram/three-clouds'
 import {
   AerialPerspectiveEffect,
-  DEFAULT_STARS_DATA_URL,
   PrecomputedTexturesGenerator,
   SkyLightProbe,
   StarsGeometry,
@@ -21,7 +16,6 @@ import {
   getMoonDirectionECEF,
   getSunDirectionECEF
 } from '@takram/three-atmosphere'
-import { DEFAULT_STBN_URL } from '@takram/three-geospatial'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { getTelluxAssetUrl } from '../config'
 import { disposeObject } from '../models/disposeObject'
@@ -337,28 +331,28 @@ export class AtmosphereManager {
       this.moonLightSource.transmittanceTexture = textures.transmittanceTexture
       this.skyLightSource.irradianceTexture = textures.irradianceTexture
 
-      this.loadStarsData(getTelluxAssetUrl(DEFAULT_STARS_DATA_URL))
-      this.textureLoader.loadCloudTexture(getTelluxAssetUrl(DEFAULT_LOCAL_WEATHER_URL), (texture) => {
+      this.loadStarsData(getTelluxAssetUrl('stars'))
+      this.textureLoader.loadCloudTexture(getTelluxAssetUrl('localWeather'), (texture) => {
         this.cloudsEffect.localWeatherTexture = texture
       })
-      this.textureLoader.loadCloudTexture(getTelluxAssetUrl(DEFAULT_TURBULENCE_URL), (texture) => {
+      this.textureLoader.loadCloudTexture(getTelluxAssetUrl('turbulence'), (texture) => {
         this.cloudsEffect.turbulenceTexture = texture
       })
       this.textureLoader.loadData3DTexture(
-        getTelluxAssetUrl(DEFAULT_SHAPE_URL),
+        getTelluxAssetUrl('shape'),
         CLOUD_SHAPE_TEXTURE_SIZE,
         (texture) => {
           this.cloudsEffect.shapeTexture = texture
         }
       )
       this.textureLoader.loadData3DTexture(
-        getTelluxAssetUrl(DEFAULT_SHAPE_DETAIL_URL),
+        getTelluxAssetUrl('shapeDetail'),
         CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
         (texture) => {
           this.cloudsEffect.shapeDetailTexture = texture
         }
       )
-      this.loadSTBNTexture(getTelluxAssetUrl(DEFAULT_STBN_URL))
+      this.loadSTBNTexture(getTelluxAssetUrl('stbn'))
     } catch (error) {
       this.textureLoader.warnLoadFailure('precomputed atmosphere textures', error)
     }

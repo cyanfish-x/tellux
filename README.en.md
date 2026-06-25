@@ -355,8 +355,12 @@ new Viewer(container, {
 
 ## Static asset directory
 
-Tellux loads cloud, STBN, and star field assets from upstream asset URLs by default. For intranet deployments,
-put `local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, `stbn.bin`, and `stars.bin` in your
+Tellux ships cloud, STBN, and star field assets with the npm package. When using modern bundlers such as
+Vite, Webpack, or Rollup, `new tellux.Viewer(...)` works directly and the bundler copies these assets into
+your app build output.
+
+If your app needs to load assets from a CDN, intranet static directory, or non-bundled environment, put
+`local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, `stbn.bin`, and `stars.bin` in your
 own static directory and set `tellux.baseUrl` before creating the Viewer:
 
 ```ts
@@ -365,6 +369,14 @@ import tellux from 'tellux'
 tellux.baseUrl = '/assets/tellux/'
 
 new tellux.Viewer(container)
+```
+
+You can also read Tellux default asset URLs directly:
+
+```ts
+import { telluxAssetUrls } from 'tellux/assets'
+
+console.log(telluxAssetUrls.stbn)
 ```
 
 ## API
