@@ -1765,6 +1765,45 @@ body.sandcastle-page {
   background: #03060b;
 }
 
+.sandcastle-preview-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: #dff8f3;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  background:
+    radial-gradient(circle at center, rgba(45, 245, 195, 0.14), transparent 32%),
+    rgba(3, 6, 11, 0.82);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.sandcastle-preview-panel[data-loading] .sandcastle-preview-loading {
+  opacity: 1;
+}
+
+.sandcastle-preview-loading__ring {
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(215, 224, 233, 0.24);
+  border-top-color: #2df5c3;
+  border-radius: 50%;
+  animation: sandcastle-preview-loading-spin 780ms linear infinite;
+}
+
+@keyframes sandcastle-preview-loading-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
 .sandcastle-preview-panel:fullscreen {
   width: 100vw;
   height: 100vh;

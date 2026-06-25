@@ -15,6 +15,7 @@ export interface SandcastleExample {
 export type SandcastleEditorPane = "javascript" | "html"
 
 export interface SandcastleRunPayload {
+  runId: string
   html: string
   javascript: string
   compiledJavascript: string
@@ -24,16 +25,19 @@ export type SandboxLogLevel = "log" | "info" | "warn" | "error"
 
 export interface SandboxLogMessage {
   type: "sandbox-log"
+  runId?: string
   level: SandboxLogLevel
   values: string[]
 }
 
 export interface SandboxReadyMessage {
   type: "sandbox-ready"
+  runId?: string
 }
 
 export interface SandboxErrorMessage {
   type: "sandbox-error"
+  runId?: string
   message: string
 }
 

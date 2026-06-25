@@ -28,10 +28,11 @@ function serializeConsoleValue(value: unknown) {
   }
 }
 
-function postLog(level: SandboxLogLevel, values: unknown[]) {
+function postLog(runId: string | undefined, level: SandboxLogLevel, values: unknown[]) {
   window.parent.postMessage(
     {
       type: "sandbox-log",
+      runId,
       level,
       values: values.map(serializeConsoleValue),
     },
@@ -39,7 +40,7 @@ function postLog(level: SandboxLogLevel, values: unknown[]) {
   )
 }
 
-function installConsoleBridge() {
+function installConsoleBridge(runId?: string) {
   const original = {
     log: console.log.bind(console),
     info: console.info.bind(console),
@@ -50,7 +51,7 @@ function installConsoleBridge() {
   ;(["log", "info", "warn", "error"] as const).forEach((level) => {
     console[level] = (...values: unknown[]) => {
       original[level](...values)
-      postLog(level, values)
+      postLog(runId, level, values)
     }
   })
 }
@@ -156,7 +157,7 @@ function executeExampleScript(source: string) {
 
 async function runExample(payload: SandcastleRunPayload) {
   applyHtml(payload.html)
-  installConsoleBridge()
+  installConsoleBridge(payload.runId)
   removeOriginalModuleScripts()
   executeExampleScript(payload.compiledJavascript)
 }
@@ -164,20 +165,26 @@ async function runExample(payload: SandcastleRunPayload) {
 void main()
 
 async function main() {
-  window.parent.postMessage({ type: "sandbox-ready" }, window.location.origin)
-
+  const params = new URLSearchParams(window.location.search)
+  const runId = params.get("runId") ?? undefined
+  let payload: SandcastleRunPayload | null = null
   try {
-    const payload = loadPayload()
+    payload = loadPayload()
     if (!payload) {
       throw new Error("Sandcastle run payload not found.")
     }
     await runExample(payload)
+    window.parent.postMessage(
+      { type: "sandbox-ready", runId: payload.runId },
+      window.location.origin
+    )
   } catch (error) {
     const message = error instanceof Error ? error.stack ?? error.message : String(error)
     console.error(error)
     window.parent.postMessage(
       {
         type: "sandbox-error",
+        runId: payload?.runId ?? runId,
         message,
       },
       window.location.origin

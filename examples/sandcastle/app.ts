@@ -1,6 +1,7 @@
 import * as monaco from "monaco-editor"
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker"
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker"
+import packageJson from "../../package.json"
 import {
   defaultSandcastleExample,
   getSandcastleExample,
@@ -36,6 +37,7 @@ self.MonacoEnvironment = {
 
 const STORAGE_PREFIX = "tellux:sandcastle-run:"
 const MAX_STORED_RUNS = 6
+const telluxVersion = `v${packageJson.version}`
 const root = document.querySelector("#sandcastle-root")
 
 if (!(root instanceof HTMLElement)) {
@@ -63,7 +65,7 @@ root.innerHTML = `
         <span>Tellux</span>
       </a>
       <div class="sandcastle-title">
-        <strong data-current-title></strong>
+        <strong>${telluxVersion}</strong>
       </div>
       <div class="sandcastle-actions" aria-label="示例操作">
         <a class="sandcastle-button" data-action="standalone" href="./sandcastle/runner.html" target="_blank" rel="noreferrer">Standalone</a>
@@ -111,6 +113,10 @@ root.innerHTML = `
     <section class="sandcastle-stage" aria-label="预览与控制台">
       <div class="sandcastle-preview-panel">
         <iframe class="sandcastle-preview" title="Tellux Sandcastle preview" sandbox="allow-scripts allow-same-origin"></iframe>
+        <div class="sandcastle-preview-loading" role="status" aria-live="polite" aria-hidden="true">
+          <span class="sandcastle-preview-loading__ring" aria-hidden="true"></span>
+          <span>Loading example...</span>
+        </div>
         <button class="sandcastle-preview-fullscreen" data-action="toggle-preview-fullscreen" type="button" aria-label="全屏预览" title="全屏预览">
           <svg class="sandcastle-preview-fullscreen__enter" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
             <path d="M8 3H3v5" />
@@ -172,8 +178,8 @@ const stageElement = queryRequired(".sandcastle-stage", HTMLElement)
 const previewPanel = queryRequired(".sandcastle-preview-panel", HTMLElement)
 const consoleResizer = queryRequired(".sandcastle-console-resizer", HTMLElement)
 const previewFrame = queryRequired(".sandcastle-preview", HTMLIFrameElement)
+const previewLoading = queryRequired(".sandcastle-preview-loading", HTMLElement)
 const consoleBody = queryRequired(".sandcastle-console__body", HTMLElement)
-const currentTitle = queryRequired("[data-current-title]", HTMLElement)
 const runButton = queryRequired('[data-action="run"]', HTMLButtonElement)
 const standaloneLink = queryRequired(
   '[data-action="standalone"]',
@@ -305,6 +311,7 @@ let isConsoleCollapsed = false
 let isDraggingSplitter = false
 let isDraggingConsole = false
 let consoleHeight = 150
+let activeRunId: string | null = null
 
 function getDocsUrl() {
   const isLocalExamplesServer =
@@ -404,8 +411,9 @@ async function getCompiledJavascript() {
   return output.outputFiles[0]?.text ?? models.javascript.getValue()
 }
 
-async function getCurrentPayload(): Promise<SandcastleRunPayload> {
+async function getCurrentPayload(runId: string): Promise<SandcastleRunPayload> {
   return {
+    runId,
     html: models.html.getValue(),
     javascript: models.javascript.getValue(),
     compiledJavascript: await getCompiledJavascript(),
@@ -415,7 +423,17 @@ async function getCurrentPayload(): Promise<SandcastleRunPayload> {
 function createRunnerUrl(payload: SandcastleRunPayload) {
   const key = createRunKey()
   saveRunPayload(key, payload)
-  return `./sandcastle/runner.html?run=${encodeURIComponent(key)}`
+  const params = new URLSearchParams({
+    run: key,
+    runId: payload.runId,
+  })
+  return `./sandcastle/runner.html?${params.toString()}`
+}
+
+function setPreviewLoading(isLoading: boolean) {
+  previewPanel.toggleAttribute("data-loading", isLoading)
+  previewFrame.toggleAttribute("aria-busy", isLoading)
+  previewLoading.setAttribute("aria-hidden", String(!isLoading))
 }
 
 function appendConsoleLine(level: string, values: string[]) {
@@ -555,8 +573,11 @@ async function runCurrentCode() {
   clearConsole()
   appendConsoleLine("info", ["Running example..."])
   setStandaloneEnabled(false)
+  const runId = createRunKey()
+  activeRunId = runId
+  setPreviewLoading(true)
   try {
-    const url = createRunnerUrl(await getCurrentPayload())
+    const url = createRunnerUrl(await getCurrentPayload(runId))
     previewFrame.src = url
     standaloneLink.href = url
     setStandaloneEnabled(true)
@@ -564,6 +585,10 @@ async function runCurrentCode() {
     const message =
       error instanceof Error ? error.stack ?? error.message : String(error)
     appendConsoleLine("error", [message])
+    if (activeRunId === runId) {
+      activeRunId = null
+      setPreviewLoading(false)
+    }
   }
 }
 
@@ -605,7 +630,6 @@ function selectExample(example: SandcastleExample, shouldRun = true) {
   activeExample = example
   models.javascript.setValue(example.javascript)
   models.html.setValue(example.html)
-  currentTitle.textContent = example.title
   const url = new URL(window.location.href)
   url.searchParams.set("example", example.id)
   window.history.replaceState(null, "", url)
@@ -621,7 +645,6 @@ function loadDefaultExample() {
   activeExample = null
   models.javascript.setValue(defaultSandcastleExample.javascript)
   models.html.setValue(defaultSandcastleExample.html)
-  currentTitle.textContent = "Examples"
   renderGallery(displayedExamples)
   selectPane(activePane)
   selectView("examples")
@@ -870,9 +893,20 @@ window.addEventListener("message", (event: MessageEvent<SandboxMessage>) => {
   }
   const message = event.data
   if (message.type === "sandbox-log") {
-    appendConsoleLine(message.level, message.values)
+    if (!message.runId || message.runId === activeRunId) {
+      appendConsoleLine(message.level, message.values)
+    }
+  } else if (message.type === "sandbox-ready") {
+    if (!message.runId || message.runId === activeRunId) {
+      activeRunId = null
+      setPreviewLoading(false)
+    }
   } else if (message.type === "sandbox-error") {
     appendConsoleLine("error", [message.message])
+    if (!message.runId || message.runId === activeRunId) {
+      activeRunId = null
+      setPreviewLoading(false)
+    }
   }
 })
 
