@@ -25,9 +25,11 @@
 
 `examples/public/` 是示例站点的静态资源根目录：
 
-- `examples/public/tellux/` 存放 Tellux 运行资源，例如云、STBN、星空纹理等。
 - `examples/public/draco/` 存放 Draco 解码器资源。
 - `examples/public/docs/` 是 VitePress 文档的构建输出目录。
+
+Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模块进入 Vite 依赖图，不再通过
+`examples/public/tellux/` 和 `tellux.baseUrl = '/tellux/'` 作为示例默认路径。
 
 ## 项目主页
 
@@ -133,7 +135,7 @@ runner 的 iframe 使用 `sandbox="allow-scripts allow-same-origin"`。它隔离
 
 新增示例页面时，优先保证独立 HTML 页面本身可以直接运行；Sandcastle 只是复用这些独立页面和脚本源码。
 
-示例资源路径应以 `examples/public/` 的静态服务规则为准。Tellux 自身静态资源优先放到 `examples/public/tellux/`，并通过 `tellux.baseUrl = '/tellux/'` 使用。
+普通示例不要默认设置 `tellux.baseUrl`。Tellux 自身静态资源应优先使用包内置资源；只有专门验证 CDN、内网静态目录或非打包环境的资源覆盖路径时，才把资源放到 `examples/public/tellux/` 并临时设置 `tellux.baseUrl = '/tellux/'`。
 
 示例源码是面向用户的 API 教程，不要为了减少重复把关键 Viewer 配置隐藏到默认 helper 里。比如默认 Cesium Ion 地形配置应在每个示例的 `new tellux.Viewer(...)` 附近显式写出 `terrain: { type: 'cesium-ion', assetId, apiToken, ... }` 的形状，让用户打开单个示例文件时能直接看懂配置结构。公共 `examples/shared.ts` 只适合放通用资源 URL、简单展示文案等不会遮蔽核心 API 的内容。
 

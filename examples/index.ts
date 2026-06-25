@@ -7,8 +7,6 @@ const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 const arcgisWorldImageryUrl =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
-tellux.baseUrl = "/tellux/"
-
 const nav = document.querySelector(".portal-nav")
 const docsLink = document.querySelector<HTMLAnchorElement>("[data-docs-link]")
 const globeContainer = document.querySelector("#portal-globe-viewer")

@@ -2,8 +2,6 @@ import tellux from "../src"
 
 export const defaultTerrainUrl = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ""
 
-tellux.baseUrl = "/tellux/"
-
 export const arcgisWorldImageryUrl =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 

@@ -2,9 +2,10 @@
 
 这些示例通过 Vite 从本仓库的 `src` 直接引入 Tellux，适合开发时验证源码行为。
 
-`examples/public/tellux/` 存放示例使用的 Tellux 静态资源。Vite 会把 `examples/public`
-作为开发服务器的静态资源根目录，示例会通过 `tellux.baseUrl = '/tellux/'`
-加载本地的云、STBN 和星空资源。
+示例默认使用 Tellux 源码内置的云、STBN 和星空资源，不需要额外设置 `tellux.baseUrl`。
+如果需要验证 CDN、内网静态目录或非打包环境的资源覆盖路径，可以把
+`local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`
+放到 `examples/public/tellux/`，再在示例入口中临时设置 `tellux.baseUrl = '/tellux/'`。
 
 示例默认使用 `type: 'xyz'` 影像数据源加载 ArcGIS World Imagery：
 
