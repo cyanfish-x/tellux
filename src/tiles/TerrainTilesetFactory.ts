@@ -2,6 +2,7 @@ import { TilesRenderer } from '3d-tiles-renderer'
 import { CesiumIonAuthPlugin, QuantizedMeshPlugin } from '3d-tiles-renderer/plugins'
 import { TerrainFetchPlugin } from '../TerrainFetchPlugin'
 import type { ImageryLayer } from '../LayerManager'
+import type { SurfaceMaterialOptions } from '../materials/materialMode'
 import type {
   CesiumIonTerrainOptions,
   TerrainOptions,
@@ -20,6 +21,7 @@ import {
 export type TerrainTilesetFactoryOptions = {
   imageryOverlayFactory: ImageryOverlayFactory
   getSurfaceMaterialMode: () => ResolvedSurfaceMaterialMode
+  getSurfaceMaterialOptions: () => SurfaceMaterialOptions
   registerCommonTilesetPlugins: (tileset: TilesRenderer) => void
 }
 
@@ -48,7 +50,10 @@ export class TerrainTilesetFactory {
       resolution: terrain.tileLoading?.imageryResolution,
       enableTileSplitting: terrain.tileLoading?.enableTileSplitting
     })
-    const surfaceMaterialPlugin = new SurfaceMaterialPlugin(this.options.getSurfaceMaterialMode())
+    const surfaceMaterialPlugin = new SurfaceMaterialPlugin(
+      this.options.getSurfaceMaterialMode(),
+      this.options.getSurfaceMaterialOptions()
+    )
 
     this.registerTerrainProvider(tileset, terrain)
     tileset.registerPlugin(imageryContext.plugin)

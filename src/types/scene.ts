@@ -32,6 +32,38 @@ export type AtmosphereLightingMode = (typeof AtmosphereLightingMode)[keyof typeo
 export type SurfaceMaterialMode = 'auto' | 'basic' | 'standard'
 
 /**
+ * 基础地球表面 PBR 材质参数。
+ *
+ * 这些参数只作用于 Viewer 管理的基础地球表面和 terrain，不影响
+ * `load3DTileset` 或 `addModel` 加载的普通场景内容。
+ *
+ * Base globe surface PBR material options.
+ *
+ * These options only affect the base globe surface and terrain managed by the
+ * Viewer. They do not affect regular scene content loaded with `load3DTileset`
+ * or `addModel`.
+ */
+export interface ViewerSurfaceMaterialOptions {
+  /** 表面粗糙度，范围 `0` 到 `1`，默认 `1`。Surface roughness from `0` to `1`. Defaults to `1`. */
+  roughness?: number
+  /** 表面金属度，范围 `0` 到 `1`，默认 `0`。Surface metalness from `0` to `1`. Defaults to `0`. */
+  metalness?: number
+  /**
+   * 是否沿用地形或上游材质提供的粗糙度贴图，默认 `false`。
+   *
+   * 关闭后会忽略 terrain watermask 等粗糙度贴图，避免 `light-source`
+   * 模式下出现强太阳镜面反光。
+   *
+   * Whether to keep roughness maps provided by terrain or upstream materials.
+   * Defaults to `false`.
+   *
+   * When disabled, roughness maps such as terrain water masks are ignored to
+   * avoid strong sun glints in `light-source` mode.
+   */
+  useRoughnessMap?: boolean
+}
+
+/**
  * 体积云质量档位。
  *
  * Volumetric cloud quality preset.
@@ -263,6 +295,8 @@ export interface ViewerSurfaceOptions {
    * Base globe surface tile material mode. Defaults to `auto`.
    */
   materialMode?: SurfaceMaterialMode
+  /** 基础地球表面 PBR 材质参数。Base globe surface PBR material options. */
+  material?: ViewerSurfaceMaterialOptions
 }
 
 /**

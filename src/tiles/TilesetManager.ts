@@ -9,6 +9,7 @@ import {
 } from '3d-tiles-renderer/plugins'
 import { TileCreasedNormalsPlugin } from '../TileCreasedNormalsPlugin'
 import type { ImageryLayer } from '../LayerManager'
+import type { SurfaceMaterialOptions } from '../materials/materialMode'
 import { TilesetSamplingAdapter } from './TilesetSamplingAdapter'
 import { HeightSamplingTilesetPool } from './HeightSamplingTilesetPool'
 import {
@@ -52,6 +53,7 @@ export interface TilesetManagerOptions {
   transparentOverlayTexture: THREE.Texture
   terrain?: TerrainOptions
   surfaceMaterialMode: ResolvedSurfaceMaterialMode
+  surfaceMaterialOptions: SurfaceMaterialOptions
   sceneTilesetMaterialMode: SceneTilesetMaterialMode
 }
 
@@ -84,12 +86,14 @@ export class TilesetManager {
     this.surfaceTilesetFactory = new SurfaceTilesetFactory({
       imageryOverlayFactory: this.imageryOverlayFactory,
       getSurfaceMaterialMode: () => this.options.surfaceMaterialMode,
+      getSurfaceMaterialOptions: () => this.options.surfaceMaterialOptions,
       useDirectOverlayTexture: options.useWebGPUCompatibleSurfaceOverlay ?? false,
       registerCommonTilesetPlugins: (tileset) => this.registerCommonTilesetPlugins(tileset)
     })
     this.terrainTilesetFactory = new TerrainTilesetFactory({
       imageryOverlayFactory: this.imageryOverlayFactory,
       getSurfaceMaterialMode: () => this.options.surfaceMaterialMode,
+      getSurfaceMaterialOptions: () => this.options.surfaceMaterialOptions,
       registerCommonTilesetPlugins: (tileset) => this.registerCommonTilesetPlugins(tileset)
     })
     this.currentTerrain = options.terrain
@@ -127,11 +131,20 @@ export class TilesetManager {
     return Array.from(this.sceneTilesets, ([id, tileset]) => ({ id, tileset }))
   }
 
-  setSurfaceMaterialMode(mode: ResolvedSurfaceMaterialMode) {
+  setSurfaceMaterial(mode: ResolvedSurfaceMaterialMode, options: SurfaceMaterialOptions) {
     this.options.surfaceMaterialMode = mode
-    this.surfaceMaterialPlugins.get(this.activeSurfaceTileset)?.setMode(mode, this.activeSurfaceTileset)
+    this.options.surfaceMaterialOptions = { ...options }
+    this.surfaceMaterialPlugins.get(this.activeSurfaceTileset)?.setMaterial(
+      mode,
+      this.options.surfaceMaterialOptions,
+      this.activeSurfaceTileset
+    )
     if (this.activeTerrainTileset) {
-      this.surfaceMaterialPlugins.get(this.activeTerrainTileset)?.setMode(mode, this.activeTerrainTileset)
+      this.surfaceMaterialPlugins.get(this.activeTerrainTileset)?.setMaterial(
+        mode,
+        this.options.surfaceMaterialOptions,
+        this.activeTerrainTileset
+      )
     }
   }
 

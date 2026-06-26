@@ -2,6 +2,15 @@ import * as THREE from 'three'
 
 export type RenderMaterialMode = 'basic' | 'standard'
 
+export interface SurfaceMaterialOptions {
+  roughness: number
+  metalness: number
+  useRoughnessMap: boolean
+}
+
+const SURFACE_ORIGINAL_ROUGHNESS_MAP = Symbol('tellux.surface.originalRoughnessMap')
+const SURFACE_ORIGINAL_METALNESS_MAP = Symbol('tellux.surface.originalMetalnessMap')
+
 export function applyMaterialModeToObject(root: THREE.Object3D, mode: RenderMaterialMode) {
   root.traverse((object) => {
     const mesh = object as THREE.Mesh
@@ -17,10 +26,66 @@ export function applyBasicMaterialToObject(root: THREE.Object3D) {
   applyMaterialModeToObject(root, 'basic')
 }
 
+export function applySurfaceMaterialModeToObject(
+  root: THREE.Object3D,
+  mode: RenderMaterialMode,
+  options: SurfaceMaterialOptions
+) {
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh
+    if (!mesh.material) return
+
+    mesh.material = Array.isArray(mesh.material)
+      ? mesh.material.map((material) => toSurfaceMaterialMode(material, mode, options))
+      : toSurfaceMaterialMode(mesh.material, mode, options)
+  })
+}
+
 function toMaterialMode(material: THREE.Material, mode: RenderMaterialMode) {
   return mode === 'standard'
     ? toStandardMaterial(material)
     : toBasicMaterial(material)
+}
+
+function toSurfaceMaterialMode(
+  material: THREE.Material,
+  mode: RenderMaterialMode,
+  options: SurfaceMaterialOptions
+) {
+  if (mode === 'basic') return toBasicMaterial(material)
+
+  const standard = toStandardMaterial(material)
+  if (standard instanceof THREE.MeshStandardMaterial) {
+    applySurfaceStandardMaterialOptions(standard, options)
+    standard.needsUpdate = true
+  }
+  return standard
+}
+
+function applySurfaceStandardMaterialOptions(
+  material: THREE.MeshStandardMaterial,
+  options: SurfaceMaterialOptions
+) {
+  const storedMaps = material as THREE.MeshStandardMaterial & {
+    [SURFACE_ORIGINAL_ROUGHNESS_MAP]?: THREE.Texture | null
+    [SURFACE_ORIGINAL_METALNESS_MAP]?: THREE.Texture | null
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(storedMaps, SURFACE_ORIGINAL_ROUGHNESS_MAP)) {
+    storedMaps[SURFACE_ORIGINAL_ROUGHNESS_MAP] = material.roughnessMap
+  }
+  if (!Object.prototype.hasOwnProperty.call(storedMaps, SURFACE_ORIGINAL_METALNESS_MAP)) {
+    storedMaps[SURFACE_ORIGINAL_METALNESS_MAP] = material.metalnessMap
+  }
+
+  material.roughness = options.roughness
+  material.metalness = options.metalness
+  material.roughnessMap = options.useRoughnessMap
+    ? storedMaps[SURFACE_ORIGINAL_ROUGHNESS_MAP] ?? null
+    : null
+  material.metalnessMap = options.useRoughnessMap
+    ? storedMaps[SURFACE_ORIGINAL_METALNESS_MAP] ?? null
+    : null
 }
 
 function toStandardMaterial(material: THREE.Material) {

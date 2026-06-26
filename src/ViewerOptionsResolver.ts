@@ -1,7 +1,8 @@
 import { DEFAULT_CAMERA } from './constants'
+import type { SurfaceMaterialOptions } from './materials/materialMode'
 import type { ModelMaterialMode } from './models/GltfModelLayer'
 import type { ResolvedSceneOptions } from './Scene'
-import type { AtmosphereLightingMode, SurfaceMaterialMode, ViewerOptions } from './types'
+import type { AtmosphereLightingMode, SurfaceMaterialMode, ViewerOptions, ViewerSurfaceMaterialOptions } from './types'
 
 export type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
 export type SceneTilesetMaterialMode = 'basic' | 'standard'
@@ -89,7 +90,8 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
       }
     },
     surface: {
-      materialMode: options?.surface?.materialMode ?? 'auto'
+      materialMode: options?.surface?.materialMode ?? 'auto',
+      material: resolveSurfaceMaterialOptions(options?.surface?.material)
     },
     postProcess: {
       lensFlare: options?.postProcess?.lensFlare ?? true,
@@ -108,6 +110,16 @@ export function resolveSurfaceMaterialMode(
   return atmosphereLightingMode === 'light-source' ? 'standard' : 'basic'
 }
 
+export function resolveSurfaceMaterialOptions(
+  options: ViewerSurfaceMaterialOptions | undefined
+): SurfaceMaterialOptions {
+  return {
+    roughness: clamp01(options?.roughness, 1),
+    metalness: clamp01(options?.metalness, 0),
+    useRoughnessMap: options?.useRoughnessMap ?? false
+  }
+}
+
 export function resolveSceneContentMaterialMode(
   atmosphereLightingMode: AtmosphereLightingMode
 ): SceneTilesetMaterialMode {
@@ -116,4 +128,8 @@ export function resolveSceneContentMaterialMode(
 
 export function resolveModelMaterialMode(atmosphereLightingMode: AtmosphereLightingMode): ModelMaterialMode {
   return atmosphereLightingMode === 'post-process' ? 'basic' : 'standard'
+}
+
+function clamp01(value: number | undefined, fallback: number) {
+  return Number.isFinite(value) ? Math.min(Math.max(value, 0), 1) : fallback
 }

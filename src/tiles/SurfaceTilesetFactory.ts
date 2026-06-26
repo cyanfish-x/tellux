@@ -2,6 +2,7 @@ import { TilesRenderer } from '3d-tiles-renderer'
 import * as TilesRendererPlugins from '3d-tiles-renderer/plugins'
 import type { ImageOverlay } from '3d-tiles-renderer/plugins'
 import type { ImageryLayer } from '../LayerManager'
+import type { SurfaceMaterialOptions } from '../materials/materialMode'
 import {
   type ImageryOverlayContext,
   type ImageryOverlayFactory
@@ -30,6 +31,7 @@ type DirectTextureOverlay = ImageOverlay & {
 export type SurfaceTilesetFactoryOptions = {
   imageryOverlayFactory: ImageryOverlayFactory
   getSurfaceMaterialMode: () => ResolvedSurfaceMaterialMode
+  getSurfaceMaterialOptions: () => SurfaceMaterialOptions
   useDirectOverlayTexture: boolean
   registerCommonTilesetPlugins: (tileset: TilesRenderer) => void
 }
@@ -57,7 +59,10 @@ export class SurfaceTilesetFactory {
       tilingOverlay && this.options.useDirectOverlayTexture
         ? this.createCompositedDirectTextureOverlay(tilingOverlay)
         : tilingOverlay
-    const surfaceMaterialPlugin = new SurfaceMaterialPlugin(this.options.getSurfaceMaterialMode())
+    const surfaceMaterialPlugin = new SurfaceMaterialPlugin(
+      this.options.getSurfaceMaterialMode(),
+      this.options.getSurfaceMaterialOptions()
+    )
 
     tileset.registerPlugin(generatedSurfaceOverlay ? new GeneratedSurfacePlugin({
       overlay: generatedSurfaceOverlay,

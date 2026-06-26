@@ -11,6 +11,7 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 - `ViewerAtmosphereOptions`
 - `ViewerCloudOptions`
 - `ViewerSurfaceOptions`
+- `ViewerSurfaceMaterialOptions`
 - `ViewerPostProcessOptions`
 - `AtmosphereLightingMode`
 - `CloudQualityPreset`
@@ -65,7 +66,12 @@ const viewer = new Viewer(container, {
       }
     },
     surface: {
-      materialMode: 'auto'
+      materialMode: 'auto',
+      material: {
+        roughness: 1,
+        metalness: 0,
+        useRoughnessMap: false
+      }
     },
     postProcess: {
       toneMappingExposure: 10,
@@ -86,6 +92,7 @@ viewer.scene.atmosphere.sky.stars.show = false
 viewer.scene.clouds.quality = 'high'
 viewer.scene.clouds.coverage = 0.35
 viewer.scene.surface.materialMode = 'standard'
+viewer.scene.surface.material.roughness = 0.9
 viewer.scene.postProcess.smaa.enabled = true
 viewer.toneMappingExposure = 8
 ```

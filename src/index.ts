@@ -69,6 +69,7 @@ export {
   type SampleHeightMostDetailedResult,
   type SampleHeightOptions,
   type SurfaceMaterialMode,
+  type ViewerSurfaceMaterialOptions,
   type SpringControlOptions,
   type TerrainRenderOptions,
   type TerrainOptions,

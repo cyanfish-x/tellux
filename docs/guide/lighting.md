@@ -59,6 +59,7 @@ viewer.scene.atmosphere.lighting.albedoScale = 0.6
 ```
 
 Tellux 会根据当前光照模式自动调整 Viewer 管理的基础地表、地形、`load3DTileset` 瓦片和 `addModel` 模型材质：`post-process` 使用不受 Three.js 光源影响的 basic 材质，`light-source` 使用 standard 材质。
+基础地表和 terrain 会额外应用 `scene.surface.material` 中的 PBR 参数。默认 `roughness: 1`、`metalness: 0`、`useRoughnessMap: false`，用于保留受光明暗同时避免 terrain watermask 在海面产生强太阳反光。需要恢复上游粗糙度贴图时，可设置 `viewer.scene.surface.material.useRoughnessMap = true`。
 
 摄影测量 3D Tiles 的几何法线可能缺失或不稳定。此时可以为该 3D Tiles 图层重新生成折痕法线，让 `NormalPass` 为后处理光照提供更稳定的几何法线：
 
@@ -83,6 +84,9 @@ const layer = viewer.load3DTileset({
 | `atmosphere.lighting.sunLightIntensity` | `1` | 太阳光源辐射强度缩放，主要作用于 `light-source` 模式。 |
 | `atmosphere.lighting.skyLightIntensity` | `1` | 天空光探针辐射强度缩放，主要作用于 `light-source` 模式。 |
 | `atmosphere.lighting.albedoScale` | `1` | 后处理光照使用的反照率缩放，主要用于 `post-process` 模式。 |
+| `surface.material.roughness` | `1` | 基础地表和 terrain 的 standard 材质粗糙度。 |
+| `surface.material.metalness` | `0` | 基础地表和 terrain 的 standard 材质金属度。 |
+| `surface.material.useRoughnessMap` | `false` | 是否沿用 terrain watermask 等上游粗糙度贴图。 |
 | `atmosphere.fallbackAmbientLight.show` | `true` | 是否启用夜间兜底环境光。 |
 | `atmosphere.fallbackAmbientLight.intensity` | `0.5` | 夜间兜底环境光最大强度。 |
 

@@ -119,6 +119,7 @@ export type {
   TerrainOptions,
   TerrainTileLoadingOptions,
   ThreeDTilesRenderOptions,
+  ViewerSurfaceMaterialOptions,
   SurfaceMaterialMode,
   TilesetFeatureProperties,
   TilesetLayer,
@@ -341,6 +342,7 @@ export class Viewer {
         sceneOptions.surface.materialMode,
         sceneOptions.atmosphere.lighting.mode
       ),
+      surfaceMaterialOptions: sceneOptions.surface.material,
       sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode)
     })
     tilesets = this.tilesets
@@ -823,8 +825,13 @@ export class Viewer {
   }
 
   private syncSurfaceMaterialMode() {
-    this.tilesets.setSurfaceMaterialMode(
-      resolveSurfaceMaterialMode(this.scene.surface.materialMode, this.scene.atmosphere.lighting.mode)
+    this.tilesets.setSurfaceMaterial(
+      resolveSurfaceMaterialMode(this.scene.surface.materialMode, this.scene.atmosphere.lighting.mode),
+      {
+        roughness: this.scene.surface.material.roughness,
+        metalness: this.scene.surface.material.metalness,
+        useRoughnessMap: this.scene.surface.material.useRoughnessMap
+      }
     )
     const contentMaterialMode = resolveSceneContentMaterialMode(this.scene.atmosphere.lighting.mode)
     this.tilesets.setSceneTilesetMaterialMode(contentMaterialMode)

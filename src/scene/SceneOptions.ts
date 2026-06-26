@@ -1,5 +1,6 @@
 import type * as THREE from 'three'
 import type { AtmosphereLightingMode, CloudQualityPreset, SurfaceMaterialMode } from '../types'
+import type { SurfaceMaterialOptions } from '../materials/materialMode'
 
 export interface ResolvedSceneOptions {
   atmosphere: {
@@ -71,6 +72,7 @@ export interface ResolvedSceneOptions {
   }
   surface: {
     materialMode: SurfaceMaterialMode
+    material: SurfaceMaterialOptions
   }
   postProcess: {
     lensFlare: boolean

@@ -4,7 +4,9 @@ import { TilesRenderer } from '3d-tiles-renderer'
 import {
   applyBasicMaterialToObject,
   applyMaterialModeToObject,
-  type RenderMaterialMode
+  applySurfaceMaterialModeToObject,
+  type RenderMaterialMode,
+  type SurfaceMaterialOptions
 } from '../materials/materialMode'
 import type { SurfaceMaterialMode } from '../types'
 
@@ -106,16 +108,28 @@ export class SceneTilesetMaterialPlugin implements TileModelPlugin {
 export class SurfaceMaterialPlugin implements TileModelPlugin {
   readonly priority = -20
 
-  constructor(private currentMode: ResolvedSurfaceMaterialMode) {}
+  constructor(
+    private currentMode: ResolvedSurfaceMaterialMode,
+    currentOptions: SurfaceMaterialOptions
+  ) {
+    this.currentOptions = { ...currentOptions }
+  }
+
+  private currentOptions: SurfaceMaterialOptions
 
   processTileModel(tileScene: THREE.Object3D) {
     this.applyToScene(tileScene)
   }
 
-  setMode(mode: ResolvedSurfaceMaterialMode, tileset: TilesRenderer) {
-    if (this.currentMode === mode) return
+  setMaterial(
+    mode: ResolvedSurfaceMaterialMode,
+    options: SurfaceMaterialOptions,
+    tileset: TilesRenderer
+  ) {
+    if (this.currentMode === mode && isSameSurfaceMaterialOptions(this.currentOptions, options)) return
 
     this.currentMode = mode
+    this.currentOptions = { ...options }
     tileset.forEachLoadedModel((tileScene) => {
       this.applyToScene(tileScene)
     })
@@ -123,6 +137,14 @@ export class SurfaceMaterialPlugin implements TileModelPlugin {
   }
 
   private applyToScene(tileScene: THREE.Object3D) {
-    applyMaterialModeToObject(tileScene, this.currentMode)
+    applySurfaceMaterialModeToObject(tileScene, this.currentMode, this.currentOptions)
   }
+}
+
+function isSameSurfaceMaterialOptions(left: SurfaceMaterialOptions, right: SurfaceMaterialOptions) {
+  return (
+    left.roughness === right.roughness &&
+    left.metalness === right.metalness &&
+    left.useRoughnessMap === right.useRoughnessMap
+  )
 }
