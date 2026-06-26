@@ -4,6 +4,64 @@ import type { TerrainOptions } from './terrain'
 import type { ViewerWidgetOptions } from './widgets'
 
 /**
+ * Viewer 使用的 Three.js renderer 类型。
+ *
+ * Three.js renderer type used by Viewer.
+ */
+export type ViewerRendererType = 'webgl' | 'webgpu'
+
+/**
+ * 创建 Viewer 内部 Three.js renderer 时使用的配置项。
+ *
+ * Options used to create the internal Three.js renderer for Viewer.
+ */
+export interface ViewerRendererOptions {
+  /**
+   * Renderer 类型，默认 `webgl`。
+   *
+   * WebGPU 目前是实验能力；首版会降级 WebGL-only 的大气、云和后处理。
+   *
+   * Renderer type. Defaults to `webgl`.
+   *
+   * WebGPU is experimental; the first version degrades WebGL-only atmosphere,
+   * clouds, and post-processing features.
+   */
+  type?: ViewerRendererType
+  /**
+   * 是否启用透明渲染背景。
+   *
+   * 优先级高于 {@link ViewerOptions.transparent}。
+   *
+   * Enables a transparent rendering background.
+   *
+   * Takes precedence over {@link ViewerOptions.transparent}.
+   */
+  transparent?: boolean
+  /**
+   * 是否启用 renderer 级抗锯齿。
+   *
+   * Whether to enable renderer-level antialiasing.
+   */
+  antialias?: boolean
+  /**
+   * 多重采样数量。
+   *
+   * Number of multisampling samples.
+   */
+  samples?: number
+  /**
+   * WebGPU renderer 是否强制使用 Three.js WebGL2 fallback backend。
+   *
+   * 仅当 `type` 为 `webgpu` 时生效。
+   *
+   * Whether the WebGPU renderer should force Three.js' WebGL2 fallback backend.
+   *
+   * Only applies when `type` is `webgpu`.
+   */
+  forceWebGL?: boolean
+}
+
+/**
  * 创建 {@link Viewer} 时使用的配置项。
  *
  * Options used to create a {@link Viewer}.
@@ -84,6 +142,12 @@ export interface ViewerOptions {
    */
   widgets?: ViewerWidgetOptions
   /**
+   * Three.js renderer 配置。
+   *
+   * Three.js renderer options.
+   */
+  renderer?: ViewerRendererOptions
+  /**
    * 渲染器像素比，默认 `Math.min(window.devicePixelRatio, 2)`。
    *
    * Renderer pixel ratio. Defaults to `Math.min(window.devicePixelRatio, 2)`.
@@ -98,6 +162,8 @@ export interface ViewerOptions {
    *
    * When enabled, the WebGL canvas shows the page background, which is useful
    * for embedded portal heroes or custom backdrops.
+   *
+   * Prefer `renderer.transparent` for new code.
    */
   transparent?: boolean
   /**

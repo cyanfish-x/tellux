@@ -77,6 +77,42 @@ function animate(time: number) {
 requestAnimationFrame(animate)
 ```
 
+## Renderer 类型
+
+默认情况下，Viewer 使用 Three.js `WebGLRenderer`。可以通过 `renderer.type` 选择实验性的 WebGPU renderer：
+
+```ts
+const viewer = await Viewer.create(container, {
+  renderer: {
+    type: 'webgpu'
+  },
+  scene: {
+    atmosphere: {
+      show: false
+    },
+    clouds: {
+      show: false
+    }
+  }
+})
+```
+
+WebGPU renderer 需要异步初始化。使用 `Viewer.create()` 会在返回前等待 `viewer.ready`；如果使用 `new Viewer()`，在外部手动渲染循环里建议先等待：
+
+```ts
+const viewer = new Viewer(container, {
+  renderer: {
+    type: 'webgpu'
+  },
+  useDefaultRenderLoop: false
+})
+
+await viewer.ready
+viewer.render()
+```
+
+WebGPU 支持目前是实验能力，首版只保证基础地球、3D Tiles、地形、影像、模型和拾取链路。大气、体积云和后处理仍依赖 WebGL 管线，在 WebGPU renderer 下会降级为不渲染这些效果。
+
 ## 事件
 
 Viewer 目前提供 `click` 和 `mousemove` 事件。事件会返回 canvas 像素坐标，以及当前命中的经纬高。

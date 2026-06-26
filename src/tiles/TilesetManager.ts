@@ -32,7 +32,7 @@ import type {
   TerrainOptions,
   TilesetLayer,
 } from '../types'
-import type { ThreeRendererWithEffects } from '../effects'
+import type { TelluxRenderer } from '../rendering/RendererAdapter'
 
 export type HeightSamplingTilesetEntry = {
   source: TilesRenderer
@@ -46,7 +46,8 @@ export type HeightSamplingTilesetEntry = {
 export interface TilesetManagerOptions {
   scene: THREE.Scene
   camera: THREE.PerspectiveCamera
-  renderer: ThreeRendererWithEffects
+  renderer: TelluxRenderer
+  useWebGPUCompatibleSurfaceOverlay?: boolean
   dracoLoader: DRACOLoader
   transparentOverlayTexture: THREE.Texture
   terrain?: TerrainOptions
@@ -67,6 +68,7 @@ export class TilesetManager {
   private readonly surfaceTilesetFactory: SurfaceTilesetFactory
   private readonly terrainTilesetFactory: TerrainTilesetFactory
   private readonly imageryOverlayContexts = new WeakMap<TilesRenderer, ImageryOverlayContext>()
+  private readonly rendererSize = new THREE.Vector2()
   private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
   private sceneTilesetId = 0
@@ -82,6 +84,7 @@ export class TilesetManager {
     this.surfaceTilesetFactory = new SurfaceTilesetFactory({
       imageryOverlayFactory: this.imageryOverlayFactory,
       getSurfaceMaterialMode: () => this.options.surfaceMaterialMode,
+      useDirectOverlayTexture: options.useWebGPUCompatibleSurfaceOverlay ?? false,
       registerCommonTilesetPlugins: (tileset) => this.registerCommonTilesetPlugins(tileset)
     })
     this.terrainTilesetFactory = new TerrainTilesetFactory({
@@ -306,10 +309,12 @@ export class TilesetManager {
   }
 
   resize() {
-    this.activeSurfaceTileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
-    this.activeTerrainTileset?.setResolutionFromRenderer(this.options.camera, this.options.renderer)
+    this.setTilesetResolution(this.activeSurfaceTileset)
+    if (this.activeTerrainTileset) {
+      this.setTilesetResolution(this.activeTerrainTileset)
+    }
     this.sceneTilesets.forEach((tileset) => {
-      tileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
+      this.setTilesetResolution(tileset)
     })
   }
 
@@ -354,7 +359,12 @@ export class TilesetManager {
     tileset.registerPlugin(new TilesFadePlugin())
     tileset.registerPlugin(new UpdateOnChangePlugin())
     tileset.setCamera(this.options.camera)
-    tileset.setResolutionFromRenderer(this.options.camera, this.options.renderer)
+    this.setTilesetResolution(tileset)
+  }
+
+  private setTilesetResolution(tileset: TilesRenderer) {
+    this.options.renderer.getSize(this.rendererSize)
+    tileset.setResolution(this.options.camera, this.rendererSize.x, this.rendererSize.y)
   }
 
   private registerGltfExtensionsPlugin(tileset: TilesRenderer) {

@@ -35,6 +35,7 @@ const external = [
   '@takram/three-geospatial-effects',
   'postprocessing',
   'three',
+  'three/webgpu',
   /^three\/addons\//
 ]
 

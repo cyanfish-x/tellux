@@ -18,7 +18,7 @@ import type {
   MVTImagerySourceOptions,
   WMSImagerySourceOptions
 } from '../types'
-import type { ThreeRendererWithEffects } from '../effects'
+import type { TelluxRenderer } from '../rendering/RendererAdapter'
 
 type MVTOverlayOptions = {
   url: string
@@ -90,7 +90,7 @@ export type ImageryOverlayContext = {
 }
 
 export type ImageryOverlayFactoryOptions = {
-  renderer: ThreeRendererWithEffects
+  renderer: TelluxRenderer
   transparentOverlayTexture: THREE.Texture
 }
 
@@ -109,7 +109,7 @@ export class ImageryOverlayFactory {
     options: ImageryOverlayContextOptions = {}
   ): ImageryOverlayContext {
     const plugin = new ImageOverlayPlugin({
-      renderer: this.options.renderer,
+      renderer: this.options.renderer as THREE.WebGLRenderer,
       overlays: [],
       resolution: options.resolution,
       enableTileSplitting: options.enableTileSplitting ?? true

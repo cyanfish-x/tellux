@@ -1,8 +1,8 @@
-import type { ThreeRendererWithEffects } from '../effects'
+import type { TelluxRendererAdapter } from './RendererAdapter'
 import type { HeightSampler } from '../sampling/HeightSampler'
 
 export interface ViewerRenderLoopOptions {
-  renderer: ThreeRendererWithEffects
+  renderer: TelluxRendererAdapter
   heightSampler: HeightSampler
   renderFrame: (deltaTime: number, time: number) => void
 }

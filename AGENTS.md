@@ -112,3 +112,7 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 - 改动范围保持在用户请求涉及的 API 或文档区域。
 - 优先沿用 `src/Viewer.ts` 里的现有模式。
 - 手动编辑文件时使用 `apply_patch`。
+
+## 强制规则
+
++ 永远用中文回答

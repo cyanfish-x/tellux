@@ -85,6 +85,8 @@ export {
   type ViewerEventMap,
   type ViewerMouseEvent,
   type ViewerMouseMoveEvent,
+  type ViewerRendererOptions,
+  type ViewerRendererType,
   type ViewerAtmosphereLightingOptions,
   type ViewerAtmosphereNightOptions,
   type ViewerAtmosphereOptions,
@@ -99,6 +101,9 @@ export {
   type ViewerSurfaceOptions,
   type ViewerWidgetOptions,
   type ViewerOptions,
+  type TelluxRenderer,
+  type TelluxWebGLRenderer,
+  type TelluxWebGPURenderer,
   type WMSImagerySourceOptions,
   type XYZImagerySourceOptions
 } from './Viewer'

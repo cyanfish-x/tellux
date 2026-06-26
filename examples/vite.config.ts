@@ -14,6 +14,7 @@ const htmlInputs = {
   googlePhotorealistic3dTiles: resolve(__dirname, "google-photorealistic-3d-tiles.html"),
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
+  webgpuBasic: resolve(__dirname, "webgpu-basic.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
   instancedHorses: resolve(__dirname, "instanced-horses.html"),
   mixedHeightSamplingHorses: resolve(__dirname, "mixed-height-sampling-horses.html"),

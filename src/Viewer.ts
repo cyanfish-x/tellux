@@ -8,11 +8,16 @@ import { telluxConfig } from './config'
 import { TargetFlightController } from './controls/TargetFlightController'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
-import type { ThreeRendererWithEffects } from './effects'
 import { LayerManager } from './LayerManager'
 import { ModelManager } from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
+import {
+  createRendererAdapter,
+  type TelluxRenderer,
+  type TelluxRendererAdapter,
+  type TelluxWebGLRenderer
+} from './rendering/RendererAdapter'
 import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { CartographicPicker } from './sampling/CartographicPicker'
@@ -48,7 +53,8 @@ import type {
   TilesetLayer,
   ViewerEventListener,
   ViewerEventMap,
-  ViewerOptions
+  ViewerOptions,
+  ViewerRendererType
 } from './types'
 import type { GlobeControls } from '3d-tiles-renderer'
 
@@ -60,6 +66,7 @@ export { SpringControl, type SpringControlOptions } from './SpringControl'
 export { telluxConfig, type TelluxConfig } from './config'
 export { AtmosphereLightingMode } from './types'
 export { DebugSettingsPanel, Timeline, type DebugSettingsPanelOptions, type TimelineOptions } from './widgets'
+export type { TelluxRenderer, TelluxWebGLRenderer, TelluxWebGPURenderer } from './rendering/RendererAdapter'
 export type {
   CameraEllipsoid,
   CameraEllipsoidProvider,
@@ -133,6 +140,8 @@ export type {
   ViewerCloudOptions,
   ViewerFallbackAmbientLightOptions,
   ViewerPostProcessOptions,
+  ViewerRendererOptions,
+  ViewerRendererType,
   ViewerSceneOptions,
   ViewerSurfaceOptions,
   ViewerWidgetOptions,
@@ -176,7 +185,25 @@ export class Viewer {
    *
    * Underlying Three.js renderer.
    */
-  readonly renderer: ThreeRendererWithEffects
+  readonly renderer: TelluxRenderer
+  /**
+   * Viewer 使用的 renderer 类型。
+   *
+   * Renderer type used by Viewer.
+   */
+  readonly rendererType: ViewerRendererType
+  /**
+   * Renderer 初始化完成 Promise。
+   *
+   * WebGPU renderer 需要异步初始化。使用外部手动渲染循环时，建议等待该
+   * Promise 完成后再调用 {@link Viewer.render}。
+   *
+   * Promise resolved when the renderer is initialized.
+   *
+   * WebGPU renderers require asynchronous initialization. When using an external
+   * manual render loop, wait for this Promise before calling {@link Viewer.render}.
+   */
+  readonly ready: Promise<void>
   /**
    * 用于太阳方向的场景时钟。
    *
@@ -210,14 +237,15 @@ export class Viewer {
   readonly controls: GlobeControls
 
   private readonly threeCamera: THREE.PerspectiveCamera
+  private readonly rendererAdapter: TelluxRendererAdapter
   private readonly dracoLoader: DRACOLoader
   private readonly transparentOverlayTexture: THREE.CanvasTexture
   private readonly cameraCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly gltfLoader: GLTFLoader
   private readonly models: ModelManager
   private readonly viewport: ViewportResizeManager
-  private readonly atmosphere: AtmosphereManager
-  private readonly postProcessing: PostProcessingManager
+  private readonly atmosphere: AtmosphereManager | null
+  private readonly postProcessing: PostProcessingManager | null
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
@@ -229,6 +257,22 @@ export class Viewer {
   private isDestroyed = false
   private currentResolutionScale: number
   private currentToneMappingExposure: number
+
+  /**
+   * 创建 Viewer 并等待 renderer 初始化完成。
+   *
+   * WebGPU renderer 需要异步初始化；该工厂方法适合 WebGPU 或外部手动渲染循环。
+   *
+   * Creates a Viewer and waits for renderer initialization.
+   *
+   * WebGPU renderers require asynchronous initialization; this factory is useful
+   * for WebGPU or external manual render loops.
+   */
+  static async create(container: HTMLElement | string, options: ViewerOptions = {}) {
+    const viewer = new Viewer(container, options)
+    await viewer.ready
+    return viewer
+  }
 
   /**
    * 在非空容器元素内创建 viewer。传入字符串时，会将其作为元素 ID 获取容器。
@@ -252,12 +296,12 @@ export class Viewer {
 
     this.threeCamera = new THREE.PerspectiveCamera(cameraOptions.fov, width / height, cameraOptions.near, cameraOptions.far)
     this.camera = new Camera(this.threeCamera, () => tilesets?.tileset.ellipsoid ?? null)
-    this.renderer = new THREE.WebGLRenderer({
-      alpha: options.transparent ?? false,
-      outputBufferType: THREE.HalfFloatType
-    }) as ThreeRendererWithEffects
-    this.renderer.setPixelRatio(this.currentResolutionScale)
-    this.renderer.setSize(width, height)
+    this.rendererAdapter = createRendererAdapter(options)
+    this.renderer = this.rendererAdapter.renderer
+    this.rendererType = this.rendererAdapter.type
+    this.ready = this.rendererAdapter.ready
+    this.rendererAdapter.setPixelRatio(this.currentResolutionScale)
+    this.rendererAdapter.setSize(width, height)
     this.renderer.toneMapping = THREE.AgXToneMapping
     this.renderer.toneMappingExposure = this.currentToneMappingExposure
     resolvedContainer.appendChild(this.renderer.domElement)
@@ -272,11 +316,13 @@ export class Viewer {
         if (tilesets) this.syncSurfaceMaterialMode()
       }
     )
-    this.atmosphere = new AtmosphereManager(this.renderer, this.threeCamera, () => postProcessing?.applyEffects())
+    this.atmosphere = this.rendererAdapter.supportsWebGLEffects
+      ? new AtmosphereManager(this.renderer as TelluxWebGLRenderer, this.threeCamera, () => postProcessing?.applyEffects())
+      : null
     atmosphere = this.atmosphere
-    this.atmosphere.addLightSourcesTo(this.scene.threeScene)
+    this.atmosphere?.addLightSourcesTo(this.scene.threeScene)
     this.scene.syncRuntimeEffects()
-    this.clock = new Clock(() => this.atmosphere.updateSunDirection(this.clock.currentTime))
+    this.clock = new Clock(() => this.atmosphere?.updateSunDirection(this.clock.currentTime))
 
     this.dracoLoader = new DRACOLoader()
     this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
@@ -287,6 +333,7 @@ export class Viewer {
       scene: this.scene.threeScene,
       camera: this.threeCamera,
       renderer: this.renderer,
+      useWebGPUCompatibleSurfaceOverlay: this.rendererType === 'webgpu',
       dracoLoader: this.dracoLoader,
       transparentOverlayTexture: this.transparentOverlayTexture,
       terrain: options.terrain,
@@ -307,7 +354,7 @@ export class Viewer {
     this.viewport = new ViewportResizeManager({
       container: this.container,
       camera: this.threeCamera,
-      renderer: this.renderer,
+      renderer: this.rendererAdapter,
       tilesets: this.tilesets
     })
     this.camera.setView(cameraOptions)
@@ -336,14 +383,16 @@ export class Viewer {
       pick3DTilesFeature: (position) => this.pick3DTilesFeature(position)
     })
 
-    this.postProcessing = new PostProcessingManager(
-      this.renderer,
-      this.scene,
-      this.scene.threeScene,
-      this.threeCamera,
-      this.atmosphere,
-      () => this.camera.getCurrentHeight()
-    )
+    this.postProcessing = this.rendererAdapter.supportsWebGLEffects && this.atmosphere
+      ? new PostProcessingManager(
+          this.renderer as TelluxWebGLRenderer,
+          this.scene,
+          this.scene.threeScene,
+          this.threeCamera,
+          this.atmosphere,
+          () => this.camera.getCurrentHeight()
+        )
+      : null
     postProcessing = this.postProcessing
     this.models = new ModelManager({
       scene: this.scene.threeScene,
@@ -357,19 +406,19 @@ export class Viewer {
         }, target)
       },
       setPostProcessMaterialLights: (enabled) => {
-        this.atmosphere.setPostProcessMaterialLights(enabled)
+        this.atmosphere?.setPostProcessMaterialLights(enabled)
       }
     })
     this.widgets = new WidgetManager(this, options.widgets)
     this.widgets.applyInitialSettings()
     this.renderLoop = new ViewerRenderLoop({
-      renderer: this.renderer,
+      renderer: this.rendererAdapter,
       heightSampler: this.heightSampler,
       renderFrame: (deltaTime, time) => this.renderFrame(deltaTime, time)
     })
-    this.postProcessing.applyEffects()
-    this.atmosphere.loadTextures()
-    this.atmosphere.updateSunDirection(this.clock.currentTime)
+    this.postProcessing?.applyEffects()
+    this.atmosphere?.loadTextures()
+    this.atmosphere?.updateSunDirection(this.clock.currentTime)
 
     this.resize()
 
@@ -404,7 +453,7 @@ export class Viewer {
 
   set resolutionScale(value: number) {
     this.currentResolutionScale = value
-    this.renderer.setPixelRatio(value)
+    this.rendererAdapter.setPixelRatio(value)
     this.resize()
   }
 
@@ -666,6 +715,7 @@ export class Viewer {
    * Call this manually when {@link Viewer.useDefaultRenderLoop} is `false`.
    */
   render(time = performance.now()) {
+    if (!this.rendererAdapter.hasInitialized()) return 0
     return this.renderLoop.render(time)
   }
 
@@ -696,13 +746,13 @@ export class Viewer {
     this.heightSampler.dispose()
     this.targetFlights.dispose()
 
-    this.postProcessing.dispose()
-    this.atmosphere.dispose()
+    this.postProcessing?.dispose()
+    this.atmosphere?.dispose()
     this.transparentOverlayTexture.dispose()
     this.tilesets.dispose()
     this.controls.dispose()
     this.dracoLoader.dispose()
-    this.renderer.dispose()
+    this.rendererAdapter.dispose()
 
     if (this.renderer.domElement.parentElement) {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement)
@@ -712,23 +762,23 @@ export class Viewer {
   private renderFrame(deltaTime: number, time: number) {
     this.clearFrameBuffer()
     this.clock.tick(deltaTime)
-    this.postProcessing.setDeltaTime(deltaTime)
+    this.postProcessing?.setDeltaTime(deltaTime)
     this.resize()
     this.controls.update()
     this.widgets.update(deltaTime, time)
     const currentHeight = this.syncFallbackAmbientLight()
-    this.postProcessing.updateForCameraHeight(currentHeight)
+    this.postProcessing?.updateForCameraHeight(currentHeight)
     this.tilesets.update()
-    this.atmosphere.updateLightSources()
+    this.atmosphere?.updateLightSources()
     this.models.update(deltaTime)
-    this.renderer.render(this.scene.threeScene, this.threeCamera)
+    this.rendererAdapter.render(this.scene.threeScene, this.threeCamera)
   }
 
   private clearFrameBuffer() {
-    const renderTarget = this.renderer.getRenderTarget()
-    this.renderer.setRenderTarget(null)
-    this.renderer.clear(true, true, true)
-    this.renderer.setRenderTarget(renderTarget)
+    const renderTarget = this.rendererAdapter.getRenderTarget()
+    this.rendererAdapter.setRenderTarget(null)
+    this.rendererAdapter.clear(true, true, true)
+    this.rendererAdapter.setRenderTarget(renderTarget)
   }
 
   private createTransparentOverlayTexture() {

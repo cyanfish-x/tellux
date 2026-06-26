@@ -1,11 +1,11 @@
 import * as THREE from 'three'
-import type { ThreeRendererWithEffects } from '../effects'
+import type { TelluxRendererAdapter } from './RendererAdapter'
 import type { TilesetManager } from '../tiles/TilesetManager'
 
 export interface ViewportResizeManagerOptions {
   container: HTMLElement
   camera: THREE.PerspectiveCamera
-  renderer: ThreeRendererWithEffects
+  renderer: TelluxRendererAdapter
   tilesets: TilesetManager
 }
 

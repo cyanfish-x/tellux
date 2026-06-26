@@ -26,6 +26,7 @@ const categoryById: Record<string, string> = {
   "mixed-height-sampling-horses": "Sampling",
   terrain: "Terrain",
   "threejs-interop": "Models",
+  "webgpu-basic": "Rendering",
 }
 
 const titleById: Record<string, string> = {

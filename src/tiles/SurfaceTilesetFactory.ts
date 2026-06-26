@@ -17,9 +17,20 @@ type GeneratedSurfacePluginConstructor = new (options?: {
   applyOverlayTexture?: boolean
 }) => object
 
+type DirectTextureOverlay = ImageOverlay & {
+  init(): Promise<unknown> | unknown
+  whenReady(): Promise<unknown> | unknown
+  hasContent(range: number[], level?: number | null): boolean
+  getTexture(range: number[], level?: number | null): Promise<unknown> | unknown
+  lockTexture(range: number[], level?: number | null): Promise<unknown> | unknown
+  releaseTexture(range: number[], level?: number | null): void
+  setResolution(resolution: number): void
+}
+
 export type SurfaceTilesetFactoryOptions = {
   imageryOverlayFactory: ImageryOverlayFactory
   getSurfaceMaterialMode: () => ResolvedSurfaceMaterialMode
+  useDirectOverlayTexture: boolean
   registerCommonTilesetPlugins: (tileset: TilesRenderer) => void
 }
 
@@ -33,6 +44,8 @@ const { GeneratedSurfacePlugin } = TilesRendererPlugins as unknown as {
   GeneratedSurfacePlugin: GeneratedSurfacePluginConstructor
 }
 
+const DIRECT_TEXTURE_RANGE_EPSILON = 2e-10
+
 export class SurfaceTilesetFactory {
   constructor(private readonly options: SurfaceTilesetFactoryOptions) {}
 
@@ -40,12 +53,16 @@ export class SurfaceTilesetFactory {
     const tileset = new TilesRenderer()
     const imageryContext = this.options.imageryOverlayFactory.createContext(layers, getLayerOrder)
     const tilingOverlay = imageryContext.overlays.values().next().value ?? null
+    const generatedSurfaceOverlay =
+      tilingOverlay && this.options.useDirectOverlayTexture
+        ? this.createCompositedDirectTextureOverlay(tilingOverlay)
+        : tilingOverlay
     const surfaceMaterialPlugin = new SurfaceMaterialPlugin(this.options.getSurfaceMaterialMode())
 
-    tileset.registerPlugin(tilingOverlay ? new GeneratedSurfacePlugin({
-      overlay: tilingOverlay,
+    tileset.registerPlugin(generatedSurfaceOverlay ? new GeneratedSurfacePlugin({
+      overlay: generatedSurfaceOverlay,
       shape: 'ellipsoid',
-      applyOverlayTexture: false
+      applyOverlayTexture: this.options.useDirectOverlayTexture
     }) : new GeneratedSurfacePlugin({ shape: 'ellipsoid' }))
     tileset.registerPlugin(imageryContext.plugin)
     tileset.registerPlugin(surfaceMaterialPlugin)
@@ -56,5 +73,28 @@ export class SurfaceTilesetFactory {
       imageryContext,
       surfaceMaterialPlugin
     }
+  }
+
+  private createCompositedDirectTextureOverlay(overlay: ImageOverlay) {
+    const source = overlay as DirectTextureOverlay
+    const directOverlay = Object.create(overlay) as DirectTextureOverlay
+    directOverlay.init = () => source.init()
+    directOverlay.whenReady = () => source.whenReady()
+    directOverlay.setResolution = (resolution) => source.setResolution(resolution)
+    directOverlay.hasContent = (range, level) => source.hasContent(this.expandTextureRange(range), level)
+    directOverlay.getTexture = (range, level) => source.getTexture(this.expandTextureRange(range), level)
+    directOverlay.lockTexture = (range, level) => source.lockTexture(this.expandTextureRange(range), level)
+    directOverlay.releaseTexture = (range, level) => source.releaseTexture(this.expandTextureRange(range), level)
+    return directOverlay
+  }
+
+  private expandTextureRange(range: number[]) {
+    const epsilon = DIRECT_TEXTURE_RANGE_EPSILON
+    return [
+      Math.max(0, range[0] - epsilon),
+      Math.max(0, range[1] - epsilon),
+      Math.min(1, range[2] + epsilon),
+      Math.min(1, range[3] + epsilon)
+    ]
   }
 }

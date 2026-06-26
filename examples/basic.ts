@@ -1,29 +1,29 @@
-import tellux from '../src'
-import { arcgisWorldImageryUrl } from './shared'
+import tellux from "../src"
+import { arcgisWorldImageryUrl } from "./shared"
 
 const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? '1'
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ''
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
-const viewer = new tellux.Viewer('viewer', {
+const viewer = new tellux.Viewer("viewer", {
   terrain: DEFAULT_ION_TOKEN
     ? {
-        type: 'cesium-ion',
+        type: "cesium-ion",
         assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
         apiToken: DEFAULT_ION_TOKEN,
         tileLoading: {
-          enableTileSplitting: true
-        }
+          enableTileSplitting: true,
+        },
       }
     : undefined,
   layers: [
     {
       source: {
-        type: 'xyz',
+        type: "xyz",
         url: arcgisWorldImageryUrl,
-        levels: 19
-      }
-    }
+        levels: 19,
+      },
+    },
   ],
   camera: {
     latitude: 48,
@@ -31,20 +31,25 @@ const viewer = new tellux.Viewer('viewer', {
     height: 12000000,
     heading: 0,
     pitch: -90,
-    far: 30000000
+    far: 30000000,
   },
   scene: {
+    atmosphere: {
+      lighting: {
+        mode: "light-source",
+      },
+    },
     clouds: {
-      show: false
+      show: false,
     },
     postProcess: {
-      toneMappingExposure: 8
-    }
-  }
+      toneMappingExposure: 8,
+    },
+  },
 })
 
 ;(window as any).viewer = viewer
 
-window.addEventListener('beforeunload', () => {
+window.addEventListener("beforeunload", () => {
   viewer.destroy()
 })
