@@ -3,6 +3,7 @@ import { pass } from 'three/tsl'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { WebGPUAtmosphereManager } from '../rendering/WebGPUAtmosphereManager'
+import type { AtmosphereRuntimeState } from '../rendering/AtmosphereRuntimeState'
 import type { TelluxRendererAdapter, TelluxWebGPURenderer } from '../rendering/RendererAdapter'
 
 const renderPipelineRender = vi.fn()
@@ -50,6 +51,36 @@ vi.mock('three/tsl', () => {
 
 vi.mock('@takram/three-atmosphere/webgpu', () => {
   const skyNodeInstances: MockSkyNode[] = []
+  const atmosphereContextInstances: MockAtmosphereContext[] = []
+
+  const makeConstVarNode = <T,>(value: T) => ({ node: { value } })
+
+  const createParameters = () => ({
+    solarIrradiance: new THREE.Vector3(1.474, 1.8504, 1.91198),
+    sunAngularRadius: 0.004675,
+    rayleighScattering: new THREE.Vector3(0.000005802, 0.000013558, 0.0000331),
+    mieScattering: new THREE.Vector3().setScalar(0.000003996),
+    mieExtinction: new THREE.Vector3().setScalar(0.00000444),
+    miePhaseFunctionG: 0.8,
+    absorptionExtinction: new THREE.Vector3(0.00000065, 0.000001881, 0.000000085),
+    groundAlbedo: new THREE.Vector3().setScalar(0.3),
+    update: vi.fn()
+  })
+
+  const createParametersNode = (parameters: ReturnType<typeof createParameters>) => ({
+    node: {
+      values: {
+        solarIrradiance: makeConstVarNode(parameters.solarIrradiance.clone()),
+        sunAngularRadius: makeConstVarNode(parameters.sunAngularRadius),
+        rayleighScattering: makeConstVarNode(parameters.rayleighScattering.clone()),
+        mieScattering: makeConstVarNode(parameters.mieScattering.clone()),
+        mieExtinction: makeConstVarNode(parameters.mieExtinction.clone()),
+        miePhaseFunctionG: makeConstVarNode(parameters.miePhaseFunctionG),
+        absorptionExtinction: makeConstVarNode(parameters.absorptionExtinction.clone()),
+        groundAlbedo: makeConstVarNode(parameters.groundAlbedo.clone())
+      }
+    }
+  })
 
   class MockSkyNode {
     showSun = true
@@ -66,6 +97,14 @@ vi.mock('@takram/three-atmosphere/webgpu', () => {
   }
 
   class MockAtmosphereContext {
+    parameters = createParameters()
+    parametersNode = createParametersNode(this.parameters)
+    lutNode = {
+      version: 0,
+      set needsUpdate(value: boolean) {
+        if (value) this.version += 1
+      }
+    }
     camera: THREE.Camera | undefined
     correctAltitude = true
     showGround = true
@@ -74,6 +113,10 @@ vi.mock('@takram/three-atmosphere/webgpu', () => {
     matrixECIToECEF = { value: new THREE.Matrix4() }
     matrixMoonFixedToECEF = { value: new THREE.Matrix4() }
     dispose = vi.fn()
+
+    constructor() {
+      atmosphereContextInstances.push(this)
+    }
   }
 
   class MockAtmosphereLight extends THREE.DirectionalLight {
@@ -104,6 +147,7 @@ vi.mock('@takram/three-atmosphere/webgpu', () => {
     SkyNode: MockSkyNode,
     aerialPerspective: vi.fn(() => new MockAerialPerspectiveNode()),
     sky: vi.fn(() => new MockSkyNode()),
+    atmosphereContextInstances,
     skyNodeInstances
   }
 })
@@ -129,6 +173,53 @@ function createAdapter() {
     get delegate() {
       return delegate
     }
+  }
+}
+
+function createAtmosphereState(overrides: Partial<AtmosphereRuntimeState> = {}): AtmosphereRuntimeState {
+  return {
+    inscatterIntensity: 1,
+    inscatterHorizonBlend: false,
+    inscatterHorizonRange: [0, 1],
+    correctAltitude: true,
+    correctGeometricError: true,
+    transmittance: true,
+    inscatter: true,
+    lightingMode: 'post-process',
+    sunLight: true,
+    skyLight: true,
+    sunLightIntensity: 1,
+    skyLightIntensity: 1,
+    night: {
+      enabled: true,
+      moonLight: true,
+      ambientLight: true,
+      color: 0x9bbcff,
+      moonLightIntensity: 0.18,
+      ambientIntensity: 0.08,
+      useMoonPhase: true,
+      transitionRange: [-0.08, 0.05]
+    },
+    sun: true,
+    moon: true,
+    ground: true,
+    albedoScale: 1,
+    sunAngularRadius: 0.004675,
+    moonAngularRadius: 0.0045,
+    lunarRadianceScale: 1,
+    shadowRadius: 3,
+    shadowSampleCount: 8,
+    starsVisible: true,
+    starsIntensity: 1,
+    starsPointSize: 1,
+    solarIrradianceScale: 1,
+    rayleighScatteringScale: 1,
+    mieScatteringScale: 1,
+    mieExtinctionScale: 1,
+    miePhaseFunctionG: 0.8,
+    absorptionExtinctionScale: 1,
+    groundAlbedo: 0.3,
+    ...overrides
   }
 }
 
@@ -187,6 +278,82 @@ describe('WebGPUAtmosphereManager', () => {
     }
 
     expect(webgpuAtmosphere.skyNodeInstances[0].showStars).toBe(false)
+  })
+
+  it('applies scattering runtime settings to WebGPU atmosphere parameters and nodes', async () => {
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera()
+    const renderer = {
+      library: { addLight: vi.fn() },
+      render: vi.fn()
+    } as unknown as TelluxWebGPURenderer
+    const adapter = createAdapter()
+    const manager = new WebGPUAtmosphereManager(adapter.adapter, renderer, scene, camera)
+    const webgpuAtmosphere = await import('@takram/three-atmosphere/webgpu') as unknown as {
+      atmosphereContextInstances: Array<{
+        parameters: {
+          solarIrradiance: THREE.Vector3
+          sunAngularRadius: number
+          rayleighScattering: THREE.Vector3
+          mieScattering: THREE.Vector3
+          mieExtinction: THREE.Vector3
+          miePhaseFunctionG: number
+          absorptionExtinction: THREE.Vector3
+          groundAlbedo: THREE.Vector3
+        }
+        parametersNode: {
+          node: {
+            values: {
+              solarIrradiance: { node: { value: THREE.Vector3 } }
+              sunAngularRadius: { node: { value: number } }
+              rayleighScattering: { node: { value: THREE.Vector3 } }
+              mieScattering: { node: { value: THREE.Vector3 } }
+              mieExtinction: { node: { value: THREE.Vector3 } }
+              miePhaseFunctionG: { node: { value: number } }
+              absorptionExtinction: { node: { value: THREE.Vector3 } }
+              groundAlbedo: { node: { value: THREE.Vector3 } }
+            }
+          }
+        }
+        lutNode: { version: number }
+      }>
+    }
+    const context = webgpuAtmosphere.atmosphereContextInstances.at(-1)!
+    const baseSolarIrradiance = context.parameters.solarIrradiance.clone()
+    const baseRayleighScattering = context.parameters.rayleighScattering.clone()
+    const baseMieScattering = context.parameters.mieScattering.clone()
+    const baseMieExtinction = context.parameters.mieExtinction.clone()
+    const baseAbsorptionExtinction = context.parameters.absorptionExtinction.clone()
+
+    manager.applyAtmosphereState(createAtmosphereState({
+      solarIrradianceScale: 1.5,
+      rayleighScatteringScale: 0.5,
+      mieScatteringScale: 2,
+      mieExtinctionScale: 3,
+      miePhaseFunctionG: 2,
+      absorptionExtinctionScale: 0,
+      groundAlbedo: 2,
+      sunAngularRadius: 2
+    }))
+
+    const nodeValues = context.parametersNode.node.values
+    expect(context.parameters.solarIrradiance).toEqual(baseSolarIrradiance.multiplyScalar(1.5))
+    expect(context.parameters.rayleighScattering).toEqual(baseRayleighScattering.multiplyScalar(0.5))
+    expect(context.parameters.mieScattering).toEqual(baseMieScattering.multiplyScalar(2))
+    expect(context.parameters.mieExtinction).toEqual(baseMieExtinction.multiplyScalar(3))
+    expect(context.parameters.miePhaseFunctionG).toBe(0.99)
+    expect(context.parameters.absorptionExtinction).toEqual(baseAbsorptionExtinction.multiplyScalar(0))
+    expect(context.parameters.groundAlbedo).toEqual(new THREE.Vector3(1, 1, 1))
+    expect(context.parameters.sunAngularRadius).toBe(0.1)
+    expect(nodeValues.solarIrradiance.node.value).toEqual(context.parameters.solarIrradiance)
+    expect(nodeValues.rayleighScattering.node.value).toEqual(context.parameters.rayleighScattering)
+    expect(nodeValues.mieScattering.node.value).toEqual(context.parameters.mieScattering)
+    expect(nodeValues.mieExtinction.node.value).toEqual(context.parameters.mieExtinction)
+    expect(nodeValues.miePhaseFunctionG.node.value).toBe(0.99)
+    expect(nodeValues.absorptionExtinction.node.value).toEqual(context.parameters.absorptionExtinction)
+    expect(nodeValues.groundAlbedo.node.value).toEqual(context.parameters.groundAlbedo)
+    expect(nodeValues.sunAngularRadius.node.value).toBe(0.1)
+    expect(context.lutNode.version).toBe(1)
   })
 
   it('registers light nodes without taking over the scene background', () => {

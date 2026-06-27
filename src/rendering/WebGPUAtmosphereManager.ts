@@ -22,6 +22,16 @@ import type { TelluxRendererAdapter, TelluxWebGPURenderer } from './RendererAdap
 import type { AtmosphereLightingMode } from '../types'
 
 type WebGPUNode = Node
+type AtmosphereParameterNodeInput<T> = {
+  value?: T
+  node?: AtmosphereParameterNodeInput<T>
+}
+type AtmosphereParameterNodeValues = Record<string, AtmosphereParameterNodeInput<unknown>>
+type AtmosphereParametersNodeWithValues = {
+  node?: {
+    values?: AtmosphereParameterNodeValues
+  }
+}
 type AerialPerspectiveNodeWithCompatibleSky = AerialPerspectiveNode & {
   skyNode?: WebGPUNode | null
 }
@@ -42,6 +52,11 @@ export class WebGPUAtmosphereManager {
   private readonly aerialPerspectiveNode: AerialPerspectiveNode
   private readonly skyNode: SkyNode
   private readonly outputNode: WebGPUNode
+  private readonly baseSolarIrradiance = new THREE.Vector3()
+  private readonly baseRayleighScattering = new THREE.Vector3()
+  private readonly baseMieScattering = new THREE.Vector3()
+  private readonly baseMieExtinction = new THREE.Vector3()
+  private readonly baseAbsorptionExtinction = new THREE.Vector3()
   private readonly sunDirection = new THREE.Vector3()
   private readonly moonDirection = new THREE.Vector3()
   private readonly inertialToECEFMatrix = new THREE.Matrix4()
@@ -62,6 +77,7 @@ export class WebGPUAtmosphereManager {
     this.registerAtmosphereLightNode()
 
     this.atmosphereContext.camera = camera
+    this.captureAtmosphereDefaults()
     this.scenePass = pass(threeScene, camera)
     this.scenePass.contextNode = this.createAtmosphereContextNode()
     this.skyNode = sky() as unknown as SkyNode
@@ -117,6 +133,7 @@ export class WebGPUAtmosphereManager {
     this.skyNode.moonNode.intensity.value = Math.max(0, this.toFinite(state.lunarRadianceScale, 1))
     this.skyNode.starsNode.intensity.value = Math.max(0, this.toFinite(state.starsIntensity, 1))
     this.skyNode.starsNode.pointSize.value = Math.max(0, this.toFinite(state.starsPointSize, 1))
+    this.applyAtmosphereParameters(state)
     this.applyLightingMode(state.lightingMode, state.sunLight, state.skyLight)
     this.sunLightSource.intensity = Math.max(0, this.toFinite(state.sunLightIntensity, 1))
     this.moonLightSource.intensity = state.night.enabled && state.night.moonLight
@@ -218,6 +235,89 @@ export class WebGPUAtmosphereManager {
   private registerAtmosphereLightNode() {
     const library = this.renderer.library as LightNodeLibrary
     library.addLight?.(AtmosphereLightNode, AtmosphereLight)
+  }
+
+  private captureAtmosphereDefaults() {
+    const { parameters } = this.atmosphereContext
+    this.baseSolarIrradiance.copy(parameters.solarIrradiance)
+    this.baseRayleighScattering.copy(parameters.rayleighScattering)
+    this.baseMieScattering.copy(parameters.mieScattering)
+    this.baseMieExtinction.copy(parameters.mieExtinction)
+    this.baseAbsorptionExtinction.copy(parameters.absorptionExtinction)
+  }
+
+  private applyAtmosphereParameters(state: AtmosphereRuntimeState) {
+    const { parameters } = this.atmosphereContext
+    const sunAngularRadius = THREE.MathUtils.clamp(this.toFinite(state.sunAngularRadius, 0.004675), 0, 0.1)
+
+    parameters.solarIrradiance
+      .copy(this.baseSolarIrradiance)
+      .multiplyScalar(Math.max(0, this.toFinite(state.solarIrradianceScale, 1)))
+    parameters.sunAngularRadius = sunAngularRadius
+    parameters.rayleighScattering
+      .copy(this.baseRayleighScattering)
+      .multiplyScalar(Math.max(0, this.toFinite(state.rayleighScatteringScale, 1)))
+    parameters.mieScattering
+      .copy(this.baseMieScattering)
+      .multiplyScalar(Math.max(0, this.toFinite(state.mieScatteringScale, 1)))
+    parameters.mieExtinction
+      .copy(this.baseMieExtinction)
+      .multiplyScalar(Math.max(0, this.toFinite(state.mieExtinctionScale, 1)))
+    parameters.miePhaseFunctionG = THREE.MathUtils.clamp(
+      this.toFinite(state.miePhaseFunctionG, 0.8),
+      -0.99,
+      0.99
+    )
+    parameters.absorptionExtinction
+      .copy(this.baseAbsorptionExtinction)
+      .multiplyScalar(Math.max(0, this.toFinite(state.absorptionExtinctionScale, 1)))
+    parameters.groundAlbedo.setScalar(THREE.MathUtils.clamp(this.toFinite(state.groundAlbedo, 0.3), 0, 1))
+    parameters.update()
+
+    this.syncAtmosphereParameterNode('solarIrradiance', parameters.solarIrradiance)
+    this.syncAtmosphereParameterNode('sunAngularRadius', parameters.sunAngularRadius)
+    this.syncAtmosphereParameterNode('rayleighScattering', parameters.rayleighScattering)
+    this.syncAtmosphereParameterNode('mieScattering', parameters.mieScattering)
+    this.syncAtmosphereParameterNode('mieExtinction', parameters.mieExtinction)
+    this.syncAtmosphereParameterNode('miePhaseFunctionG', parameters.miePhaseFunctionG)
+    this.syncAtmosphereParameterNode('absorptionExtinction', parameters.absorptionExtinction)
+    this.syncAtmosphereParameterNode('groundAlbedo', parameters.groundAlbedo)
+    this.atmosphereContext.lutNode.needsUpdate = true
+  }
+
+  private syncAtmosphereParameterNode(name: string, value: number | THREE.Vector3) {
+    const values = (this.atmosphereContext.parametersNode as AtmosphereParametersNodeWithValues).node?.values
+    const input = values?.[name]
+    if (!input) return
+
+    this.writeAtmosphereParameterNodeInput(input, value)
+  }
+
+  private writeAtmosphereParameterNodeInput(
+    input: AtmosphereParameterNodeInput<unknown>,
+    value: number | THREE.Vector3
+  ): boolean {
+    if ('value' in input) {
+      if (typeof value === 'number') {
+        input.value = value
+      } else if (this.isCopyableValue(input.value)) {
+        input.value.copy(value)
+      } else {
+        input.value = value.clone()
+      }
+      this.markNodeInputDirty(input)
+      return true
+    }
+
+    return input.node ? this.writeAtmosphereParameterNodeInput(input.node, value) : false
+  }
+
+  private isCopyableValue(value: unknown): value is THREE.Vector3 {
+    return value instanceof THREE.Vector3
+  }
+
+  private markNodeInputDirty(input: AtmosphereParameterNodeInput<unknown>) {
+    ;(input as { needsUpdate?: boolean }).needsUpdate = true
   }
 
   private removeLightSourcesFromScene() {
