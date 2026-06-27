@@ -6,30 +6,40 @@ type TileLike = {
   boundingVolume?: {
     region?: number[]
   }
-}
-
-type OverlayEntry = {
-  overlay: ImageOverlay
-  order: number
-}
-
-type TileOverlayRecord = {
-  overlay: DirectTerrainImageOverlay
-  range: number[]
-}
-
-type DirectTerrainImageOverlay = ImageOverlay & {
-  projection: {
-    clampToBounds(range: number[]): number[]
-    toNormalizedRange(range: number[]): number[]
+  engineData?: {
+    scene?: THREE.Object3D | null
+    boundingVolume?: {
+      intersectsFrustum(frustum: unknown): boolean
+      distanceToPoint(point: THREE.Vector3): number
+    } | null
   }
-  init(): Promise<unknown> | unknown
-  whenReady(): Promise<unknown> | unknown
-  hasContent(range: number[], level?: number | null): boolean
-  getTexture(range: number[], level?: number | null): Promise<THREE.Texture | null> | THREE.Texture | null
-  lockTexture(range: number[], level?: number | null): Promise<unknown> | unknown
-  releaseTexture(range: number[], level?: number | null): void
-  setResolution(resolution: number): void
+}
+
+type OverlayProjectionLike = {
+  clampToBounds(range: number[]): number[]
+}
+
+type ImageOverlayLike = ImageOverlay & {
+  isReady?: boolean
+  projection?: OverlayProjectionLike
+}
+
+type ViewErrorTarget = {
+  inView: boolean
+  error: number
+  distance?: number
+  distanceFromCamera?: number
+}
+
+type TilesRendererWithCameraInfo = TilesRenderer & {
+  cameras?: unknown[]
+  cameraInfo?: Array<{
+    isOrthographic?: boolean
+    pixelSize?: number
+    sseDenominator?: number
+    position: THREE.Vector3
+    frustum: unknown
+  }>
 }
 
 type SplittingPlugin = ImageOverlayPlugin & {
@@ -45,6 +55,7 @@ type SplittingPlugin = ImageOverlayPlugin & {
   getAttributions(target: unknown[]): void
   resetFailedOverlays(): void
   getTexture(tile: TileLike): THREE.Texture | null
+  overlays: ImageOverlay[]
 }
 
 class WebGPUTerrainOverlaySplittingPlugin extends ImageOverlayPlugin {
@@ -63,7 +74,10 @@ class WebGPUTerrainOverlaySplittingPlugin extends ImageOverlayPlugin {
   _wrapMaterials() {}
 
   _updateLayers(tile: TileLike) {
-    const overlays = (this as unknown as {
+    const internals = this as unknown as {
+      tiles?: {
+        recalculateBytesUsed(tile: TileLike): void
+      } | null
       overlays: ImageOverlay[]
       overlayInfo: Map<ImageOverlay, {
         order: number
@@ -72,29 +86,30 @@ class WebGPUTerrainOverlaySplittingPlugin extends ImageOverlayPlugin {
           meshInfo: Map<THREE.Mesh, { attribute: THREE.BufferAttribute }>
         }>
       }>
-    }).overlays
-    const overlayInfo = (this as unknown as {
-      overlayInfo: Map<ImageOverlay, {
-        order: number
-        tileInfo: Map<TileLike, {
-          target: unknown
-          meshInfo: Map<THREE.Mesh, { attribute: THREE.BufferAttribute }>
-        }>
-      }>
-    }).overlayInfo
+    }
+    const { overlays, overlayInfo } = internals
+    internals.tiles?.recalculateBytesUsed(tile)
+
     const overlay = overlays.find((item) => item.opacity !== 0)
-    if (!overlay) return
+    if (!overlay) {
+      this.tileTextures.delete(tile)
+      this.applyTextureToScene(tile.engineData?.scene ?? null, null)
+      return
+    }
 
     const tileInfo = overlayInfo.get(overlay)?.tileInfo.get(tile)
     if (!tileInfo?.target) {
       this.tileTextures.delete(tile)
+      this.applyTextureToScene(tile.engineData?.scene ?? null, null)
       return
     }
 
-    this.tileTextures.set(tile, tileInfo.target as THREE.Texture)
+    const texture = tileInfo.target as THREE.Texture
+    this.tileTextures.set(tile, texture)
 
     tileInfo.meshInfo.forEach(({ attribute }, mesh) => {
       this.applyOverlayUvToMesh(mesh, attribute)
+      this.applyTextureToMesh(mesh, texture)
     })
   }
 
@@ -121,6 +136,33 @@ class WebGPUTerrainOverlaySplittingPlugin extends ImageOverlayPlugin {
     mesh.geometry.setAttribute('uv', new THREE.BufferAttribute(array, 2))
     mesh.geometry.dispose()
   }
+
+  private applyTextureToScene(scene: THREE.Object3D | null, texture: THREE.Texture | null) {
+    if (!scene) return
+
+    scene.traverse((object) => {
+      const mesh = object as THREE.Mesh
+      if (!mesh.material) return
+
+      this.applyTextureToMesh(mesh, texture)
+    })
+  }
+
+  private applyTextureToMesh(mesh: THREE.Mesh, texture: THREE.Texture | null) {
+    if (Array.isArray(mesh.material)) {
+      mesh.material.forEach((material) => this.applyTextureToMaterial(material, texture))
+      return
+    }
+
+    this.applyTextureToMaterial(mesh.material, texture)
+  }
+
+  private applyTextureToMaterial(material: THREE.Material, texture: THREE.Texture | null) {
+    if (!('map' in material)) return
+
+    ;(material as THREE.MeshBasicMaterial | THREE.MeshStandardMaterial).map = texture
+    material.needsUpdate = true
+  }
 }
 
 export class WebGPUTerrainOverlayPlugin {
@@ -128,11 +170,11 @@ export class WebGPUTerrainOverlayPlugin {
   readonly priority = -15
 
   private readonly splittingPlugin: SplittingPlugin
-  private readonly directPlugin: WebGPUTerrainDirectOverlayPlugin
+  private tiles: TilesRendererWithCameraInfo | null = null
 
   constructor(
     overlays: ImageOverlay[] = [],
-    resolution = 256,
+    private readonly resolution = 256,
     enableTileSplitting = true
   ) {
     this.splittingPlugin = new WebGPUTerrainOverlaySplittingPlugin(
@@ -140,15 +182,10 @@ export class WebGPUTerrainOverlayPlugin {
       resolution,
       enableTileSplitting
     ) as unknown as SplittingPlugin
-    this.directPlugin = new WebGPUTerrainDirectOverlayPlugin(
-      overlays,
-      resolution,
-      (tile) => this.splittingPlugin.getTexture(tile)
-    )
   }
 
   get overlays() {
-    return this.directPlugin.overlays
+    return this.splittingPlugin.overlays
   }
 
   get enableTileSplitting() {
@@ -160,38 +197,33 @@ export class WebGPUTerrainOverlayPlugin {
   }
 
   init(tiles: TilesRenderer) {
+    this.tiles = tiles as TilesRendererWithCameraInfo
     this.splittingPlugin.init(tiles)
-    this.directPlugin.init(tiles)
   }
 
   addOverlay(overlay: ImageOverlay, order?: number) {
     this.splittingPlugin.addOverlay(overlay, order)
-    this.directPlugin.addOverlay(overlay, order)
   }
 
   setOverlayOrder(overlay: ImageOverlay, order?: number) {
     this.splittingPlugin.setOverlayOrder(overlay, order)
-    this.directPlugin.setOverlayOrder(overlay, order)
   }
 
   deleteOverlay(overlay: ImageOverlay) {
     this.splittingPlugin.deleteOverlay(overlay)
-    this.directPlugin.deleteOverlay(overlay)
   }
 
-  async processTileModel(scene: THREE.Object3D, tile: TileLike) {
-    await this.splittingPlugin.processTileModel(scene, tile)
-    await this.directPlugin.processTileModel(scene, tile)
+  processTileModel(scene: THREE.Object3D, tile: TileLike) {
+    return this.splittingPlugin.processTileModel(scene, tile)
   }
 
   disposeTile(tile: TileLike) {
     this.splittingPlugin.disposeTile(tile)
-    this.directPlugin.disposeTile(tile)
   }
 
   dispose() {
     this.splittingPlugin.dispose()
-    this.directPlugin.dispose()
+    this.tiles = null
   }
 
   fetchData(url: string, options?: unknown) {
@@ -213,203 +245,78 @@ export class WebGPUTerrainOverlayPlugin {
   resetFailedOverlays() {
     this.splittingPlugin.resetFailedOverlays()
   }
-}
 
-class WebGPUTerrainDirectOverlayPlugin {
-  private tiles: TilesRenderer | null = null
-  private readonly entries: OverlayEntry[] = []
-  private readonly tileRecords = new WeakMap<TileLike, TileOverlayRecord>()
-  private readonly tileVersions = new WeakMap<TileLike, { value: number }>()
+  calculateTileViewError(tile: TileLike, target: ViewErrorTarget) {
+    if (!this.enableTileSplitting) return false
 
-  constructor(
-    overlays: ImageOverlay[] = [],
-    private readonly resolution = 256,
-    private readonly getPreparedTexture: (tile: TileLike) => THREE.Texture | null = () => null
-  ) {
-    overlays.forEach((overlay, index) => {
-      this.addOverlay(overlay, index)
-    })
+    const imageryGeometricError = this.calculateImageryGeometricError(tile)
+    if (imageryGeometricError === null) return false
+
+    const viewError = this.calculateImageryViewError(tile, imageryGeometricError)
+    if (!viewError.inView) return false
+
+    target.inView = true
+    target.error = viewError.error
+    target.distance = viewError.distance
+    target.distanceFromCamera = viewError.distance
+    return true
   }
 
-  get overlays() {
-    return this.entries.map((entry) => entry.overlay)
-  }
-
-  init(tiles: TilesRenderer) {
-    this.tiles = tiles
-    this.entries.forEach((entry) => {
-      void this.prepareOverlay(entry.overlay)
-    })
-  }
-
-  addOverlay(overlay: ImageOverlay, order = this.entries.length) {
-    if (this.entries.some((entry) => entry.overlay === overlay)) return
-
-    this.entries.push({ overlay, order })
-    this.sortEntries()
-    if (!this.tiles) return
-
-    void this.prepareOverlay(overlay).then(() => {
-      this.refreshLoadedModels()
-    })
-  }
-
-  setOverlayOrder(overlay: ImageOverlay, order = this.entries.length) {
-    const entry = this.entries.find((item) => item.overlay === overlay)
-    if (!entry) return
-
-    entry.order = order
-    this.sortEntries()
-    this.refreshLoadedModels()
-  }
-
-  deleteOverlay(overlay: ImageOverlay) {
-    const index = this.entries.findIndex((entry) => entry.overlay === overlay)
-    if (index === -1) return
-
-    this.entries.splice(index, 1)
-    this.refreshLoadedModels()
-  }
-
-  async processTileModel(scene: THREE.Object3D, tile: TileLike) {
-    const overlay = await this.getActiveOverlay()
-    if (!overlay) {
-      this.clearTile(scene, tile)
-      return
-    }
-
-    const preparedTexture = this.getPreparedTexture(tile)
-    if (preparedTexture) {
-      this.releaseTileRecord(tile)
-      this.applyTexture(scene, preparedTexture)
-      return
-    }
-
+  private calculateImageryGeometricError(tile: TileLike) {
+    const overlay = this.getActiveOverlay()
     const region = tile.boundingVolume?.region
-    if (!region) {
-      this.clearTile(scene, tile)
-      return
+    if (!overlay?.isReady || !overlay.projection || !region) return null
+
+    const [west, south, east, north] = overlay.projection.clampToBounds(region.slice(0, 4))
+    const longitudeSpan = Math.abs(east - west)
+    const latitudeSpan = Math.abs(north - south)
+    if (longitudeSpan === 0 || latitudeSpan === 0) return null
+
+    const radius = this.getEllipsoidRadius()
+    const midLatitude = (south + north) * 0.5
+    const widthMeters = radius * longitudeSpan * Math.max(Math.cos(midLatitude), 0.001)
+    const heightMeters = radius * latitudeSpan
+    return Math.max(widthMeters, heightMeters) / this.resolution
+  }
+
+  private calculateImageryViewError(tile: TileLike, geometricError: number) {
+    const boundingVolume = tile.engineData?.boundingVolume
+    const cameraInfo = this.tiles?.cameraInfo ?? []
+    let inView = false
+    let error = 0
+    let distance = Infinity
+
+    if (!boundingVolume || cameraInfo.length === 0) {
+      return { inView, error, distance }
     }
 
-    const range = overlay.projection.toNormalizedRange(
-      overlay.projection.clampToBounds(region.slice(0, 4))
-    )
-    if (!overlay.hasContent(range)) {
-      this.clearTile(scene, tile)
-      return
-    }
+    cameraInfo.forEach((info) => {
+      const cameraDistance = info.isOrthographic
+        ? Infinity
+        : boundingVolume.distanceToPoint(info.position)
+      const cameraError = info.isOrthographic
+        ? geometricError / (info.pixelSize ?? Infinity)
+        : cameraDistance === 0
+          ? Infinity
+          : geometricError / (cameraDistance * (info.sseDenominator ?? Infinity))
 
-    this.releaseTileRecord(tile)
-    const version = this.bumpTileVersion(tile)
-    await overlay.lockTexture(range)
-    if (!this.isCurrentTileVersion(tile, version)) {
-      overlay.releaseTexture(range)
-      return
-    }
-    const texture = await overlay.getTexture(range)
-    if (!texture) {
-      this.clearTile(scene, tile)
-      return
-    }
-
-    this.tileRecords.set(tile, { overlay, range })
-    this.applyTexture(scene, texture)
-  }
-
-  disposeTile(tile: TileLike) {
-    this.bumpTileVersion(tile)
-    this.releaseTileRecord(tile)
-  }
-
-  dispose() {
-    this.tiles?.forEachLoadedModel((_scene, tile) => {
-      this.releaseTileRecord(tile as TileLike)
-    })
-    this.entries.length = 0
-    this.tiles = null
-  }
-
-  private async prepareOverlay(overlay: ImageOverlay) {
-    const directOverlay = overlay as DirectTerrainImageOverlay
-    await directOverlay.init()
-    directOverlay.setResolution(this.resolution)
-  }
-
-  private async getActiveOverlay() {
-    const entry = this.entries.find((item) => item.overlay.opacity !== 0)
-    if (!entry) return null
-
-    const overlay = entry.overlay as DirectTerrainImageOverlay
-    await overlay.whenReady()
-    overlay.setResolution(this.resolution)
-    return overlay
-  }
-
-  private applyTexture(scene: THREE.Object3D, texture: THREE.Texture) {
-    scene.traverse((object) => {
-      const mesh = object as THREE.Mesh
-      if (!mesh.material) return
-
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((material) => this.applyTextureToMaterial(material, texture))
-        return
+      if (boundingVolume.intersectsFrustum(info.frustum)) {
+        inView = true
+        error = Math.max(error, cameraError)
+        distance = Math.min(distance, cameraDistance)
       }
-
-      this.applyTextureToMaterial(mesh.material, texture)
     })
+
+    return { inView, error, distance }
   }
 
-  private applyTextureToMaterial(material: THREE.Material, texture: THREE.Texture | null) {
-    if (!('map' in material)) return
-
-    ;(material as THREE.MeshBasicMaterial | THREE.MeshStandardMaterial).map = texture
-    material.needsUpdate = true
+  private getActiveOverlay() {
+    return (this.splittingPlugin.overlays as ImageOverlayLike[])
+      .find((overlay) => overlay.opacity !== 0) ?? null
   }
 
-  private clearTile(scene: THREE.Object3D, tile: TileLike) {
-    this.releaseTileRecord(tile)
-    scene.traverse((object) => {
-      const mesh = object as THREE.Mesh
-      if (!mesh.material) return
-
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((material) => this.applyTextureToMaterial(material, null))
-        return
-      }
-
-      this.applyTextureToMaterial(mesh.material, null)
-    })
-  }
-
-  private releaseTileRecord(tile: TileLike) {
-    const record = this.tileRecords.get(tile)
-    if (!record) return
-
-    record.overlay.releaseTexture(record.range)
-    this.tileRecords.delete(tile)
-  }
-
-  private bumpTileVersion(tile: TileLike) {
-    const version = this.tileVersions.get(tile) ?? { value: 0 }
-    version.value += 1
-    this.tileVersions.set(tile, version)
-    return version.value
-  }
-
-  private isCurrentTileVersion(tile: TileLike, value: number) {
-    return this.tileVersions.get(tile)?.value === value
-  }
-
-  private refreshLoadedModels() {
-    if (!this.tiles) return
-
-    this.tiles.forEachLoadedModel((scene, tile) => {
-      void this.processTileModel(scene, tile as TileLike)
-    })
-    this.tiles.dispatchEvent({ type: 'needs-render' })
-  }
-
-  private sortEntries() {
-    this.entries.sort((left, right) => left.order - right.order)
+  private getEllipsoidRadius() {
+    const radius = this.tiles?.ellipsoid?.radius
+    return radius ? Math.max(radius.x, radius.y, radius.z) : 6378137
   }
 }

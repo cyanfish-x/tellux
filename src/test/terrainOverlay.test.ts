@@ -158,57 +158,49 @@ describe('terrain imagery overlays', () => {
     expect(imageryContext.plugin).toBe(webgpuOverlayPlugin)
   })
 
-  it('applies locked overlay textures directly to WebGPU terrain tile materials', async () => {
+  it('applies splitting plugin textures directly to WebGPU terrain tile materials', () => {
     const texture = new THREE.Texture()
     const material = new THREE.MeshStandardMaterial()
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), material)
-    const calls: string[] = []
-    const overlay = {
-      opacity: 1,
-      projection: {
-        clampToBounds: (range: number[]) => range,
-        toNormalizedRange: (range: number[]) => range
-      },
-      init: () => {
-        calls.push('init')
-      },
-      whenReady: () => {
-        calls.push('whenReady')
-      },
-      setResolution: () => {},
-      hasContent: () => true,
-      lockTexture: async () => {
-        calls.push('lockTexture')
-      },
-      getTexture: () => {
-        calls.push('getTexture')
-        return texture
-      },
-      releaseTexture: () => {
-        calls.push('releaseTexture')
-      }
-    }
+    const overlay = { opacity: 1 }
+    const tile = {}
 
     const plugin = new WebGPUTerrainOverlayPlugin([overlay as never], 512)
-    ;(plugin as unknown as {
+    const splittingPlugin = (plugin as unknown as {
       splittingPlugin: {
-        init: () => void
-        processTileModel: () => Promise<void>
-        getTexture: () => null
+        overlays: unknown[]
+        overlayInfo: Map<unknown, {
+          tileInfo: Map<unknown, {
+            target: unknown
+            meshInfo: Map<THREE.Mesh, { attribute: THREE.BufferAttribute }>
+          }>
+        }>
+        _updateLayers: (tile: unknown) => void
       }
-    }).splittingPlugin = {
-      init: () => {},
-      processTileModel: async () => {},
-      getTexture: () => null
-    }
-    plugin.init({} as never)
-    await plugin.processTileModel(mesh, {
-      boundingVolume: {
-        region: [0, 0, 1, 1, 0, 1]
-      }
-    })
+    }).splittingPlugin
+    splittingPlugin.overlays = [overlay]
+    splittingPlugin.overlayInfo = new Map([
+      [overlay, {
+        tileInfo: new Map([
+          [tile, {
+            target: texture,
+            meshInfo: new Map([
+              [mesh, {
+                attribute: new THREE.BufferAttribute(new Float32Array([
+                  0, 0, 1,
+                  1, 0, 1,
+                  1, 1, 1,
+                  0, 1, 1
+                ]), 3)
+              }]
+            ])
+          }]
+        ])
+      }]
+    ])
 
-    expect(calls).toEqual(['init', 'whenReady', 'lockTexture', 'getTexture'])
+    splittingPlugin._updateLayers(tile)
+
     expect(material.map).toBe(texture)
   })
 
@@ -264,8 +256,7 @@ describe('terrain imagery overlays', () => {
     ])
   })
 
-  it('renders the texture prepared by the splitting plugin without refetching a coarser range', async () => {
-    const preparedTexture = new THREE.Texture()
+  it('does not refetch a coarser terrain range outside the splitting plugin pipeline', async () => {
     const material = new THREE.MeshStandardMaterial()
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), material)
     const calls: string[] = []
@@ -276,8 +267,17 @@ describe('terrain imagery overlays', () => {
     }
     const overlay = {
       opacity: 1,
+      isReady: true,
+      isPlanarProjection: false,
+      aspectRatio: 1,
+      projection: {
+        clampToBounds: (range: number[]) => range,
+        toNormalizedRange: (range: number[]) => range
+      },
+      init: () => Promise.resolve(),
       whenReady: () => {
         calls.push('whenReady')
+        return Promise.resolve()
       },
       setResolution: () => {},
       hasContent: () => true,
@@ -294,17 +294,91 @@ describe('terrain imagery overlays', () => {
     const plugin = new WebGPUTerrainOverlayPlugin([overlay as never], 512)
     const internals = plugin as unknown as {
       splittingPlugin: {
-        getTexture: (tile: unknown) => THREE.Texture | null
-      }
-      directPlugin: {
         processTileModel: (scene: THREE.Object3D, tile: unknown) => Promise<void>
       }
     }
-    internals.splittingPlugin.getTexture = (candidate) => candidate === tile ? preparedTexture : null
+    internals.splittingPlugin.processTileModel = async () => {}
 
-    await internals.directPlugin.processTileModel(mesh, tile)
+    await plugin.processTileModel(mesh, tile)
 
-    expect(calls).toEqual(['whenReady'])
-    expect(material.map).toBe(preparedTexture)
+    expect(calls).toEqual([])
+    expect(material.map).toBeNull()
+  })
+
+  it('raises terrain traversal error when imagery pixels need a higher LOD', () => {
+    const plugin = new WebGPUTerrainOverlayPlugin([{
+      opacity: 1,
+      isReady: true,
+      projection: {
+        clampToBounds: (range: number[]) => range
+      }
+    } as never], 256)
+    ;(plugin as unknown as {
+      tiles: {
+        ellipsoid: {
+          radius: THREE.Vector3
+        }
+        cameraInfo: Array<{
+          isOrthographic: boolean
+          pixelSize: number
+          position: THREE.Vector3
+          frustum: unknown
+        }>
+      }
+    }).tiles = {
+      ellipsoid: {
+        radius: new THREE.Vector3(6378137, 6378137, 6356752)
+      },
+      cameraInfo: [{
+        isOrthographic: true,
+        pixelSize: 100,
+        position: new THREE.Vector3(),
+        frustum: {}
+      }]
+    }
+    const target = {
+      inView: true,
+      error: 0,
+      distance: Infinity
+    }
+
+    const handled = plugin.calculateTileViewError({
+      boundingVolume: {
+        region: [0, 0, Math.PI / 128, Math.PI / 128, 0, 100]
+      },
+      engineData: {
+        boundingVolume: {
+          intersectsFrustum: () => true,
+          distanceToPoint: () => 1000
+        }
+      }
+    }, target)
+
+    expect(handled).toBe(true)
+    expect(target.error).toBeGreaterThan(1)
+  })
+
+  it('does not adjust traversal error when WebGPU terrain tile splitting is disabled', () => {
+    const plugin = new WebGPUTerrainOverlayPlugin([{
+      opacity: 1,
+      isReady: true,
+      projection: {
+        clampToBounds: (range: number[]) => range
+      }
+    } as never], 256, false)
+    const target = {
+      inView: true,
+      error: 0,
+      distance: Infinity
+    }
+
+    const handled = plugin.calculateTileViewError({
+      boundingVolume: {
+        region: [0, 0, Math.PI / 128, Math.PI / 128, 0, 100]
+      }
+    }, target)
+
+    expect(handled).toBe(false)
+    expect(target.error).toBe(0)
   })
 })
