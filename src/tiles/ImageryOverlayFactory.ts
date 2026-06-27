@@ -84,8 +84,14 @@ export type ImageryOverlayContextOptions = {
   enableTileSplitting?: boolean
 }
 
+export type ImageryOverlayPluginLike = {
+  addOverlay(overlay: ImageOverlay, order?: number): void
+  setOverlayOrder(overlay: ImageOverlay, order?: number): void
+  deleteOverlay(overlay: ImageOverlay): void
+}
+
 export type ImageryOverlayContext = {
-  plugin: ImageOverlayPlugin
+  plugin: ImageryOverlayPluginLike
   overlays: Map<string, ImageOverlay>
 }
 

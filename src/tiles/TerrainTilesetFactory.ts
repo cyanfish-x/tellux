@@ -17,11 +17,13 @@ import {
   SurfaceMaterialPlugin,
   type ResolvedSurfaceMaterialMode
 } from './TilesetModelPlugins'
+import { WebGPUTerrainOverlayPlugin } from './WebGPUTerrainOverlayPlugin'
 
 export type TerrainTilesetFactoryOptions = {
   imageryOverlayFactory: ImageryOverlayFactory
   getSurfaceMaterialMode: () => ResolvedSurfaceMaterialMode
   getSurfaceMaterialOptions: () => SurfaceMaterialOptions
+  useDirectOverlayTexture: boolean
   registerCommonTilesetPlugins: (tileset: TilesRenderer) => void
 }
 
@@ -50,13 +52,21 @@ export class TerrainTilesetFactory {
       resolution: terrain.tileLoading?.imageryResolution,
       enableTileSplitting: terrain.tileLoading?.enableTileSplitting
     })
+    const imageryPlugin = this.options.useDirectOverlayTexture
+      ? new WebGPUTerrainOverlayPlugin(
+          [...imageryContext.overlays.values()],
+          terrain.tileLoading?.imageryResolution,
+          terrain.tileLoading?.enableTileSplitting ?? true
+        )
+      : imageryContext.plugin
     const surfaceMaterialPlugin = new SurfaceMaterialPlugin(
       this.options.getSurfaceMaterialMode(),
       this.options.getSurfaceMaterialOptions()
     )
 
     this.registerTerrainProvider(tileset, terrain)
-    tileset.registerPlugin(imageryContext.plugin)
+    imageryContext.plugin = imageryPlugin
+    tileset.registerPlugin(imageryPlugin)
     tileset.registerPlugin(surfaceMaterialPlugin)
     this.options.registerCommonTilesetPlugins(tileset)
 

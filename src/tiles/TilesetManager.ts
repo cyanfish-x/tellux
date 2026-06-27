@@ -94,6 +94,7 @@ export class TilesetManager {
       imageryOverlayFactory: this.imageryOverlayFactory,
       getSurfaceMaterialMode: () => this.options.surfaceMaterialMode,
       getSurfaceMaterialOptions: () => this.options.surfaceMaterialOptions,
+      useDirectOverlayTexture: options.useWebGPUCompatibleSurfaceOverlay ?? false,
       registerCommonTilesetPlugins: (tileset) => this.registerCommonTilesetPlugins(tileset)
     })
     this.currentTerrain = options.terrain

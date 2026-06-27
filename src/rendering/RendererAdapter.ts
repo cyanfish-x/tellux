@@ -19,6 +19,7 @@ export interface TelluxRendererAdapter {
   getRenderTarget(): ReturnType<TelluxRenderer['getRenderTarget']>
   setRenderTarget(renderTarget: ReturnType<TelluxRenderer['getRenderTarget']>): void
   clear(color?: boolean, depth?: boolean, stencil?: boolean): void
+  setRenderDelegate(delegate: ((scene: THREE.Object3D, camera: THREE.Camera) => void) | null): void
   render(scene: THREE.Object3D, camera: THREE.Camera): void
   setAnimationLoop(callback: ((time: DOMHighResTimeStamp) => void) | null): void
   dispose(): void
@@ -74,6 +75,8 @@ class WebGLRendererAdapter implements TelluxRendererAdapter {
     this.renderer.clear(color, depth, stencil)
   }
 
+  setRenderDelegate(_delegate: ((scene: THREE.Object3D, camera: THREE.Camera) => void) | null) {}
+
   render(scene: THREE.Object3D, camera: THREE.Camera) {
     this.renderer.render(scene, camera)
   }
@@ -93,6 +96,7 @@ class WebGPURendererAdapter implements TelluxRendererAdapter {
   readonly renderer: TelluxWebGPURenderer
   readonly ready: Promise<void>
   private animationLoop: ((time: DOMHighResTimeStamp) => void) | null = null
+  private renderDelegate: ((scene: THREE.Object3D, camera: THREE.Camera) => void) | null = null
   private initialized = false
   private disposed = false
 
@@ -138,8 +142,16 @@ class WebGPURendererAdapter implements TelluxRendererAdapter {
     this.renderer.clear(color, depth, stencil)
   }
 
+  setRenderDelegate(delegate: ((scene: THREE.Object3D, camera: THREE.Camera) => void) | null) {
+    this.renderDelegate = delegate
+  }
+
   render(scene: THREE.Object3D, camera: THREE.Camera) {
     if (!this.initialized) return
+    if (this.renderDelegate) {
+      this.renderDelegate(scene, camera)
+      return
+    }
     this.renderer.render(scene, camera)
   }
 
@@ -159,6 +171,7 @@ class WebGPURendererAdapter implements TelluxRendererAdapter {
     this.disposed = true
     this.initialized = false
     this.animationLoop = null
+    this.renderDelegate = null
     this.renderer.dispose()
   }
 }

@@ -131,5 +131,5 @@ export function resolveModelMaterialMode(atmosphereLightingMode: AtmosphereLight
 }
 
 function clamp01(value: number | undefined, fallback: number) {
-  return Number.isFinite(value) ? Math.min(Math.max(value, 0), 1) : fallback
+  return typeof value === 'number' && Number.isFinite(value) ? Math.min(Math.max(value, 0), 1) : fallback
 }

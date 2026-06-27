@@ -16,10 +16,12 @@ import {
   createRendererAdapter,
   type TelluxRenderer,
   type TelluxRendererAdapter,
-  type TelluxWebGLRenderer
+  type TelluxWebGLRenderer,
+  type TelluxWebGPURenderer
 } from './rendering/RendererAdapter'
 import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
+import { WebGPUAtmosphereManager } from './rendering/WebGPUAtmosphereManager'
 import { CartographicPicker } from './sampling/CartographicPicker'
 import { HeightSampler } from './sampling/HeightSampler'
 import { TilesetFeaturePicker } from './sampling/TilesetFeaturePicker'
@@ -151,6 +153,8 @@ export type {
   XYZImagerySourceOptions
 } from './types'
 
+type ViewerAtmosphereManager = AtmosphereManager | WebGPUAtmosphereManager
+
 /**
  * Tellux 主视图类。
  *
@@ -245,7 +249,7 @@ export class Viewer {
   private readonly gltfLoader: GLTFLoader
   private readonly models: ModelManager
   private readonly viewport: ViewportResizeManager
-  private readonly atmosphere: AtmosphereManager | null
+  private readonly atmosphere: ViewerAtmosphereManager | null
   private readonly postProcessing: PostProcessingManager | null
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
@@ -291,7 +295,7 @@ export class Viewer {
     const width = resolvedContainer.clientWidth || 1
     const height = resolvedContainer.clientHeight || 1
     const cameraOptions = resolveViewerCameraOptions(options.camera)
-    let atmosphere: AtmosphereManager | null = null
+    let atmosphere: ViewerAtmosphereManager | null = null
     let postProcessing: PostProcessingManager | null = null
     let tilesets: TilesetManager | null = null
 
@@ -312,14 +316,17 @@ export class Viewer {
       sceneOptions,
       (state) => atmosphere?.applyAtmosphereState(state),
       (state) => atmosphere?.applyCloudsState(state),
-      () => postProcessing?.applyEffects(),
+      () => {
+        postProcessing?.applyEffects()
+        if (atmosphere instanceof WebGPUAtmosphereManager) {
+          atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
+        }
+      },
       () => {
         if (tilesets) this.syncSurfaceMaterialMode()
       }
     )
-    this.atmosphere = this.rendererAdapter.supportsWebGLEffects
-      ? new AtmosphereManager(this.renderer as TelluxWebGLRenderer, this.threeCamera, () => postProcessing?.applyEffects())
-      : null
+    this.atmosphere = this.createAtmosphereManager(() => postProcessing?.applyEffects())
     atmosphere = this.atmosphere
     this.atmosphere?.addLightSourcesTo(this.scene.threeScene)
     this.scene.syncRuntimeEffects()
@@ -361,7 +368,11 @@ export class Viewer {
     })
     this.camera.setView(cameraOptions)
 
-    this.controls = new TelluxGlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
+    const controls = new TelluxGlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
+    if (this.rendererType === 'webgpu') {
+      controls.useWebGPUCompatiblePivotMaterial()
+    }
+    this.controls = controls
     this.syncControlsEllipsoid()
     this.layers = new LayerManager(options.layers, (layers, change) => {
       if (change.type === 'structure') {
@@ -391,7 +402,7 @@ export class Viewer {
           this.scene,
           this.scene.threeScene,
           this.threeCamera,
-          this.atmosphere,
+          this.atmosphere as AtmosphereManager,
           () => this.camera.getCurrentHeight()
         )
       : null
@@ -771,6 +782,9 @@ export class Viewer {
     const currentHeight = this.syncFallbackAmbientLight()
     this.postProcessing?.updateForCameraHeight(currentHeight)
     this.tilesets.update()
+    if (this.atmosphere instanceof WebGPUAtmosphereManager) {
+      this.atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
+    }
     this.atmosphere?.updateLightSources()
     this.models.update(deltaTime)
     this.rendererAdapter.render(this.scene.threeScene, this.threeCamera)
@@ -857,6 +871,23 @@ export class Viewer {
         layer.remove()
       }
     }
+  }
+
+  private createAtmosphereManager(onWebGLCompositionChange: () => void): ViewerAtmosphereManager | null {
+    if (this.rendererAdapter.supportsWebGLEffects) {
+      return new AtmosphereManager(this.renderer as TelluxWebGLRenderer, this.threeCamera, onWebGLCompositionChange)
+    }
+
+    if (this.rendererType === 'webgpu') {
+      return new WebGPUAtmosphereManager(
+        this.rendererAdapter,
+        this.renderer as TelluxWebGPURenderer,
+        this.scene.threeScene,
+        this.threeCamera
+      )
+    }
+
+    return null
   }
 
   private static resolveContainer(container: HTMLElement | string) {

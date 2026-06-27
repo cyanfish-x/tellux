@@ -88,7 +88,10 @@ const viewer = await Viewer.create(container, {
   },
   scene: {
     atmosphere: {
-      show: false
+      show: true,
+      lighting: {
+        mode: 'light-source'
+      }
     },
     clouds: {
       show: false
@@ -111,7 +114,7 @@ await viewer.ready
 viewer.render()
 ```
 
-WebGPU 支持目前是实验能力，首版只保证基础地球、3D Tiles、地形、影像、模型和拾取链路。大气、体积云和后处理仍依赖 WebGL 管线，在 WebGPU renderer 下会降级为不渲染这些效果。
+WebGPU 支持目前是实验能力。基础地球、3D Tiles、地形、影像、模型、拾取和大气天空 / 空气透视会走 WebGPU 管线；体积云、星空和 WebGL 后处理效果仍会降级为不渲染。WebGPU 大气首版使用 Takram node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射。
 
 ## 事件
 

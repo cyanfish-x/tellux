@@ -1,11 +1,25 @@
 import tellux from "../src"
 import { arcgisWorldImageryUrl } from "./shared"
 
+const DEFAULT_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
+
 async function main() {
   const viewer = await tellux.Viewer.create("viewer", {
     renderer: {
       type: "webgpu",
     },
+    terrain: DEFAULT_ION_TOKEN
+      ? {
+          type: "cesium-ion",
+          assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
+          apiToken: DEFAULT_ION_TOKEN,
+          tileLoading: {
+            enableTileSplitting: true,
+          },
+        }
+      : undefined,
     layers: [
       {
         source: {
@@ -25,7 +39,10 @@ async function main() {
     },
     scene: {
       atmosphere: {
-        show: false,
+        show: true,
+        lighting: {
+          mode: "light-source",
+        },
       },
       clouds: {
         show: false,
