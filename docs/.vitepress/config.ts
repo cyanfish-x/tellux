@@ -34,9 +34,15 @@ export default ({ command }: ConfigEnv) => defineConfig({
         items: [
           { text: '快速开始', link: '/guide/getting-started' },
           { text: 'Viewer 基础', link: '/guide/viewer' },
-          { text: '光照模式与参数', link: '/guide/lighting' },
+          { text: '相机控制', link: '/guide/camera' },
+          { text: '交互与拾取', link: '/guide/interaction' },
           { text: '地形与影像', link: '/guide/terrain-and-imagery' },
-          { text: '3D Tiles', link: '/guide/3d-tiles' }
+          { text: '3D Tiles', link: '/guide/3d-tiles' },
+          { text: '坐标系与自定义对象', link: '/guide/coordinate-system' },
+          { text: '光照模式与参数', link: '/guide/lighting' },
+          { text: '大气、云与后处理', link: '/guide/atmosphere-and-effects' },
+          { text: '数据源', link: '/guide/data-sources' },
+          { text: '能力边界与已知限制', link: '/guide/limitations' }
         ]
       },
       {

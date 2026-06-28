@@ -49,10 +49,25 @@ const viewer = new tellux.Viewer(container, {
 
 ## 销毁
 
-页面卸载或容器不再使用时，调用 `destroy()` 释放 WebGL、控制器、纹理和事件监听器。
+不再使用 Viewer 时（例如单页应用路由切换、组件卸载），调用 `destroy()` 释放 WebGL 资源、控制器、已加载纹理和事件监听器，避免 GPU 内存泄漏和事件回调残留。
 
 ```ts
-window.addEventListener('beforeunload', () => {
-  viewer.destroy()
-})
+// 单页应用 / 框架组件卸载时销毁（推荐时机）
+viewer.destroy()
 ```
+
+在 React / Vue 这类框架里，应在组件卸载生命周期里销毁：
+
+```ts
+// React 示例
+useEffect(() => {
+  const viewer = new tellux.Viewer(container, options)
+  return () => {
+    viewer.destroy()
+  }
+}, [])
+```
+
+::: tip 页面关闭时的兜底
+页面卸载（`beforeunload` / `pagehide`）时浏览器已经在回收标签页，同步的 WebGL 资源释放通常不可靠，**不要把销毁只挂在页面关闭事件上**。优先在组件卸载或路由切换时销毁；如需兜底，可以额外监听 `pagehide`（比 `beforeunload` 更适合做清理）。
+:::

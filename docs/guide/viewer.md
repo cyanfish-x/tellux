@@ -56,6 +56,8 @@ viewer.scene.clouds.quality = 'high'
 viewer.scene.postProcess.smaa.enabled = true
 ```
 
+上面的示例只展示了常用字段。`ViewerOptions` 的全部配置项（地形、相机、大气散射参数、云、后处理、renderer、控件等）及每个字段的默认值、单位和取值说明，见 [类型入口 — 配置项参考](../api/types.md#配置项参考)。
+
 ## 渲染循环
 
 默认情况下，Tellux 会接管 `renderer.setAnimationLoop`。
