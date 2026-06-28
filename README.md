@@ -338,6 +338,45 @@ const layer = viewer.load3DTileset({
 }
 ```
 
+## Renderer 类型
+
+默认情况下，Viewer 使用 Three.js `WebGLRenderer`，完整支持大气、体积云、星空和后处理效果。也可以通过 `renderer.type` 切换到实验性的 WebGPU renderer：
+
+```ts
+const viewer = await tellux.Viewer.create(container, {
+  renderer: {
+    type: 'webgpu'
+  },
+  scene: {
+    atmosphere: {
+      show: true,
+      lighting: {
+        mode: 'light-source'
+      }
+    },
+    clouds: {
+      show: false
+    }
+  }
+})
+```
+
+WebGPU renderer 需要异步初始化。推荐使用 `Viewer.create(...)`，它会在返回前等待 renderer 初始化完成；如果使用 `new Viewer(...)` 并接入外部手动渲染循环，建议先 `await viewer.ready` 再调用 `viewer.render()`：
+
+```ts
+const viewer = new tellux.Viewer(container, {
+  renderer: { type: 'webgpu' },
+  useDefaultRenderLoop: false
+})
+
+await viewer.ready
+viewer.render()
+```
+
+> WebGPU 支持目前是**实验能力**，API 和效果范围后续可能调整。基础地球、3D Tiles、地形、影像、模型、拾取和大气天空 / 空气透视会走 WebGPU 管线；**体积云、星空和 WebGL 专属后处理效果（SMAA、镜头光晕、抖动等）在 WebGPU 模式下会降级为不渲染**。WebGPU 大气首版使用 Takram 的 node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射；地球瓦片 LOD 切换目前为直接切换，暂不支持 WebGL 版的丝滑淡入淡出。
+
+WebGPU 模式目前**不会在不支持的环境上自动回退 WebGL**：在不支持 WebGPU 的浏览器中 `renderer.init()` 会失败，`Viewer.create(...)` 会抛错。需要应用层自行检测后决定 `renderer.type`，或设置 `renderer.forceWebGL: true` 让 `WebGPURenderer` 走 Three.js 的 WebGL2 fallback backend（仍走 WebGPU 代码路径，但底层用 WebGL2）。
+
 ## Draco 解码器
 
 Tellux 使用 `DRACOLoader` 加载 glTF tiles 和 glTF / GLB 模型。默认情况下，解码器会从 `/draco/gltf/` 加载。

@@ -341,6 +341,45 @@ Make sure the container has a non-zero size:
 }
 ```
 
+## Renderer type
+
+By default, the Viewer uses the Three.js `WebGLRenderer` with full support for atmosphere, volumetric clouds, stars, and post-processing effects. You can switch to the experimental WebGPU renderer with `renderer.type`:
+
+```ts
+const viewer = await tellux.Viewer.create(container, {
+  renderer: {
+    type: 'webgpu'
+  },
+  scene: {
+    atmosphere: {
+      show: true,
+      lighting: {
+        mode: 'light-source'
+      }
+    },
+    clouds: {
+      show: false
+    }
+  }
+})
+```
+
+The WebGPU renderer requires asynchronous initialization. Prefer `Viewer.create(...)`, which awaits renderer initialization before resolving; if you use `new Viewer(...)` with an external manual render loop, `await viewer.ready` before calling `viewer.render()`:
+
+```ts
+const viewer = new tellux.Viewer(container, {
+  renderer: { type: 'webgpu' },
+  useDefaultRenderLoop: false
+})
+
+await viewer.ready
+viewer.render()
+```
+
+> WebGPU support is currently **experimental**; both the API and the set of supported effects may change. The base globe, 3D Tiles, terrain, imagery, models, picking, and atmospheric sky / aerial perspective run through the WebGPU pipeline, while **volumetric clouds, stars, and WebGL-only post-processing effects (SMAA, lens flare, dithering, etc.) are not rendered in WebGPU mode**. The first version of the WebGPU atmosphere uses Takram's node-based pipeline, with fuller support for the `light-source` lighting mode; some WebGL-only scattering debug parameters are not yet mapped. Globe tile LOD transitions currently switch directly without the smooth fade of the WebGL renderer.
+
+WebGPU mode does **not automatically fall back to WebGL** on unsupported environments: in browsers without WebGPU, `renderer.init()` rejects and `Viewer.create(...)` throws. The application should detect support and choose `renderer.type` accordingly, or set `renderer.forceWebGL: true` to make `WebGPURenderer` use Three.js' WebGL2 fallback backend (still the WebGPU code path, but WebGL2 underneath).
+
 ## Draco decoder
 
 Tellux uses `DRACOLoader` for glTF tiles and glTF / GLB models. By default it loads decoders from `/draco/gltf/`.

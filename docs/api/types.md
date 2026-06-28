@@ -22,6 +22,14 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 - `AddModelOptions`
 - `SampleHeightOptions`
 - `SampleHeightMostDetailedOptions`
+- `ViewerRendererOptions`
+- `ViewerRendererType`
+
+底层 Three.js renderer 实例类型也从 `tellux` 导出，用于在外部渲染循环或自定义 pass 中直接操作 renderer：
+
+- `TelluxRenderer`：`TelluxWebGLRenderer | TelluxWebGPURenderer` 的联合类型。
+- `TelluxWebGLRenderer`：WebGL 模式下的 renderer（带 Tellux 效果扩展的 `WebGLRenderer`）。
+- `TelluxWebGPURenderer`：WebGPU 模式下的 `WebGPURenderer`。
 
 ## 场景配置
 
@@ -96,6 +104,25 @@ viewer.scene.surface.material.roughness = 0.9
 viewer.scene.postProcess.smaa.enabled = true
 viewer.toneMappingExposure = 8
 ```
+
+## Renderer 类型
+
+`ViewerOptions.renderer` 控制底层 Three.js renderer 的创建方式，对应 `ViewerRendererOptions`：
+
+```ts
+const viewer = await tellux.Viewer.create(container, {
+  renderer: {
+    type: 'webgpu'
+  }
+})
+```
+
+`type` 取值对应 `ViewerRendererType`：
+
+- `webgl`（默认）：使用 Three.js `WebGLRenderer`，完整支持大气、云、星空和后处理效果。
+- `webgpu`（实验性）：使用 Three.js `WebGPURenderer`。基础地球、3D Tiles、地形、影像、模型、拾取和大气天空 / 空气透视走 WebGPU 管线；体积云、星空和 WebGL 专属后处理效果仍会降级为不渲染。
+
+WebGPU renderer 需要异步初始化。推荐用 `Viewer.create(...)`，它会在返回前等待 `viewer.ready`；若使用 `new Viewer(...)` 并接入外部手动渲染循环，建议先 `await viewer.ready` 再调用 `viewer.render()`。WebGPU 模式目前不会在不支持的环境上自动回退 WebGL，需要应用层自行检测后再决定 `type`，或使用 `renderer.forceWebGL` 让 WebGPURenderer 走 Three.js 的 WebGL2 fallback backend。
 
 ## 坐标类型
 
