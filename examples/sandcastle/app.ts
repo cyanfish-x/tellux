@@ -321,7 +321,9 @@ function getDocsUrl() {
       window.location.hostname === "::1")
 
   if (isLocalExamplesServer) {
-    return "http://127.0.0.1:5174/docs/"
+    // 开发时文档站由 docs:dev 独立跑在 5174 根路径（vitepress dev docs，无 base），
+    // 不带 /docs 前缀；生产构建后文档部署到 ./docs/ 子路径。
+    return "http://127.0.0.1:5174/"
   }
 
   return new URL("./docs/", window.location.href).toString()
