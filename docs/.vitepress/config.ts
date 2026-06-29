@@ -4,8 +4,11 @@ import type { ConfigEnv } from 'vite'
 export default ({ command }: ConfigEnv) => defineConfig({
   title: 'Tellux',
   description: 'Three.js GIS viewer for terrain, imagery, 3D Tiles, atmosphere, clouds, and post-processing.',
-  base: '/docs/',
-  outDir: '../examples/public/docs',
+  // 开发用相对 base（本地预览），构建用 /tellux/docs/（GitHub Pages 仓库名前缀）。
+  // 不通过 process.env 传 base，避免 Windows + Git Bash 的 MSYS2 路径转换把
+  // "/tellux/docs/" 错误改写成 "D:/Program Files/Git/tellux/docs/"。
+  base: command === 'serve' ? '/' : '/tellux/docs/',
+  outDir: process.env.DOCS_OUT_DIR || '../examples/public/docs',
   cleanUrls: true,
   lastUpdated: true,
   lang: 'zh-CN',
@@ -54,7 +57,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
       }
     ],
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/Bro-B/tellux' }
+      { icon: 'github', link: 'https://github.com/cyanfish-x/tellux' }
     ],
     search: {
       provider: 'local'

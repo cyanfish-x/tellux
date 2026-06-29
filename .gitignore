@@ -1,5 +1,7 @@
 node_modules
 dist
+examples/dist
+examples/dist-ghpages
 examples/public/docs
 docs/.vitepress/cache
 *.log
