@@ -34,11 +34,13 @@ function run(cmd, extraEnv = {}) {
 }
 
 async function main() {
-  // base 通过 vitepress/vite 内置的 command/mode 判断，不走环境变量。
-  // 原因：Windows + Git Bash 的 MSYS2 会把 "/tellux/docs/" 这种以 / 开头的
-  // 环境变量值改写成 Windows 绝对路径（如 D:/Program Files/Git/tellux/docs/）。
+  // base 通过 DEPLOY_TARGET=ghpages 标志区分部署目标（由各 config 内部判断）。
+  // 不直接传带 / 的 base 环境变量：Windows + Git Bash 的 MSYS2 会把
+  // "/tellux/docs/" 这种以 / 开头的值改写成 Windows 绝对路径
+  // （如 D:/Program Files/Git/tellux/docs/）。DEPLOY_TARGET 不带 /，安全。
   console.log("📦 [1/4] 构建 VitePress 文档...")
   run("npx vitepress build docs", {
+    DEPLOY_TARGET: "ghpages",
     DOCS_OUT_DIR: resolve(outDir, "docs"),
   })
 

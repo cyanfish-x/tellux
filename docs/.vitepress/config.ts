@@ -4,10 +4,20 @@ import type { ConfigEnv } from 'vite'
 export default ({ command }: ConfigEnv) => defineConfig({
   title: 'Tellux',
   description: 'Three.js GIS viewer for terrain, imagery, 3D Tiles, atmosphere, clouds, and post-processing.',
-  // 开发用相对 base（本地预览），构建用 /tellux/docs/（GitHub Pages 仓库名前缀）。
-  // 不通过 process.env 传 base，避免 Windows + Git Bash 的 MSYS2 路径转换把
-  // "/tellux/docs/" 错误改写成 "D:/Program Files/Git/tellux/docs/"。
-  base: command === 'serve' ? '/' : '/tellux/docs/',
+  // 开发用相对 base（本地预览）。
+  // 构建时按部署目标区分：
+  //   - GitHub Pages（仓库名 tellux 作为前缀）：DEPLOY_TARGET=ghpages → /tellux/docs/
+  //   - 自部署站点（docs 与 examples 主站同级）：→ /docs/
+  // 用 DEPLOY_TARGET（不带 / 的标志值）区分，而不是直接传 base：
+  // Windows + Git Bash 的 MSYS2 会把 "/tellux/docs/" 这种以 / 开头的值
+  // 改写成绝对路径（如 D:/Program Files/Git/tellux/docs/）。
+  // command 只有 serve/build 两个值，无法区分两种部署，故必须额外信号。
+  base:
+    command === 'serve'
+      ? '/'
+      : process.env.DEPLOY_TARGET === 'ghpages'
+        ? '/tellux/docs/'
+        : '/docs/',
   outDir: process.env.DOCS_OUT_DIR || '../examples/public/docs',
   cleanUrls: true,
   lastUpdated: true,
