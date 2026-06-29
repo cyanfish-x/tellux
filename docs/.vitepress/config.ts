@@ -34,7 +34,13 @@ export default ({ command }: ConfigEnv) => defineConfig({
         link:
           command === 'serve'
             ? 'http://127.0.0.1:5173/sandcastle.html'
-            : { link: '../../sandcastle.html', target: '_self', rel: 'noopener' }
+            : '../../sandcastle.html',
+        // nav 项的 target/rel 与 link 平级（link 始终是 string）。
+        // 不能像 logoLink 那样把 link 写成对象 —— NavItemWithLink.link 类型
+        // 只接受 string，写成对象会导致 SSR 阶段 normalizeLink 收到对象而崩。
+        ...(command === 'serve'
+          ? {}
+          : { target: '_self', rel: 'noopener' })
       }
     ],
     sidebar: [
