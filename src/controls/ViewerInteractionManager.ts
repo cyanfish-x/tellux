@@ -4,6 +4,7 @@ import type { Viewer } from '../Viewer'
 import type {
   AnyViewerEventListener,
   Picked3DTilesFeature,
+  PickedEntity,
   ScreenPosition,
   ViewerEventListener,
   ViewerEventMap,
@@ -17,6 +18,7 @@ export interface ViewerInteractionManagerOptions {
   domElement: HTMLElement
   pickCartographic: (position: ScreenPosition) => ViewerMouseEvent['cartographic']
   pick3DTilesFeature: (position: ScreenPosition) => Picked3DTilesFeature | null
+  pickEntity: (position: ScreenPosition) => PickedEntity | null
 }
 
 export class ViewerInteractionManager {
@@ -74,6 +76,7 @@ export class ViewerInteractionManager {
       y: originalEvent.clientY - rect.top
     }
     const tilesetFeature = this.options.pick3DTilesFeature(position)
+    const entity = this.options.pickEntity(position)
 
     return {
       type,
@@ -81,7 +84,8 @@ export class ViewerInteractionManager {
       originalEvent,
       position,
       cartographic: tilesetFeature?.cartographic ?? this.options.pickCartographic(position),
-      tilesetFeature
+      tilesetFeature,
+      entity
     }
   }
 

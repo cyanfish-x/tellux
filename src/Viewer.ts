@@ -3,6 +3,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { Camera } from './Camera'
 import { Clock } from './Clock'
+import { EntityManager } from './entities/EntityManager'
 import { CAMERA_FRAME, DEG2RAD } from './constants'
 import { telluxConfig } from './config'
 import { TargetFlightController } from './controls/TargetFlightController'
@@ -16,6 +17,7 @@ import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { CartographicPicker } from './sampling/CartographicPicker'
+import { EntityPicker } from './sampling/EntityPicker'
 import { HeightSampler } from './sampling/HeightSampler'
 import { TilesetFeaturePicker } from './sampling/TilesetFeaturePicker'
 import { Scene } from './Scene'
@@ -41,6 +43,7 @@ import type {
   Load3DTilesetOptions,
   ModelLayer,
   Picked3DTilesFeature,
+  PickedEntity,
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
   SampleHeightOptions,
@@ -54,6 +57,13 @@ import type { GlobeControls } from '3d-tiles-renderer'
 
 export { Camera } from './Camera'
 export { Clock } from './Clock'
+export { Entity, type EntityContext } from './entities/Entity'
+export {
+  PointGraphics,
+  PolylineGraphics,
+  PolygonGraphics
+} from './entities/EntityGraphics'
+export { EntityManager, type EntityManagerOptions } from './entities/EntityManager'
 export { ImageryLayer, LayerManager } from './LayerManager'
 export { Scene } from './Scene'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
@@ -94,6 +104,11 @@ export type {
   GeoJSONImagerySourceOptions,
   GltfModelMaterialMode,
   GltfModelOptions,
+  ColorInput,
+  EntityOptions,
+  PointOptions,
+  PolylineOptions,
+  PolygonOptions,
   ImageryLayerOptions,
   ImageryLayerSourceOptions,
   ImageryLayerStyleOptions,
@@ -104,6 +119,7 @@ export type {
   MVTFeatureStyle,
   MVTGetStyleCallback,
   Picked3DTilesFeature,
+  PickedEntity,
   ScreenPosition,
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
@@ -209,18 +225,30 @@ export class Viewer {
    */
   readonly controls: GlobeControls
 
+  /**
+   * 实体集合管理器，用于运行时添加、查询和移除点、线、面实体。
+   *
+   * Entity collection manager, used to add, query and remove point, polyline
+   * and polygon entities at runtime.
+   */
+  get entities() {
+    return this.entitiesManager
+  }
+
   private readonly threeCamera: THREE.PerspectiveCamera
   private readonly dracoLoader: DRACOLoader
   private readonly transparentOverlayTexture: THREE.CanvasTexture
   private readonly cameraCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly gltfLoader: GLTFLoader
   private readonly models: ModelManager
+  private readonly entitiesManager: EntityManager
   private readonly viewport: ViewportResizeManager
   private readonly atmosphere: AtmosphereManager
   private readonly postProcessing: PostProcessingManager
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
+  private readonly entityPicker: EntityPicker
   private readonly heightSampler: HeightSampler
   private readonly targetFlights: TargetFlightController
   private readonly interactions: ViewerInteractionManager
@@ -300,6 +328,11 @@ export class Viewer {
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
+    this.entitiesManager = new EntityManager({
+      scene: this.scene.threeScene,
+      toVector3: (input, target) => this.cartographicToVector3(input, target)
+    })
+    this.entityPicker = new EntityPicker(this.renderer.domElement, this.threeCamera, this.entitiesManager)
     this.targetFlights = new TargetFlightController({
       camera: this.camera,
       tilesets: this.tilesets
@@ -333,7 +366,8 @@ export class Viewer {
       controls: this.controls,
       domElement: this.renderer.domElement,
       pickCartographic: (position) => this.pickCartographic(position),
-      pick3DTilesFeature: (position) => this.pick3DTilesFeature(position)
+      pick3DTilesFeature: (position) => this.pick3DTilesFeature(position),
+      pickEntity: (position) => this.pickEntity(position)
     })
 
     this.postProcessing = new PostProcessingManager(
@@ -608,6 +642,20 @@ export class Viewer {
   }
 
   /**
+   * 拾取屏幕位置对应的实体。
+   *
+   * 传入的坐标相对于 canvas 左上角。未命中任何实体时返回 `null`。
+   *
+   * Picks the entity at a screen position.
+   *
+   * The input position is relative to the top-left corner of the canvas.
+   * Returns `null` when no entity is hit.
+   */
+  pickEntity(position: ScreenPosition): PickedEntity | null {
+    return this.entityPicker.pick(position)
+  }
+
+  /**
    * 采样指定经纬度在当前已加载内容上的表面高度。
    *
    * 方法沿当地地表法线向下发射射线，只使用当前已经加载到场景中的地形和
@@ -676,6 +724,7 @@ export class Viewer {
    */
   resize() {
     this.viewport.resize()
+    this.entitiesManager.syncResolution(this.renderer.domElement.width, this.renderer.domElement.height)
   }
 
   /**
@@ -692,6 +741,7 @@ export class Viewer {
     this.viewport.dispose()
     this.interactions.dispose()
     this.models.dispose()
+    this.entitiesManager.dispose()
     this.widgets.dispose()
     this.heightSampler.dispose()
     this.targetFlights.dispose()
@@ -721,6 +771,7 @@ export class Viewer {
     this.tilesets.update()
     this.atmosphere.updateLightSources()
     this.models.update(deltaTime)
+    this.entitiesManager.update(deltaTime)
     this.renderer.render(this.scene.threeScene, this.threeCamera)
   }
 
