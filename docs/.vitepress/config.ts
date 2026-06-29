@@ -60,7 +60,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
       }
     ],
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/Bro-B/tellux' }
+      { icon: 'github', link: 'https://github.com/cyanfish-x/tellux' }
     ],
     search: {
       provider: 'local'
