@@ -14,10 +14,16 @@ export default ({ command }: ConfigEnv) => defineConfig({
   lang: 'zh-CN',
   themeConfig: {
     logo: { text: 'T' },
+    // logoLink / Sandcastle 指向示例主站（与文档站同源但属不同子站）。
+    // 必须带 target：VitePress 的全局 click 拦截器只对「同源 + treatAsHtml」
+    // 的 <a> 做 SPA 拦截，但对「带 target 属性」的链接一律放行（router.js
+    // 中 `link.hasAttribute('target')` 即 return）。否则点击会被劫持成
+    // 文档站内部路由，取不到对应 markdown 就渲染 404，表现为「点了没跳走，
+    // 反而在文档页显示 404」。target="_self" 仍为当前页跳转，符合预期。
     logoLink:
       command === 'serve'
         ? 'http://127.0.0.1:5173/'
-        : '../../index.html',
+        : { link: '../../index.html', target: '_self', rel: 'noopener' },
     siteTitle: 'Tellux',
     nav: [
       { text: '指南', link: '/guide/getting-started' },
@@ -28,7 +34,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
         link:
           command === 'serve'
             ? 'http://127.0.0.1:5173/sandcastle.html'
-            : '../../sandcastle.html'
+            : { link: '../../sandcastle.html', target: '_self', rel: 'noopener' }
       }
     ],
     sidebar: [
