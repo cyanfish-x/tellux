@@ -1,6 +1,8 @@
 node_modules
 dist
 examples/public/docs
+examples/dist
+examples/dist-ghpages
 docs/.vitepress/cache
 *.log
 *.local
@@ -9,3 +11,4 @@ docs/.vitepress/cache
 .vscode/*
 !.vscode/extensions.json
 .env
+
