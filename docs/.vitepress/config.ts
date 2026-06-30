@@ -4,17 +4,36 @@ import type { ConfigEnv } from 'vite'
 export default ({ command }: ConfigEnv) => defineConfig({
   title: 'Tellux',
   description: 'Three.js GIS viewer for terrain, imagery, 3D Tiles, atmosphere, clouds, and post-processing.',
-  base: '/docs/',
-  outDir: '../examples/public/docs',
+  // 开发用相对 base（本地预览）。
+  // 构建时按部署目标区分：
+  //   - GitHub Pages（仓库名 tellux 作为前缀）：DEPLOY_TARGET=ghpages → /tellux/docs/
+  //   - 自部署站点（docs 与 examples 主站同级）：→ /docs/
+  // 用 DEPLOY_TARGET（不带 / 的标志值）区分，而不是直接传 base：
+  // Windows + Git Bash 的 MSYS2 会把 "/tellux/docs/" 这种以 / 开头的值
+  // 改写成绝对路径（如 D:/Program Files/Git/tellux/docs/）。
+  // command 只有 serve/build 两个值，无法区分两种部署，故必须额外信号。
+  base:
+    command === 'serve'
+      ? '/'
+      : process.env.DEPLOY_TARGET === 'ghpages'
+        ? '/tellux/docs/'
+        : '/docs/',
+  outDir: process.env.DOCS_OUT_DIR || '../examples/public/docs',
   cleanUrls: true,
   lastUpdated: true,
   lang: 'zh-CN',
   themeConfig: {
     logo: { text: 'T' },
+    // logoLink / Sandcastle 指向示例主站（与文档站同源但属不同子站）。
+    // 必须带 target：VitePress 的全局 click 拦截器只对「同源 + treatAsHtml」
+    // 的 <a> 做 SPA 拦截，但对「带 target 属性」的链接一律放行（router.js
+    // 中 `link.hasAttribute('target')` 即 return）。否则点击会被劫持成
+    // 文档站内部路由，取不到对应 markdown 就渲染 404，表现为「点了没跳走，
+    // 反而在文档页显示 404」。target="_self" 仍为当前页跳转，符合预期。
     logoLink:
       command === 'serve'
         ? 'http://127.0.0.1:5173/'
-        : '../../index.html',
+        : { link: '../../index.html', target: '_self', rel: 'noopener' },
     siteTitle: 'Tellux',
     nav: [
       { text: '指南', link: '/guide/getting-started' },
@@ -25,7 +44,13 @@ export default ({ command }: ConfigEnv) => defineConfig({
         link:
           command === 'serve'
             ? 'http://127.0.0.1:5173/sandcastle.html'
-            : '../../sandcastle.html'
+            : '../../sandcastle.html',
+        // nav 项的 target/rel 与 link 平级（link 始终是 string）。
+        // 不能像 logoLink 那样把 link 写成对象 —— NavItemWithLink.link 类型
+        // 只接受 string，写成对象会导致 SSR 阶段 normalizeLink 收到对象而崩。
+        ...(command === 'serve'
+          ? {}
+          : { target: '_self', rel: 'noopener' })
       }
     ],
     sidebar: [

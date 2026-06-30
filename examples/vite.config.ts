@@ -29,6 +29,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     root: __dirname,
+    // 本地 dev（mode=development/production）用 "/"，部署构建（mode=ghpages）用 "/tellux/"。
+    // 不通过 process.env.VITE_BASE 传 base，避免 Windows + Git Bash 的 MSYS2 路径转换
+    // 把 "/tellux/" 错误改写成 "D:/Program Files/Git/tellux/"。
+    base: mode === "ghpages" ? "/tellux/" : "/",
     envDir: projectRoot,
     optimizeDeps: {
       include: ["@mapbox/vector-tile", "pbf", "@sparkjsdev/spark", "3d-tiles-rendererjs-3dgs-plugin"],

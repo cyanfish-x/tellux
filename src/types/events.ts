@@ -1,5 +1,6 @@
 import type { Viewer } from '../Viewer'
 import type { CartographicCoordinates, Picked3DTilesFeature, ScreenPosition } from './spatial'
+import type { PickedEntity } from './entities'
 
 /**
  * Viewer 事件的基础信息。
@@ -44,6 +45,12 @@ export interface ViewerMouseEvent extends ViewerEvent {
    * detailed tiles.
    */
   tilesetFeature: Picked3DTilesFeature | null
+  /**
+   * 鼠标位置命中的实体；未命中任何实体时为 `null`。
+   *
+   * Picked entity at the mouse position, or `null` when no entity is hit.
+   */
+  entity: PickedEntity | null
 }
 
 /**
