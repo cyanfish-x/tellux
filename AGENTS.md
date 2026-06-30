@@ -53,6 +53,7 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 - 涉及体积云、云层建模、天气贴图、噪声纹理、程序化纹理、云影或云渲染性能时，先读 `notes/takram-three-clouds能力备忘.md`。
 - 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/takram-three-geospatial-effects能力备忘.md`。
 - 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/examples文档与Sandcastle架构.md`。
+- 涉及打包策略、`external` / `noExternal`、peerDependencies 取舍、three 单例或第三方依赖是否打入产物时，先读 `notes/前置依赖打包策略备忘.md`。
 
 ## 公开 API 方向
 
