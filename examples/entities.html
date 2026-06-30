@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="60" />
+  <title>Tellux Entities Drawing</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="toolbar toolbar--wide" aria-label="Entities drawing controls">
+      <header class="toolbar__header">
+        <h1>实体绘制</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>
+        通过 <code>viewer.entities.add()</code> 在地表绘制点、折线、多边形和拉伸体块；
+        点击实体可在状态栏看到拾取结果。
+      </p>
+      <p id="entity-status" class="status" aria-live="polite">已加载示例实体。</p>
+      <dl class="click-readout">
+        <dt>Pick</dt>
+        <dd id="entity-pick-readout">点击任意实体查看属性</dd>
+      </dl>
+      <div class="toolbar__row">
+        <button class="button" id="toggle-points" type="button">切换点位显隐</button>
+        <button class="button" id="toggle-polygon" type="button">切换面块显隐</button>
+        <button class="button" id="clear-entities" type="button">清空实体</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./entities.ts"></script>
+</body>
+
+</html>

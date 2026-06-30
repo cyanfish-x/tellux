@@ -16,6 +16,7 @@ const htmlInputs = {
   atmosphere: resolve(__dirname, "atmosphere.html"),
   webgpuBasic: resolve(__dirname, "webgpu-basic.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
+  entities: resolve(__dirname, "entities.html"),
   instancedHorses: resolve(__dirname, "instanced-horses.html"),
   mixedHeightSamplingHorses: resolve(__dirname, "mixed-height-sampling-horses.html"),
   sandcastle: resolve(__dirname, "sandcastle.html"),
