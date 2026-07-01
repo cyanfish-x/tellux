@@ -91,7 +91,6 @@ export class ViewerInteractionManager {
       position,
       cartographic: tilesetFeature?.cartographic ?? this.options.pickCartographic(position),
       tilesetFeature,
-      entity: entities[0] ?? null,
       entities
     }
   }

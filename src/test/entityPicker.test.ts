@@ -113,7 +113,7 @@ describe('ViewerInteractionManager entity picking tolerance', () => {
     const domElement = createFakeDomElement()
     const pickedEntity = { entity: { id: 'entity-1' }, point: new THREE.Vector3(), distance: 1 } as never
     const pickEntities = vi.fn(() => [pickedEntity])
-    const events: Array<{ entity: unknown, entities: unknown[] }> = []
+    const events: Array<{ entities: unknown[] }> = []
     const manager = new ViewerInteractionManager({
       viewer: {} as never,
       camera: { cancelFlight: vi.fn() } as never,
@@ -124,8 +124,8 @@ describe('ViewerInteractionManager entity picking tolerance', () => {
       pickEntities
     })
 
-    manager.on('click', (event) => events.push({ entity: event.entity, entities: event.entities }))
-    manager.on('mousemove', (event) => events.push({ entity: event.entity, entities: event.entities }))
+    manager.on('click', (event) => events.push({ entities: event.entities }))
+    manager.on('mousemove', (event) => events.push({ entities: event.entities }))
 
     domElement.dispatch('click', { clientX: 12, clientY: 14 })
     domElement.dispatch('mousemove', { clientX: 20, clientY: 22 })
@@ -133,8 +133,8 @@ describe('ViewerInteractionManager entity picking tolerance', () => {
     expect(pickEntities).toHaveBeenNthCalledWith(1, { x: 12, y: 14 }, { tolerance: 6 })
     expect(pickEntities).toHaveBeenNthCalledWith(2, { x: 20, y: 22 }, { tolerance: 4 })
     expect(events).toEqual([
-      { entity: pickedEntity, entities: [pickedEntity] },
-      { entity: pickedEntity, entities: [pickedEntity] }
+      { entities: [pickedEntity] },
+      { entities: [pickedEntity] }
     ])
 
     manager.dispose()

@@ -11,7 +11,7 @@ const onClick = (event) => {
   console.log('像素坐标', event.position)
   console.log('经纬高', event.cartographic)
   console.log('3D Tiles feature', event.tilesetFeature)
-  console.log('Entity', event.entity)
+  console.log('Entities', event.entities)
 }
 
 viewer.on('click', onClick)
@@ -29,10 +29,10 @@ viewer.off('click', onClick)
 | `position` | `ScreenPosition` | 相对 canvas 左上角的像素坐标 `{ x, y }`。 |
 | `cartographic` | `CartographicCoordinates \| null` | 鼠标位置对应的经纬高。未命中 3D Tiles 或椭球时为 `null`。 |
 | `tilesetFeature` | `Picked3DTilesFeature \| null` | 鼠标命中的 3D Tiles feature，只使用当前已加载瓦片，不额外请求高精度瓦片。 |
-| `entity` | `PickedEntity \| null` | 鼠标命中的最佳实体，等同于 `entities[0] ?? null`。点、线实体使用屏幕空间容差优化点击 / 悬停体验。 |
 | `entities` | `PickedEntity[]` | 鼠标命中的实体列表，按距离从近到远排序。未命中时为空数组。 |
 
 事件中的实体拾取会对点和线使用默认屏幕空间容差：`click` 为 6 CSS 像素，`mousemove` 为 4 CSS 像素。3D Tiles、面实体和体实体仍使用原有精确拾取逻辑。
+如果只需要最佳命中实体，可使用 `event.entities[0] ?? null`。
 
 `mousemove` 事件触发频率较高，监听回调里应避免重计算或同步 DOM 操作。
 
@@ -191,7 +191,7 @@ results.forEach((result, i) => {
 | --- | --- |
 | 点击 / 悬停取坐标 | `on('click' \| 'mousemove')` 事件，或 `pickCartographic` |
 | 点击查询 3D Tiles 属性 | `pick3DTilesFeature` |
-| 点击 / 悬停查询单个实体 | `on('click' \| 'mousemove')` 事件的 `entity`，或 `pickEntity` |
+| 点击 / 悬停查询单个实体 | `on('click' \| 'mousemove')` 事件的 `entities[0]`，或 `pickEntity` |
 | 点击 / 悬停查询多个实体 | `on('click' \| 'mousemove')` 事件的 `entities`，或 `pickEntities` |
 | 每帧让对象贴地（高频、当前视图内） | `sampleHeight` |
 | 批量预计算路径地表高度（可能跨视图） | `sampleHeightMostDetailed` |

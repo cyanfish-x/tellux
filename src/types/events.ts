@@ -46,15 +46,6 @@ export interface ViewerMouseEvent extends ViewerEvent {
    */
   tilesetFeature: Picked3DTilesFeature | null
   /**
-   * 鼠标位置命中的实体；未命中任何实体时为 `null`。
-   * 事件内的点和线实体拾取带默认屏幕空间容差，用于优化点击和悬停体验。
-   *
-   * Picked entity at the mouse position, or `null` when no entity is hit.
-   * Point and polyline entity picking in events uses a default screen-space
-   * tolerance to improve click and hover ergonomics.
-   */
-  entity: PickedEntity | null
-  /**
    * 鼠标位置命中的实体列表，按距离从近到远排序。未命中任何实体时为空数组。
    * 事件内的点和线实体拾取带默认屏幕空间容差，用于优化点击和悬停体验。
    *
