@@ -751,6 +751,31 @@ a {
   gap: 8px;
 }
 
+.toolbar__row--checks {
+  align-items: center;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.48);
+  border-radius: 6px;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.72);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.check input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
 .field {
   display: grid;
   gap: 6px;

@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { Camera } from './Camera'
 import { Clock } from './Clock'
 import { EntityManager } from './entities/EntityManager'
+import { setToneMappingState } from './entities/invertToneMapping'
 import { CAMERA_FRAME, DEG2RAD } from './constants'
 import { telluxConfig } from './config'
 import { TargetFlightController } from './controls/TargetFlightController'
@@ -337,6 +338,10 @@ export class Viewer {
     this.rendererAdapter.setSize(width, height)
     this.renderer.toneMapping = THREE.AgXToneMapping
     this.renderer.toneMappingExposure = this.currentToneMappingExposure
+    // 同步色调映射状态给实体颜色反求，使实体颜色在 setEffects 后处理管线下仍能"所见即所得"。
+    // Sync tone-mapping state for entity color inversion so entity colors stay
+    // WYSIWYG under the setEffects post-processing pipeline.
+    setToneMappingState(this.renderer.toneMapping, this.renderer.toneMappingExposure)
     resolvedContainer.appendChild(this.renderer.domElement)
     this.transparentOverlayTexture = this.createTransparentOverlayTexture()
 
@@ -516,6 +521,7 @@ export class Viewer {
   set toneMappingExposure(value: number) {
     this.currentToneMappingExposure = value
     this.renderer.toneMappingExposure = value
+    setToneMappingState(this.renderer.toneMapping, value)
   }
 
   /**

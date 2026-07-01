@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { ColorInput, PointOptions } from '../types'
 import { createCircleTexture } from './createCircleTexture'
+import { resolveColor } from './invertToneMapping'
 
 interface PointGraphicOptions {
   position: THREE.Vector3
@@ -90,9 +91,9 @@ function createPointGeometry(position: THREE.Vector3): THREE.BufferGeometry {
   return geometry
 }
 
-function createPointMaterial(colorHex: number, size: number, outlineRatio: number): THREE.PointsMaterial {
+function createPointMaterial(color: THREE.Color, size: number, outlineRatio: number): THREE.PointsMaterial {
   return new THREE.PointsMaterial({
-    color: colorHex,
+    color,
     size,
     sizeAttenuation: false,
     transparent: true,
@@ -106,10 +107,4 @@ function setGeometryPosition(geometry: THREE.BufferGeometry | null, position: TH
   const attribute = geometry.getAttribute('position') as THREE.BufferAttribute
   attribute.setXYZ(0, position.x, position.y, position.z)
   attribute.needsUpdate = true
-}
-
-export function resolveColor(input: ColorInput | undefined): number {
-  if (input === undefined) return 0xffffff
-  if (typeof input === 'number') return input
-  return new THREE.Color().set(input).getHex()
 }

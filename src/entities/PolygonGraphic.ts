@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { ColorInput, PolygonOptions } from '../types'
-import { resolveColor } from './PointGraphic'
+import { resolveColor } from './invertToneMapping'
 
 interface PolygonGraphicOptions {
   worldPositions: THREE.Vector3[]

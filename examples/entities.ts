@@ -8,12 +8,15 @@ const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 const container = document.querySelector("#viewer")
 const statusElement = document.querySelector<HTMLElement>("#entity-status")
-const pickReadoutElement =
-  document.querySelector<HTMLElement>("#entity-pick-readout")
-const togglePointsButton =
-  document.querySelector<HTMLButtonElement>("#toggle-points")
-const togglePolygonButton =
-  document.querySelector<HTMLButtonElement>("#toggle-polygon")
+const pickReadoutElement = document.querySelector<HTMLElement>(
+  "#entity-pick-readout"
+)
+const togglePointsInput =
+  document.querySelector<HTMLInputElement>("#toggle-points")
+const togglePolylineInput =
+  document.querySelector<HTMLInputElement>("#toggle-polyline")
+const togglePolygonInput =
+  document.querySelector<HTMLInputElement>("#toggle-polygon")
 const clearEntitiesButton =
   document.querySelector<HTMLButtonElement>("#clear-entities")
 
@@ -22,8 +25,9 @@ if (!(container instanceof HTMLElement)) {
 }
 
 if (
-  !togglePointsButton ||
-  !togglePolygonButton ||
+  !togglePointsInput ||
+  !togglePolylineInput ||
+  !togglePolygonInput ||
   !clearEntitiesButton
 ) {
   throw new Error("Entities controls not found.")
@@ -57,16 +61,19 @@ const viewer = new tellux.Viewer(container, {
     },
   ],
   camera: {
-    latitude: FOCUS_LATITUDE,
-    longitude: FOCUS_LONGITUDE,
-    height: 4000,
-    heading: 35,
-    pitch: -45,
-    far: 40000000,
+    latitude: 31.213287073562483,
+    longitude: 121.47150658039027,
+    height: 2064.8970060099077,
+    heading: 7.57778279899678,
+    pitch: -47.26511725121502,
+    roll: -0.000010753896468325056,
   },
   scene: {
     atmosphere: {
       show: true,
+      lighting:{
+        mode:'light-source'
+      },
       fallbackAmbientLight: {
         intensity: 0.8,
       },
@@ -183,24 +190,29 @@ viewer.on("click", (event) => {
 })
 
 // 显隐切换 / Visibility toggles.
-let pointsVisible = true
-togglePointsButton.addEventListener("click", () => {
-  pointsVisible = !pointsVisible
+togglePointsInput.addEventListener("change", () => {
+  const visible = togglePointsInput.checked
   pointPositions.forEach((_, index) => {
     const entity = viewer.entities.getById(`point-${index}`)
-    if (entity) entity.show = pointsVisible
+    if (entity) entity.show = visible
   })
-  setStatus(`点位已${pointsVisible ? "显示" : "隐藏"}。`)
+  setStatus(`点位已${visible ? "显示" : "隐藏"}。`)
 })
 
-let polygonVisible = true
-togglePolygonButton.addEventListener("click", () => {
-  polygonVisible = !polygonVisible
+togglePolylineInput.addEventListener("change", () => {
+  const visible = togglePolylineInput.checked
+  const route = viewer.entities.getById("route-polyline")
+  if (route) route.show = visible
+  setStatus(`折线已${visible ? "显示" : "隐藏"}。`)
+})
+
+togglePolygonInput.addEventListener("change", () => {
+  const visible = togglePolygonInput.checked
   const zone = viewer.entities.getById("zone-polygon")
   const block = viewer.entities.getById("block-extruded")
-  if (zone) zone.show = polygonVisible
-  if (block) block.show = polygonVisible
-  setStatus(`面块已${polygonVisible ? "显示" : "隐藏"}。`)
+  if (zone) zone.show = visible
+  if (block) block.show = visible
+  setStatus(`面块已${visible ? "显示" : "隐藏"}。`)
 })
 
 clearEntitiesButton.addEventListener("click", () => {

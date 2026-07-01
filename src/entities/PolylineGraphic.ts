@@ -3,7 +3,7 @@ import { Line2 } from 'three/addons/lines/Line2.js'
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import type { ColorInput, PolylineOptions } from '../types'
-import { resolveColor } from './PointGraphic'
+import { resolveColor } from './invertToneMapping'
 
 interface PolylineGraphicOptions {
   worldPositions: THREE.Vector3[]

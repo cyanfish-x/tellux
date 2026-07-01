@@ -26,9 +26,19 @@
         <dt>Pick</dt>
         <dd id="entity-pick-readout">点击任意实体查看属性</dd>
       </dl>
-      <div class="toolbar__row">
-        <button class="button" id="toggle-points" type="button">切换点位显隐</button>
-        <button class="button" id="toggle-polygon" type="button">切换面块显隐</button>
+      <div class="toolbar__row toolbar__row--checks">
+        <label class="check">
+          <input type="checkbox" id="toggle-points" checked />
+          <span>点位</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="toggle-polyline" checked />
+          <span>折线</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="toggle-polygon" checked />
+          <span>面块</span>
+        </label>
         <button class="button" id="clear-entities" type="button">清空实体</button>
       </div>
     </section>
