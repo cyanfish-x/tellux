@@ -51,6 +51,7 @@ import type {
   FlyToTargetTarget,
   Load3DTilesetOptions,
   ModelLayer,
+  PickEntityOptions,
   Picked3DTilesFeature,
   PickedEntity,
   SampleHeightMostDetailedOptions,
@@ -131,6 +132,7 @@ export type {
   MVTFeatureStyle,
   MVTGetStyleCallback,
   Picked3DTilesFeature,
+  PickEntityOptions,
   PickedEntity,
   ScreenPosition,
   SampleHeightMostDetailedOptions,
@@ -443,7 +445,7 @@ export class Viewer {
       domElement: this.renderer.domElement,
       pickCartographic: (position) => this.pickCartographic(position),
       pick3DTilesFeature: (position) => this.pick3DTilesFeature(position),
-      pickEntity: (position) => this.pickEntity(position)
+      pickEntities: (position, pickOptions) => this.pickEntities(position, pickOptions)
     })
 
     this.postProcessing = this.rendererAdapter.supportsWebGLEffects && this.atmosphere
@@ -722,17 +724,37 @@ export class Viewer {
   }
 
   /**
-   * 拾取屏幕位置对应的实体。
+   * 拾取屏幕位置对应的最佳实体。
    *
-   * 传入的坐标相对于 canvas 左上角。未命中任何实体时返回 `null`。
+   * 传入的坐标相对于 canvas 左上角。`options.tolerance` 可扩大点和线实体的屏幕空间拾取范围，
+   * 单位为 CSS 像素。返回值等同于 {@link Viewer.pickEntities} 的第一个结果；未命中任何实体时返回 `null`。
    *
-   * Picks the entity at a screen position.
+   * Picks the best entity at a screen position.
    *
    * The input position is relative to the top-left corner of the canvas.
-   * Returns `null` when no entity is hit.
+   * `options.tolerance` expands point and polyline screen-space picking in CSS
+   * pixels. The return value is equivalent to the first result from
+   * {@link Viewer.pickEntities}; returns `null` when no entity is hit.
    */
-  pickEntity(position: ScreenPosition): PickedEntity | null {
-    return this.entityPicker.pick(position)
+  pickEntity(position: ScreenPosition, options: PickEntityOptions = {}): PickedEntity | null {
+    return this.entityPicker.pick(position, options)
+  }
+
+  /**
+   * 拾取屏幕位置对应的实体列表。
+   *
+   * 传入的坐标相对于 canvas 左上角。`options.tolerance` 可扩大点和线实体的屏幕空间拾取范围，
+   * 单位为 CSS 像素。结果按距离从近到远排序，未命中任何实体时返回空数组。
+   *
+   * Picks entities at a screen position.
+   *
+   * The input position is relative to the top-left corner of the canvas.
+   * `options.tolerance` expands point and polyline screen-space picking in CSS
+   * pixels. Results are sorted nearest first; returns an empty array when no
+   * entity is hit.
+   */
+  pickEntities(position: ScreenPosition, options: PickEntityOptions = {}): PickedEntity[] {
+    return this.entityPicker.pickEntities(position, options)
   }
 
   /**

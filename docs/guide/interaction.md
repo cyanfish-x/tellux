@@ -11,6 +11,7 @@ const onClick = (event) => {
   console.log('像素坐标', event.position)
   console.log('经纬高', event.cartographic)
   console.log('3D Tiles feature', event.tilesetFeature)
+  console.log('Entity', event.entity)
 }
 
 viewer.on('click', onClick)
@@ -28,6 +29,10 @@ viewer.off('click', onClick)
 | `position` | `ScreenPosition` | 相对 canvas 左上角的像素坐标 `{ x, y }`。 |
 | `cartographic` | `CartographicCoordinates \| null` | 鼠标位置对应的经纬高。未命中 3D Tiles 或椭球时为 `null`。 |
 | `tilesetFeature` | `Picked3DTilesFeature \| null` | 鼠标命中的 3D Tiles feature，只使用当前已加载瓦片，不额外请求高精度瓦片。 |
+| `entity` | `PickedEntity \| null` | 鼠标命中的最佳实体，等同于 `entities[0] ?? null`。点、线实体使用屏幕空间容差优化点击 / 悬停体验。 |
+| `entities` | `PickedEntity[]` | 鼠标命中的实体列表，按距离从近到远排序。未命中时为空数组。 |
+
+事件中的实体拾取会对点和线使用默认屏幕空间容差：`click` 为 6 CSS 像素，`mousemove` 为 4 CSS 像素。3D Tiles、面实体和体实体仍使用原有精确拾取逻辑。
 
 `mousemove` 事件触发频率较高，监听回调里应避免重计算或同步 DOM 操作。
 
@@ -75,6 +80,31 @@ if (feature) {
 | `cartographic` | 命中点经纬高。 |
 
 > 拾取类方法都只针对**当前已加载到场景中的内容**。视角外或尚未加载的瓦片不会被请求，远处或未加载区域可能返回椭球表面坐标或 `null`。
+
+### `pickEntity(position, options?)`
+
+拾取屏幕位置对应的最佳实体。点和线实体可以通过 `tolerance` 扩大屏幕空间命中范围，单位为 CSS 像素；不传时为 `0`，只按图形自身可视宽度命中。未命中时返回 `null`。
+
+```ts
+const entityHit = viewer.pickEntity({ x: 400, y: 300 }, { tolerance: 6 })
+if (entityHit) {
+  console.log('实体 id', entityHit.entity.id)
+  console.log('命中点世界坐标', entityHit.point)
+}
+```
+
+`tolerance` 只影响点、线实体；面实体和体实体仍走原有 Three.js raycaster 拾取路径。
+
+### `pickEntities(position, options?)`
+
+拾取屏幕位置对应的实体列表。结果按距离从近到远排序；同一个实体如果有多个图形同时命中，只返回该实体距离最近的命中结果。未命中时返回空数组。
+
+```ts
+const entityHits = viewer.pickEntities({ x: 400, y: 300 }, { tolerance: 6 })
+entityHits.forEach((hit) => {
+  console.log('实体 id', hit.entity.id)
+})
+```
 
 ## 高度采样
 
@@ -161,5 +191,7 @@ results.forEach((result, i) => {
 | --- | --- |
 | 点击 / 悬停取坐标 | `on('click' \| 'mousemove')` 事件，或 `pickCartographic` |
 | 点击查询 3D Tiles 属性 | `pick3DTilesFeature` |
+| 点击 / 悬停查询单个实体 | `on('click' \| 'mousemove')` 事件的 `entity`，或 `pickEntity` |
+| 点击 / 悬停查询多个实体 | `on('click' \| 'mousemove')` 事件的 `entities`，或 `pickEntities` |
 | 每帧让对象贴地（高频、当前视图内） | `sampleHeight` |
 | 批量预计算路径地表高度（可能跨视图） | `sampleHeightMostDetailed` |

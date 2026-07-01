@@ -79,6 +79,7 @@ export {
   type MVTFeatureStyle,
   type MVTGetStyleCallback,
   type Picked3DTilesFeature,
+  type PickEntityOptions,
   type PickedEntity,
   type ScreenPosition,
   type SampleHeightMostDetailedOptions,

@@ -167,6 +167,22 @@ if (feature) {
 }
 ```
 
+### `pickEntity(position, options?)`
+
+拾取屏幕位置对应的最佳实体。点和线实体支持 `options.tolerance` 屏幕空间容差，单位为 CSS 像素；默认 `0`。面实体和体实体仍使用精确 raycaster 拾取。未命中时返回 `null`。
+
+```ts
+const entityHit = viewer.pickEntity({ x: 400, y: 300 }, { tolerance: 6 })
+```
+
+### `pickEntities(position, options?)`
+
+拾取屏幕位置对应的实体列表，按距离从近到远排序。点和线实体支持 `options.tolerance` 屏幕空间容差；同一个实体如果多个图形同时命中，只返回该实体的最佳命中结果。未命中时返回空数组。
+
+```ts
+const entityHits = viewer.pickEntities({ x: 400, y: 300 }, { tolerance: 6 })
+```
+
 ### `sampleHeight(position, options?)`
 
 沿当地地表法线向下采样指定经纬度在当前已加载内容上的表面高度。同步、轻量，不请求视角外瓦片；未命中返回 `undefined`。`position` 支持元组 `[经度, 纬度, 高度?]` 或 `{ longitude, latitude, height }`。`options.source` 可选 `'all'`（默认）、`'terrain'`、`'tileset'`。

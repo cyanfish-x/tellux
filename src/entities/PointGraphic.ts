@@ -63,6 +63,15 @@ export class PointGraphic {
     setGeometryPosition(this.outlineGeometry, position)
   }
 
+  copyPosition(target: THREE.Vector3) {
+    const attribute = this.fillGeometry.getAttribute('position') as THREE.BufferAttribute
+    return target.fromBufferAttribute(attribute, 0)
+  }
+
+  get visualDiameter(): number {
+    return this.fillMaterial.size + this.currentOutlineWidth * 2
+  }
+
   get color(): number {
     return this.fillMaterial.color.getHex()
   }

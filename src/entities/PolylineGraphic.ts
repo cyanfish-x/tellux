@@ -20,11 +20,13 @@ export class PolylineGraphic {
   readonly object3D: Line2
   private readonly material: LineMaterial
   private readonly geometry: LineGeometry
+  private worldPositions: THREE.Vector3[]
 
   constructor({ worldPositions, options }: PolylineGraphicOptions) {
     const width = options.width ?? 2
+    this.worldPositions = clonePositions(worldPositions)
     this.geometry = new LineGeometry()
-    this.geometry.setPositions(toFlatArray(worldPositions))
+    this.geometry.setPositions(toFlatArray(this.worldPositions))
 
     this.material = new LineMaterial({
       color: resolveColor(options.color),
@@ -50,7 +52,8 @@ export class PolylineGraphic {
   }
 
   setPositions(worldPositions: THREE.Vector3[]) {
-    this.geometry.setPositions(toFlatArray(worldPositions))
+    this.worldPositions = clonePositions(worldPositions)
+    this.geometry.setPositions(toFlatArray(this.worldPositions))
     this.object3D.computeLineDistances()
   }
 
@@ -66,10 +69,20 @@ export class PolylineGraphic {
     this.material.resolution.set(width, height)
   }
 
+  forEachSegment(callback: (start: THREE.Vector3, end: THREE.Vector3) => void) {
+    for (let i = 0; i < this.worldPositions.length - 1; i += 1) {
+      callback(this.worldPositions[i], this.worldPositions[i + 1])
+    }
+  }
+
   dispose() {
     this.geometry.dispose()
     this.material.dispose()
   }
+}
+
+function clonePositions(positions: THREE.Vector3[]) {
+  return positions.map((position) => position.clone())
 }
 
 function toFlatArray(positions: THREE.Vector3[]): number[] {

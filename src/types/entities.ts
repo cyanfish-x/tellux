@@ -127,7 +127,7 @@ export interface PolygonOptions {
  */
 export interface EntityOptions {
   /**
-   * 实体 id；缺省时自动生成。同一 Viewer 内不可重复。
+   * 实体 id；缺省时自动生成。同一个 Viewer 内不可重复。
    *
    * Entity id; auto-generated when omitted. Must be unique within a Viewer.
    */
@@ -168,6 +168,21 @@ export interface EntityOptions {
    * Whether the entity is visible. Defaults to `true`.
    */
   show?: boolean
+}
+
+/**
+ * 实体拾取选项。
+ *
+ * Entity picking options.
+ */
+export interface PickEntityOptions {
+  /**
+   * 点和线实体的屏幕空间拾取容差，单位为 CSS 像素。默认 `0`。
+   *
+   * Screen-space picking tolerance for point and polyline entities, in CSS
+   * pixels. Defaults to `0`.
+   */
+  tolerance?: number
 }
 
 /**

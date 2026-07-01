@@ -3,6 +3,7 @@ import type { Camera } from '../Camera'
 import type { Viewer } from '../Viewer'
 import type {
   AnyViewerEventListener,
+  PickEntityOptions,
   Picked3DTilesFeature,
   PickedEntity,
   ScreenPosition,
@@ -18,8 +19,11 @@ export interface ViewerInteractionManagerOptions {
   domElement: HTMLElement
   pickCartographic: (position: ScreenPosition) => ViewerMouseEvent['cartographic']
   pick3DTilesFeature: (position: ScreenPosition) => Picked3DTilesFeature | null
-  pickEntity: (position: ScreenPosition) => PickedEntity | null
+  pickEntities: (position: ScreenPosition, options?: PickEntityOptions) => PickedEntity[]
 }
+
+const ENTITY_CLICK_PICK_TOLERANCE = 6
+const ENTITY_MOUSEMOVE_PICK_TOLERANCE = 4
 
 export class ViewerInteractionManager {
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
@@ -76,7 +80,9 @@ export class ViewerInteractionManager {
       y: originalEvent.clientY - rect.top
     }
     const tilesetFeature = this.options.pick3DTilesFeature(position)
-    const entity = this.options.pickEntity(position)
+    const entities = this.options.pickEntities(position, {
+      tolerance: type === 'click' ? ENTITY_CLICK_PICK_TOLERANCE : ENTITY_MOUSEMOVE_PICK_TOLERANCE
+    })
 
     return {
       type,
@@ -85,7 +91,8 @@ export class ViewerInteractionManager {
       position,
       cartographic: tilesetFeature?.cartographic ?? this.options.pickCartographic(position),
       tilesetFeature,
-      entity
+      entity: entities[0] ?? null,
+      entities
     }
   }
 

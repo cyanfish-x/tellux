@@ -106,6 +106,11 @@ export class Entity {
     return this.pointGraphic ? new PointGraphics(this.pointGraphic) : null
   }
 
+  /** 点图形底层对象；供 EntityPicker 做屏幕空间拾取。Underlying point graphic for screen-space picking. */
+  get pointGraphicImpl() {
+    return this.pointGraphic
+  }
+
   /** 折线图形句柄；未挂载时为 `null`。Polyline graphics handle, or `null`. */
   get polyline() {
     return this.polylineGraphic ? new PolylineGraphics(this.polylineGraphic) : null
