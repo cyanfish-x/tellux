@@ -89,6 +89,11 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
         height: options?.clouds?.layer?.height ?? 650
       }
     },
+    entities: {
+      transparency: {
+        mode: options?.entities?.transparency?.mode ?? 'auto'
+      }
+    },
     surface: {
       materialMode: options?.surface?.materialMode ?? 'auto',
       material: resolveSurfaceMaterialOptions(options?.surface?.material)

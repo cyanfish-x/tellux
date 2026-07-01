@@ -80,10 +80,48 @@ export interface ViewerSceneOptions {
   atmosphere?: ViewerAtmosphereOptions
   /** 体积云配置。Volumetric cloud options. */
   clouds?: ViewerCloudOptions
+  /** 实体渲染配置。Entity rendering options. */
+  entities?: ViewerEntityOptions
   /** 地表渲染配置。Surface rendering options. */
   surface?: ViewerSurfaceOptions
   /** 后处理配置。Post-processing options. */
   postProcess?: ViewerPostProcessOptions
+}
+
+/**
+ * 实体透明渲染模式。
+ *
+ * `auto` 在 WebGL 支持时使用 weighted OIT，否则退回排序透明；
+ * `weighted-oit` 强制使用 weighted blended order-independent transparency；
+ * `sorted` 使用 Three.js 默认透明排序。
+ *
+ * Entity transparency rendering mode.
+ *
+ * `auto` uses weighted OIT when WebGL support is available and falls back to
+ * sorted transparency otherwise; `weighted-oit` forces weighted blended
+ * order-independent transparency; `sorted` uses Three.js default transparent
+ * sorting.
+ */
+export type EntityTransparencyMode = 'auto' | 'weighted-oit' | 'sorted'
+
+/**
+ * 实体透明渲染配置。
+ *
+ * Entity transparency rendering options.
+ */
+export interface ViewerEntityTransparencyOptions {
+  /** 透明渲染模式，默认 `auto`。Transparency rendering mode. Defaults to `auto`. */
+  mode?: EntityTransparencyMode
+}
+
+/**
+ * Viewer 实体配置。
+ *
+ * Viewer entity options.
+ */
+export interface ViewerEntityOptions {
+  /** 透明渲染配置。Entity transparency rendering options. */
+  transparency?: ViewerEntityTransparencyOptions
 }
 
 /**

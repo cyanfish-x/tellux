@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { Camera } from './Camera'
 import { Clock } from './Clock'
 import { EntityManager } from './entities/EntityManager'
+import { EntityRenderManager } from './entities/EntityRenderManager'
 import { setToneMappingState } from './entities/invertToneMapping'
 import { CAMERA_FRAME, DEG2RAD } from './constants'
 import { telluxConfig } from './config'
@@ -100,6 +101,7 @@ export type {
   CesiumIonTerrainOptions,
   CesiumIon3DTilesetOptions,
   CesiumIonImagerySourceOptions,
+  EntityTransparencyMode,
   FlyToTargetOffset,
   FlyToTargetOptions,
   FlyToTargetTarget,
@@ -158,6 +160,8 @@ export type {
   ViewerAtmosphereSkyOptions,
   ViewerCloudLayerOptions,
   ViewerCloudOptions,
+  ViewerEntityOptions,
+  ViewerEntityTransparencyOptions,
   ViewerFallbackAmbientLightOptions,
   ViewerPostProcessOptions,
   ViewerRendererOptions,
@@ -276,6 +280,7 @@ export class Viewer {
   private readonly gltfLoader: GLTFLoader
   private readonly models: ModelManager
   private readonly entitiesManager: EntityManager
+  private readonly entityRenderManager: EntityRenderManager
   private readonly viewport: ViewportResizeManager
   private readonly atmosphere: ViewerAtmosphereManager | null
   private readonly postProcessing: PostProcessingManager | null
@@ -393,6 +398,12 @@ export class Viewer {
       scene: this.scene.threeScene,
       toVector3: (input, target) => this.cartographicToVector3(input, target)
     })
+    this.entityRenderManager = new EntityRenderManager({
+      root: this.entitiesManager.root,
+      camera: this.threeCamera,
+      requestedMode: sceneOptions.entities.transparency.mode,
+      supportsWeightedOit: this.rendererAdapter.supportsWebGLEffects
+    })
     this.entityPicker = new EntityPicker(this.renderer.domElement, this.threeCamera, this.entitiesManager)
     this.targetFlights = new TargetFlightController({
       camera: this.camera,
@@ -442,7 +453,8 @@ export class Viewer {
           this.scene.threeScene,
           this.threeCamera,
           this.atmosphere as AtmosphereManager,
-          () => this.camera.getCurrentHeight()
+          () => this.camera.getCurrentHeight(),
+          this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined
         )
       : null
     postProcessing = this.postProcessing
@@ -810,6 +822,7 @@ export class Viewer {
     this.viewport.dispose()
     this.interactions.dispose()
     this.models.dispose()
+    this.entityRenderManager.dispose()
     this.entitiesManager.dispose()
     this.widgets.dispose()
     this.heightSampler.dispose()
@@ -844,6 +857,7 @@ export class Viewer {
     this.atmosphere?.updateLightSources()
     this.models.update(deltaTime)
     this.entitiesManager.update(deltaTime)
+    this.entityRenderManager.beginFrame()
     this.rendererAdapter.render(this.scene.threeScene, this.threeCamera)
   }
 

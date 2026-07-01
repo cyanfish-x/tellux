@@ -10,11 +10,14 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 - `ViewerSceneOptions`
 - `ViewerAtmosphereOptions`
 - `ViewerCloudOptions`
+- `ViewerEntityOptions`
+- `ViewerEntityTransparencyOptions`
 - `ViewerSurfaceOptions`
 - `ViewerSurfaceMaterialOptions`
 - `ViewerPostProcessOptions`
 - `AtmosphereLightingMode`
 - `CloudQualityPreset`
+- `EntityTransparencyMode`
 - `SurfaceMaterialMode`
 - `TerrainOptions`
 - `ImageryLayerOptions`
@@ -71,6 +74,11 @@ const viewer = new Viewer(container, {
       layer: {
         altitude: 1500,
         height: 650
+      }
+    },
+    entities: {
+      transparency: {
+        mode: 'auto'
       }
     },
     surface: {
@@ -229,6 +237,13 @@ const viewer = new tellux.Viewer(container, {
       }
     },
 
+    // 实体：点 / 线 / 面的透明渲染策略
+    entities: {
+      transparency: {
+        mode: 'auto'      // 'auto' | 'weighted-oit' | 'sorted'，默认 'auto'
+      }
+    },
+
     // 地表材质：只作用于基础地球和地形，不影响 load3DTileset / addModel
     surface: {
       materialMode: 'auto',    // 'auto'（随光照模式）| 'basic' | 'standard'，默认 'auto'
@@ -282,6 +297,7 @@ const viewer = new tellux.Viewer(container, {
 - **领域边界**：scene 内部按 atmosphere / clouds / surface / postProcess 分组，而不是用前缀字段拍平。新增同领域能力时会扩展对应分组对象，而非新增顶层前缀字段。
 - **单位**：对外 API 统一使用度和米——经纬度、heading / pitch / roll 用度，高度、裁剪面、云层高度用米；角半径（`sunAngularRadius` 等）是弧度。
 - **WebGPU 限制**：`clouds`、`sky.stars` 以及 `postProcess` 的 SMAA / 镜头光晕 / 抖动在 WebGPU 模式下不渲染，调整开关无视觉效果。
+- **Entity 透明**：`scene.entities.transparency.mode` 默认 `auto`；WebGL 后处理管线可用时使用 weighted blended OIT，WebGPU 或不支持时退回 `sorted`。`weighted-oit` 能减少 entity 之间随视角跳变的排序异常，但它是工程近似，不是逐片元严格排序；`sorted` 保留 Three.js 默认透明排序路径，便于兼容和排查。
 - **作用范围**：`surface` 只影响 Viewer 管理的基础地球和地形；`load3DTileset` / `addModel` 加载的内容有自己的材质模式（见「光照模式与参数」）。
 
 ## Renderer 类型

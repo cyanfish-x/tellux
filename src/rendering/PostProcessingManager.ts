@@ -23,7 +23,8 @@ export class PostProcessingManager {
     threeScene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera,
     private readonly atmosphere: AtmosphereManager,
-    private readonly getCurrentHeight: () => number | null
+    private readonly getCurrentHeight: () => number | null,
+    private readonly entityRenderer?: ThreeEffectPass
   ) {
     const normalPass = new NormalPass(threeScene, this.camera)
     this.configureNormalPass(normalPass)
@@ -89,6 +90,9 @@ export class PostProcessingManager {
 
     if (shouldRenderAtmosphere) {
       nextEffects.push(this.normalAdapter)
+    }
+    if (this.entityRenderer) {
+      nextEffects.push(this.entityRenderer)
     }
     if (shouldRenderClouds) {
       nextEffects.push(this.cloudAtmosphereAdapter)

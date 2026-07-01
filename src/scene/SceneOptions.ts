@@ -1,5 +1,5 @@
 import type * as THREE from 'three'
-import type { AtmosphereLightingMode, CloudQualityPreset, SurfaceMaterialMode } from '../types'
+import type { AtmosphereLightingMode, CloudQualityPreset, EntityTransparencyMode, SurfaceMaterialMode } from '../types'
 import type { SurfaceMaterialOptions } from '../materials/materialMode'
 
 export interface ResolvedSceneOptions {
@@ -68,6 +68,11 @@ export interface ResolvedSceneOptions {
     layer: {
       altitude: number
       height: number
+    }
+  }
+  entities: {
+    transparency: {
+      mode: EntityTransparencyMode
     }
   }
   surface: {

@@ -19,7 +19,9 @@ interface PointGraphicOptions {
 export class PointGraphic {
   readonly object3D: THREE.Object3D
   private readonly fillMaterial: THREE.PointsMaterial
+  private readonly fillEdgeMaterial: THREE.PointsMaterial
   private readonly outlineMaterial: THREE.PointsMaterial | null
+  private readonly outlineEdgeMaterial: THREE.PointsMaterial | null
   private readonly fillGeometry: THREE.BufferGeometry
   private readonly outlineGeometry: THREE.BufferGeometry | null
   private currentOutlineWidth: number
@@ -30,19 +32,26 @@ export class PointGraphic {
     this.currentOutlineWidth = outlineWidth
 
     this.fillGeometry = createPointGeometry(position)
-    this.fillMaterial = createPointMaterial(resolveColor(options.color), pixelSize, 0)
+    this.fillMaterial = createPointMaterial(resolveColor(options.color), pixelSize, 0, 'opaque')
+    this.fillEdgeMaterial = createPointMaterial(resolveColor(options.color), pixelSize, 0, 'edge')
+    const group = new THREE.Group()
 
     if (outlineWidth > 0) {
       this.outlineGeometry = createPointGeometry(position)
-      this.outlineMaterial = createPointMaterial(resolveColor(options.outlineColor), pixelSize + outlineWidth * 2, 0.5)
-      const group = new THREE.Group()
+      this.outlineMaterial = createPointMaterial(resolveColor(options.outlineColor), pixelSize + outlineWidth * 2, 0.5, 'opaque')
+      this.outlineEdgeMaterial = createPointMaterial(resolveColor(options.outlineColor), pixelSize + outlineWidth * 2, 0.5, 'edge')
+      group.add(new THREE.Points(this.outlineGeometry, this.outlineEdgeMaterial))
       group.add(new THREE.Points(this.outlineGeometry, this.outlineMaterial))
+      group.add(new THREE.Points(this.fillGeometry, this.fillEdgeMaterial))
       group.add(new THREE.Points(this.fillGeometry, this.fillMaterial))
       this.object3D = group
     } else {
       this.outlineGeometry = null
       this.outlineMaterial = null
-      this.object3D = new THREE.Points(this.fillGeometry, this.fillMaterial)
+      this.outlineEdgeMaterial = null
+      group.add(new THREE.Points(this.fillGeometry, this.fillEdgeMaterial))
+      group.add(new THREE.Points(this.fillGeometry, this.fillMaterial))
+      this.object3D = group
     }
 
     this.object3D.matrixAutoUpdate = false
@@ -63,13 +72,19 @@ export class PointGraphic {
   }
 
   setColor(color: ColorInput) {
-    this.fillMaterial.color.set(resolveColor(color))
+    const resolvedColor = resolveColor(color)
+    this.fillMaterial.color.set(resolvedColor)
+    this.fillEdgeMaterial.color.set(resolvedColor)
   }
 
   setPixelSize(pixelSize: number) {
     this.fillMaterial.size = pixelSize
+    this.fillEdgeMaterial.size = pixelSize
     if (this.outlineMaterial) {
       this.outlineMaterial.size = pixelSize + this.currentOutlineWidth * 2
+    }
+    if (this.outlineEdgeMaterial) {
+      this.outlineEdgeMaterial.size = pixelSize + this.currentOutlineWidth * 2
     }
   }
 
@@ -78,9 +93,15 @@ export class PointGraphic {
     this.outlineGeometry?.dispose()
     this.fillMaterial.map?.dispose()
     this.fillMaterial.dispose()
+    this.fillEdgeMaterial.map?.dispose()
+    this.fillEdgeMaterial.dispose()
     if (this.outlineMaterial) {
       this.outlineMaterial.map?.dispose()
       this.outlineMaterial.dispose()
+    }
+    if (this.outlineEdgeMaterial) {
+      this.outlineEdgeMaterial.map?.dispose()
+      this.outlineEdgeMaterial.dispose()
     }
   }
 }
@@ -91,15 +112,32 @@ function createPointGeometry(position: THREE.Vector3): THREE.BufferGeometry {
   return geometry
 }
 
-function createPointMaterial(color: THREE.Color, size: number, outlineRatio: number): THREE.PointsMaterial {
-  return new THREE.PointsMaterial({
+function createPointMaterial(
+  color: THREE.Color,
+  size: number,
+  outlineRatio: number,
+  pass: 'opaque' | 'edge'
+): THREE.PointsMaterial {
+  const material = new THREE.PointsMaterial({
     color,
     size,
     sizeAttenuation: false,
-    transparent: true,
-    depthWrite: false,
+    transparent: pass === 'edge',
+    depthTest: true,
+    depthWrite: pass === 'opaque',
+    alphaTest: pass === 'opaque' ? 0.995 : 0.005,
     map: createCircleTexture(outlineRatio)
   })
+  if (pass === 'edge') {
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        'if ( diffuseColor.a >= 0.995 ) discard;\n#include <opaque_fragment>'
+      )
+    }
+    material.customProgramCacheKey = () => 'tellux-point-edge'
+  }
+  return material
 }
 
 function setGeometryPosition(geometry: THREE.BufferGeometry | null, position: THREE.Vector3) {
