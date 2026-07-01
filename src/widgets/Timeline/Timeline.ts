@@ -125,14 +125,9 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   root.append(controls, track, status)
   shell.appendChild(root)
 
+  let isSpringDrivingClock = false
+  let isSeeking = false
   const timeSpring = createTimelineSpring(initialTime, options.spring)
-
-  // 单向数据流：input.value 绑定 targetTime（用户意图层），
-  // spring 驱动 viewer.clock.currentTime（实际生效层）缓动追向 targetTime。
-  // 拖动 input → input 事件 → 更新 targetTime；
-  // 非拖动场景（按钮跳转、播放推进）→ targetTime 变化 → syncDisplay 把 input 同步到 targetTime。
-  // 拖动时 targetTime 源自 input，回写幂等不会跳；缓动永远只作用于 currentTime，不碰 input。
-  let targetTime = initialTime
 
   const updateRangeBounds = () => {
     const durationSeconds = getRangeDurationSeconds(rangeStart, rangeEnd)
@@ -149,54 +144,74 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     updateRangeBounds()
   }
 
-  // 每帧推进真实时间：spring 把 currentTime 缓动追向 targetTime；
-  // 播放时让时钟自主前进，并带动 targetTime 跟随，使 input 一并前进。
-  const advanceClock = (deltaTime: number) => {
-    if (viewer.clock.animate) {
-      targetTime = viewer.clock.currentTime
-      timeSpring?.reset(dateToUnixSeconds(targetTime))
-      return
+  const syncSpringDrivenClock = (deltaTime: number) => {
+    if (!timeSpring || !isSpringDrivingClock) return
+
+    const nextTime = unixSecondsToDate(timeSpring.tick(deltaTime))
+    viewer.clock.currentTime = nextTime
+
+    if (timeSpring.settled) {
+      isSpringDrivingClock = false
+      timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
     }
-    if (!timeSpring) {
-      viewer.clock.currentTime = targetTime
-      return
-    }
-    timeSpring.target = dateToUnixSeconds(targetTime)
-    viewer.clock.currentTime = unixSecondsToDate(timeSpring.tick(deltaTime))
   }
 
   const syncDisplay = () => {
-    syncDynamicRange(targetTime)
-    // input 单向绑定 targetTime，无条件同步：拖动时幂等不跳，非拖动时跟随 targetTime。
-    input.value = String(dateToOffsetSeconds(targetTime, rangeStart, rangeEnd))
-    // 显示文本反映实际生效的 currentTime，缓动效果在这里体现，而不是体现在 input 上。
-    timeOutput.textContent = formatUTCDateTime(viewer.clock.currentTime)
+    const currentTime = viewer.clock.currentTime
+    syncDynamicRange(currentTime)
+
+    if (!isSeeking && !isSpringDrivingClock) {
+      input.value = String(dateToOffsetSeconds(currentTime, rangeStart, rangeEnd))
+    }
+    timeOutput.textContent = formatUTCDateTime(currentTime)
     playButton.dataset.playing = String(viewer.clock.animate)
     playButton.setAttribute("aria-label", viewer.clock.animate ? "暂停时间" : "播放时间")
     syncSpeedOption(speedSelect, viewer.clock.multiplier)
   }
 
-  // 设置用户意图目标，currentTime 由 advanceClock 缓动追上。
   const setCurrentTime = (date: Date) => {
-    targetTime = date
+    if (!timeSpring) {
+      viewer.clock.currentTime = date
+      isSpringDrivingClock = false
+      return
+    }
+
+    if (!isSpringDrivingClock) {
+      timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
+    }
+    timeSpring.target = dateToUnixSeconds(date)
+    isSpringDrivingClock = true
+  }
+
+  const setCurrentTimeFromInput = (keepSeeking = true) => {
+    const seconds = Number(input.value)
+    isSeeking = keepSeeking
+    setCurrentTime(new Date(rangeStart.getTime() + seconds * 1000))
+    syncDisplay()
+  }
+
+  const stopSeeking = () => {
+    if (!isSeeking) return
+
+    isSeeking = false
+    setCurrentTimeFromInput(false)
+    syncDisplay()
   }
 
   const shiftRange = (direction: -1 | 1) => {
     const duration = rangeEnd.getTime() - rangeStart.getTime()
     rangeStart = new Date(rangeStart.getTime() + direction * duration)
-    rangeEnd = new Date(rangeStart.getTime() + direction * duration)
-    setCurrentTime(new Date(targetTime.getTime() + direction * duration))
+    rangeEnd = new Date(rangeEnd.getTime() + direction * duration)
+    setCurrentTime(new Date(viewer.clock.currentTime.getTime() + direction * duration))
     updateRangeBounds()
     syncDisplay()
   }
 
   playButton.addEventListener("click", () => {
     viewer.clock.animate = !viewer.clock.animate
-    if (viewer.clock.animate) {
-      // 进入播放时，让用户意图层 targetTime 对齐当前真实时间，
-      // 否则暂停后 spring 会把时间拉回旧的 targetTime。
-      targetTime = viewer.clock.currentTime
-      timeSpring?.reset(dateToUnixSeconds(targetTime))
+    if (viewer.clock.animate && timeSpring) {
+      isSpringDrivingClock = false
+      timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
     }
     syncDisplay()
   })
@@ -210,20 +225,34 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     viewer.clock.multiplier = Number(speedSelect.value)
     syncDisplay()
   })
-  input.addEventListener("input", () => {
-    // 拖动只更新用户意图层 targetTime；缓动只作用于 currentTime，不会回写 input。
-    setCurrentTime(new Date(rangeStart.getTime() + Number(input.value) * 1000))
+  input.addEventListener("pointerdown", (event) => {
+    isSeeking = true
+    try {
+      input.setPointerCapture?.(event.pointerId)
+    } catch {
+      // Native range inputs may reject capture on some browsers.
+    }
   })
+  input.addEventListener("input", () => {
+    setCurrentTimeFromInput()
+  })
+  input.addEventListener("change", stopSeeking)
+  input.addEventListener("pointerup", stopSeeking)
+  input.addEventListener("pointercancel", stopSeeking)
+  window.addEventListener("pointerup", stopSeeking)
+  window.addEventListener("blur", stopSeeking)
 
   updateRangeBounds()
   syncDisplay()
 
   return {
     update(deltaTime: number) {
-      advanceClock(deltaTime)
+      syncSpringDrivenClock(deltaTime)
       syncDisplay()
     },
     dispose() {
+      window.removeEventListener("pointerup", stopSeeking)
+      window.removeEventListener("blur", stopSeeking)
       root.remove()
     },
   }
