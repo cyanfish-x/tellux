@@ -17,26 +17,34 @@ interface PolygonGraphicOptions {
  */
 export class PolygonGraphic {
   readonly object3D: THREE.Object3D
-  private readonly material: THREE.MeshBasicMaterial
+  private readonly material: THREE.MeshBasicMaterial | null
   private readonly outlineMaterial: THREE.LineBasicMaterial | null
   private readonly outline: THREE.LineSegments | null
-  private fillMesh: THREE.Mesh
+  private readonly baseGeometry: THREE.BufferGeometry
 
   constructor({ worldPositions, options }: PolygonGraphicOptions) {
-    this.material = new THREE.MeshBasicMaterial({
-      color: resolveColor(options.color),
-      transparent: true,
-      depthWrite: false,
-      side: THREE.DoubleSide
-    })
-
+    const showFill = options.fill ?? true
+    // 几何始终构建：填充和描边都依赖它。Frame 把局部几何对齐到第一顶点切平面。
+    // Geometry is always built: both fill and outline depend on it. The frame
+    // aligns local geometry to the tangent plane at the first vertex.
     const { geometry, frame } = buildPolygonGeometry(worldPositions, options)
-    this.fillMesh = new THREE.Mesh(geometry, this.material)
-    this.fillMesh.matrixAutoUpdate = false
-    this.fillMesh.matrix.copy(frame)
-
+    this.baseGeometry = geometry
     const root = new THREE.Group()
-    root.add(this.fillMesh)
+
+    this.material = showFill
+      ? new THREE.MeshBasicMaterial({
+          color: resolveColor(options.color),
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        })
+      : null
+    if (this.material) {
+      const fillMesh = new THREE.Mesh(geometry, this.material)
+      fillMesh.matrixAutoUpdate = false
+      fillMesh.matrix.copy(frame)
+      root.add(fillMesh)
+    }
 
     if (options.outline) {
       const outlineGeometry = new THREE.EdgesGeometry(geometry, 1)
@@ -60,15 +68,15 @@ export class PolygonGraphic {
   }
 
   get color(): number {
-    return this.material.color.getHex()
+    return this.material?.color.getHex() ?? 0xffffff
   }
 
   get outlineColor(): number {
-    return this.outlineMaterial?.color.getHex() ?? this.material.color.getHex()
+    return this.outlineMaterial?.color.getHex() ?? this.color
   }
 
   setColor(color: ColorInput) {
-    this.material.color.set(resolveColor(color))
+    this.material?.color.set(resolveColor(color))
   }
 
   setOutlineColor(color: ColorInput) {
@@ -76,9 +84,13 @@ export class PolygonGraphic {
   }
 
   dispose() {
-    this.fillMesh.geometry.dispose()
+    // baseGeometry 是 fill 和 outline 边的来源；outline 用的是派生的
+    // EdgesGeometry（单独对象），需各自释放。
+    // baseGeometry feeds both fill and outline; the outline uses a derived
+    // EdgesGeometry (separate object) that must be disposed independently.
+    this.baseGeometry.dispose()
     this.outline?.geometry.dispose()
-    this.material.dispose()
+    this.material?.dispose()
     this.outlineMaterial?.dispose()
   }
 }
