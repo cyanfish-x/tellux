@@ -16,6 +16,16 @@ const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
+// 初始视角与"飞到森林"共享同一份相机姿态。
+const VIEW_POSE = {
+  latitude: 31.01740061257519,
+  longitude: 103.55668103900562,
+  height: 1188.4025046429122,
+  heading: 12.641958573261494,
+  pitch: -27.183678322477718,
+  roll: -0.000007808919233872686,
+} as const
+
 const PRESETS = [
   { name: "oak_medium", baseScale: 1.0 },
   { name: "pine_medium", baseScale: 1.0 },
@@ -55,8 +65,9 @@ const samplingStatusElement = document.querySelector<HTMLElement>(
 )
 const flyToForestButton =
   document.querySelector<HTMLButtonElement>("#fly-to-forest")
-const regenerateButton =
-  document.querySelector<HTMLButtonElement>("#regenerate-vegetation")
+const regenerateButton = document.querySelector<HTMLButtonElement>(
+  "#regenerate-vegetation"
+)
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -88,12 +99,12 @@ const viewer = new tellux.Viewer(container, {
     },
   ],
   camera: {
-    latitude: CENTER_LATITUDE,
-    longitude: CENTER_LONGITUDE,
-    height: 720,
-    heading: 0,
-    pitch: -32,
-    roll: 0,
+    latitude: VIEW_POSE.latitude,
+    longitude: VIEW_POSE.longitude,
+    height: VIEW_POSE.height,
+    heading: VIEW_POSE.heading,
+    pitch: VIEW_POSE.pitch,
+    roll: VIEW_POSE.roll,
   },
   scene: {
     atmosphere: {
@@ -117,6 +128,10 @@ const viewer = new tellux.Viewer(container, {
 })
 
 ;(window as any).viewer = viewer
+
+// RTC + EncodedCartesian3：相机 ECEF 位置编码 + 去平移 view matrix，所有
+// globe-scale 实例化 mesh 共享这一份 uniform，每帧由 animateWind 刷新。
+const rtcUniforms = new tellux.RTCAutoUniforms(viewer.camera.threeCamera)
 
 const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
@@ -147,7 +162,9 @@ function waitForBrowserPaint() {
 
 async function initializeVegetationScene() {
   setStatus("正在初始化 ez-tree 预设...")
-  const templates = PRESETS.map((preset) => buildPresetTemplate(preset.name, preset.baseScale))
+  const templates = PRESETS.map((preset) =>
+    buildPresetTemplate(preset.name, preset.baseScale)
+  )
 
   await waitForBrowserPaint()
   await createForest(templates)
@@ -159,8 +176,10 @@ function buildPresetTemplate(name: string, baseScale: number): PresetTemplate {
   // loadPreset 内部已调用 generate()，这里直接取生成好的几何与材质。
   // 实例之间共享同一份几何与材质；材质上挂载了 ez-tree 的风摆 shader，
   // 通过每帧调用 tree.update(elapsedTime) 推进 uTime，所有实例会同步摆动。
+  // 枝/叶材质的实例化与 RTC 注入统一在 applyRTCInstancing 内处理，这里
+  // 拿原始材质即可。
   const branchesMaterial = tree.branchesMesh.material
-  const leavesMaterial = patchLeafMaterialForInstancing(tree.leavesMesh.material)
+  const leavesMaterial = tree.leavesMesh.material
   return {
     name,
     baseScale,
@@ -170,32 +189,6 @@ function buildPresetTemplate(name: string, baseScale: number): PresetTemplate {
     branchesMaterial,
     leavesMaterial,
   }
-}
-
-function patchLeafMaterialForInstancing(
-  material: THREE.Material | THREE.Material[]
-): THREE.Material | THREE.Material[] {
-  // ez-tree 的风摆 shader 把 `<project_vertex>` 整段替换掉了，但没有保留
-  // three.js 原生 chunk 里的 `#ifdef USE_INSTANCING / instanceMatrix` 块。
-  // 直接把这个材质用在 InstancedMesh 上会导致所有实例的叶子塌缩到
-  // InstancedMesh 原点（看不到叶子）。这里包一层 onBeforeCompile，在
-  // 原 shader 注入完之后把 instancing 块补回去。
-  const patch = (mat: THREE.Material) => {
-    const originalOnBeforeCompile = mat.onBeforeCompile.bind(mat)
-    mat.onBeforeCompile = (shader, renderer) => {
-      originalOnBeforeCompile(shader, renderer)
-      shader.vertexShader = shader.vertexShader.replace(
-        /(mvPosition\.xyz\s*\+=\s*windSway;\s*)(mvPosition\s*=\s*modelViewMatrix)/,
-        `$1#ifdef USE_INSTANCING
-        mvPosition = instanceMatrix * mvPosition;
-      #endif
-      $2`
-      )
-    }
-    mat.needsUpdate = true
-    return mat
-  }
-  return Array.isArray(material) ? material.map(patch) : patch(material)
 }
 
 async function createForest(templates: PresetTemplate[]) {
@@ -223,7 +216,9 @@ async function createForest(templates: PresetTemplate[]) {
     `已生成 ${placements.length} 个候选点，正在通过 sampleHeightMostDetailed 采样地表高度...`
   )
 
-  let sampledPositions: Awaited<ReturnType<typeof viewer.sampleHeightMostDetailed>>
+  let sampledPositions: Awaited<
+    ReturnType<typeof viewer.sampleHeightMostDetailed>
+  >
   const samplingTimerLabel = `[Tellux] vegetation sampleHeightMostDetailed ${placements.length} points`
   console.time(samplingTimerLabel)
   try {
@@ -276,15 +271,31 @@ async function createForest(templates: PresetTemplate[]) {
   viewer.scene.threeScene.add(forest.group)
   flyToForestButton.disabled = false
   regenerateButton.disabled = false
-  countElement && (countElement.textContent = `${sampledPlacements.length} / ${TREE_COUNT}`)
+  countElement &&
+    (countElement.textContent = `${sampledPlacements.length} / ${TREE_COUNT}`)
   setStatus(
-    `已在 (${CENTER_LONGITUDE.toFixed(6)}, ${CENTER_LATITUDE.toFixed(6)}) 周边 ${PLACEMENT_RADIUS_METERS}m 范围内放置 ${sampledPlacements.length} 棵程序化植被。`
+    `已在 (${CENTER_LONGITUDE.toFixed(6)}, ${CENTER_LATITUDE.toFixed(
+      6
+    )}) 周边 ${PLACEMENT_RADIUS_METERS}m 范围内放置 ${
+      sampledPlacements.length
+    } 棵程序化植被。`
   )
 
-  viewer.flyToTarget(forest.group, {
-    heading: 0,
-    pitch: -32,
-    distance: 520,
+  flyToForestView()
+}
+
+function flyToForestView() {
+  viewer.camera.flyTo({
+    destination: {
+      latitude: VIEW_POSE.latitude,
+      longitude: VIEW_POSE.longitude,
+      height: VIEW_POSE.height,
+    },
+    orientation: {
+      heading: VIEW_POSE.heading,
+      pitch: VIEW_POSE.pitch,
+      roll: VIEW_POSE.roll,
+    },
   })
 }
 
@@ -296,14 +307,16 @@ function buildInstancedForest(
   group.name = "vegetation-forest"
 
   // 先按 preset 分桶，每个 preset 一对 InstancedMesh（树枝 + 树叶）。
-  const buckets = templates.map(() => [] as { placement: Placement; height: number }[])
+  const buckets = templates.map(
+    () => [] as { placement: Placement; height: number }[]
+  )
   for (const item of sampledPlacements) {
     buckets[item.placement.presetIndex].push(item)
   }
 
   const matrix = new THREE.Matrix4()
   const scaleMatrix = new THREE.Matrix4()
-  const up = new THREE.Vector3(0, 1, 0)
+  const rtcHandles: Array<() => void> = []
 
   for (let presetIndex = 0; presetIndex < templates.length; presetIndex += 1) {
     const template = templates[presetIndex]
@@ -328,6 +341,13 @@ function buildInstancedForest(
     branchesMesh.frustumCulled = false
     leavesMesh.frustumCulled = false
 
+    // 接入 RTC：往 geometry 上加 positionHigh/Low 实例属性，给材质注入 RTE
+    // shader 与每帧相机 uniform。
+    rtcHandles.push(
+      tellux.applyRTCInstancing(branchesMesh, rtcUniforms).dispose
+    )
+    rtcHandles.push(tellux.applyRTCInstancing(leavesMesh, rtcUniforms).dispose)
+
     bucket.forEach(({ placement, height }, index) => {
       viewer.cartographicToMatrix4(
         [placement.longitude, placement.latitude, height],
@@ -336,18 +356,13 @@ function buildInstancedForest(
       )
       // ez-tree 的本地坐标 +Y 朝上，与 cartographicToMatrix4 的 +Y 朝上一致，
       // 直接叠加均匀缩放即可。绕本地 Y 轴的随机朝向已由 heading 选项处理。
-      scaleMatrix.makeScale(
-        placement.scale,
-        placement.scale,
-        placement.scale
-      )
+      scaleMatrix.makeScale(placement.scale, placement.scale, placement.scale)
       matrix.multiply(scaleMatrix)
-      branchesMesh.setMatrixAt(index, matrix)
-      leavesMesh.setMatrixAt(index, matrix)
+      // matrix 的平移列（ECEF 绝对坐标）由 setRTCMatrixAt 编码到
+      // positionHigh/Low；instanceMatrix 平移列随后被清零，仅承载旋转+缩放。
+      tellux.setRTCMatrixAt(branchesMesh, index, matrix)
+      tellux.setRTCMatrixAt(leavesMesh, index, matrix)
     })
-
-    branchesMesh.instanceMatrix.needsUpdate = true
-    leavesMesh.instanceMatrix.needsUpdate = true
 
     group.add(branchesMesh)
     group.add(leavesMesh)
@@ -366,6 +381,8 @@ function buildInstancedForest(
           mesh.dispose()
         }
       })
+      // 撤销 RTC 注入的实例属性（geometry 由 template 持有，会被下一个 preset 复用）。
+      rtcHandles.forEach((dispose) => dispose())
     },
   }
 }
@@ -421,9 +438,7 @@ function generatePlacementPoints(options: {
       longitude: coordinates.longitude,
       latitude: coordinates.latitude,
       heading: random() * 360,
-      scale:
-        (0.78 + random() * 0.5) *
-        (PRESETS[presetIndex]?.baseScale ?? 1),
+      scale: (0.78 + random() * 0.5) * (PRESETS[presetIndex]?.baseScale ?? 1),
       presetIndex,
     })
   }
@@ -479,6 +494,7 @@ function animateWind() {
   const elapsedTime = performance.now() / 1000 - forest.startedAt
   // 每帧推进 uTime，让 ez-tree 叶片 shader 风摆动起来。
   // 共享材质意味着同一 preset 的所有实例同步摆动。
+  // RTC 相机 uniform 由每个 mesh 的 onBeforeRender 自带刷新，这里不再重复。
   for (const template of forest.templates) {
     template.tree.update(elapsedTime)
   }
@@ -486,16 +502,13 @@ function animateWind() {
 
 flyToForestButton.addEventListener("click", () => {
   if (!forest) return
-
-  viewer.flyToTarget(forest.group, {
-    heading: 0,
-    pitch: -32,
-    distance: 520,
-  })
+  flyToForestView()
 })
 
 regenerateButton.addEventListener("click", () => {
-  void createForest(PRESETS.map((preset) => buildPresetTemplate(preset.name, preset.baseScale)))
+  void createForest(
+    PRESETS.map((preset) => buildPresetTemplate(preset.name, preset.baseScale))
+  )
 })
 
 window.addEventListener("beforeunload", () => {

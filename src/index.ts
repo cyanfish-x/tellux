@@ -16,6 +16,13 @@ import {
   telluxConfig,
   Viewer
 } from './Viewer'
+import { RTCAutoUniforms } from './rendering/RTCAutoUniforms'
+import {
+  applyRTCInstancing,
+  setRTCMatrixAt
+} from './rendering/applyRTCInstancing'
+
+export { RTCAutoUniforms, applyRTCInstancing, setRTCMatrixAt }
 
 export {
   Camera,
@@ -143,6 +150,9 @@ const tellux = {
   DebugSettingsPanel,
   Timeline,
   SpringControl,
+  RTCAutoUniforms,
+  applyRTCInstancing,
+  setRTCMatrixAt,
 
   /**
    * Tellux 静态资源父级目录。
