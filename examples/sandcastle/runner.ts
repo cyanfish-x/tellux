@@ -3,6 +3,7 @@ import * as THREE from "three"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
+import { Tree } from "@dgreenheck/ez-tree"
 import {
   arcgisWorldImageryUrl,
   defaultTerrainUrl,
@@ -132,6 +133,7 @@ function executeExampleScript(source: string) {
     "TilesRenderer",
     "GaussianSplatPlugin",
     "GLTFLoader",
+    "Tree",
     "arcgisWorldImageryUrl",
     "defaultTerrainUrl",
     "showTokenNotice",
@@ -146,6 +148,7 @@ function executeExampleScript(source: string) {
     TilesRenderer,
     GaussianSplatPlugin,
     GLTFLoader,
+    Tree,
     arcgisWorldImageryUrl,
     defaultTerrainUrl,
     showTokenNotice,

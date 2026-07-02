@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@dgreenheck/ez-tree':
+        specifier: ^1.1.0
+        version: 1.1.0(three@0.184.0)
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -208,6 +211,11 @@ packages:
   '@babel/types@7.29.7':
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
+
+  '@dgreenheck/ez-tree@1.1.0':
+    resolution: {integrity: sha512-6pvS6hD6B6h00dm0SnkgYeT4ABU5Y1Z9M44p1tXiV5C0eKrQy2sKECXshoaUv0qAOqYVL68w/PwadUxDFDiHUg==}
+    peerDependencies:
+      three: '>=0.167'
 
   '@dimforge/rapier3d-compat@0.12.0':
     resolution: {integrity: sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow==}
@@ -1908,6 +1916,10 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
+
+  '@dgreenheck/ez-tree@1.1.0(three@0.184.0)':
+    dependencies:
+      three: 0.184.0
 
   '@dimforge/rapier3d-compat@0.12.0': {}
 

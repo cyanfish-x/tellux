@@ -27,6 +27,7 @@ const categoryById: Record<string, string> = {
   "mixed-height-sampling-horses": "Sampling",
   terrain: "Terrain",
   "threejs-interop": "Models",
+  vegetation: "Vegetation",
   "webgpu-basic": "Rendering",
 }
 
@@ -68,6 +69,11 @@ const tagByTerm: Array<[string, string]> = [
   ["splat", "3DGS"],
   ["terrain", "Terrain"],
   ["three.js", "Three.js"],
+  ["tree", "Vegetation"],
+  ["vegetation", "Vegetation"],
+  ["forest", "Vegetation"],
+  ["ez-tree", "Vegetation"],
+  ["instancedmesh", "Instancing"],
   ["wms", "WMS"],
   ["xyz", "XYZ"],
   ["体积云", "Clouds"],

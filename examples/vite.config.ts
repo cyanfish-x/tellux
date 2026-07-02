@@ -18,6 +18,7 @@ const htmlInputs = {
   entities: resolve(__dirname, "entities.html"),
   instancedHorses: resolve(__dirname, "instanced-horses.html"),
   mixedHeightSamplingHorses: resolve(__dirname, "mixed-height-sampling-horses.html"),
+  vegetation: resolve(__dirname, "vegetation.html"),
   sandcastle: resolve(__dirname, "sandcastle.html"),
   sandcastleRunner: resolve(__dirname, "sandcastle/runner.html"),
 }

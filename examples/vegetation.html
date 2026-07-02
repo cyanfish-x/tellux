@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="70" />
+  <title>Tellux Vegetation Forest</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="toolbar toolbar--wide" aria-label="Vegetation forest controls">
+      <header class="toolbar__header">
+        <h1>程序化植被森林</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>
+        使用 <a href="https://github.com/dgreenheck/ez-tree" target="_blank" rel="noopener">ez-tree</a>
+        程序化生成橡树、松树、白杨三种模板，通过 <code>sampleHeightMostDetailed</code>
+        采样真实地形高度后，用 <code>InstancedMesh</code> 在地表实例化 1200 棵贴地植被。
+      </p>
+      <p id="vegetation-status" class="status" aria-live="polite">正在准备植被场景...</p>
+      <dl class="click-readout">
+        <dt>Center</dt>
+        <dd>103.551329, 31.025122</dd>
+        <dt>Instances</dt>
+        <dd id="vegetation-count">-</dd>
+        <dt>Source</dt>
+        <dd>terrain</dd>
+        <dt>Sampling</dt>
+        <dd id="vegetation-sampling-status">-</dd>
+      </dl>
+      <div class="toolbar__row">
+        <button class="button" id="fly-to-forest" type="button">飞到森林</button>
+        <button class="button" id="regenerate-vegetation" type="button">重新生成</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./vegetation.ts"></script>
+</body>
+
+</html>

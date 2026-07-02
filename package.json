@@ -85,6 +85,7 @@
     "vitest": "^2.1.9"
   },
   "dependencies": {
+    "@dgreenheck/ez-tree": "^1.1.0",
     "dotenv": "^17.4.2",
     "tencentcloud-sdk-nodejs-cdn": "^4.1.200"
   }
