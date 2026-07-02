@@ -6,9 +6,9 @@ import { mountLocationReadout } from "./location-readout"
 
 const CENTER_LONGITUDE = 103.561611
 const CENTER_LATITUDE = 31.016963
-const TREE_COUNT = 1200
+const TREE_COUNT = 10000
 const MIN_SPACING_METERS = 6
-const PLACEMENT_RADIUS_METERS = 480
+const PLACEMENT_RADIUS_METERS = 3000
 const EARTH_RADIUS_METERS = 6378137
 const DEG2RAD = Math.PI / 180
 const RAD2DEG = 180 / Math.PI
