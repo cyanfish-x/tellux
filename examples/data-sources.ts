@@ -175,15 +175,7 @@ const chinaProvinceStyle: ImageryLayerOptions["style"] = {
     }
 
     return {}
-  }
-}
-
-const chinaCamera: CameraSetViewOptions = {
-  latitude: 35.2,
-  longitude: 104.8,
-  height: 8200000,
-  heading: -90,
-  pitch: -72,
+  },
 }
 
 const overlayLayers: OverlayLayerExample[] = [
@@ -265,9 +257,22 @@ const viewer = new tellux.Viewer(container, {
       }
     : undefined,
   layers: initialLayers,
+  camera: {
+    latitude: 34.232536488878544,
+    longitude: 108.89693500346492,
+    height: 2327601.728382909,
+    heading: -5.3848576035288485,
+    pitch: -89.07936389527404,
+    roll: 0.28388699925116934,
+  },
   scene: {
+    atmosphere: {
+      lighting: {
+        mode: "light-source",
+      },
+    },
     clouds: {
-      show: false
+      show: false,
     },
   },
 })
@@ -283,7 +288,6 @@ overlayLayers.forEach((item) => {
 })
 
 renderLayerManager()
-viewer.camera.setView(chinaCamera)
 updateLayerStatus()
 
 function renderLayerManager() {
@@ -446,7 +450,9 @@ function reorderOverlayLayer(draggedKey: string, targetKey: string) {
 
 function syncLayerItemOrder() {
   overlayLayers.forEach((layer) => {
-    const item = getLayerItems().find((element) => element.dataset.layer === layer.key)
+    const item = getLayerItems().find(
+      (element) => element.dataset.layer === layer.key
+    )
     if (item) {
       overlayListElement.appendChild(item)
     }

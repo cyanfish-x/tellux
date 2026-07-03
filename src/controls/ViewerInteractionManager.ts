@@ -66,6 +66,10 @@ export class ViewerInteractionManager {
   }
 
   private readonly enableAdjustHeight = () => {
+    // 允许穿地时不启用离地约束；保留监听器以便开关切回 false 时仍能在下次交互生效。
+    // Skip the ground-clamp constraint when underground movement is allowed. Keep the
+    // listener attached so flipping back to false still takes effect on next interaction.
+    if (this.options.camera.allowUnderground) return
     this.options.controls.adjustHeight = true
     this.options.domElement.removeEventListener('pointerdown', this.enableAdjustHeight)
     this.options.domElement.removeEventListener('wheel', this.enableAdjustHeight)

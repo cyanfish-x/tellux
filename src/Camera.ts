@@ -157,11 +157,43 @@ export class Camera {
 
   private currentFlight: CameraFlight | null = null
 
+  private _allowUnderground = false
+
+  /**
+   * 防穿地开关变化回调；由 Viewer 注入以同步底层控件的离地约束。内部使用。
+   *
+   * Listener invoked when {@link allowUnderground} changes, injected by the Viewer
+   * to sync the underlying controls' ground-clamp constraint. Internal.
+   */
+  onAllowUndergroundChange?: (value: boolean) => void
+
   constructor(
     camera: THREE.PerspectiveCamera,
     private readonly getActiveEllipsoid: CameraEllipsoidProvider = () => null
   ) {
     this.threeCamera = camera
+  }
+
+  /**
+   * 是否允许相机穿过地形进入地下，默认 `false`。
+   *
+   * 默认（`false`）时，用户首次手动交互后启用相机离地约束，相机不会穿入地形下方；
+   * 设为 `true` 立即关闭该约束，相机可自由穿入地下；设回 `false` 重新启用。
+   *
+   * Whether the camera can pass through the terrain underground. Defaults to `false`.
+   *
+   * When `false` (default), a minimum-height constraint is enabled after the first user
+   * interaction so the camera won't clip below the terrain. Set to `true` to disable the
+   * constraint immediately (camera can move underground); set back to `false` to re-enable.
+   */
+  get allowUnderground() {
+    return this._allowUnderground
+  }
+
+  set allowUnderground(value: boolean) {
+    if (this._allowUnderground === value) return
+    this._allowUnderground = value
+    this.onAllowUndergroundChange?.(value)
   }
 
   /**

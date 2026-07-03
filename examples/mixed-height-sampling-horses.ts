@@ -50,12 +50,6 @@ const horseCountElement = document.querySelector<HTMLElement>("#mixed-horse-coun
 const samplingStatusElement = document.querySelector<HTMLElement>(
   "#mixed-horse-sampling-status"
 )
-const flyToHorsesButton = document.querySelector<HTMLButtonElement>(
-  "#fly-to-mixed-horses"
-)
-const flyToTilesetButton = document.querySelector<HTMLButtonElement>(
-  "#fly-to-mixed-tileset"
-)
 const toggleAnimationButton = document.querySelector<HTMLButtonElement>(
   "#toggle-mixed-horses"
 )
@@ -67,12 +61,7 @@ if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (
-  !flyToHorsesButton ||
-  !flyToTilesetButton ||
-  !toggleAnimationButton ||
-  !regenerateButton
-) {
+if (!toggleAnimationButton || !regenerateButton) {
   throw new Error("Mixed height sampling horse controls not found.")
 }
 
@@ -98,15 +87,18 @@ const viewer = new tellux.Viewer(container, {
     },
   ],
   camera: {
-    latitude: 40.0442,
-    longitude: -75.6139,
-    height: 1050,
-    heading: 133,
-    pitch: -24,
-    roll: 0,
+    latitude: 40.03178523327751,
+    longitude: -75.61915690102107,
+    height: 1121.7432408693376,
+    heading: 13.545497727639216,
+    pitch: -25.45946281708948,
+    roll: -0.000008662865451903576,
   },
   scene: {
     atmosphere: {
+      lighting:{
+        mode:'light-source'
+      },
       show: true,
       fallbackAmbientLight: {
         intensity: 0.9
@@ -131,8 +123,6 @@ let isAnimationPlaying = true
 let generationToken = 0
 let animationFrame = 0
 
-flyToHorsesButton.disabled = true
-flyToTilesetButton.disabled = true
 toggleAnimationButton.disabled = true
 regenerateButton.disabled = true
 
@@ -163,13 +153,6 @@ async function initializeMixedSamplingScene() {
     id: "mixed-height-sampling-tileset",
     url: MIXED_TILESET_URL,
   })
-  flyToTilesetButton.disabled = false
-
-  viewer.flyToTarget(tilesetLayer.tileset, {
-    heading: 132,
-    pitch: -24,
-    distance: 720,
-  })
 
   await waitForBrowserPaint()
   await createHorseHerd()
@@ -177,7 +160,6 @@ async function initializeMixedSamplingScene() {
 
 async function createHorseHerd() {
   const token = ++generationToken
-  flyToHorsesButton.disabled = true
   toggleAnimationButton.disabled = true
   regenerateButton.disabled = true
   horseCountElement && (horseCountElement.textContent = "-")
@@ -263,7 +245,6 @@ async function createHorseHerd() {
   }
 
   viewer.scene.threeScene.add(herd.group)
-  flyToHorsesButton.disabled = false
   toggleAnimationButton.disabled = false
   regenerateButton.disabled = false
   horseCountElement &&
@@ -271,12 +252,6 @@ async function createHorseHerd() {
   setStatus(
     `已在 3D Tiles 和地形混合表面放置 ${sampledPlacements.length} 匹实例化奔马。`
   )
-
-  viewer.flyToTarget(herd.group, {
-    heading: 132,
-    pitch: -18,
-    distance: 360,
-  })
 }
 
 async function buildHorseHerd(
@@ -536,26 +511,6 @@ function disposeMaterial(material: THREE.Material | THREE.Material[]) {
     material.dispose()
   }
 }
-
-flyToHorsesButton.addEventListener("click", () => {
-  if (!herd) return
-
-  viewer.flyToTarget(herd.group, {
-    heading: 132,
-    pitch: -18,
-    distance: 360,
-  })
-})
-
-flyToTilesetButton.addEventListener("click", () => {
-  if (!tilesetLayer) return
-
-  viewer.flyToTarget(tilesetLayer.tileset, {
-    heading: 132,
-    pitch: -24,
-    distance: 720,
-  })
-})
 
 toggleAnimationButton.addEventListener("click", () => {
   isAnimationPlaying = !isAnimationPlaying

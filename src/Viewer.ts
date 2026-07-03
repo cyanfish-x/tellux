@@ -448,6 +448,11 @@ export class Viewer {
     })
     this.controls.enableDamping = true
     this.controls.adjustHeight = false
+    // viewer.camera.allowUnderground 变化时实时同步控件的离地约束（防穿地开关）。
+    // Sync the controls' ground-clamp constraint live when viewer.camera.allowUnderground changes.
+    this.camera.onAllowUndergroundChange = (value) => {
+      this.controls.adjustHeight = !value
+    }
     this.interactions = new ViewerInteractionManager({
       viewer: this,
       camera: this.camera,

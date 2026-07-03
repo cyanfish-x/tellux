@@ -92,13 +92,16 @@ const viewer = new tellux.Viewer(container, {
   },
   scene: {
     atmosphere: {
+      lighting: {
+        mode: "light-source",
+      },
       show: true,
       fallbackAmbientLight: {
-        intensity: 0.85
-      }
+        intensity: 0.85,
+      },
     },
     clouds: {
-      show: false
+      show: false,
     },
   },
 })
@@ -228,10 +231,10 @@ async function createHorseHerd() {
   setStatus(
     `已在若尔盖大草原附近放置 ${sampledPlacements.length} 匹实例化奔马。`
   )
- viewer.flyToTarget(herd.group, {
-    heading: 180,
-    pitch: -10,
-    distance: 800,
+  viewer.flyToTarget(herd.group, {
+    heading: -130,
+    pitch: -7,
+    distance: 1300,
   })
 }
 
