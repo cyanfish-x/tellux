@@ -8,7 +8,7 @@
 - 方案：GPU 阴影体 + 深度纹理逐片元分类（对标 Cesium `GroundPrimitive` / `GroundPolylinePrimitive`），**否决** CPU 采样重建的妥协路线。
 - 渲染器：WebGL 优先全量实现；WebGPU 暂不处理（`onBeforeCompile` 在 WebGPU 失效，后续单独立项）。
 
-- [ ] P0 深度分类管线 + 贴地线
+- [X] P0 深度分类管线 + 贴地线
 
   - 新增 `GroundClampPass`（effects pass，同 `EntityRenderManager` 形态），复用 `readBuffer.depthTexture` 作地表深度源。
   - port Cesium `createGroundPolylineGeometry`：沿椭球细分 + 墙体积几何（8 顶点 / 36 索引）。
@@ -16,26 +16,48 @@
   - 落实工程细节 1：`EncodedCartesian3` 高 / 低双精度拆分（抗地球尺度抖动）。
   - 落实工程细节 2：法向 `±EPSILON5` 微偏移治 z-fighting（不抬高度）。
   - API：`PolylineOptions.heightReference: 'CLAMP_TO_GROUND'`。
-
-- [ ] P1 贴地面
+- [X] P1 贴地面
 
   - `GroundPolygonGraphic` 阴影体几何（port `PolygonGeometry` + `createShadowVolume`）。
   - 模板两遍材质（stencil-depth + color，port `ShadowVolumeAppearanceFS`）。
   - `PolygonOptions.heightReference: 'CLAMP_TO_GROUND'`。
-
 - [ ] P2 点 heightReference
 
   - 接入 `HeightSampler`：add 即摆椭球高，`sampleHeightMostDetailed` resolve 后 snap。
   - LOD 变化去抖重采样（点仅 1 顶点）。
   - `PointOptions.heightReference: 'CLAMP_TO_GROUND'`。
-
 - [ ] P3 terrain / 3D Tiles 深度分离
 
   - 主渲染插入 terrain-only 深度快照 → `CLAMP_TO_TERRAIN` / `CLAMP_TO_TILESET`。
-
 - [ ] P4 RELATIVE_TO_GROUND + 打磨
 
   - `RELATIVE_TO_GROUND`（地表高 + height 偏移）；性能（scissor / 包络）、与 OIT 交互、拾取语义厘清。
+
+## Symbol 实体（Icon + 文字标签）
+
+完整设计见 [docs/design/symbol-entity.md](./docs/design/symbol-entity.md)。
+
+- 背景：实体目前无图标 / 文字标注；点图形用 `THREE.Points` 圆形纹理，无法承载任意图片或文字。
+- 方案：对标 Mapbox `symbol` layer——一个 symbol = icon + text 共享同一锚点 / 排布 / 着色器，内部共用屏幕空间四边形原语 `AnchorQuadGraphic`。文字 v1 用 canvas 覆盖纹理 + shader tint（WYSIWYG，走 `resolveColor`）；SDF / instanced collection 为量级驱动的后续升级，接口预留。
+- 不做（非目标）：沿线标签、地图级碰撞检测（地球引擎少量标注用不上）。
+
+- [ ] S0 AnchorQuadGraphic 原语
+
+  - 自写 ShaderMaterial：camera-facing、像素 / 世界大小、anchor、pixelOffset、rotation、tint、opacity；FS main 末尾显式 `gl_FragColor` 以命中 [EntityRenderManager](./src/entities/EntityRenderManager.ts) OIT 注入 fallback 分支。
+  - 验证：单 quad 贴图渲染 + 缩放 / 旋转 / 偏移 / tint 正确；半透明经 OIT 无黑边。
+- [ ] S1 SymbolGraphic + Icon
+
+  - `IconOptions`、image 异步加载 + 共享缓存 + dispose、`SymbolGraphics` / `IconGraphics` 句柄、Entity 集成（position / show / dispose / `get symbol`）。
+  - 验证：icon 跟随 position，raycast 命中（零拾取改动，Mesh 走现有 raycast 路径），颜色 WYSIWYG。
+- [ ] S2 Text（canvas 纹理）
+
+  - `TextOptions`、canvas coverage 构建（白色字形 / 描边，色作 uniform）、fill / outline / bg 经 `resolveColor`、布局（textRelative / anchor / spacing）、`TextGraphics` 句柄。
+  - 验证：文字锐利、halo 正确、改色不重建 canvas、改文字重建、icon+text 组合排布正确。
+- [ ] S3 打磨 + 案例
+
+  - 多行 / maxWidth 换行、行高、背景框、与 point 共存、sandcastle 案例（[examples/entities.ts](./examples/entities.ts) 模式）。
+- [ ] S4 贴地 clamp（单点 HeightSampler 采样，同点语义）
+- [ ] S5 距离衰减（scaleByDistance / translucencyByDistance / disableDepthTestDistance）
 
 ## 实例化渲染（对标 UE5 HISM）
 
@@ -53,33 +75,27 @@
   - 建 position 管线组合协议：所有位置贡献者（RTC / 风摆 / 剔除 / LOD）通过 stage 注册，引擎独占 `<project_vertex>` 最终输出，单一 `onBeforeCompile` 按 order 拼接。
   - 协议字段按 TSL PositionNode 形态设计（预留未来 A→B 迁移）；拍板是否预留 `vertexPosition`(pre-project) / `clipPosition`(post-project) 钩子（决定能否做 GPU 实例剔除）。
   - 验证：给 fake stage 组合后 GLSL 正确（单元测试 + 输出快照 hash），不接业务。
-
 - [ ] C2 RTC 注入迁到 PositionPipeline
 
   - 把 `applyRTCInstancing.ts` 的高/低精度 RTE 数学重写为 PositionPipeline stage，消除对 `#include <project_vertex>` 的正则 patch。
   - 验证：vegetation 视觉等价。
-
 - [ ] C3 ez-tree 风摆迁到 PositionPipeline stage
 
   - 按「提取重写」策略：保留 ez-tree geometry 生成，丢弃其 `createLeavesGeometry` 里的 `MeshPhongMaterial + onBeforeCompile`，风摆改为 Tellux 自有 stage。
   - 验证：风摆视觉等价；ez-tree 与 RTC 不再争抢 `<project_vertex>`。
-
 - [ ] C4 InstancedSceneObject 通用类 + 簇划分 + 逐实例视锥剔除（HISM 核心）
 
   - 通用实例化容器类，实例变换建层级空间结构（BVH / 网格簇，集成 [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-bvh)），对标 HISM 的 cluster tree。
   - 逐簇 + 逐实例视锥剔除，动态回填可见实例到 `instanceMatrix`（含 positionHigh/Low 通道）。
   - 验证：draw call / 提交实例数随视锥下降，画面等价。
-
 - [ ] C5 LOD bucketing + 简化几何管线（HISM 核心）
 
   - 距离驱动逐实例 LOD 选择，按 LOD 层级分桶为独立实例化批次；含 LOD 切换去抖 / 过渡。
   - 验证：远距离帧率提升，近距离画面等价。
-
 - [ ] C6 拾取（集成 three-mesh-bvh）
 
   - 实例化射线拾取，复用 C4 的空间结构。
   - 验证：鼠标点树 / 实例能正确选中。
-
 - [ ] C7 第二个客户接入验证 API 通用性
 
   - 用非 vegetation 场景（如岩石 / 建筑）接入，验证系统不是 vegetation-specific。
