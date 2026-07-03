@@ -22,7 +22,7 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 涉及项目主页、文档站点、示例站点或 Sandcastle 的改动前，优先阅读：
 
-- `notes/examples文档与Sandcastle架构.md`
+- `notes/架构/examples文档与Sandcastle架构.md`
 
 该文档是维护者架构说明，用于快速理解：
 
@@ -40,21 +40,28 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 ## notes 快速索引
 
-`notes/` 存放项目级备忘、架构说明、能力调研和实现链路。遇到对应主题时，先读相关 notes，再进入源码细节。
+`notes/` 按主题分四组存放项目级备忘、架构说明、能力调研和实现链路：
 
-- 涉及 Viewer 创建流程、每帧渲染流程、TilesetManager、地形 / 影像 / surface tileset 生命周期时，先读 `notes/项目架构.md`。
-- 涉及历史 bug、容易误判的实现方向、渲染循环抢占和高度采样副作用时，先读 `notes/项目坑点记录.md`。
+- `架构/`：项目级架构、历史债务清理、子系统架构
+- `依赖能力备忘/`：第三方库（3d-tiles-renderer、takram-three-*）能力调研与打包策略
+- `实现链路/`：核心算法 / 流程链路梳理
+- `坑点记录/`：易踩坑合集，`坑点记录/项目坑点记录.md` 是总览
+
+遇到对应主题时，先读相关 notes，再进入源码细节。
+
+- 涉及 Viewer 创建流程、每帧渲染流程、TilesetManager、地形 / 影像 / surface tileset 生命周期时，先读 `notes/架构/项目架构.md`。
+- 涉及历史 bug、容易误判的实现方向、渲染循环抢占和高度采样副作用时，先读 `notes/坑点记录/项目坑点记录.md`。
 - 涉及 `Scene` 运行时控制对象、`AtmosphereManager` 状态同步、大气用户态和底层 effect/light 状态边界时，先读 `notes/坑点记录/Scene与AtmosphereManager双状态坑点.md`。
 - 涉及实体（点 / 折线 / 多边形）颜色显示偏色、`toneMapped` 失效、`setEffects` 后处理管线或 AgX 反求补偿时，先读 `notes/坑点记录/实体颜色被AgX色调映射压扁坑点.md`。
-- 涉及 `sampleHeightMostDetailed`、地形高度采样、离屏采样、采样专用 tileset、LoadRegionPlugin 或 raycast 高度求交时，先读 `notes/sampleHeightMostDetailed实现链路.md`。
-- 涉及 3D Tiles 能力评估、数据格式、LOD、调试、性能、Cesium Ion、地形或影像瓦片能力时，先读 `notes/3d-tiles-renderer能力备忘.md`。
-- 涉及 3D Tiles plugin / overlay 取舍、认证插件、GLTFExtensionsPlugin、QuantizedMeshPlugin、ImageOverlayPlugin、TilesFadePlugin、UpdateOnChangePlugin、MVT / GeoJSON overlay 时，先读 `notes/3d-tiles-renderer插件与影像叠加能力备忘.md`。
-- 涉及经纬高、椭球、大地坐标、瓦片坐标、STBN / typed array 资源加载或 geospatial shader 工具时，先读 `notes/takram-three-geospatial能力备忘.md`。
-- 涉及天空大气、空气透视、太阳 / 月亮方向、光源式光照、星空材质或与云层合成时，先读 `notes/takram-three-atmosphere能力备忘.md`。
-- 涉及体积云、云层建模、天气贴图、噪声纹理、程序化纹理、云影或云渲染性能时，先读 `notes/takram-three-clouds能力备忘.md`。
-- 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/takram-three-geospatial-effects能力备忘.md`。
-- 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/examples文档与Sandcastle架构.md`。
-- 涉及打包策略、`external` / `noExternal`、peerDependencies 取舍、three 单例或第三方依赖是否打入产物时，先读 `notes/前置依赖打包策略备忘.md`。
+- 涉及 `sampleHeightMostDetailed`、地形高度采样、离屏采样、采样专用 tileset、LoadRegionPlugin 或 raycast 高度求交时，先读 `notes/实现链路/sampleHeightMostDetailed实现链路.md`。
+- 涉及 3D Tiles 能力评估、数据格式、LOD、调试、性能、Cesium Ion、地形或影像瓦片能力时，先读 `notes/依赖能力备忘/3d-tiles-renderer能力备忘.md`。
+- 涉及 3D Tiles plugin / overlay 取舍、认证插件、GLTFExtensionsPlugin、QuantizedMeshPlugin、ImageOverlayPlugin、TilesFadePlugin、UpdateOnChangePlugin、MVT / GeoJSON overlay 时，先读 `notes/依赖能力备忘/3d-tiles-renderer插件与影像叠加能力备忘.md`。
+- 涉及经纬高、椭球、大地坐标、瓦片坐标、STBN / typed array 资源加载或 geospatial shader 工具时，先读 `notes/依赖能力备忘/takram-three-geospatial能力备忘.md`。
+- 涉及天空大气、空气透视、太阳 / 月亮方向、光源式光照、星空材质或与云层合成时，先读 `notes/依赖能力备忘/takram-three-atmosphere能力备忘.md`。
+- 涉及体积云、云层建模、天气贴图、噪声纹理、程序化纹理、云影或云渲染性能时，先读 `notes/依赖能力备忘/takram-three-clouds能力备忘.md`。
+- 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/依赖能力备忘/takram-three-geospatial-effects能力备忘.md`。
+- 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/架构/examples文档与Sandcastle架构.md`。
+- 涉及打包策略、`external` / `noExternal`、peerDependencies 取舍、three 单例或第三方依赖是否打入产物时，先读 `notes/依赖能力备忘/前置依赖打包策略备忘.md`。
 
 ## 公开 API 方向
 
@@ -82,7 +89,7 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 ## 参考能力
 
-能力实现需要参考 /notes/3d-tiles-renderer能力备忘.md 文档中的能力描述；本库主要做API使用侧的易用性封装。
+能力实现需要参考 `notes/依赖能力备忘/3d-tiles-renderer能力备忘.md` 文档中的能力描述；本库主要做API使用侧的易用性封装。
 
 ## 参考仓库
 
