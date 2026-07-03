@@ -635,7 +635,7 @@ function selectExample(example: SandcastleExample, shouldRun = true) {
   const url = new URL(window.location.href)
   url.searchParams.set("example", example.id)
   window.history.replaceState(null, "", url)
-  renderGallery(displayedExamples)
+  updateGalleryActiveState()
   selectPane(activePane)
   selectView("code")
   if (shouldRun) {
@@ -644,10 +644,10 @@ function selectExample(example: SandcastleExample, shouldRun = true) {
 }
 
 function loadDefaultExample() {
-  activeExample = null
+  activeExample = defaultSandcastleExample
   models.javascript.setValue(defaultSandcastleExample.javascript)
   models.html.setValue(defaultSandcastleExample.html)
-  renderGallery(displayedExamples)
+  updateGalleryActiveState()
   selectPane(activePane)
   selectView("examples")
   void runCurrentCode()
@@ -671,6 +671,7 @@ function renderGallery(examples: SandcastleExample[]) {
     const button = document.createElement("button")
     button.className = "sandcastle-card"
     button.type = "button"
+    button.dataset.exampleId = example.id
     button.toggleAttribute("data-active", example.id === activeExample?.id)
     button.innerHTML = `
       <span class="sandcastle-card__thumb" aria-hidden="true"></span>
@@ -703,6 +704,17 @@ function renderGallery(examples: SandcastleExample[]) {
       updateDescriptionTitle(description, example.description)
     }
   }
+}
+
+function updateGalleryActiveState() {
+  galleryList
+    .querySelectorAll<HTMLElement>(".sandcastle-card")
+    .forEach((card) => {
+      card.toggleAttribute(
+        "data-active",
+        card.dataset.exampleId === activeExample?.id
+      )
+    })
 }
 
 function filterExamples(query: string) {

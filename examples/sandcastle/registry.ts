@@ -16,7 +16,6 @@ const categoryById: Record<string, string> = {
   "3d-tiles": "Tiles",
   atmosphere: "Rendering",
   basic: "Viewer",
-  blank: "Viewer",
   "data-sources": "Layers",
   entities: "Drawing",
   "fly-to": "Camera",
@@ -32,12 +31,10 @@ const categoryById: Record<string, string> = {
 }
 
 const titleById: Record<string, string> = {
-  blank: "纯净地球",
   "gaussian-splat-3d-tiles": "高斯泼溅 3D Tiles",
 }
 
 const descriptionById: Record<string, string> = {
-  blank: "创建一个 Tellux Viewer，加载干净的地球影像底图。",
   "gaussian-splat-3d-tiles": "示例侧集成 3d-tiles-rendererjs-3dgs-plugin，在 Tellux 地球场景中加载高斯泼溅 3D Tiles。",
 }
 
@@ -87,7 +84,7 @@ const tagByTerm: Array<[string, string]> = [
 ]
 
 const excludedHtmlFiles = new Set(["index", "sandcastle"])
-const hiddenDefaultExampleId = "blank"
+const defaultExampleId = "basic"
 
 function getFileId(path: string) {
   return path.match(/\/([^/]+)\.html$/)?.[1] ?? path
@@ -205,12 +202,10 @@ const allSandcastleExamples: SandcastleExample[] = Object.entries(htmlModules)
   )
 
 export const defaultSandcastleExample =
-  allSandcastleExamples.find((example) => example.id === hiddenDefaultExampleId) ??
+  allSandcastleExamples.find((example) => example.id === defaultExampleId) ??
   allSandcastleExamples[0]
 
-export const sandcastleExamples: SandcastleExample[] = allSandcastleExamples.filter(
-  (example) => example.id !== hiddenDefaultExampleId
-)
+export const sandcastleExamples: SandcastleExample[] = allSandcastleExamples
 
 export function getSandcastleExample(id: string | null) {
   return allSandcastleExamples.find((example) => example.id === id) ?? null
