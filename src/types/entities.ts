@@ -177,11 +177,18 @@ export interface PolygonOptions {
    */
   outlineColor?: ColorInput
   /**
-   * 贴地配置。面贴地为 GPU 阴影体分类（P1 尚未实现，当前会降级为平面并告警）。
+   * 贴地配置。`clamp: true`（或 `offset: 0`）时多边形通过 GPU 深度分类真·贴地，
+   * 随地形/3D Tiles 起伏贴合，凹多边形支持；此时 {@link height} 被忽略（§4.2），
+   * {@link extrudeHeight} / {@link outline} 暂不支持（告警忽略）。填充色支持
+   * `rgba(...)` / `#rrggbbaa` 的 alpha 半透明。`offset > 0` 暂未实现（P4），
+   * 会降级为绝对高并告警。仅 WebGL 支持。
    *
-   * Ground-clamp options. Polygon clamping uses GPU shadow-volume classification
-   * (P1, not yet implemented; currently falls back to a flat polygon with a
-   * warning).
+   * Ground-clamp options. With `clamp: true` (or `offset: 0`) the polygon is
+   * draped onto terrain/3D Tiles via GPU depth classification (concave polygons
+   * supported); {@link height} is then ignored (§4.2) and {@link extrudeHeight}
+   * / {@link outline} are not yet supported (warned and ignored). The fill color
+   * honors `rgba(...)` / `#rrggbbaa` alpha. `offset > 0` is not yet implemented
+   * (P4) and falls back to absolute height with a warning. WebGL only.
    */
   clamp?: ClampInput
 }

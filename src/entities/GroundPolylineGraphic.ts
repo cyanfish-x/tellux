@@ -27,14 +27,16 @@ const MAX_SUB_SEGMENT_METERS = 1000
 // 墙体积横向半宽下限（米），保证极细线也有可覆盖的盒体。
 const MIN_GEOMETRY_HALF_WIDTH = 0.5
 
-// 立方体 12 三角形索引（DoubleSide 渲染，绕序无关）。角点编号见 buildWallGeometry。
+// 立方体 12 三角形索引，绕序统一朝外（配合 BackSide：凸盒每像素恰好一次 FS，
+// 半透明不重复混合，相机进入盒内也正确）。局部系 (forward=F, right=R, up=U)
+// 右手（R = U×F），角点编号见 cornerOffsets：0..3 为 start 端，4..7 为 end 端。
 const BOX_INDICES = [
-  0, 1, 5, 0, 5, 4, // bottom
-  2, 6, 7, 2, 7, 3, // top
-  0, 1, 3, 0, 3, 2, // start cap
-  4, 7, 5, 4, 6, 7, // end cap
-  0, 2, 6, 0, 6, 4, // left
-  1, 3, 7, 1, 7, 5 // right
+  0, 5, 4, 0, 1, 5, // bottom (-U)
+  2, 6, 7, 2, 7, 3, // top (+U)
+  0, 2, 3, 0, 3, 1, // start cap (-F)
+  4, 7, 6, 4, 5, 7, // end cap (+F)
+  0, 4, 6, 0, 6, 2, // left (-R)
+  1, 3, 7, 1, 7, 5 // right (+R)
 ]
 
 /**
@@ -88,7 +90,8 @@ export class GroundPolylineGraphic implements PolylinePickable {
       transparent: true,
       depthTest: false,
       depthWrite: false,
-      side: THREE.DoubleSide
+      // 凸体只渲背面：每像素恰好一次 FS（含相机在体内的情形），半透明不重复混合。
+      side: THREE.BackSide
     })
 
     this.geometry = this.buildGeometry()

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="62" />
+  <title>Tellux Ground Clamp Polygon</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="toolbar" aria-label="Ground clamp polygon controls">
+      <header class="toolbar__header">
+        <h1>贴地面</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>
+        <code>polygon.clamp: true</code> 通过 GPU 深度分类把多边形贴合到地形/3D Tiles 表面，
+        支持凹多边形与半透明填充。青色为贴地凹多边形，黄色为同形状、固定绝对高的对比平面。
+      </p>
+      <p id="clamp-status" class="status" aria-live="polite">加载中…</p>
+      <div class="toolbar__row toolbar__row--checks">
+        <label class="check">
+          <input type="checkbox" id="toggle-clamp" checked />
+          <span>贴地面</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="toggle-reference" checked />
+          <span>固定高平面</span>
+        </label>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./ground-clamp-polygon.ts"></script>
+</body>
+
+</html>

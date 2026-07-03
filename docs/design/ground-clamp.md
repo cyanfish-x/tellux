@@ -155,20 +155,18 @@ gl_FragCoord → 采样 depthTexture → 窗口深度 z
 - **FS**：§3.1 还原地表 `eye`；`abs(planeDistance(rightPlane, eye)) <= halfWidth && planeDistance(startPlane) >= 0 && planeDistance(endPlane) >= 0` 否则 discard；命中输出预乘 alpha 颜色。
 - **渲染状态**：`depthTest:false`（手动比深度）、`depthWrite:false`、`blending: Normal` 或预乘 alpha；**不需 stencil**（单 pass 深度纹理分类，比 Cesium 更简，因始终有深度纹理）。
 
-### 3.4 贴地面几何（阴影体）
+### 3.4 贴地面几何（每三角形棱柱）
 
-- `PolygonGeometry`：环投影到椭球面、切平面内三角化、按 `arcType` 细分边界（port `createPolygonGeometry` 的 `perPositionHeight:false / height:0` 路径）。
-- `createShadowVolume`：把扁平多边形沿法向上下挤出成体积（对标 Cesium `GroundPrimitive` 的 `_extruded`）。
-- 包络高度同样走 `HeightSampler` 粗采样。
+**已实现（P1，2026-07-03），与原设想的整体阴影体不同**：外环投影到质心切平面，`THREE.ShapeUtils.triangulateShape`（earcut）三角化——凹多边形由三角化天然解决；**每个三角形**沿逐顶点椭球法向挤出一个棱柱分类体（6 顶点 / 8 三角形，绕序统一朝外），高度带与线一致（固定 [-1000, 9000] m，不采样地形）。相邻三角形共享顶点与法向，侧面严格贴合。见 [GroundPolygonGraphic](../../src/entities/GroundPolygonGraphic.ts)。
 
-### 3.5 贴地面分类材质（port `ShadowVolumeAppearanceFS`，模板两遍）
+### 3.5 贴地面分类材质（单 pass 半平面测试，非模板两遍）
 
-WebGL `WebGLRenderTarget` 支持 `stencilBuffer:true`；`THREE.Material` 支持 `stencilWrite/stencilFunc/stencilOp/stencilRef`。
+**原方案（Cesium 模板两遍阴影体）被否决**：P0 核实内置合成器的 render target `stencilBuffer:false`（renderer 未开 stencil），走模板需自管 RT + 深度共享，复杂度不成比例。采用原"备选简化"路线并解决其凹多边形难点：
 
-- **stencil-depth 材质**：`colorWrite:false`、`depthTest:LESS`、模板 `zFail: front DECR_WRAP / back INCR_WRAP`、`ref=CESIUM_3D_TILE_MASK/CLASSIFICATION_MASK`。
-- **color 材质**：`stencilFunc: NOT_EQUAL, ref 0`、命中后 `stencilOp: ZERO` 清掩码；FS 读深度还原世界坐标 + `vectorFromOffset` 重建法线打光。
-
-> 备选简化（评估）：始终有深度纹理时，面也可走单 pass "重建地表点 → 点在多边形 footprint 内判定"，省去模板。凹多边形的逐片元 point-in-polygon 是难点，故 Phase 1 仍采 Cesium 模板阴影体（稳健、支持凹多边形）。
+- 凹多边形 point-in-polygon 不在片元里做——CPU earcut 后每片元只需判定**所在三角形棱柱**：FS 重建眼空间地表点，做三条边的外向半平面测试（`cross(边, up)`），全部内侧即命中。
+- **全多边形共用一个 up 向量**（质心方向，uniform）：共享边在相邻三角形里方向恰好相反，叉积精确反号 → 两侧测试严格互补，无缝隙无重叠。
+- **`side: BackSide`**（凸体每像素恰好一次 FS，相机在体内也正确）→ 支持半透明填充不重复混合；填充色的 `rgba(...)` / `#rrggbbaa` alpha 生效（线同步改为 BackSide）。
+- 渲染状态与线一致：`depthTest:false`、`depthWrite:false`、常规混合，由 `GroundClampPass` 统一渲染，无 stencil 依赖。`extrudeHeight` / `outline` 留后续阶段。
 
 ### 3.6 GroundClampPass 编排
 
@@ -252,7 +250,7 @@ export interface GroundClamp {
 | 阶段                               | 交付                                                                                                                                                                    | 验收                                                           |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | **P0** 深度分类管线 + 贴地线 | `GroundClampPass` 骨架、深度绑定、`EncodedCartesian3`、port `GroundPolylineGeometry` 墙体积、线分类材质、normal nudge、`clamp: true`（线，offset=0） | 线在山地上随地形起伏贴合，相机 / LOD 变化无穿山 / 浮空、无抖动 |
-| **P1** 贴地面                | `GroundPolygonGraphic` 阴影体几何 + 模板两遍材质（port `ShadowVolumeAppearanceFS`）、`clamp: true`（面，offset=0）                                                | 面贴合地形，凹多边形正确，相邻面无 z-fighting                  |
+| **P1** 贴地面（已实现）      | `GroundPolygonGraphic`：earcut 三角化 + 每三角形棱柱 + 单 pass 半平面分类（§3.4/3.5，非模板两遍）、半透明填充、`clamp: true`（面，offset=0）                      | 面贴合地形，凹多边形正确，相邻面无 z-fighting                  |
 | **P2** 点 clamp              | `HeightSampler` 接入 + LOD 重采样、`clamp: true`（点）                                                                                                              | 点 snap 到地表，LOD 载入后位置收敛                             |
 | **P3** terrain/tileset 分离  | 主渲染中插入 terrain-only 深度快照 → `clamp.source: 'terrain' \| 'tileset'`                                                                                          | 同一线可仅贴地形或仅贴建筑顶                                   |
 | **P4** offset>0 + 打磨       | `clamp.offset > 0`（relative 语义）、精度 / 性能（scissor、bounding）、与 OIT 交互厘清                                                                                | 偏移贴地稳定，大场景帧率达标                                   |

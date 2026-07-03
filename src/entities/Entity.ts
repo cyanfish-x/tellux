@@ -4,6 +4,7 @@ import { PointGraphic } from './PointGraphic'
 import { PolylineGraphic } from './PolylineGraphic'
 import { PolygonGraphic } from './PolygonGraphic'
 import { GroundPolylineGraphic } from './GroundPolylineGraphic'
+import { GroundPolygonGraphic } from './GroundPolygonGraphic'
 import { PointGraphics, PolylineGraphics, PolygonGraphics } from './EntityGraphics'
 import { tagObject3DWithEntity } from '../sampling/EntityPicker'
 import {
@@ -36,6 +37,7 @@ export class Entity {
   private polylineGraphic: PolylineGraphic | null = null
   private polygonGraphic: PolygonGraphic | null = null
   private groundPolylineGraphic: GroundPolylineGraphic | null = null
+  private groundPolygonGraphic: GroundPolygonGraphic | null = null
   private groundGroup: THREE.Group | null = null
   private groundClampRoot: THREE.Group | null = null
   private currentPosition: CartographicInput | undefined
@@ -73,14 +75,7 @@ export class Entity {
     }
 
     if (options.polygon) {
-      warnUnsupportedClamp(options.polygon.clamp, id, 'polygon', 'P1')
-      const worldPositions = options.polygon.positions.map((input) => {
-        const target = new THREE.Vector3()
-        this.context.toVector3(input, target)
-        return target
-      })
-      this.polygonGraphic = new PolygonGraphic({ worldPositions, options: options.polygon })
-      this.root.add(this.polygonGraphic.object3D)
+      this.buildPolygon(id, options)
     }
   }
 
@@ -101,14 +96,7 @@ export class Entity {
         ellipsoid: this.context.ellipsoid(),
         uniforms: groundClamp.uniforms
       })
-      const group = new THREE.Group()
-      group.name = `${id}-ground`
-      group.visible = this.currentShow
-      tagObject3DWithEntity(group, this)
-      group.add(this.groundPolylineGraphic.object3D)
-      groundClamp.root.add(group)
-      this.groundGroup = group
-      this.groundClampRoot = groundClamp.root
+      this.ensureGroundGroup(id, groundClamp.root).add(this.groundPolylineGraphic.object3D)
       return
     }
 
@@ -125,6 +113,64 @@ export class Entity {
     })
     this.polylineGraphic = new PolylineGraphic({ worldPositions, options: polyline })
     this.root.add(this.polylineGraphic.object3D)
+  }
+
+  /**
+   * 多边形分发：贴地（`clamp` 命中且 `offset===0` 且有贴地 pass）走 GPU 深度分类
+   * 的 {@link GroundPolygonGraphic}；否则走普通 {@link PolygonGraphic}。贴地时
+   * `height` 按设计被忽略（§4.2）；`extrudeHeight` / `outline` 暂未支持，告警忽略。
+   */
+  private buildPolygon(id: string, options: EntityOptions) {
+    const polygon = options.polygon!
+    const clamp = normalizeClamp(polygon.clamp)
+    const groundClamp = this.context.groundClamp
+
+    if (clamp && clamp.offset === 0 && groundClamp) {
+      if (polygon.extrudeHeight !== undefined) {
+        console.warn(`[tellux] 实体 "${id}"：贴地面暂不支持 extrudeHeight（后续阶段），已忽略。`)
+      }
+      if (polygon.outline) {
+        console.warn(`[tellux] 实体 "${id}"：贴地面暂不支持 outline（后续阶段），已忽略。`)
+      }
+      if ((polygon.fill ?? true) === false) {
+        console.warn(`[tellux] 实体 "${id}"：贴地面 fill:false 且无 outline，跳过绘制。`)
+        return
+      }
+      this.groundPolygonGraphic = new GroundPolygonGraphic({
+        positions: polygon.positions,
+        options: polygon,
+        ellipsoid: this.context.ellipsoid(),
+        uniforms: groundClamp.uniforms
+      })
+      this.ensureGroundGroup(id, groundClamp.root).add(this.groundPolygonGraphic.object3D)
+      return
+    }
+
+    if (clamp) {
+      const reason = clamp.offset !== 0 ? 'offset>0 (P4 未实现)' : '当前渲染器不支持贴地（需 WebGL）'
+      console.warn(`[tellux] 实体 "${id}" 的贴地面降级为绝对高：${reason}。`)
+    }
+
+    const worldPositions = polygon.positions.map((input) => {
+      const target = new THREE.Vector3()
+      this.context.toVector3(input, target)
+      return target
+    })
+    this.polygonGraphic = new PolygonGraphic({ worldPositions, options: polygon })
+    this.root.add(this.polygonGraphic.object3D)
+  }
+
+  /** 每实体一个的贴地子组（挂在共享 groundClampRoot 下），show/remove 与实体同步。 */
+  private ensureGroundGroup(id: string, groundClampRoot: THREE.Group): THREE.Group {
+    if (this.groundGroup) return this.groundGroup
+    const group = new THREE.Group()
+    group.name = `${id}-ground`
+    group.visible = this.currentShow
+    tagObject3DWithEntity(group, this)
+    groundClampRoot.add(group)
+    this.groundGroup = group
+    this.groundClampRoot = groundClampRoot
+    return group
   }
 
   /** 实体根 Object3D，由 EntityManager 挂到场景。Root Object3D, attached to the scene by EntityManager. */
@@ -199,6 +245,7 @@ export class Entity {
     this.polylineGraphic?.dispose()
     this.polygonGraphic?.dispose()
     this.groundPolylineGraphic?.dispose()
+    this.groundPolygonGraphic?.dispose()
     if (this.groundGroup && this.groundClampRoot) {
       this.groundClampRoot.remove(this.groundGroup)
     }

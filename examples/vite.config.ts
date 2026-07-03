@@ -17,6 +17,7 @@ const htmlInputs = {
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
   entities: resolve(__dirname, "entities.html"),
   groundClamp: resolve(__dirname, "ground-clamp.html"),
+  groundClampPolygon: resolve(__dirname, "ground-clamp-polygon.html"),
   instancedHorses: resolve(__dirname, "instanced-horses.html"),
   mixedHeightSamplingHorses: resolve(__dirname, "mixed-height-sampling-horses.html"),
   vegetation: resolve(__dirname, "vegetation.html"),
