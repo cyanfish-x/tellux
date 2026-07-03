@@ -37,6 +37,54 @@
 
   - `RELATIVE_TO_GROUND`（地表高 + height 偏移）；性能（scissor / 包络）、与 OIT 交互、拾取语义厘清。
 
+## 实例化渲染（对标 UE5 HISM）
+
+目标：实现引擎级通用高性能实例化渲染系统，以 UE5 的 **HISM（Hierarchical Instanced Static Mesh）** 为标杆——层级空间结构驱动的逐实例视锥剔除 + 逐实例 LOD 选择 + 按 LOD 分桶的实例化批次。vegetation 是第一个客户，后续覆盖草地、岩石、建筑、鸟群、车流等。
+
+完整架构与依赖策略见 [docs/design/engine-ownership-and-dependency-strategy.md](./docs/design/engine-ownership-and-dependency-strategy.md)（§1 PositionPipeline、§2 通用实例化系统、C1-C7 交付路线）。
+
+- 背景：现状实例化只有 vegetation 内的 [src/rendering/applyRTCInstancing.ts](./src/rendering/applyRTCInstancing.ts)（RTC 高/低精度平移 + 手工包围盒），无 shader 组合层、无剔除、无 LOD、无拾取，且 shader 注入是 ez-tree 风摆与 RTC 两方字符串 patch 的脆弱状态（见 [notes/坑点记录/ez-tree风摆与RTC争抢project_vertex坑点.md](./notes/坑点记录/ez-tree风摆与RTC争抢project_vertex坑点.md)）。
+- 对标范围：HISM 的「层级剔除 + 逐实例 LOD」是核心目标；**明确不做** HZB 遮挡剔除（WebGL2 下 ROI 低）与 UE5 Nanite 级 GPU-driven meshlet（需 WebGPU + compute，另立项）。
+- 前置约束：必须先建 PositionPipeline 再迁 ez-tree，不得先 vendor ez-tree（会用 vendor 替代架构思考）。每个 chunk 必须可独立验证（画面等价或可量化指标），避免大爆炸式集成。
+- 验证 demo：[examples/vegetation.ts](./examples/vegetation.ts)（第一个客户，C1-C6 的画面等价基准）。
+
+- [ ] C1 PositionPipeline 协议 + 单元测试
+
+  - 建 position 管线组合协议：所有位置贡献者（RTC / 风摆 / 剔除 / LOD）通过 stage 注册，引擎独占 `<project_vertex>` 最终输出，单一 `onBeforeCompile` 按 order 拼接。
+  - 协议字段按 TSL PositionNode 形态设计（预留未来 A→B 迁移）；拍板是否预留 `vertexPosition`(pre-project) / `clipPosition`(post-project) 钩子（决定能否做 GPU 实例剔除）。
+  - 验证：给 fake stage 组合后 GLSL 正确（单元测试 + 输出快照 hash），不接业务。
+
+- [ ] C2 RTC 注入迁到 PositionPipeline
+
+  - 把 `applyRTCInstancing.ts` 的高/低精度 RTE 数学重写为 PositionPipeline stage，消除对 `#include <project_vertex>` 的正则 patch。
+  - 验证：vegetation 视觉等价。
+
+- [ ] C3 ez-tree 风摆迁到 PositionPipeline stage
+
+  - 按「提取重写」策略：保留 ez-tree geometry 生成，丢弃其 `createLeavesGeometry` 里的 `MeshPhongMaterial + onBeforeCompile`，风摆改为 Tellux 自有 stage。
+  - 验证：风摆视觉等价；ez-tree 与 RTC 不再争抢 `<project_vertex>`。
+
+- [ ] C4 InstancedSceneObject 通用类 + 簇划分 + 逐实例视锥剔除（HISM 核心）
+
+  - 通用实例化容器类，实例变换建层级空间结构（BVH / 网格簇，集成 [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-bvh)），对标 HISM 的 cluster tree。
+  - 逐簇 + 逐实例视锥剔除，动态回填可见实例到 `instanceMatrix`（含 positionHigh/Low 通道）。
+  - 验证：draw call / 提交实例数随视锥下降，画面等价。
+
+- [ ] C5 LOD bucketing + 简化几何管线（HISM 核心）
+
+  - 距离驱动逐实例 LOD 选择，按 LOD 层级分桶为独立实例化批次；含 LOD 切换去抖 / 过渡。
+  - 验证：远距离帧率提升，近距离画面等价。
+
+- [ ] C6 拾取（集成 three-mesh-bvh）
+
+  - 实例化射线拾取，复用 C4 的空间结构。
+  - 验证：鼠标点树 / 实例能正确选中。
+
+- [ ] C7 第二个客户接入验证 API 通用性
+
+  - 用非 vegetation 场景（如岩石 / 建筑）接入，验证系统不是 vegetation-specific。
+  - 验证：新客户 < 200 行接入。
+
 ## WebGPU 渲染模式
 
 - [ ] 实现 WebGPU 渲染模式下的瓦片 LOD fade 过渡效果
