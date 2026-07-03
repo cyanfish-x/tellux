@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="61" />
+  <title>Tellux Ground Clamp Polyline</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="toolbar" aria-label="Ground clamp controls">
+      <header class="toolbar__header">
+        <h1>贴地折线</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>
+        <code>polyline.clamp: true</code> 通过 GPU 深度分类把折线贴合到地形/3D Tiles 表面，
+        随相机与 LOD 变化稳定贴地。青色为贴地折线，黄色为同经纬、固定绝对高的对比折线。
+      </p>
+      <p id="clamp-status" class="status" aria-live="polite">加载中…</p>
+      <div class="toolbar__row toolbar__row--checks">
+        <label class="check">
+          <input type="checkbox" id="toggle-clamp" checked />
+          <span>贴地折线</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="toggle-reference" checked />
+          <span>固定高折线</span>
+        </label>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./ground-clamp.ts"></script>
+</body>
+
+</html>

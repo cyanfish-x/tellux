@@ -160,7 +160,12 @@ function createEntityPickerFixture() {
         return target.set(input.longitude, input.latitude, input.height)
       }
       return target.set(input[0], input[1], input[2] ?? 0)
-    }
+    },
+    ellipsoid: () => ({
+      getCartographicToPosition: (_lat, _lon, _height, target) => target.set(0, 0, 0),
+      getCartographicToNormal: (_lat, _lon, target) => target.set(0, 0, 1)
+    }),
+    groundClamp: null
   })
 
   return {

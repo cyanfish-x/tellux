@@ -16,6 +16,7 @@ const htmlInputs = {
   webgpuBasic: resolve(__dirname, "webgpu-basic.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
   entities: resolve(__dirname, "entities.html"),
+  groundClamp: resolve(__dirname, "ground-clamp.html"),
   instancedHorses: resolve(__dirname, "instanced-horses.html"),
   mixedHeightSamplingHorses: resolve(__dirname, "mixed-height-sampling-horses.html"),
   vegetation: resolve(__dirname, "vegetation.html"),

@@ -1,10 +1,15 @@
 import * as THREE from 'three'
 import type { CartographicInput, EntityOptions } from '../types'
 import { Entity } from './Entity'
+import type { EllipsoidLike, GroundClampContext } from './groundClamp'
 
 export interface EntityManagerOptions {
   scene: THREE.Scene
   toVector3: (input: CartographicInput, target: THREE.Vector3) => THREE.Vector3
+  /** 当地椭球 getter（贴地几何构建用）。 */
+  ellipsoid: () => EllipsoidLike
+  /** 贴地渲染依赖；无贴地 pass（如 WebGPU）时为 `null`。 */
+  groundClamp: GroundClampContext | null
 }
 
 /**
@@ -38,7 +43,9 @@ export class EntityManager {
 
     const entity = new Entity(id, options, {
       toVector3: this.options.toVector3,
-      removeEntity: (target) => this.removeEntity(target)
+      removeEntity: (target) => this.removeEntity(target),
+      ellipsoid: this.options.ellipsoid,
+      groundClamp: this.options.groundClamp
     })
     this.entities.set(id, entity)
     this.entitiesRoot.add(entity.object3D)

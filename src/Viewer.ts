@@ -15,6 +15,7 @@ import { LayerManager } from './LayerManager'
 import { ModelManager } from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
+import { GroundClampPass } from './rendering/GroundClampPass'
 import {
   createRendererAdapter,
   type TelluxRenderer,
@@ -283,6 +284,7 @@ export class Viewer {
   private readonly models: ModelManager
   private readonly entitiesManager: EntityManager
   private readonly entityRenderManager: EntityRenderManager
+  private readonly groundClampPass: GroundClampPass | null
   private readonly viewport: ViewportResizeManager
   private readonly atmosphere: ViewerAtmosphereManager | null
   private readonly postProcessing: PostProcessingManager | null
@@ -396,9 +398,17 @@ export class Viewer {
     this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.domElement, this.threeCamera, this.tilesets)
     this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
+    // 贴地分类 pass 仅 WebGL（依赖 setEffects 深度纹理链）；WebGPU 下为 null。
+    this.groundClampPass = this.rendererAdapter.supportsWebGLEffects
+      ? new GroundClampPass(this.threeCamera)
+      : null
     this.entitiesManager = new EntityManager({
       scene: this.scene.threeScene,
-      toVector3: (input, target) => this.cartographicToVector3(input, target)
+      toVector3: (input, target) => this.cartographicToVector3(input, target),
+      ellipsoid: () => this.tilesets.tileset.ellipsoid,
+      groundClamp: this.groundClampPass
+        ? { root: this.groundClampPass.root, uniforms: this.groundClampPass.sharedUniforms }
+        : null
     })
     this.entityRenderManager = new EntityRenderManager({
       root: this.entitiesManager.root,
@@ -456,7 +466,8 @@ export class Viewer {
           this.threeCamera,
           this.atmosphere as AtmosphereManager,
           () => this.camera.getCurrentHeight(),
-          this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined
+          this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
+          this.groundClampPass ?? undefined
         )
       : null
     postProcessing = this.postProcessing
@@ -846,6 +857,7 @@ export class Viewer {
     this.models.dispose()
     this.entityRenderManager.dispose()
     this.entitiesManager.dispose()
+    this.groundClampPass?.dispose()
     this.widgets.dispose()
     this.heightSampler.dispose()
     this.targetFlights.dispose()

@@ -1,6 +1,47 @@
 import type { Color, Vector3 } from 'three'
-import type { CartographicInput } from './spatial'
+import type { CartographicInput, HeightSamplingSource } from './spatial'
 import type { Entity } from '../entities/Entity'
+
+/**
+ * 贴地（Ground Clamp）配置。贴地是坐标的垂直定位属性，只有两个正交轴：
+ * 贴到哪个面（{@link source}）、离那个面多高（{@link offset}）。
+ *
+ * Ground-clamp options. Clamping is a vertical-positioning property with two
+ * orthogonal axes: which surface to clamp to ({@link source}) and how far above
+ * it ({@link offset}).
+ *
+ * 详见 `docs/design/ground-clamp.md` §4。
+ */
+export interface GroundClamp {
+  /**
+   * 贴到什么面；直接透传给高度采样的 `source`。默认 `'all'`（terrain 与
+   * 3D Tiles 取上）。
+   *
+   * Which surface to clamp to; forwarded to the height-sampling `source`.
+   * Defaults to `'all'` (terrain and 3D Tiles, whichever is higher).
+   */
+  source?: HeightSamplingSource
+  /**
+   * 地表之上的偏移（米）。`0` 或缺省 = 真·贴地；`> 0` = 抬离地表。
+   *
+   * Offset above the surface in meters. `0` or omitted = true ground clamp;
+   * `> 0` = lifted above the surface.
+   */
+  offset?: number
+}
+
+/**
+ * 贴地字段：`boolean` 走常见场景，对象走精细控制。
+ * - 缺省 / `false` → 绝对椭球高（不贴地）。
+ * - `true` → `{ source: 'all', offset: 0 }`，贴地。
+ * - 对象 → 精细控制。
+ *
+ * Ground-clamp field: `boolean` for the common case, object for fine control.
+ * - omitted / `false` → absolute ellipsoidal height (no clamp).
+ * - `true` → `{ source: 'all', offset: 0 }`, clamped.
+ * - object → fine control.
+ */
+export type ClampInput = boolean | GroundClamp
 
 /**
  * 颜色输入：数值 hex、CSS 颜色字符串或 Three.js Color。
@@ -39,6 +80,13 @@ export interface PointOptions {
    * Outline pixel width. Defaults to `0` (no outline).
    */
   outlineWidth?: number
+  /**
+   * 贴地配置。点贴地为 CPU 采样（P2 尚未实现，当前会降级为绝对高并告警）。
+   *
+   * Ground-clamp options. Point clamping is CPU-sampled (P2, not yet
+   * implemented; currently falls back to absolute height with a warning).
+   */
+  clamp?: ClampInput
 }
 
 /**
@@ -65,6 +113,18 @@ export interface PolylineOptions {
    * Color. Defaults to white.
    */
   color?: ColorInput
+  /**
+   * 贴地配置。`clamp: true`（或 `offset: 0`）时折线通过 GPU 深度分类真·贴地，
+   * 随地形/3D Tiles 起伏贴合；此时 {@link width} 语义为**米**（贴地 ribbon 宽度），
+   * 非像素。`offset > 0` 暂未实现（P4），会降级为绝对高并告警。仅 WebGL 支持。
+   *
+   * Ground-clamp options. With `clamp: true` (or `offset: 0`) the polyline is
+   * draped onto terrain/3D Tiles via GPU depth classification; {@link width} is
+   * then interpreted in **meters** (ground ribbon width), not pixels. `offset > 0`
+   * is not yet implemented (P4) and falls back to absolute height with a warning.
+   * WebGL only.
+   */
+  clamp?: ClampInput
 }
 
 /**
@@ -116,6 +176,14 @@ export interface PolygonOptions {
    * Outline color; only used when {@link outline} is `true`.
    */
   outlineColor?: ColorInput
+  /**
+   * 贴地配置。面贴地为 GPU 阴影体分类（P1 尚未实现，当前会降级为平面并告警）。
+   *
+   * Ground-clamp options. Polygon clamping uses GPU shadow-volume classification
+   * (P1, not yet implemented; currently falls back to a flat polygon with a
+   * warning).
+   */
+  clamp?: ClampInput
 }
 
 /**

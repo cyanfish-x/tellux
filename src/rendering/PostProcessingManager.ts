@@ -24,7 +24,8 @@ export class PostProcessingManager {
     private readonly camera: THREE.PerspectiveCamera,
     private readonly atmosphere: AtmosphereManager,
     private readonly getCurrentHeight: () => number | null,
-    private readonly entityRenderer?: ThreeEffectPass
+    private readonly entityRenderer?: ThreeEffectPass,
+    private readonly groundClampPass?: ThreeEffectPass
   ) {
     const normalPass = new NormalPass(threeScene, this.camera)
     this.configureNormalPass(normalPass)
@@ -93,6 +94,10 @@ export class PostProcessingManager {
     }
     if (this.entityRenderer) {
       nextEffects.push(this.entityRenderer)
+    }
+    if (this.groundClampPass) {
+      // 贴地分类：读并集深度、渲分类几何、合成回主色。空场景时 pass 内部 no-op。
+      nextEffects.push(this.groundClampPass)
     }
     if (shouldRenderClouds) {
       nextEffects.push(this.cloudAtmosphereAdapter)
