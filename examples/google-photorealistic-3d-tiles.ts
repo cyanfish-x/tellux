@@ -59,9 +59,6 @@ const viewer = new tellux.Viewer(container, {
       show: true,
       quality: "ultra",
     },
-    postProcess: {
-      toneMappingExposure: 4,
-    },
   },
   widgets: {
     timeline: true,

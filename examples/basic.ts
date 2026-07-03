@@ -42,9 +42,6 @@ const viewer = new tellux.Viewer("viewer", {
     clouds: {
       show: false,
     },
-    postProcess: {
-      toneMappingExposure: 8,
-    },
   },
 })
 

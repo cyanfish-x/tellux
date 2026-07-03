@@ -95,11 +95,6 @@ if (globeContainer instanceof HTMLElement) {
         show: false,
         coverage: 0.35,
       },
-      postProcess: {
-        lensFlare: true,
-        smaa: true,
-        toneMappingExposure: 8,
-      },
     },
     resolutionScale: Math.min(window.devicePixelRatio, 1.5),
   })

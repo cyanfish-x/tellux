@@ -100,9 +100,6 @@ const viewer = new tellux.Viewer(container, {
     clouds: {
       show: false
     },
-    postProcess: {
-      toneMappingExposure: 7
-    }
   },
 })
 

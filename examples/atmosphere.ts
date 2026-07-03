@@ -64,11 +64,6 @@ const viewer = new tellux.Viewer(container, {
       show: true,
       coverage: 0.35
     },
-    postProcess: {
-      toneMappingExposure: 8,
-      lensFlare: true,
-      smaa: true
-    }
   },
   resolutionScale: 1
 })

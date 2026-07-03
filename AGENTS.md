@@ -124,4 +124,4 @@ Tellux 是一个 ESM TypeScript 库，基于 Three.js 提供 GIS viewer，用于
 
 ## 强制规则
 
-+ 永远用中文回答
++ 除非用户指定了输出语言，否则默认用中文回答

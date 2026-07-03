@@ -102,7 +102,7 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
       lensFlare: options?.postProcess?.lensFlare ?? true,
       smaa: options?.postProcess?.smaa ?? true,
       dithering: options?.postProcess?.dithering ?? false,
-      toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 10
+      toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 5
     }
   }
 }

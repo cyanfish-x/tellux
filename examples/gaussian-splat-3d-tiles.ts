@@ -75,10 +75,6 @@ const viewer = new tellux.Viewer(container, {
     clouds: {
       show: false,
     },
-    postProcess: {
-      lensFlare: false,
-      toneMappingExposure: 3,
-    },
     surface: {
       materialMode: "standard",
     },
