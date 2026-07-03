@@ -122,7 +122,7 @@ function activateLayer(layer: TilesetLayer, description: string) {
   syncLayerVisibility()
   if (flyToTilesetToggle.checked) {
     viewer.flyToTarget(layer.tileset, {
-      heading: 0,
+      heading: 30,
       pitch: -30,
     })
   }

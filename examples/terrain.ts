@@ -11,9 +11,12 @@ const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 const container = document.querySelector("#viewer")
 const terrainSourceSelect =
   document.querySelector<HTMLSelectElement>("#terrain-source")
-const urlTerrainField = document.querySelector<HTMLElement>("#url-terrain-field")
+const urlTerrainField =
+  document.querySelector<HTMLElement>("#url-terrain-field")
 const terrainUrlInput = document.querySelector<HTMLInputElement>("#terrain-url")
-const ionTerrainFields = document.querySelector<HTMLElement>("#ion-terrain-fields")
+const ionTerrainFields = document.querySelector<HTMLElement>(
+  "#ion-terrain-fields"
+)
 const ionTerrainAssetIdInput = document.querySelector<HTMLInputElement>(
   "#ion-terrain-asset-id"
 )
@@ -59,21 +62,21 @@ const viewer = new tellux.Viewer(container, {
     },
   ],
   camera: {
-    latitude: 30.73605413066788,
-    longitude: 103.51750379494544,
-    height: 1946.5761978745659,
-    heading: -60.2233623473377,
-    pitch: -9.036646445693787,
-    roll: 0.00004544608651084398,
+    latitude: 30.755465691598996,
+    longitude: 103.51293447705049,
+    height: 1946.2165657669584,
+    heading: -93.06516054169673,
+    pitch: -9.028828445592675,
+    roll: 0.00005229266806157685,
   },
   scene: {
     clouds: {
-      show: false
+      show: false,
     },
   },
 })
 
-viewer.clock.hourUTC = 12
+viewer.clock.hourUTC = 11
 ;(window as any).viewer = viewer
 
 terrainUrlField.value = ""
@@ -102,7 +105,9 @@ function getSelectedTerrainSource(): TerrainSource {
 function createUrlTerrainOptions(): TerrainOptions | null {
   const url = getTerrainUrl()
   if (!url) {
-    setStatus("请先输入 quantized-mesh 地形根目录或 layer.json 地址，或配置 VITE_CESIUM_TERRAIN_URL。")
+    setStatus(
+      "请先输入 quantized-mesh 地形根目录或 layer.json 地址，或配置 VITE_CESIUM_TERRAIN_URL。"
+    )
     return null
   }
 
@@ -120,7 +125,9 @@ function createIonTerrainOptions(): TerrainOptions | null {
   const apiToken = ionTerrainTokenField.value.trim() || DEFAULT_ION_TOKEN
 
   if (!assetId || !apiToken) {
-    setStatus("请先输入 Cesium Ion terrain asset id 和 token，或在 .env 中配置默认值。")
+    setStatus(
+      "请先输入 Cesium Ion terrain asset id 和 token，或在 .env 中配置默认值。"
+    )
     return null
   }
 
@@ -224,9 +231,13 @@ if (DEFAULT_ION_TOKEN) {
 } else if (DEFAULT_TERRAIN_URL) {
   terrainEnabledControl.checked = true
   enableSelectedTerrain()
-  setStatus("未检测到 Cesium Ion token，已从 VITE_CESIUM_TERRAIN_URL 自动加载 URL 地形。")
+  setStatus(
+    "未检测到 Cesium Ion token，已从 VITE_CESIUM_TERRAIN_URL 自动加载 URL 地形。"
+  )
 } else {
-  setStatus("输入 terrain URL，或提供 Cesium Ion terrain asset id 和 token 后加载。")
+  setStatus(
+    "输入 terrain URL，或提供 Cesium Ion terrain asset id 和 token 后加载。"
+  )
 }
 
 window.addEventListener("beforeunload", () => {
