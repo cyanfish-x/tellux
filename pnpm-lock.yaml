@@ -11,6 +11,9 @@ importers:
       '@dgreenheck/ez-tree':
         specifier: ^1.1.0
         version: 1.1.0(three@0.184.0)
+      '@mapbox/tiny-sdf':
+        specifier: ^2.2.0
+        version: 2.2.0
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -392,6 +395,9 @@ packages:
 
   '@mapbox/point-geometry@1.1.0':
     resolution: {integrity: sha512-YGcBz1cg4ATXDCM/71L9xveh4dynfGmcLDqufR+nQQy3fKwsAZsWd/x4621/6uJaeB9mwOHE6hPeDgXz9uViUQ==}
+
+  '@mapbox/tiny-sdf@2.2.0':
+    resolution: {integrity: sha512-LVL4wgI9YAum5V+LNVQO6QgFBPw7/MIIY4XJPNsPDMrjEwcE+JfKk1LuIl8GnF197ejVdC9QdPaxrx5gfgdGXg==}
 
   '@mapbox/vector-tile@2.0.5':
     resolution: {integrity: sha512-pXj8m7KTsqZt+1jsE0xIpGvqTSbblfkuEJL/NJmNePMtEwxO8V3XMDo9WMSfDeqHvCtBI9Lmt4mGcGR10zecmw==}
@@ -2027,6 +2033,8 @@ snapshots:
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
   '@mapbox/point-geometry@1.1.0': {}
+
+  '@mapbox/tiny-sdf@2.2.0': {}
 
   '@mapbox/vector-tile@2.0.5':
     dependencies:

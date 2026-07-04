@@ -86,6 +86,7 @@
   },
   "dependencies": {
     "@dgreenheck/ez-tree": "^1.1.0",
+    "@mapbox/tiny-sdf": "^2.2.0",
     "dotenv": "^17.4.2",
     "tencentcloud-sdk-nodejs-cdn": "^4.1.200"
   }

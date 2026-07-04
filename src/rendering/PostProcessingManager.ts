@@ -100,13 +100,16 @@ export class PostProcessingManager {
       // 贴地分类：读并集深度、渲分类几何、合成回主色。空场景时 pass 内部 no-op。
       nextEffects.push(this.groundClampPass)
     }
-    if (this.symbolOcclusionPass) {
-      nextEffects.push(this.symbolOcclusionPass)
-    }
     if (shouldRenderClouds) {
       nextEffects.push(this.cloudAtmosphereAdapter)
     } else if (shouldRenderAtmosphere) {
       nextEffects.push(this.atmosphereAdapter)
+    }
+    if (this.symbolOcclusionPass) {
+      // Labels are screen-space overlays: draw them after atmosphere/cloud composition so
+      // aerial perspective does not soften glyph edges. The pass still samples scene depth
+      // for anchor occlusion and then leaves SMAA/dithering to process the final image.
+      nextEffects.push(this.symbolOcclusionPass)
     }
     if (this.scene.postProcess.lensFlare.enabled) {
       nextEffects.push(this.lensFlareAdapter)

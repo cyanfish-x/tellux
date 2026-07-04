@@ -4,23 +4,22 @@ import { resolveColor } from './invertToneMapping'
 import { setSymbolOcclusionController } from './SymbolOcclusionPass'
 
 /**
- * 屏幕空间 billboard 四边形原语，用单通道 SDF 纹理（或程序化圆角矩形）渲染。
+ * 屏幕空间 billboard 四边形原语，用 SDF atlas 纹理（或程序化圆角矩形）渲染。
  *
  * 顶点着色器把单位四边形按像素尺寸缩放、旋转、按像素偏移平移后，叠加到锚点世界
  * 位置的屏幕投影上——像素大小在 VS 里一次算完，不需每帧按距离 rescale。片元着色器
- * 采样 SDF：`pxDist = (r - 0.5) * spread`（>0 内部），`smoothstep` 做抗锯齿填充，
- * 距离阈值带做描边 / halo，颜色作为 uniform（经 resolveColor 反求）。
+ * 图标使用 Tellux 自有 0.5-edge SDF；文字 glyph 使用 Mapbox/TinySDF 的 0.75-edge
+ * SDF 与 glyph atlas UV。颜色作为 uniform（经 resolveColor 反求）。
  *
  * Symbol 不走实体 OIT：主场景渲染前由 SymbolOcclusionPass 临时隐藏，随后在独立
  * pass 中读取场景深度并按锚点全有 / 全无遮挡绘制。材质本身保持不透明队列，SDF
  * 透明边用 discard 处理，避免被 OIT 按 quad 片元深度切碎。
  *
- * Screen-space billboard quad primitive rendered from a single-channel SDF texture
+ * Screen-space billboard quad primitive rendered from an SDF atlas texture
  * (or a procedural rounded rect). The VS sizes / rotates / offsets a unit quad in
  * pixels and adds it to the anchor's screen projection — pixel size is computed in
- * the VS, no per-distance rescale. The FS samples the SDF, anti-aliases the fill
- * with `smoothstep`, draws an outline / halo as a distance band, and takes color
- * from uniforms (WYSIWYG via resolveColor). Symbols are rendered by
+ * the VS, no per-distance rescale. Icons use Tellux's 0.5-edge SDF; text glyphs
+ * use Mapbox/TinySDF's 0.75-edge SDF and atlas UVs. Symbols are rendered by
  * SymbolOcclusionPass rather than entity OIT; alpha edges use discard so the quad is
  * never partially clipped by per-fragment scene depth.
  */
@@ -37,6 +36,8 @@ export class AnchorQuadGraphic {
       uPixelOffset: { value: new THREE.Vector2(0, 0) },
       uRotation: { value: 0 },
       uMap: { value: null as THREE.Texture | null },
+      uUvMin: { value: new THREE.Vector2(0, 0) },
+      uUvMax: { value: new THREE.Vector2(1, 1) },
       uSpread: { value: 1 },
       uTint: { value: new THREE.Color(0xffffff) },
       uOutlineColor: { value: new THREE.Color(0x000000) },
@@ -101,6 +102,8 @@ export class AnchorQuadGraphic {
       fragmentShader: /* glsl */ `
         precision highp float;
         uniform sampler2D uMap;
+        uniform vec2 uUvMin;
+        uniform vec2 uUvMax;
         uniform float uSpread;
         uniform vec3 uTint;
         uniform vec3 uOutlineColor;
@@ -155,12 +158,26 @@ export class AnchorQuadGraphic {
           }
 
           float pxDist;
-          if (uMode > 0.5) {
+          if (uMode > 1.5) {
+            if (uHasMap < 0.5) discard;
+            vec2 atlasUv = mix(uUvMin, uUvMax, vUv);
+            float r = texture2D(uMap, atlasUv).r;
+            float fill = smoothstep(0.75 - uSmoothing, 0.75 + uSmoothing, r);
+            float haloEdge = 0.75 - uOutlineWidth / max(uSpread, 1e-4);
+            float outer = smoothstep(haloEdge - uSmoothing, haloEdge + uSmoothing, r);
+            float ring = max(outer - fill, 0.0);
+            float alpha = max(fill, ring) * uOpacity;
+            if (alpha < 0.01) discard;
+            vec3 rgb = mix(uOutlineColor, uTint, fill / max(fill + ring, 1e-4));
+            gl_FragColor = vec4(rgb, alpha);
+            return;
+          } else if (uMode > 0.5) {
             float edgeDist = roundedBoxSDF(vUv, uPixelSize * 0.5, uCornerRadius);
             pxDist = -edgeDist; // 内正外负 / inside positive
           } else {
             if (uHasMap < 0.5) discard;
-            float r = texture2D(uMap, vUv).r;
+            vec2 atlasUv = mix(uUvMin, uUvMax, vUv);
+            float r = texture2D(uMap, atlasUv).r;
             pxDist = (r - 0.5) * uSpread;
           }
 
@@ -264,6 +281,10 @@ export class AnchorQuadGraphic {
     this.uniforms.uOutlineWidth.value = Math.max(0, width)
   }
 
+  setSmoothing(width: number) {
+    this.uniforms.uSmoothing.value = Math.max(0.01, width)
+  }
+
   setOpacity(opacity: number) {
     this.uniforms.uOpacity.value = Math.max(0, Math.min(1, opacity))
   }
@@ -284,25 +305,32 @@ export class AnchorQuadGraphic {
   }
 
   /**
-   * 切到纹理 SDF 模式（icon / text）。`texture` 仅被引用，生命周期由调用方
-   * （SymbolGraphic 的图标缓存 / 文字纹理）管理，本方法不持有所有权。
+   * 切到整张纹理 SDF 模式（icon）。`texture` 仅被引用，生命周期由调用方管理。
    *
-   * Switch to textured-SDF mode (icon / text). `texture` is only referenced; its
-   * lifetime is owned by the caller (SymbolGraphic's icon cache / text texture).
+   * Switch to full-texture SDF mode (icon). `texture` is only referenced; its
+   * lifetime is owned by the caller.
    */
   setMap(texture: THREE.Texture) {
     this.uniforms.uMode.value = 0
     this.uniforms.uHasMap.value = 1
     this.uniforms.uMap.value = texture
+    ;(this.uniforms.uUvMin.value as THREE.Vector2).set(0, 0)
+    ;(this.uniforms.uUvMax.value as THREE.Vector2).set(1, 1)
+  }
+
+  setGlyphSdfMap(texture: THREE.Texture, uvMin: THREE.Vector2, uvMax: THREE.Vector2) {
+    this.uniforms.uMode.value = 2
+    this.uniforms.uHasMap.value = 1
+    this.uniforms.uMap.value = texture
+    ;(this.uniforms.uUvMin.value as THREE.Vector2).copy(uvMin)
+    ;(this.uniforms.uUvMax.value as THREE.Vector2).copy(uvMax)
   }
 
   /**
-   * SDF 距离场半径（绘制缓冲像素）。对文字（1:1 显示）= 源 spread × pixelRatio；
-   * 对图标（SDF 被拉伸）= 源 spread × scale × pixelRatio。由 SymbolGraphic 按场景算好传入。
+   * SDF 距离场半径（绘制缓冲像素）。icon 为自有 SDF spread，glyph 为 TinySDF 半径。
    *
-   * SDF radius in drawing-buffer px. For text (1:1) = source spread × pixelRatio;
-   * for icons (stretched SDF) = source spread × scale × pixelRatio. Computed by
-   * SymbolGraphic per use case.
+   * SDF radius in drawing-buffer px. For icons this is the local SDF spread; for
+   * glyphs it is the TinySDF radius. Computed by SymbolGraphic per use case.
    */
   setSpread(spread: number) {
     this.uniforms.uSpread.value = spread

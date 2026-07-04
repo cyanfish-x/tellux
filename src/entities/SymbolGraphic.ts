@@ -1,13 +1,12 @@
 import * as THREE from 'three'
-import type { ColorInput, IconOptions, SymbolAnchor, SymbolOptions, SymbolTextRelative, TextOptions } from '../types'
+import type { ColorInput, IconOptions, SymbolAnchor, SymbolOptions, SymbolTextRelative } from '../types'
 import { resolveColor } from './invertToneMapping'
 import { AnchorQuadGraphic } from './AnchorQuadGraphic'
 import { generateSDF, sampleRoundedRectAlpha, sampleSdfAlpha, type SDFResult } from './sdf'
+import { createGlyphTextRun, type GlyphTextConfig, type GlyphTextRun } from './GlyphAtlas'
 
 /** 图标 SDF 的源距离场半径（源像素）。Icon SDF source radius (source px). */
 const ICON_SPREAD = 16
-/** 文字 SDF 的基础距离场半径（CSS 像素）。Base text SDF radius (CSS px). */
-const TEXT_SPREAD_BASE = 8
 
 interface IconCacheEntry {
   sdf: SDFResult
@@ -32,7 +31,7 @@ interface PickRect {
   /** 矩形 CSS 尺寸（含 SDF spread / 背景内边距）。CSS size (incl. SDF spread / bg padding). */
   w: number
   h: number
-  kind: 'sdf' | 'bg'
+  kind: 'sdf' | 'bg' | 'rect'
   canvas?: HTMLCanvasElement
   spread?: number
   outlineWidth?: number
@@ -53,22 +52,25 @@ interface SymbolGraphicOptions {
  * Symbol 图形：一个锚点上的 icon + 文字标签组合，始终面向屏幕。
  *
  * 持 1~2 个 {@link AnchorQuadGraphic}（icon quad / text quad），可选一个程序化圆角矩形
- * 背景 quad。icon 从图片 alpha 生成 SDF（按 URL 共享缓存），text 先用 canvas 光栅化（仅
- * alpha）再生成 SDF；描边 / halo 由 shader 距离阈值实现，不烘焙。布局（textRelative /
- * anchor / spacing / pixelOffset）在 CPU 算，每个 quad 得到自己的像素偏移；颜色作为
- * uniform 经 {@link resolveColor} 反求（WYSIWYG）。
+ * 背景 quad。icon 从图片 alpha 生成 SDF（按 URL 共享缓存），text 使用 Mapbox 同源
+ * TinySDF glyph atlas：按 font stack 缓存单字形，label 排版为多个 glyph quad；
+ * 描边 / halo 由 shader 按 TinySDF cutoff 实现。布局（textRelative / anchor / spacing /
+ * pixelOffset）在 CPU 算，每个 quad 得到自己的像素偏移；颜色作为 uniform 经
+ * {@link resolveColor} 反求（WYSIWYG）。
  *
  * Symbol graphics: an icon + text label combo at one anchor, always screen-facing.
  * Holds 1–2 AnchorQuadGraphics (icon / text) and an optional procedural rounded-rect
- * background. Icons generate an SDF from image alpha (shared cache by URL); text is
- * canvas-rasterized (alpha only) then turned into an SDF. Outline / halo is shader
- * distance-thresholded, not baked. Layout (textRelative / anchor / spacing / pixelOffset)
- * is computed on the CPU; colors are WYSIWYG uniforms via resolveColor.
+ * background. Icons generate an SDF from image alpha (shared cache by URL); text
+ * uses a Mapbox-style TinySDF glyph atlas: glyphs are cached by font stack and
+ * labels are shaped into glyph quads. Outline / halo is shader-thresholded using
+ * TinySDF's cutoff. Layout (textRelative / anchor / spacing / pixelOffset) is
+ * computed on the CPU; colors are WYSIWYG uniforms via resolveColor.
  */
 export class SymbolGraphic {
   readonly object3D: THREE.Group
   private readonly iconQuad: AnchorQuadGraphic | null
-  private readonly textQuad: AnchorQuadGraphic | null
+  private readonly textEnabled: boolean
+  private readonly textQuads: AnchorQuadGraphic[] = []
   private bgQuad: AnchorQuadGraphic | null
 
   private position: THREE.Vector3
@@ -89,8 +91,8 @@ export class SymbolGraphic {
 
   // text 状态 / text state
   private textContent: Size2 | null = null
-  private textSdf: SDFResult | null = null
-  private textConfig: Required<Pick<TextOptions, 'text' | 'font' | 'fontSize' | 'fontWeight' | 'outlineWidth' | 'lineHeight'>> & {
+  private textGlyphRun: GlyphTextRun | null = null
+  private textConfig: GlyphTextConfig & {
     maxWidth?: number
     padding: [number, number]
     fillColor: THREE.Color
@@ -98,7 +100,6 @@ export class SymbolGraphic {
     backgroundColor: THREE.Color | null
     backgroundCornerRadius: number
     opacity: number
-    spread: number
   }
   private disposed = false
   private pickRects: PickRect[] = []
@@ -136,7 +137,7 @@ export class SymbolGraphic {
 
     // ---- text ----
     const text = options.text
-    this.textQuad = text ? new AnchorQuadGraphic() : null
+    this.textEnabled = Boolean(text)
     const outlineWidth = text?.outlineWidth ?? 0
     this.textConfig = {
       text: text?.text ?? '',
@@ -151,8 +152,7 @@ export class SymbolGraphic {
       outlineColor: resolveColor(text?.outlineColor ?? 0x000000),
       backgroundColor: text?.backgroundColor === undefined ? null : resolveColor(text.backgroundColor),
       backgroundCornerRadius: text?.backgroundCornerRadius ?? 0,
-      opacity: text?.opacity ?? 1,
-      spread: Math.max(TEXT_SPREAD_BASE, outlineWidth + 4)
+      opacity: text?.opacity ?? 1
     }
     const bgColor = this.textConfig.backgroundColor
     this.bgQuad = bgColor ? new AnchorQuadGraphic() : null
@@ -165,12 +165,8 @@ export class SymbolGraphic {
       this.bgQuad.setRenderOrder(-1)
       this.object3D.add(this.bgQuad.object3D)
     }
-    if (this.textQuad) {
-      this.textQuad.setPosition(this.position)
-      this.applyTextUniforms()
-      this.textQuad.setRenderOrder(0)
-      this.object3D.add(this.textQuad.object3D)
-      this.rebuildTextSdf()
+    if (this.textEnabled) {
+      this.rebuildTextGlyphs()
     }
 
     this.update()
@@ -179,14 +175,14 @@ export class SymbolGraphic {
   setPosition(position: THREE.Vector3) {
     this.position.copy(position)
     this.iconQuad?.setPosition(position)
-    this.textQuad?.setPosition(position)
+    this.textQuads.forEach((quad) => quad.setPosition(position))
     this.bgQuad?.setPosition(position)
   }
 
   setRotation(rotation: number) {
     this.rotation = rotation
     this.iconQuad?.setRotation(rotation)
-    this.textQuad?.setRotation(rotation)
+    this.textQuads.forEach((quad) => quad.setRotation(rotation))
     this.bgQuad?.setRotation(rotation)
   }
 
@@ -198,7 +194,7 @@ export class SymbolGraphic {
   // ----- 只读状态（供 SymbolGraphics / IconGraphics / TextGraphics 句柄读取）-----
   // Read-only state exposed to the *Graphics runtime handles.
   get hasIcon(): boolean { return this.iconQuad !== null }
-  get hasText(): boolean { return this.textQuad !== null }
+  get hasText(): boolean { return this.textEnabled }
   get rotationValue(): number { return this.rotation }
   get pixelOffsetValue(): [number, number] { return [this.pixelOffset[0], this.pixelOffset[1]] }
   get iconColorHex(): number { return this.iconQuad?.tintHex ?? 0xffffff }
@@ -215,9 +211,9 @@ export class SymbolGraphic {
 
   // ----- text 句柄 / text handle -----
   setText(text: string) {
-    if (!this.textQuad) return
+    if (!this.textEnabled) return
     this.textConfig.text = text
-    this.rebuildTextSdf()
+    this.rebuildTextGlyphs()
     this.update()
   }
 
@@ -232,23 +228,22 @@ export class SymbolGraphic {
   }
 
   setOutlineWidth(width: number) {
-    if (!this.textQuad) return
+    if (!this.textEnabled) return
     this.textConfig.outlineWidth = Math.max(0, width)
-    this.textConfig.spread = Math.max(TEXT_SPREAD_BASE, this.textConfig.outlineWidth + 4)
-    this.rebuildTextSdf()
+    this.applyTextUniforms()
     this.update()
   }
 
   setFontSize(size: number) {
-    if (!this.textQuad) return
+    if (!this.textEnabled) return
     this.textConfig.fontSize = size
-    this.rebuildTextSdf()
+    this.rebuildTextGlyphs()
     this.update()
   }
 
   setTextOpacity(opacity: number) {
     this.textConfig.opacity = Math.max(0, Math.min(1, opacity))
-    this.textQuad?.setOpacity(this.textConfig.opacity)
+    this.textQuads.forEach((quad) => quad.setOpacity(this.textConfig.opacity))
     this.bgQuad?.setOpacity(this.textConfig.opacity)
   }
 
@@ -295,13 +290,13 @@ export class SymbolGraphic {
 
   syncResolution(width: number, height: number, pixelRatio: number) {
     this.iconQuad?.syncResolution(width, height)
-    this.textQuad?.syncResolution(width, height)
+    this.textQuads.forEach((quad) => quad.syncResolution(width, height))
     this.bgQuad?.syncResolution(width, height)
     if (pixelRatio !== this.pixelRatio) {
       this.pixelRatio = pixelRatio
-      // pixelRatio 变化影响文字 SDF 分辨率与所有 quad 的像素尺寸 / spread，需重建 + 重排。
-      // pixelRatio changes text SDF resolution and every quad's pixel size / spread.
-      if (this.textQuad) this.rebuildTextSdf()
+      // pixelRatio 变化影响 glyph quad 的绘制缓冲尺寸 / gamma，需重排。
+      // pixelRatio changes glyph drawing-buffer size / gamma, so reshape.
+      if (this.textEnabled) this.rebuildTextGlyphs()
       this.update()
     }
   }
@@ -321,19 +316,19 @@ export class SymbolGraphic {
       this.iconSdf.texture.dispose()
     }
     this.iconQuad?.dispose()
-    this.textQuad?.dispose()
+    this.clearTextQuads()
     this.bgQuad?.dispose()
-    this.textSdf?.texture.dispose()
   }
 
   // ----- 内部 / internals -----
 
   private applyTextUniforms() {
-    if (!this.textQuad) return
-    this.textQuad.setTintRaw(this.textConfig.fillColor)
-    this.textQuad.setOutlineColorRaw(this.textConfig.outlineColor)
-    this.textQuad.setOutlineWidth(this.textConfig.outlineWidth * this.pixelRatio)
-    this.textQuad.setOpacity(this.textConfig.opacity)
+    this.textQuads.forEach((quad) => {
+      quad.setTintRaw(this.textConfig.fillColor)
+      quad.setOutlineColorRaw(this.textConfig.outlineColor)
+      quad.setOutlineWidth(this.textConfig.outlineWidth * this.pixelRatio)
+      quad.setOpacity(this.textConfig.opacity)
+    })
   }
 
   private async loadIcon(icon: IconOptions) {
@@ -391,16 +386,35 @@ export class SymbolGraphic {
     this.update()
   }
 
-  private rebuildTextSdf() {
-    if (!this.textQuad) return
-    const pr = this.pixelRatio
-    const cfg = this.textConfig
-    const { canvas, contentW, contentH } = buildTextCanvas(cfg, pr)
-    const spreadSource = Math.round(cfg.spread * pr)
-    this.textSdf = generateSDF(canvas, spreadSource)
-    this.textContent = { w: contentW, h: contentH }
-    this.textQuad.setMap(this.textSdf.texture)
-    this.textQuad.setSpread(this.textSdf.spread)
+  private rebuildTextGlyphs() {
+    if (!this.textEnabled) return
+    this.clearTextQuads()
+    const run = createGlyphTextRun(this.textConfig, this.pixelRatio)
+    this.textGlyphRun = run
+    this.textContent = { w: run.contentW, h: run.contentH }
+    for (const glyph of run.quads) {
+      const quad = new AnchorQuadGraphic()
+      quad.setPosition(this.position)
+      quad.setGlyphSdfMap(glyph.texture, glyph.uvMin, glyph.uvMax)
+      quad.setPixelSize(glyph.w, glyph.h)
+      quad.setSpread(glyph.sdfRadius)
+      quad.setSmoothing(glyph.smoothing)
+      quad.setTintRaw(this.textConfig.fillColor)
+      quad.setOutlineColorRaw(this.textConfig.outlineColor)
+      quad.setOutlineWidth(this.textConfig.outlineWidth * this.pixelRatio)
+      quad.setOpacity(this.textConfig.opacity)
+      quad.setRenderOrder(0)
+      this.textQuads.push(quad)
+      this.object3D.add(quad.object3D)
+    }
+  }
+
+  private clearTextQuads() {
+    this.textQuads.forEach((quad) => {
+      this.object3D.remove(quad.object3D)
+      quad.dispose()
+    })
+    this.textQuads.length = 0
   }
 
   /** 重算所有 quad 的像素尺寸、spread、像素偏移。Recompute every quad's size, spread, offset. */
@@ -418,11 +432,16 @@ export class SymbolGraphic {
       this.iconQuad.setPixelSize(sx, sy)
       this.iconQuad.setSpread(this.iconSdf.spread * this.iconScale * pr)
     }
-    // text quad 尺寸 / spread（1:1 显示）。
-    if (this.textQuad && this.textSdf) {
-      this.textQuad.setPixelSize(this.textSdf.width, this.textSdf.height)
-      this.textQuad.setSpread(this.textSdf.spread)
-      this.textQuad.setOutlineWidth(this.textConfig.outlineWidth * pr)
+    // text glyph quad 尺寸 / spread（TinySDF atlas + drawing-buffer 口径）。
+    if (this.textGlyphRun) {
+      this.textGlyphRun.quads.forEach((glyph, index) => {
+        const quad = this.textQuads[index]
+        if (!quad) return
+        quad.setPixelSize(glyph.w, glyph.h)
+        quad.setSpread(glyph.sdfRadius)
+        quad.setSmoothing(glyph.smoothing)
+        quad.setOutlineWidth(this.textConfig.outlineWidth * pr)
+      })
     }
     // bg quad 尺寸（文字内容 + padding）。
     if (this.bgQuad && textBox) {
@@ -457,24 +476,22 @@ export class SymbolGraphic {
         })
       }
     }
-    if (this.textQuad && textBox && this.textSdf) {
+    if (textBox && this.textGlyphRun) {
       const cx = layout.textCenter[0] + shift[0] + poX
       const cy = layout.textCenter[1] + shift[1] + poY
-      this.textQuad.setPixelOffset(cx * pr, cy * pr)
-      this.textQuad.setRotation(this.rotation)
-      const canvas = this.textSdf.texture.image
-      if (canvas instanceof HTMLCanvasElement) {
-        this.pickRects.push({
-          cx, cy,
-          w: this.textSdf.width / pr,
-          h: this.textSdf.height / pr,
-          kind: 'sdf',
-          canvas,
-          spread: this.textSdf.spread,
-          outlineWidth: this.textConfig.outlineWidth * pr,
-          smoothing: 0.5
-        })
-      }
+      this.textGlyphRun.quads.forEach((glyph, index) => {
+        const quad = this.textQuads[index]
+        if (!quad) return
+        quad.setPixelOffset(cx * pr + glyph.cx, cy * pr + glyph.cy)
+        quad.setRotation(this.rotation)
+      })
+      this.pickRects.push({
+        cx, cy,
+        w: textBox.w,
+        h: textBox.h,
+        kind: 'rect',
+        smoothing: 0.5
+      })
     }
     if (this.bgQuad && textBox) {
       // 背景以文字内容为中心。
@@ -543,7 +560,9 @@ export class SymbolGraphic {
       const uvX = cornerX + 0.5
       const uvY = cornerY + 0.5
       let alpha: number
-      if (rect.kind === 'bg') {
+      if (rect.kind === 'rect') {
+        alpha = 1
+      } else if (rect.kind === 'bg') {
         alpha = sampleRoundedRectAlpha(uvX, uvY, rect.sizeDx!, rect.sizeDy!, rect.cornerRadius!, rect.smoothing)
       } else {
         alpha = sampleSdfAlpha(rect.canvas!, uvX, uvY, rect.spread!, rect.outlineWidth!, rect.smoothing)
@@ -607,84 +626,6 @@ function awaitImage(img: HTMLImageElement): Promise<HTMLImageElement> {
     img.addEventListener('load', () => resolve(img), { once: true })
     img.addEventListener('error', () => reject(new Error('Failed to load icon image.')), { once: true })
   })
-}
-
-/**
- * 用 canvas 光栅化文字（仅 alpha 覆盖，白色字形透明底）。返回内容尺寸（CSS 像素）与
- * 按 pixelRatio 超采样的画布。描边 / halo 不烘焙——由 shader 距离阈值实现。
- *
- * Rasterize text to a canvas as alpha coverage only (white glyphs, transparent bg).
- * Returns the content size (CSS px) and a pixelRatio-supersampled canvas. Outline / halo
- * is not baked — it comes from shader distance thresholds.
- */
-function buildTextCanvas(
-  cfg: SymbolGraphic['textConfig'],
-  pixelRatio: number
-): { canvas: HTMLCanvasElement; contentW: number; contentH: number } {
-  const font = `${cfg.fontWeight} ${cfg.fontSize}px ${cfg.font}`
-  // 先用 1× 画布测量与排版，再按 pixelRatio 放大重绘以保证 SDF 源锐利。
-  const measureCanvas = document.createElement('canvas')
-  const mctx = measureCanvas.getContext('2d')!
-  mctx.font = font
-  const lineHeightPx = cfg.fontSize * cfg.lineHeight
-  const lines = wrapText(mctx, cfg.text, cfg.maxWidth)
-  let contentW = 0
-  for (const line of lines) {
-    contentW = Math.max(contentW, mctx.measureText(line).width)
-  }
-  contentW = Math.ceil(contentW)
-  const contentH = Math.ceil(lines.length * lineHeightPx)
-
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.round(contentW * pixelRatio))
-  canvas.height = Math.max(1, Math.round(contentH * pixelRatio))
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(pixelRatio, pixelRatio)
-  ctx.font = font
-  ctx.textBaseline = 'top'
-  ctx.fillStyle = '#ffffff'
-  ctx.textAlign = 'left'
-  // 垂直微调：让字形在行高内视觉居中。
-  const yOffset = (cfg.fontSize * (cfg.lineHeight - 1)) / 2
-  for (let i = 0; i < lines.length; i += 1) {
-    ctx.fillText(lines[i], 0, i * lineHeightPx + yOffset)
-  }
-  return { canvas, contentW, contentH }
-}
-
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth?: number): string[] {
-  const explicitLines = text.split('\n')
-  if (maxWidth === undefined) return explicitLines
-  const result: string[] = []
-  for (const line of explicitLines) {
-    if (line === '') {
-      result.push('')
-      continue
-    }
-    let current = ''
-    for (const segment of splitPreservingSpaces(line)) {
-      const candidate = current + segment
-      if (ctx.measureText(candidate).width > maxWidth && current !== '') {
-        result.push(current.replace(/\s+$/, ''))
-        current = segment.replace(/^\s+/, '')
-      } else {
-        current = candidate
-      }
-    }
-    result.push(current)
-  }
-  return result
-}
-
-/** 按词与空白切分，保留空白以便换行后拼接还原。Split keeping spaces for rejoin. */
-function splitPreservingSpaces(line: string): string[] {
-  const result: string[] = []
-  const regex = /\s+|\S+/g
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(line)) !== null) {
-    result.push(match[0])
-  }
-  return result.length > 0 ? result : ['']
 }
 
 interface CompositeLayout {
