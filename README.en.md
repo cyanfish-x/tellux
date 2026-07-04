@@ -467,3 +467,49 @@ viewer.resolutionScale = 1.5
 
 viewer.destroy()
 ```
+
+## Contributing
+
+### Commit Convention
+
+This project follows the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification, enforced by commitlint + husky on every commit. The commit message format:
+
+```
+<type>(<scope>): <subject>
+```
+
+**type** (required):
+
+| type | description | in CHANGELOG |
+|---|---|---|
+| `feat` | a new feature | ✓ |
+| `fix` | a bug fix | ✓ |
+| `refactor` | refactor (neither adds a feature nor fixes a bug) | ✓ |
+| `perf` | performance improvement | ✓ |
+| `revert` | revert a previous commit | ✓ |
+| `docs` | documentation only | ✗ |
+| `style` | formatting (no functional change) | ✗ |
+| `test` | tests | ✗ |
+| `chore` | build / tooling / deps | ✗ |
+| `build` | build system or external dependencies | ✗ |
+| `ci` | CI configuration | ✗ |
+
+`scope` is optional and indicates the affected area, e.g. `feat(viewer): ...`; `subject` is a short description.
+
+Examples:
+
+```
+feat: implement basic SymbolEntity rendering
+fix(viewer): fix flyToTarget event listener not being removed
+refactor: split TilesetManager responsibilities
+docs: update lighting mode docs
+chore: bump three dependency
+```
+
+For breaking changes, add `!` after the type, or write `BREAKING CHANGE: ...` in the body:
+
+```
+feat!: rework the camera system, config fields changed
+```
+
+> Husky validates every commit automatically; non-conforming commits are rejected. The CHANGELOG is generated from commits at release time by a script — see [CHANGELOG.md](CHANGELOG.md).

@@ -550,3 +550,49 @@ sequenceDiagram
 ```
 
 运行时，`Viewer` 只负责串联流程：先同步容器尺寸，再更新地球控制器，然后让 `TilesetManager` 推进瓦片加载与 LOD 更新，接着更新已加载模型的动画，最后交给 Three.js renderer 渲染当前场景。影像、地形和叠加层切换时，`Viewer` 会转发给 `TilesetManager`；云、大气和后处理开关变化时，`Scene` 会触发 `PostProcessingManager` 重新组合渲染效果。
+
+## 贡献
+
+### 提交规范
+
+本项目使用 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/) 规范，通过 commitlint + husky 在提交时强制校验。提交信息格式：
+
+```
+<type>(<scope>): <subject>
+```
+
+**type**（必填）：
+
+| type | 说明 | 写入 CHANGELOG |
+|---|---|---|
+| `feat` | 新功能 | ✓ |
+| `fix` | bug 修复 | ✓ |
+| `refactor` | 重构（非新增功能、非修复） | ✓ |
+| `perf` | 性能优化 | ✓ |
+| `revert` | 回滚提交 | ✓ |
+| `docs` | 文档变更 | ✗ |
+| `style` | 代码格式（不影响功能） | ✗ |
+| `test` | 测试相关 | ✗ |
+| `chore` | 构建 / 工具 / 依赖等杂项 | ✗ |
+| `build` | 构建系统或外部依赖变更 | ✗ |
+| `ci` | CI 配置变更 | ✗ |
+
+`scope` 可选，表示影响范围，如 `feat(viewer): ...`；`subject` 为简短描述，中英文均可。
+
+示例：
+
+```
+feat: 实现 SymbolEntity 基本渲染
+fix(viewer): 修复 flyToTarget 事件监听未卸载的 bug
+refactor: 拆分 TilesetManager 职责
+docs: 更新光照模式文档
+chore: 升级 three 依赖
+```
+
+破坏性变更在 type 后加 `!`，或在正文写 `BREAKING CHANGE: ...`：
+
+```
+feat!: 重构相机系统，配置字段变更
+```
+
+> 提交时 husky 会自动校验，不符合规范的提交会被拒绝。CHANGELOG 在发版时由脚本根据 commit 自动生成，详见 [CHANGELOG.md](CHANGELOG.md)。
