@@ -130,7 +130,10 @@ Entity
 
 - [SymbolOcclusionPass](../../src/entities/SymbolOcclusionPass.ts) 每帧 `beginFrame()` 隐藏带 symbol 标记的 quad，避免主场景普通 depthTest 逐片元裁切图标。
 - pass 渲染时恢复 symbol、隐藏非 symbol renderable，并临时关闭 symbol 材质 `depthTest`；遮挡由 shader 统一读取锚点深度决定。
-- 锚点深度比较不能用单 texel + 近零阈值：相机操作时锚点会跨 depth texel / 瓦片三角形边界，贴地或贴模型表面的标签会在等深度附近来回翻转。当前 shader 使用朝相机方向的 depth bias 和小邻域采样来稳定判定。
+- 锚点深度比较不能用单 texel + 近零阈值：相机操作时锚点会跨 depth texel / 瓦片三角形边界，贴地或贴模型表面的标签会在等深度附近来回翻转。当前 shader 使用小邻域采样（取最远深度）加朝相机方向的容差来稳定判定。
+- 容差必须是**米制（线性视空间）**，不能是固定 window-space bias：标准非线性深度下固定 Δd 等效的世界容差随距离平方增长（Δz ≈ Δd·z²/B，near=10 时 z=10km 处 Δd=5e-4 即等效 5km），会吞掉全部真实遮挡差，表现为"远处地形挡不住 symbol"。shader 从 projectionMatrix 提取 p22/p32 把场景深度线性化，与锚点线性视深比较，容差为 `max(uOcclusionBiasMeters, uOcclusionBiasRel · 锚点视距)`。
+- 邻域 max 采样须剔除天空 texel（深度 1.0），否则锚点像素靠近山脊 / 地平线剪影时 max 变远平面、遮挡失效；锚点像素本身为天空按不遮挡处理。
+- 深度纹理在链尾采样的前提是链中无人清掉 targetA 的深度：postprocessing 的 pass 需在 autoClear=false 下运行，且大气之前的 pass 不得 swap（详见 notes/坑点记录/Symbol锚点遮挡与大气失效的effects链深度坑点.md）。
 - 验证：锚点被遮挡时 icon / text / background 全部隐藏；锚点可见时即使图标矩形覆盖前景深度，也不被局部切碎。
 
 ### 3.5 实体集成

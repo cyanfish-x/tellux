@@ -63,13 +63,32 @@ export class EntityRenderManager implements ThreeEffectPass {
       console.warn(`[tellux] ${this.resolvedMode.fallbackReason} Falling back to sorted entity transparency.`)
     }
 
+    // 合成不再采样主色（tBase）再写入另一个 buffer，而是以 alpha 混合直接叠加回
+    // readBuffer（targetA）：mix(base, c, a) ≡ 普通 SrcAlpha/OneMinusSrcAlpha 混合。
+    // 这样本 pass 无需 swap——深度纹理只挂在 targetA 上，一旦 swap，后续大气
+    // pass（一次性从 readBuffer 绑深度）拿到的是无深度的 targetB，空气透视失效。
+    // alpha 通道用 Zero/One 保持 base 的 alpha 不变。
+    //
+    // The composite no longer samples the base color into another buffer; it
+    // alpha-blends straight onto readBuffer (targetA): mix(base, c, a) is exactly
+    // SrcAlpha/OneMinusSrcAlpha blending. This keeps the pass swap-free — the
+    // depth texture only exists on targetA, and after a swap the downstream
+    // atmosphere pass (which binds depth from its readBuffer once) would get the
+    // depth-less targetB, silently breaking aerial perspective. Alpha writes use
+    // Zero/One so the base alpha is preserved.
     this.compositeMaterial = new THREE.ShaderMaterial({
       name: 'TelluxEntityOITComposite',
       depthTest: false,
       depthWrite: false,
       transparent: false,
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.AddEquation,
+      blendSrc: THREE.SrcAlphaFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
+      blendEquationAlpha: THREE.AddEquation,
+      blendSrcAlpha: THREE.ZeroFactor,
+      blendDstAlpha: THREE.OneFactor,
       uniforms: {
-        tBase: { value: null },
         tAccumulation: { value: null },
         tRevealage: { value: null }
       },
@@ -82,20 +101,18 @@ export class EntityRenderManager implements ThreeEffectPass {
       `,
       fragmentShader: `
         precision highp float;
-        uniform sampler2D tBase;
         uniform sampler2D tAccumulation;
         uniform sampler2D tRevealage;
         varying vec2 vUv;
 
         void main() {
-          vec4 base = texture2D(tBase, vUv);
           vec4 accumulation = texture2D(tAccumulation, vUv);
           float revealage = clamp(texture2D(tRevealage, vUv).a, 0.0, 1.0);
           float alpha = 1.0 - revealage;
           vec3 transparentColor = accumulation.a > 0.0001
             ? accumulation.rgb / accumulation.a
             : vec3(0.0);
-          gl_FragColor = vec4(mix(base.rgb, transparentColor, alpha), base.a);
+          gl_FragColor = vec4(transparentColor, alpha);
         }
       `
     })
@@ -118,7 +135,7 @@ export class EntityRenderManager implements ThreeEffectPass {
 
   render(
     renderer: THREE.WebGLRenderer,
-    writeBuffer: THREE.WebGLRenderTarget,
+    _writeBuffer: THREE.WebGLRenderTarget,
     readBuffer: THREE.WebGLRenderTarget
   ) {
     this.restoreMainSceneVisibility()
@@ -128,7 +145,6 @@ export class EntityRenderManager implements ThreeEffectPass {
       return
     }
 
-    this.needsSwap = true
     this.ensureTargets(readBuffer.width, readBuffer.height)
     const accumulationTarget = this.accumulationTarget!
     const revealageTarget = this.revealageTarget!
@@ -145,7 +161,7 @@ export class EntityRenderManager implements ThreeEffectPass {
 
       this.renderEntities(renderer, accumulationTarget, readBuffer.depthTexture, 'accumulation')
       this.renderEntities(renderer, revealageTarget, readBuffer.depthTexture, 'revealage')
-      this.renderComposite(renderer, writeBuffer, readBuffer, accumulationTarget, revealageTarget)
+      this.renderComposite(renderer, readBuffer, accumulationTarget, revealageTarget)
     } finally {
       renderer.setRenderTarget(previousRenderTarget)
       renderer.setClearColor(previousClearColor, previousClearAlpha)
@@ -260,17 +276,15 @@ export class EntityRenderManager implements ThreeEffectPass {
 
   private renderComposite(
     renderer: THREE.WebGLRenderer,
-    writeBuffer: THREE.WebGLRenderTarget,
     readBuffer: THREE.WebGLRenderTarget,
     accumulationTarget: THREE.WebGLRenderTarget,
     revealageTarget: THREE.WebGLRenderTarget
   ) {
-    this.compositeMaterial.uniforms.tBase.value = readBuffer.texture
     this.compositeMaterial.uniforms.tAccumulation.value = accumulationTarget.texture
     this.compositeMaterial.uniforms.tRevealage.value = revealageTarget.texture
-    renderer.setRenderTarget(writeBuffer)
-    renderer.setClearColor(0x000000, 0)
-    renderer.clear(true, false, false)
+    // 混合叠加到 readBuffer 上，不清屏、不 swap（见 compositeMaterial 注释）。
+    // Blend onto readBuffer without clearing or swapping (see compositeMaterial).
+    renderer.setRenderTarget(readBuffer)
     renderer.render(this.fullscreenScene, this.fullscreenCamera)
   }
 

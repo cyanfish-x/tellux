@@ -53,7 +53,17 @@ export class AnchorQuadGraphic {
       uSceneDepth: { value: null as THREE.Texture | null },
       uSceneDepthTexelSize: { value: new THREE.Vector2(1, 1) },
       uUseAnchorOcclusion: { value: 0 },
-      uOcclusionDepthBias: { value: 5e-4 },
+      // 遮挡容差（米制，视空间线性深度口径）：固定项防锚点贴地自遮挡，
+      // 相对项防掠射角下邻近地形误判。window-space 固定 bias 在标准非线性
+      // 深度下等效容差随距离平方增长（Δz ≈ Δd·z²/B），几公里外即达数百米，
+      // 会吞掉全部真实遮挡差，故必须用米制。
+      // Occlusion tolerance in view-space meters: the fixed term prevents
+      // ground-anchored self-occlusion, the relative term covers grazing-angle
+      // terrain. A fixed window-space bias scales as Δz ≈ Δd·z²/B with a standard
+      // nonlinear depth buffer — hundreds of meters a few km out — so the
+      // comparison must be metric.
+      uOcclusionBiasMeters: { value: 2 },
+      uOcclusionBiasRel: { value: 0.003 },
       uOcclusionSampleRadius: { value: 1.5 }
     }
 
@@ -85,6 +95,8 @@ export class AnchorQuadGraphic {
         varying vec2 vUv;
         varying vec2 vAnchorUv;
         varying float vAnchorDepth;
+        varying float vAnchorViewZ;
+        varying vec2 vProjParams;
         void main() {
           vUv = uv;
           vec2 corner = position.xy;
@@ -93,7 +105,13 @@ export class AnchorQuadGraphic {
           vec2 rotated = vec2(c * corner.x - s * corner.y, s * corner.x + c * corner.y);
           vec2 screenPx = rotated * uPixelSize + uPixelOffset;
           vec2 ndcOffset = screenPx / uResolution * 2.0;
-          vec4 clip = projectionMatrix * viewMatrix * vec4(uAnchorWorld, 1.0);
+          vec4 viewPos = viewMatrix * vec4(uAnchorWorld, 1.0);
+          // 锚点线性视深（正值，米）；配合投影参数供 FS 把场景深度线性化后比较。
+          // Linear view-space anchor depth (positive meters); with the projection
+          // params below the FS linearizes scene depth for a metric comparison.
+          vAnchorViewZ = -viewPos.z;
+          vProjParams = vec2(projectionMatrix[2][2], projectionMatrix[3][2]);
+          vec4 clip = projectionMatrix * viewPos;
           vec3 anchorNdc = clip.xyz / clip.w;
           vAnchorUv = anchorNdc.xy * 0.5 + 0.5;
           vAnchorDepth = anchorNdc.z * 0.5 + 0.5;
@@ -120,11 +138,14 @@ export class AnchorQuadGraphic {
         uniform sampler2D uSceneDepth;
         uniform vec2 uSceneDepthTexelSize;
         uniform float uUseAnchorOcclusion;
-        uniform float uOcclusionDepthBias;
+        uniform float uOcclusionBiasMeters;
+        uniform float uOcclusionBiasRel;
         uniform float uOcclusionSampleRadius;
         varying vec2 vUv;
         varying vec2 vAnchorUv;
         varying float vAnchorDepth;
+        varying float vAnchorViewZ;
+        varying vec2 vProjParams;
 
         // MSDF median函数：从RGB三通道中取中值
         float median(float r, float g, float b) {
@@ -139,13 +160,22 @@ export class AnchorQuadGraphic {
           return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - radius;
         }
 
+        // 邻域取最远**几何**深度防贴地自遮挡；天空（清屏值 1.0）必须剔除：
+        // 锚点像素落在山脊 / 地平线剪影边缘时邻域必含天空 texel，不剔除的话
+        // max 变成远平面，遮挡判定永远不触发。锚点像素本身是天空则不遮挡。
+        // Neighborhood max of *geometry* depth (anti self-occlusion). Sky texels
+        // (cleared 1.0) must be excluded: near a ridge/horizon silhouette the
+        // neighborhood always contains sky, which would push the max to the far
+        // plane and defeat occlusion. A sky center sample means "not occluded".
         float sampleAnchorSceneDepth(vec2 uv) {
-          vec2 d = uSceneDepthTexelSize * uOcclusionSampleRadius;
           float depth = texture2D(uSceneDepth, uv).x;
-          depth = max(depth, texture2D(uSceneDepth, uv + vec2(d.x, 0.0)).x);
-          depth = max(depth, texture2D(uSceneDepth, uv - vec2(d.x, 0.0)).x);
-          depth = max(depth, texture2D(uSceneDepth, uv + vec2(0.0, d.y)).x);
-          depth = max(depth, texture2D(uSceneDepth, uv - vec2(0.0, d.y)).x);
+          if (depth >= 1.0) return depth;
+          vec2 d = uSceneDepthTexelSize * uOcclusionSampleRadius;
+          float s;
+          s = texture2D(uSceneDepth, uv + vec2(d.x, 0.0)).x; if (s < 1.0) depth = max(depth, s);
+          s = texture2D(uSceneDepth, uv - vec2(d.x, 0.0)).x; if (s < 1.0) depth = max(depth, s);
+          s = texture2D(uSceneDepth, uv + vec2(0.0, d.y)).x; if (s < 1.0) depth = max(depth, s);
+          s = texture2D(uSceneDepth, uv - vec2(0.0, d.y)).x; if (s < 1.0) depth = max(depth, s);
           return depth;
         }
 
@@ -159,8 +189,15 @@ export class AnchorQuadGraphic {
               discard;
             }
             float sceneDepth = sampleAnchorSceneDepth(vAnchorUv);
-            float biasedAnchorDepth = vAnchorDepth - uOcclusionDepthBias;
-            if (biasedAnchorDepth > sceneDepth) {
+            // 场景 window depth → 线性视距（米）。透视投影 ndc = (p22·z_e + p32) / (-z_e)
+            // 反解得 -z_e = p32 / (ndc + p22)；分子分母在可见范围内同为负，结果为正。
+            // Linearize scene window depth to view-space meters. From the perspective
+            // projection, -z_e = p32 / (ndc + p22); both terms are negative for
+            // visible depths so the quotient is positive.
+            float sceneNdcZ = sceneDepth * 2.0 - 1.0;
+            float sceneViewZ = vProjParams.y / (sceneNdcZ + vProjParams.x);
+            float bias = max(uOcclusionBiasMeters, uOcclusionBiasRel * vAnchorViewZ);
+            if (vAnchorViewZ > sceneViewZ + bias) {
               discard;
             }
           }

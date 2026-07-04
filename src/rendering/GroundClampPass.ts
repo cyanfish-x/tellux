@@ -90,9 +90,18 @@ export class GroundClampPass implements ThreeEffectPass {
       return
     }
 
-    // 深度在 readBuffer（=targetA）：主色也在其中，需先整帧拷到 writeBuffer 再叠加
-    // 分类，然后 swap。深度在 writeBuffer（readBuffer=targetB 已被前序 pass 写好主
-    // 色）：直接把分类就地叠加进 readBuffer，不拷贝不 swap。
+    // 深度在 readBuffer（=targetA）：主色也在其中，先整帧拷到 writeBuffer、叠加分类，
+    // 再把结果 blit 回 readBuffer——不 swap。swap 会让后续大气 pass 的 readBuffer 变成
+    // 无深度的 targetB，空气透视静默失效；分类几何又必须在 targetB 上画（材质采样
+    // targetA 的深度，向 targetA 写色会构成 feedback loop），故用"绕道再拷回"。
+    // 深度在 writeBuffer（readBuffer=targetB 已有主色）：直接就地叠加，不拷贝不 swap。
+    //
+    // Depth on readBuffer (=targetA): copy the frame to writeBuffer, overlay the
+    // classification there, then blit the result back — never swap. A swap would
+    // hand the downstream atmosphere pass a depth-less targetB readBuffer and
+    // silently break aerial perspective; yet the classification must be drawn on
+    // targetB (its materials sample targetA's depth — writing targetA would be a
+    // feedback loop). Hence the round-trip. Depth on writeBuffer: overlay in place.
     const target = depthOnRead ? writeBuffer : readBuffer
 
     // 刷新共享 uniform：相机 RTC、逆投影、深度、分辨率。
@@ -113,12 +122,19 @@ export class GroundClampPass implements ThreeEffectPass {
         renderer.render(this.fullscreenScene, this.fullscreenCamera)
       }
       renderer.render(this.root, this.camera)
+      if (depthOnRead) {
+        // 结果拷回 readBuffer（targetA），保持深度所在 buffer 始终是 read 侧。
+        // Blit the result back so the depth-carrying buffer stays on the read side.
+        renderer.setRenderTarget(readBuffer)
+        this.copyMaterial.uniforms.tDiffuse.value = writeBuffer.texture
+        renderer.render(this.fullscreenScene, this.fullscreenCamera)
+      }
     } finally {
       renderer.setRenderTarget(previousRenderTarget)
       renderer.autoClear = previousAutoClear
     }
 
-    this.needsSwap = depthOnRead !== null
+    this.needsSwap = false
   }
 
   setSize(width: number, height: number) {
