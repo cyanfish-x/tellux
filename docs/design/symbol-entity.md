@@ -1,6 +1,6 @@
 # Symbol 实体（Icon + 文字标签）技术方案
 
-> 状态：**设计中，暂未实现**（2026-07-03）
+> 状态：**v1 已实现（per-symbol SDF，2026-07-04）**。文字渲染直接采用 SDF 方案（每符号一张 SDF 纹理），跳过原计划的 canvas 覆盖 v1；glyph 图集 / troika 路线作为量级驱动的后续。
 > 范围：点锚定的屏幕空间图标（billboard）+ 文字标签，对标 Mapbox GL `symbol` layer 与 Cesium `BillboardGraphics` / `LabelGraphics`。
 > 渲染器：WebGL 优先；与现有实体 OIT / 拾取 / 颜色反求管线对齐。
 
@@ -20,21 +20,21 @@
 - 共享锚点 / 偏移 / 旋转 / 透明度等放置属性天然属于「这一组标注」而非单个图元。
 - 内部共用一个屏幕空间四边形原语（`AnchorQuadGraphic`），icon 与 text 是两个 quad 实例，渲染管线、拾取、OIT、颜色反求完全复用。
 
-### 0.3 文字渲染：canvas 纹理（v1），SDF 为升级路径
+### 0.3 文字渲染：per-symbol SDF（v1 实现）
 
-v1 用 **canvas 2D 渲染文字 → 纹理**：
+v1 直接采用 **SDF 方案**：每段文字先用 canvas 光栅化（仅 alpha 覆盖，白色字形透明底），再用两遍可分离 EDT（Felzenszwalb-Huttenlocher）生成单通道有符号距离场纹理；icon 同理从图片 alpha 生成 SDF。二者各一个屏幕空间 billboard quad，共用一套 SDF shader（`smoothstep` 抗锯齿填充 + 距离阈值描边 / halo），颜色作为 uniform 经 [resolveColor](../../src/entities/invertToneMapping.ts) 做 AgX 反求 → 全 WYSIWYG，且改色不需重建纹理，改文字 / 字号才重建。
 
-- canvas 只存 **alpha 覆盖**（白色字形 / 描边，透明背景），填充 / 描边 / 背景色作为 **shader uniform** 经 [resolveColor](../../src/entities/invertToneMapping.ts) 做 AgX 反求 → 全 WYSIWYG，且改颜色不需重建 canvas。
-- 改文字内容 / 字体 / 字号才重建 canvas（覆盖图重建，廉价）。
-- 零新依赖，文字样式（背景框、圆角、多行、内边距）最灵活。
+- 契合设计文档的 `AnchorQuadGraphic` 原语（icon / text 各一个 quad），与 Point / Polyline / Polygon graphic 同构，OIT / 拾取 / 颜色管线全复用。
+- 零新依赖；距离变换为自研约 60 行。复用浏览器系统字体，**中文标注零字体成本**。
+- 拾取 override `Mesh.raycast`，按命中 UV 采样 SDF alpha 剔除透明像素 → 像素级精确，不改 EntityPicker。
 
-SDF 字形图集（Mapbox 路线 / troika-three-text）是「上千标签 + 任意缩放锐利 + 高质量 halo + 沿线排版」的答案，但构建成本高、本期 label 量级用不上。**接口设计成不暴露内部纹理来源**，将来量级上来可整体换 SDF，上层不动（§5）。
+完整 SDF 字形图集（Mapbox 路线 / troika-three-text）是「上千标签 + 沿线排版」的答案，但构建成本高、需引入字体文件（CJK 多 MB），本期 label 量级用不上。**接口设计成不暴露内部纹理来源**，将来量级上来可整体换字形图集，上层不动（§5）。
 
 ### 0.4 关键约束
 
 - **WYSIWYG**：所有用户色（icon tint / text fill / outline / background）统一走 `resolveColor`，抵消内置 AgX 管线对整帧的色调映射压扁（详见 [invertToneMapping.ts](../../src/entities/invertToneMapping.ts)）。
-- **OIT 兼容**：半透明 symbol 必须经 [EntityRenderManager](../../src/entities/EntityRenderManager.ts) 的 OIT pass。其 `patchFragmentShader` 靠匹配 `#include <opaque_fragment>` / `gl_FragColor = vec4(diffuseColor.rgb, alpha);` 注入，匹配不上则退化成「在末尾 `}` 前追加 `telluxOitOutput()`」。自写 ShaderMaterial **必须**在 main 末尾显式写 `gl_FragColor` 以命中 fallback 分支。
-- **WebGPU**：`onBeforeCompile` 在 WebGPU 失效；自写 ShaderMaterial 不依赖该机制（直接写完整 GLSL），但 OIT 的材质替换仍依赖现有 WebGL 管线。WebGPU 支持随 OIT 一起后续立项。
+- **锚点遮挡**：symbol 不走实体 OIT；WebGL 下由 [SymbolOcclusionPass](../../src/entities/SymbolOcclusionPass.ts) 在主场景之后单独绘制，并读取场景深度纹理按锚点做全有 / 全无遮挡。
+- **WebGPU**：`onBeforeCompile` 在 WebGPU 失效；自写 ShaderMaterial 不依赖该机制（直接写完整 GLSL），但当前锚点遮挡 pass 依赖 WebGL `setEffects` 深度纹理链。WebGPU 支持需后续单独立项。
 - **不依赖 sandcastle import 白名单**：canvas 纹理在 graphic 内部 `document.createElement('canvas')` 生成，案例侧无新依赖。
 
 ---
@@ -78,10 +78,11 @@ Entity
             └─ text quad   ← AnchorQuadGraphic（canvas coverage 纹理 + fill/outline/bg uniform）
 ```
 
-渲染链路（无新 pass）：
+渲染链路：
 
 - symbol quad 挂在 `entity.root` 下（普通绝对高，非 groundClampRoot）。
-- 不透明 symbol（alphaTest / opacity=1）随主场景渲染；半透明 symbol 由 [EntityRenderManager](../../src/entities/EntityRenderManager.ts) OIT pass 自动接管（材质替换同现有点 / 线 / 面）。
+- WebGL 后处理链中，[SymbolOcclusionPass](../../src/entities/SymbolOcclusionPass.ts) 在主场景渲染前临时隐藏 symbol，主场景完成后读取 depth texture 并只重绘 symbol。
+- 每个 quad 的 shader 用锚点投影坐标采样场景深度；锚点被遮挡时整个 icon / text / background 隐藏，锚点可见时整体显示。
 - 拾取：quad 为 `THREE.Mesh` + `PlaneGeometry`，[EntityPicker](../../src/sampling/EntityPicker.ts) 现有 `raycaster.intersectObject(root, true)` 已覆盖（仅跳过 `Points`/`Line2`，见 [isScreenSpacePickedObject](../../src/sampling/EntityPicker.ts#L206)），**零拾取改动**。
 
 新增组件：
@@ -125,11 +126,12 @@ Entity
 - 描边：text quad 画两遍？不——canvas 一次烘焙出「描边 + 字形」覆盖（描边在字形外圈，字形在内圈），FS 里用覆盖率区分：`fillA = inner coverage`、`outlineA = total - inner`。或更简：两个 AnchorQuad 叠加（outline quad 在下，fill quad 在上），各自 tint。**实现时定**，倾向单 canvas 双通道覆盖率（少一个 quad）。
 - 背景色：单独 uniform + 一个不透明 alpha 填充（在字形覆盖之前画），或作为 text quad 的背景层。**实现时定**。
 
-### 3.4 OIT 兼容
+### 3.4 锚点遮挡
 
-- 半透明 symbol（opacity<1 或纹理带 alpha）→ `transparent: true` → [EntityRenderManager](../../src/entities/EntityRenderManager.ts) 自动接管。
-- 自写 ShaderMaterial 的 FS 末尾（main 的最后一个 `}` 之前）必须有 `gl_FragColor = ...;` 赋值，使 `patchFragmentShader` 的 fallback 分支（在末尾 `}` 前追加 `telluxOitOutput()`）生效。
-- 验证：半透明 icon / 标签与现有半透明面 / 线在 OIT 下排序一致，无黑边 / 穿透。
+- [SymbolOcclusionPass](../../src/entities/SymbolOcclusionPass.ts) 每帧 `beginFrame()` 隐藏带 symbol 标记的 quad，避免主场景普通 depthTest 逐片元裁切图标。
+- pass 渲染时恢复 symbol、隐藏非 symbol renderable，并临时关闭 symbol 材质 `depthTest`；遮挡由 shader 统一读取锚点深度决定。
+- 锚点深度比较不能用单 texel + 近零阈值：相机操作时锚点会跨 depth texel / 瓦片三角形边界，贴地或贴模型表面的标签会在等深度附近来回翻转。当前 shader 使用朝相机方向的 depth bias 和小邻域采样来稳定判定。
+- 验证：锚点被遮挡时 icon / text / background 全部隐藏；锚点可见时即使图标矩形覆盖前景深度，也不被局部切碎。
 
 ### 3.5 实体集成
 
@@ -316,6 +318,8 @@ viewer.entities.add({
 
 ## 5. 分阶段计划
 
+> 实际实现把 S0–S3 一次到位且文字直接走 SDF（见 §0.3），下表为原始计划留档；S2 的 canvas 覆盖被 per-symbol SDF 取代，S6 的 SDF 字形图集仍为量级驱动后续。
+
 | 阶段 | 交付 | 验收 |
 |---|---|---|
 | **S0** AnchorQuadGraphic 原语 | 自写 ShaderMaterial：camera-facing、像素 / 世界大小、anchor、pixelOffset、rotation、tint、opacity；OIT-patch 友好 | 单 quad 贴图渲染，缩放 / 旋转 / 偏移 / tint 正确；半透明经 OIT 无黑边 |
@@ -330,7 +334,7 @@ viewer.entities.add({
 
 ## 6. 风险与开放问题
 
-- **OIT shader 注入**：自写 ShaderMaterial 的 FS 必须命中 `patchFragmentShader` 三分支之一；需实测半透明 symbol 在 OIT 下与现有点 / 线 / 面排序一致。若 fallback 分支不生效，改为显式包含可识别的 `gl_FragColor` 模式。
+- **大数量 symbol 性能**：当前仍是 per-quad mesh / draw call；锚点遮挡 pass 先保证语义正确，后续量级上来再做 atlas、instancing、屏幕裁剪和碰撞 / 聚合。
 - **canvas 覆盖 vs 烘焙颜色**：本期定 coverage-only + uniform tint（WYSIWYG + 改色不重建）；需验证 AgX 反求对纯白覆盖乘 tint 的回代色与目标色一致。
 - **描边 / 背景实现**：单 canvas 双通道覆盖率 vs 双 quad 叠加 vs 背景层——S2 实现时定，倾向单 canvas 双通道（少 quad）。
 - **图标纹理生命周期**：异步加载 + 多实体共享缓存 + dispose 时机（引用计数 vs 简单 dispose），避免泄漏或释放中纹理。

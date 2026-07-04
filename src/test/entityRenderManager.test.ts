@@ -5,6 +5,7 @@ import {
   EntityRenderManager,
   resolveEntityTransparencyMode
 } from '../entities/EntityRenderManager'
+import { setSymbolOcclusionController } from '../entities/SymbolOcclusionPass'
 
 describe('entity transparency mode resolution', () => {
   it('uses weighted OIT for auto mode when the WebGL effect pipeline is available', () => {
@@ -53,6 +54,30 @@ describe('EntityRenderManager', () => {
     expect(root.visible).toBe(true)
     expect(transparentPoint.visible).toBe(false)
     expect(opaquePoint.visible).toBe(true)
+    manager.dispose()
+  })
+
+  it('does not hide symbol occlusion objects even when their material is transparent', () => {
+    const root = new THREE.Group()
+    const symbol = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ transparent: true })
+    )
+    setSymbolOcclusionController(symbol, {
+      setDepthTexture: () => undefined,
+      setEnabled: () => undefined
+    })
+    root.add(symbol)
+    const manager = new EntityRenderManager({
+      root,
+      camera: new THREE.PerspectiveCamera(),
+      requestedMode: 'weighted-oit',
+      supportsWeightedOit: true
+    })
+
+    manager.beginFrame()
+
+    expect(symbol.visible).toBe(true)
     manager.dispose()
   })
 

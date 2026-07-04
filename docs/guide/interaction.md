@@ -34,6 +34,8 @@ viewer.off('click', onClick)
 事件中的实体拾取会对点和线使用默认屏幕空间容差：`click` 为 6 CSS 像素，`mousemove` 为 4 CSS 像素。3D Tiles、面实体和体实体仍使用原有精确拾取逻辑。
 如果只需要最佳命中实体，可使用 `event.entities[0] ?? null`。
 
+关于如何创建可被拾取的点、线、面实体，见「[实体绘制](./entities)」。
+
 `mousemove` 事件触发频率较高，监听回调里应避免重计算或同步 DOM 操作。
 
 ## 屏幕拾取

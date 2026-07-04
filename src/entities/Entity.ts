@@ -5,7 +5,8 @@ import { PolylineGraphic } from './PolylineGraphic'
 import { PolygonGraphic } from './PolygonGraphic'
 import { GroundPolylineGraphic } from './GroundPolylineGraphic'
 import { GroundPolygonGraphic } from './GroundPolygonGraphic'
-import { PointGraphics, PolylineGraphics, PolygonGraphics } from './EntityGraphics'
+import { SymbolGraphic } from './SymbolGraphic'
+import { PointGraphics, PolylineGraphics, PolygonGraphics, SymbolGraphics } from './EntityGraphics'
 import { tagObject3DWithEntity } from '../sampling/EntityPicker'
 import {
   normalizeClamp,
@@ -21,6 +22,8 @@ export interface EntityContext {
   ellipsoid: () => EllipsoidLike
   /** 贴地渲染依赖；无贴地 pass（如 WebGPU）时为 `null`。 */
   groundClamp: GroundClampContext | null
+  /** 渲染器像素比 getter（symbol 像素尺寸 / 文字 SDF 超采样用）。 */
+  pixelRatio: () => number
 }
 
 /**
@@ -38,6 +41,7 @@ export class Entity {
   private polygonGraphic: PolygonGraphic | null = null
   private groundPolylineGraphic: GroundPolylineGraphic | null = null
   private groundPolygonGraphic: GroundPolygonGraphic | null = null
+  private symbolGraphic: SymbolGraphic | null = null
   private groundGroup: THREE.Group | null = null
   private groundClampRoot: THREE.Group | null = null
   private currentPosition: CartographicInput | undefined
@@ -76,6 +80,20 @@ export class Entity {
 
     if (options.polygon) {
       this.buildPolygon(id, options)
+    }
+
+    if (options.symbol) {
+      warnUnsupportedClamp(options.symbol.clamp, id, 'symbol', 'S4')
+      const position = new THREE.Vector3()
+      if (options.position) {
+        this.context.toVector3(options.position, position)
+      }
+      this.symbolGraphic = new SymbolGraphic({
+        position,
+        options: options.symbol,
+        pixelRatio: this.context.pixelRatio()
+      })
+      this.root.add(this.symbolGraphic.object3D)
     }
   }
 
@@ -194,10 +212,11 @@ export class Entity {
 
   set position(value: CartographicInput | undefined) {
     this.currentPosition = value
-    if (value && this.pointGraphic) {
+    if (value && (this.pointGraphic || this.symbolGraphic)) {
       const target = new THREE.Vector3()
       this.context.toVector3(value, target)
-      this.pointGraphic.setPosition(target)
+      this.pointGraphic?.setPosition(target)
+      this.symbolGraphic?.setPosition(target)
     }
   }
 
@@ -219,6 +238,16 @@ export class Entity {
   /** 多边形图形句柄；未挂载时为 `null`。Polygon graphics handle, or `null`. */
   get polygon() {
     return this.polygonGraphic ? new PolygonGraphics(this.polygonGraphic) : null
+  }
+
+  /** Symbol 图形句柄；未挂载时为 `null`。Symbol graphics handle, or `null`. */
+  get symbol() {
+    return this.symbolGraphic ? new SymbolGraphics(this.symbolGraphic) : null
+  }
+
+  /** Symbol 图形底层对象；供 EntityManager 同步 resolution。Underlying symbol graphic. */
+  get symbolGraphicImpl() {
+    return this.symbolGraphic
   }
 
   /**
@@ -246,6 +275,7 @@ export class Entity {
     this.polygonGraphic?.dispose()
     this.groundPolylineGraphic?.dispose()
     this.groundPolygonGraphic?.dispose()
+    this.symbolGraphic?.dispose()
     if (this.groundGroup && this.groundClampRoot) {
       this.groundClampRoot.remove(this.groundGroup)
     }

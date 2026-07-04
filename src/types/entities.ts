@@ -1,4 +1,4 @@
-import type { Color, Vector3 } from 'three'
+import type { Color, Texture, Vector3 } from 'three'
 import type { CartographicInput, HeightSamplingSource } from './spatial'
 import type { Entity } from '../entities/Entity'
 
@@ -194,11 +194,227 @@ export interface PolygonOptions {
 }
 
 /**
- * 实体配置。一个实体可以挂载任意组合的点、线、面图形组件，共享同一个
+ * Symbol 锚点对齐：组合体（icon + text）的哪个位置对齐到实体 position。
+ * `bottom`（默认）= 组合体底部对齐锚点，组合体向上展开（典型 POI 指向）。
+ *
+ * Symbol anchor: which point of the combined icon + text box aligns to the entity
+ * position. `bottom` (default) aligns the box's bottom to the anchor so the box
+ * extends upward (typical POI marker).
+ */
+export type SymbolAnchor =
+  | 'center' | 'left' | 'right' | 'top' | 'bottom'
+  | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
+/**
+ * text 相对 icon 的排布方向；仅二者同时存在时生效。
+ *
+ * Layout direction of the text relative to the icon; only used when both exist.
+ */
+export type SymbolTextRelative = 'left' | 'right' | 'top' | 'bottom'
+
+/**
+ * 图标（billboard）配置。SDF 方案下图标按 alpha 剪影渲染：可任意缩放保持锐利，
+ * tint 染色，颜色经反求还原（WYSIWYG）。
+ *
+ * Icon (billboard) options. Under the SDF scheme the icon is rendered from its
+ * alpha silhouette: it stays crisp at any scale, is tinted, and colors are
+ * WYSIWYG via tone-mapping inversion.
+ */
+export interface IconOptions {
+  /**
+   * 图标来源：URL / Image / Canvas / THREE.Texture。URL 会跨实体共享同一张 SDF 纹理。
+   *
+   * Icon source: URL / Image / Canvas / THREE.Texture. URLs share one SDF texture
+   * across entities.
+   */
+  image: string | HTMLImageElement | HTMLCanvasElement | Texture
+  /**
+   * 缩放，默认 `1`。
+   *
+   * Scale. Defaults to `1`.
+   */
+  scale?: number
+  /**
+   * `true` = 世界米，`false` = 屏幕像素（默认）。世界米模式暂未实现，会告警降级。
+   *
+   * `true` = world meters, `false` = screen pixels (default). World-meters mode is
+   * not yet implemented and falls back with a warning.
+   */
+  sizeInMeters?: boolean
+  /**
+   * tint 颜色，默认白色（不染色）。经 resolveColor 反求。
+   *
+   * Tint color. Defaults to white (no tint). WYSIWYG via resolveColor.
+   */
+  color?: ColorInput
+  /**
+   * 透明度 `[0,1]`，默认 `1`。
+   *
+   * Opacity in `[0,1]`. Defaults to `1`.
+   */
+  opacity?: number
+}
+
+/**
+ * 文字标签配置。文字用 canvas 光栅化（仅 alpha）后生成 SDF 纹理：任意缩放锐利，
+ * 描边 / halo 由 shader 距离阈值实现（不烘焙），改色不重建，改文字 / 字号才重建。
+ *
+ * Text label options. Text is canvas-rasterized (alpha only) then turned into an
+ * SDF texture: crisp at any scale, outline / halo via shader distance thresholds
+ * (not baked). Color changes don't rebuild; text / font-size changes do.
+ */
+export interface TextOptions {
+  /**
+   * 文本内容；支持 `\n` 手动换行。
+   *
+   * Text content; `\n` produces a manual line break.
+   */
+  text: string
+  /**
+   * 字体族，默认 `'sans-serif'`。
+   *
+   * Font family. Defaults to `'sans-serif'`.
+   */
+  font?: string
+  /**
+   * 字号（CSS 像素），默认 `16`。
+   *
+   * Font size in CSS px. Defaults to `16`.
+   */
+  fontSize?: number
+  /**
+   * 字重，默认 `'normal'`。
+   *
+   * Font weight. Defaults to `'normal'`.
+   */
+  fontWeight?: 'normal' | 'bold' | number
+  /**
+   * 填充色，默认白色。经 resolveColor 反求。
+   *
+   * Fill color. Defaults to white. WYSIWYG via resolveColor.
+   */
+  fillColor?: ColorInput
+  /**
+   * 描边色；仅 {@link outlineWidth} 大于 0 时生效。经 resolveColor 反求。
+   *
+   * Outline color; only used when {@link outlineWidth} is greater than 0.
+   * WYSIWYG via resolveColor.
+   */
+  outlineColor?: ColorInput
+  /**
+   * 描边像素宽，默认 `0`（无描边）。描边在字形外圈，距离化抗锯齿。
+   *
+   * Outline width in px. Defaults to `0` (no outline). The outline sits outside
+   * the glyphs and is anti-aliased via the distance field.
+   */
+  outlineWidth?: number
+  /**
+   * 背景色；缺省透明。背景为圆角矩形（见 {@link backgroundCornerRadius}）。
+   *
+   * Background color; transparent when omitted. Drawn as a rounded rect (see
+   * {@link backgroundCornerRadius}).
+   */
+  backgroundColor?: ColorInput
+  /**
+   * 背景圆角半径（CSS 像素），默认 `0`（直角）。
+   *
+   * Background corner radius in CSS px. Defaults to `0` (square corners).
+   */
+  backgroundCornerRadius?: number
+  /**
+   * 背景内边距 `[x, y]`（CSS 像素），默认 `[4, 2]`。
+   *
+   * Background padding `[x, y]` in CSS px. Defaults to `[4, 2]`.
+   */
+  padding?: [number, number]
+  /**
+   * 行高倍数，默认 `1.2`。
+   *
+   * Line-height multiplier. Defaults to `1.2`.
+   */
+  lineHeight?: number
+  /**
+   * 最大宽度（CSS 像素），超出自动按词换行；缺省不换行（仍尊重手动 `\n`）。
+   *
+   * Maximum width in CSS px; wraps by word when exceeded. Omitted = no wrapping
+   * (manual `\n` still honored).
+   */
+  maxWidth?: number
+  /**
+   * 透明度 `[0,1]`，默认 `1`。同时作用于文字与背景。
+   *
+   * Opacity in `[0,1]`. Defaults to `1`. Applied to both text and background.
+   */
+  opacity?: number
+}
+
+/**
+ * Symbol 图形配置：一个锚点上的 icon + text 组合，始终面向屏幕。icon 与 text 可
+ * 任意组合（仅 icon / 仅 text / 二者同在），共享锚点、偏移、旋转、排布。
+ *
+ * Symbol graphics options: an icon + text combo at one anchor, always
+ * screen-facing. Icon and text may combine freely (icon-only / text-only / both)
+ * and share the anchor, offset, rotation and layout.
+ */
+export interface SymbolOptions {
+  /**
+   * 图标配置；与 text 可同时存在。
+   *
+   * Icon options; may coexist with text.
+   */
+  icon?: IconOptions
+  /**
+   * 文字配置；与 icon 可同时存在。
+   *
+   * Text options; may coexist with icon.
+   */
+  text?: TextOptions
+  /**
+   * 组合体锚点对齐，默认 `'bottom'`。
+   *
+   * Combined-box anchor alignment. Defaults to `'bottom'`.
+   */
+  anchor?: SymbolAnchor
+  /**
+   * 相对锚点的像素偏移 `[dx, dy]`（CSS 像素，x 向右、y 向上），默认 `[0, 0]`。
+   *
+   * Pixel offset `[dx, dy]` from the anchor in CSS px (x right, y up). Defaults
+   * to `[0, 0]`.
+   */
+  pixelOffset?: [number, number]
+  /**
+   * text 相对 icon 的排布方向，默认 `'right'`。
+   *
+   * Layout direction of text relative to icon. Defaults to `'right'`.
+   */
+  textRelative?: SymbolTextRelative
+  /**
+   * icon 与 text 间距（CSS 像素），默认 `2`。
+   *
+   * Spacing between icon and text in CSS px. Defaults to `2`.
+   */
+  textIconSpacing?: number
+  /**
+   * 旋转（弧度，屏幕空间逆时针），默认 `0`。
+   *
+   * Rotation in radians (screen-space, counterclockwise). Defaults to `0`.
+   */
+  rotation?: number
+  /**
+   * 贴地配置。Symbol 贴地暂未实现（会告警降级为绝对高）。
+   *
+   * Ground-clamp options. Symbol clamping is not yet implemented (falls back to
+   * absolute height with a warning).
+   */
+  clamp?: ClampInput
+}
+
+/**
+ * 实体配置。一个实体可以挂载任意组合的点、线、面、symbol 图形组件，共享同一个
  * id、位置和属性。
  *
- * Entity options. An entity may attach any combination of point, polyline and
- * polygon graphics that share the same id, position and properties.
+ * Entity options. An entity may attach any combination of point, polyline,
+ * polygon and symbol graphics that share the same id, position and properties.
  */
 export interface EntityOptions {
   /**
@@ -208,9 +424,10 @@ export interface EntityOptions {
    */
   id?: string
   /**
-   * 实体经纬高位置；点图形（`point`）会跟随此位置。
+   * 实体经纬高位置；点图形（`point`）与 symbol 图形（`symbol`）会跟随此位置。
    *
-   * Entity cartographic position; the point graphics (`point`) follows it.
+   * Entity cartographic position; the point graphics (`point`) and symbol
+   * graphics (`symbol`) follow it.
    */
   position?: CartographicInput
   /**
@@ -231,6 +448,13 @@ export interface EntityOptions {
    * Polygon graphics options.
    */
   polygon?: PolygonOptions
+  /**
+   * Symbol 图形配置（屏幕空间图标 + 文字标签），点锚定、始终面向屏幕。
+   *
+   * Symbol graphics options (screen-space icon + text label), point-anchored
+   * and always screen-facing.
+   */
+  symbol?: SymbolOptions
   /**
    * 自定义属性，会在拾取结果中回传。
    *

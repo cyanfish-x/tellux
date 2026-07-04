@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { ThreeEffectPass } from '../effects'
 import type { EntityTransparencyMode } from '../types'
+import { isSymbolOcclusionObject } from './SymbolOcclusionPass'
 
 export interface EntityRenderModeResult {
   mode: Exclude<EntityTransparencyMode, 'auto'>
@@ -171,6 +172,7 @@ export class EntityRenderManager implements ThreeEffectPass {
 
   private hideTransparentObjectsForMainScene() {
     this.options.root.traverse((object) => {
+      if (isSymbolOcclusionObject(object)) return
       const renderable = object as THREE.Object3D & { material?: unknown }
       if (!object.visible || !hasTransparentMaterial(renderable.material)) return
       this.mainSceneHiddenObjects.push({ object, visible: object.visible })
@@ -188,6 +190,7 @@ export class EntityRenderManager implements ThreeEffectPass {
   private hasTransparentRenderableEntities() {
     let hasRenderable = false
     this.options.root.traverseVisible((object) => {
+      if (isSymbolOcclusionObject(object)) return
       const renderable = object as THREE.Object3D & { material?: unknown }
       if (hasTransparentMaterial(renderable.material)) {
         hasRenderable = true
@@ -224,6 +227,7 @@ export class EntityRenderManager implements ThreeEffectPass {
     const visibilityRestores: Array<{ object: THREE.Object3D, visible: boolean }> = []
 
     this.options.root.traverse((object) => {
+      if (isSymbolOcclusionObject(object)) return
       const renderable = object as THREE.Object3D & { material?: unknown }
       if (!renderable.material) return
       if (!hasTransparentMaterial(renderable.material)) {

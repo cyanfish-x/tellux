@@ -165,7 +165,8 @@ function createEntityPickerFixture() {
       getCartographicToPosition: (_lat, _lon, _height, target) => target.set(0, 0, 0),
       getCartographicToNormal: (_lat, _lon, target) => target.set(0, 0, 1)
     }),
-    groundClamp: null
+    groundClamp: null,
+    pixelRatio: () => 1
   })
 
   return {

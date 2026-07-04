@@ -5,6 +5,7 @@ import { Camera } from './Camera'
 import { Clock } from './Clock'
 import { EntityManager } from './entities/EntityManager'
 import { EntityRenderManager } from './entities/EntityRenderManager'
+import { SymbolOcclusionPass } from './entities/SymbolOcclusionPass'
 import { setToneMappingState } from './entities/invertToneMapping'
 import { CAMERA_FRAME, DEG2RAD } from './constants'
 import { telluxConfig } from './config'
@@ -73,7 +74,10 @@ export { Entity, type EntityContext } from './entities/Entity'
 export {
   PointGraphics,
   PolylineGraphics,
-  PolygonGraphics
+  PolygonGraphics,
+  SymbolGraphics,
+  IconGraphics,
+  TextGraphics
 } from './entities/EntityGraphics'
 export { EntityManager, type EntityManagerOptions } from './entities/EntityManager'
 export { ImageryLayer, LayerManager } from './LayerManager'
@@ -123,6 +127,11 @@ export type {
   PointOptions,
   PolylineOptions,
   PolygonOptions,
+  SymbolOptions,
+  IconOptions,
+  TextOptions,
+  SymbolAnchor,
+  SymbolTextRelative,
   ImageryLayerOptions,
   ImageryLayerSourceOptions,
   ImageryLayerStyleOptions,
@@ -284,6 +293,7 @@ export class Viewer {
   private readonly models: ModelManager
   private readonly entitiesManager: EntityManager
   private readonly entityRenderManager: EntityRenderManager
+  private readonly symbolOcclusionPass: SymbolOcclusionPass | null
   private readonly groundClampPass: GroundClampPass | null
   private readonly viewport: ViewportResizeManager
   private readonly atmosphere: ViewerAtmosphereManager | null
@@ -408,7 +418,8 @@ export class Viewer {
       ellipsoid: () => this.tilesets.tileset.ellipsoid,
       groundClamp: this.groundClampPass
         ? { root: this.groundClampPass.root, uniforms: this.groundClampPass.sharedUniforms }
-        : null
+        : null,
+      pixelRatio: () => this.currentResolutionScale
     })
     this.entityRenderManager = new EntityRenderManager({
       root: this.entitiesManager.root,
@@ -416,6 +427,9 @@ export class Viewer {
       requestedMode: sceneOptions.entities.transparency.mode,
       supportsWeightedOit: this.rendererAdapter.supportsWebGLEffects
     })
+    this.symbolOcclusionPass = this.rendererAdapter.supportsWebGLEffects
+      ? new SymbolOcclusionPass(this.entitiesManager.root, this.threeCamera)
+      : null
     this.entityPicker = new EntityPicker(this.renderer.domElement, this.threeCamera, this.entitiesManager)
     this.targetFlights = new TargetFlightController({
       camera: this.camera,
@@ -480,7 +494,8 @@ export class Viewer {
           this.atmosphere as AtmosphereManager,
           () => this.camera.getCurrentHeight(),
           this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
-          this.groundClampPass ?? undefined
+          this.groundClampPass ?? undefined,
+          this.symbolOcclusionPass ?? undefined
         )
       : null
     postProcessing = this.postProcessing
@@ -851,7 +866,11 @@ export class Viewer {
    */
   resize() {
     this.viewport.resize()
-    this.entitiesManager.syncResolution(this.renderer.domElement.width, this.renderer.domElement.height)
+    this.entitiesManager.syncResolution(
+      this.renderer.domElement.width,
+      this.renderer.domElement.height,
+      this.currentResolutionScale
+    )
   }
 
   /**
@@ -869,6 +888,7 @@ export class Viewer {
     this.interactions.dispose()
     this.models.dispose()
     this.entityRenderManager.dispose()
+    this.symbolOcclusionPass?.dispose()
     this.entitiesManager.dispose()
     this.groundClampPass?.dispose()
     this.widgets.dispose()
@@ -905,6 +925,7 @@ export class Viewer {
     this.models.update(deltaTime)
     this.entitiesManager.update(deltaTime)
     this.entityRenderManager.beginFrame()
+    this.symbolOcclusionPass?.beginFrame()
     this.rendererAdapter.render(this.scene.threeScene, this.threeCamera)
   }
 

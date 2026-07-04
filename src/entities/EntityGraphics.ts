@@ -2,6 +2,7 @@ import type { ColorInput } from '../types'
 import type { PointGraphic } from './PointGraphic'
 import type { PolylineGraphic } from './PolylineGraphic'
 import type { PolygonGraphic } from './PolygonGraphic'
+import type { SymbolGraphic } from './SymbolGraphic'
 
 /**
  * 点图形运行时句柄。修改字段会即时反映到渲染。
@@ -76,5 +77,131 @@ export class PolygonGraphics {
 
   set outlineColor(value: ColorInput) {
     this.graphic.setOutlineColor(value)
+  }
+}
+
+/**
+ * Symbol 图形运行时句柄。修改字段会即时反映到渲染。
+ *
+ * Runtime handle for symbol graphics. Mutating fields updates rendering
+ * immediately.
+ */
+export class SymbolGraphics {
+  constructor(private readonly graphic: SymbolGraphic) {}
+
+  /** 图标句柄；未配置 icon 时为 `null`。Icon handle, or `null`. */
+  get icon(): IconGraphics | null {
+    return this.graphic.hasIcon ? new IconGraphics(this.graphic) : null
+  }
+
+  /** 文字句柄；未配置 text 时为 `null`。Text handle, or `null`. */
+  get text(): TextGraphics | null {
+    return this.graphic.hasText ? new TextGraphics(this.graphic) : null
+  }
+
+  get rotation() {
+    return this.graphic.rotationValue
+  }
+
+  set rotation(value: number) {
+    this.graphic.setRotation(value)
+  }
+
+  get pixelOffset(): [number, number] {
+    return this.graphic.pixelOffsetValue
+  }
+
+  set pixelOffset(value: [number, number]) {
+    this.graphic.setPixelOffset(value[0], value[1])
+  }
+}
+
+/**
+ * 图标运行时句柄（挂在 {@link SymbolGraphics} 下）。
+ *
+ * Runtime handle for the icon part of a symbol.
+ */
+export class IconGraphics {
+  constructor(private readonly graphic: SymbolGraphic) {}
+
+  get color() {
+    return this.graphic.iconColorHex
+  }
+
+  set color(value: ColorInput) {
+    this.graphic.setIconColor(value)
+  }
+
+  get scale() {
+    return this.graphic.iconScaleValue
+  }
+
+  set scale(value: number) {
+    this.graphic.setIconScale(value)
+  }
+
+  get opacity() {
+    return this.graphic.iconOpacityValue
+  }
+
+  set opacity(value: number) {
+    this.graphic.setIconOpacity(value)
+  }
+}
+
+/**
+ * 文字标签运行时句柄（挂在 {@link SymbolGraphics} 下）。
+ *
+ * Runtime handle for the text part of a symbol.
+ */
+export class TextGraphics {
+  constructor(private readonly graphic: SymbolGraphic) {}
+
+  get text() {
+    return this.graphic.textValue
+  }
+
+  set text(value: string) {
+    this.graphic.setText(value)
+  }
+
+  get fillColor() {
+    return this.graphic.fillColorHex
+  }
+
+  set fillColor(value: ColorInput) {
+    this.graphic.setFillColor(value)
+  }
+
+  get outlineColor() {
+    return this.graphic.outlineColorHex
+  }
+
+  set outlineColor(value: ColorInput) {
+    this.graphic.setOutlineColor(value)
+  }
+
+  get backgroundColor() {
+    return this.graphic.backgroundColorHex
+  }
+
+  set backgroundColor(value: ColorInput | null) {
+    this.graphic.setBackgroundColor(value)
+  }
+
+  get fontSize() {
+    return this.graphic.fontSizeValue
+  }
+
+  set fontSize(value: number) {
+    this.graphic.setFontSize(value)
+  }
+
+  get opacity() {
+    return this.graphic.textOpacityValue
+  }
+
+  set opacity(value: number) {
+    this.graphic.setTextOpacity(value)
   }
 }

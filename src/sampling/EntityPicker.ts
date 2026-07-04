@@ -90,6 +90,9 @@ export class EntityPicker {
 
       const lineHit = this.pickPolylineEntity(entity, mouse, tolerance, width, height)
       this.addCandidate(picked, lineHit)
+
+      const symbolHit = this.pickSymbolEntity(entity, mouse, width, height)
+      this.addCandidate(picked, symbolHit)
     }
 
     return Array.from(picked.values())
@@ -148,6 +151,27 @@ export class EntityPicker {
     })
 
     return picked
+  }
+
+  /**
+   * 屏幕空间拾取 symbol（屏幕空间 billboard，几何 raycast 命中无意义，改由
+   * {@link SymbolGraphic.pickScreenSpace} 在屏幕空间按 quad 矩形 + SDF alpha 判定）。
+   *
+   * Screen-space symbol picking. The billboard geometry is positioned in the vertex
+   * shader, so a geometry raycast is meaningless; instead SymbolGraphic.pickScreenSpace
+   * tests the quad rects with SDF alpha in screen space.
+   */
+  private pickSymbolEntity(
+    entity: Entity,
+    mouse: THREE.Vector2,
+    width: number,
+    height: number
+  ): EntityPickCandidate | null {
+    const graphic = entity.symbolGraphicImpl
+    if (!graphic) return null
+    const hit = graphic.pickScreenSpace(mouse, this.camera, width, height)
+    if (!hit) return null
+    return { entity, point: hit.point, distance: hit.distance, screenDistance: hit.screenDistance }
   }
 
   private projectToScreen(

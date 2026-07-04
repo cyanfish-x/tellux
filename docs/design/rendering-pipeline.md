@@ -516,6 +516,21 @@ threeScene
    └─ 写入 writeBuffer
 ```
 
+### 10.4 Symbol 锚点遮挡流程
+
+`SymbolOcclusionPass` 作为独立后处理 pass 插入在实体 OIT / 贴地分类之后、大气与云之前：
+
+**beginFrame()：**
+1. 恢复上一帧被隐藏的 symbol quad。
+2. 遍历 `tellux-entities` 子树，隐藏带 symbol 遮挡控制器的 quad，避免主场景普通 depthTest 逐片元裁切图标。
+
+**render() → 作为 setEffects chain 中的 pass：**
+1. 恢复 symbol quad 可见性。
+2. 从 `readBuffer` / `writeBuffer` 找到主场景 depth texture。
+3. 临时隐藏非 symbol renderable，只渲染 symbol。
+4. 临时关闭 symbol 材质 `depthTest`，由 shader 采样锚点投影处的 scene depth 决定整个 symbol 显隐。
+5. 如果 depth 位于 readBuffer，先拷贝主色到 writeBuffer 再叠加 symbol，并设置 `needsSwap=true`。
+
 **OIT Shader 注入（onBeforeCompile）：**
 ```glsl
 // 注入到每个透明实体的 fragment shader

@@ -63,6 +63,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
           { text: '交互与拾取', link: '/guide/interaction' },
           { text: '地形与影像', link: '/guide/terrain-and-imagery' },
           { text: '3D Tiles', link: '/guide/3d-tiles' },
+          { text: '实体绘制', link: '/guide/entities' },
           { text: '坐标系与自定义对象', link: '/guide/coordinate-system' },
           { text: '光照模式与参数', link: '/guide/lighting' },
           { text: '大气、云与后处理', link: '/guide/atmosphere-and-effects' },

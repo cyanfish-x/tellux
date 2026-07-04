@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="62" />
+  <title>Tellux Symbol Entity</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <section class="toolbar toolbar--wide" aria-label="Symbol entity controls">
+      <header class="toolbar__header">
+        <h1>图标与文字标签</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>
+        <code>entity.symbol</code> 用 SDF 渲染屏幕空间图标 + 文字标签：图标按 alpha 剪影任意缩放保持锐利，
+        文字 halo / 描边距离化抗锯齿，改色不重建纹理。点击标签可在状态栏看到拾取结果。
+      </p>
+      <p id="symbol-status" class="status" aria-live="polite">加载中…</p>
+      <dl class="click-readout">
+        <dt>Pick</dt>
+        <dd id="symbol-pick-readout">点击任意标签查看属性</dd>
+      </dl>
+      <div class="toolbar__row toolbar__row--checks">
+        <label class="check">
+          <input type="checkbox" id="toggle-poi" checked />
+          <span>POI（图标+文字）</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="toggle-labels" checked />
+          <span>纯文字标签</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="toggle-icons" checked />
+          <span>纯图标</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="toggle-multiline" checked />
+          <span>多行/背景</span>
+        </label>
+        <button class="button" id="recolor-label" type="button">改色（不重建）</button>
+        <button class="button" id="clear-symbols" type="button">清空实体</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./symbol.ts"></script>
+</body>
+
+</html>

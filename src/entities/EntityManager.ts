@@ -10,6 +10,8 @@ export interface EntityManagerOptions {
   ellipsoid: () => EllipsoidLike
   /** 贴地渲染依赖；无贴地 pass（如 WebGPU）时为 `null`。 */
   groundClamp: GroundClampContext | null
+  /** 渲染器像素比 getter（symbol 像素尺寸 / 文字 SDF 超采样用）。 */
+  pixelRatio: () => number
 }
 
 /**
@@ -24,6 +26,9 @@ export class EntityManager {
   private readonly entities = new Map<string, Entity>()
   private readonly entitiesRoot = new THREE.Group()
   private nextEntityId = 0
+  private lastWidth = 0
+  private lastHeight = 0
+  private lastPixelRatio = 1
 
   constructor(private readonly options: EntityManagerOptions) {
     this.entitiesRoot.name = 'tellux-entities'
@@ -45,10 +50,18 @@ export class EntityManager {
       toVector3: this.options.toVector3,
       removeEntity: (target) => this.removeEntity(target),
       ellipsoid: this.options.ellipsoid,
-      groundClamp: this.options.groundClamp
+      groundClamp: this.options.groundClamp,
+      pixelRatio: this.options.pixelRatio
     })
     this.entities.set(id, entity)
     this.entitiesRoot.add(entity.object3D)
+    // 把当前分辨率 / 像素比推给新实体，确保 add 后无需等 resize 即正确渲染。
+    // Push current resolution / pixel ratio so the new entity renders correctly
+    // without waiting for a resize.
+    if (this.lastWidth > 0) {
+      entity.polylineGraphicImpl?.syncResolution(this.lastWidth, this.lastHeight)
+      entity.symbolGraphicImpl?.syncResolution(this.lastWidth, this.lastHeight, this.lastPixelRatio)
+    }
     return entity
   }
 
@@ -80,14 +93,18 @@ export class EntityManager {
   }
 
   /**
-   * 同步 LineMaterial 的 resolution（绘制缓冲像素尺寸），保证折线宽度正确。
+   * 同步折线 LineMaterial 的 resolution 与 symbol 的绘制缓冲尺寸 / 像素比。
    *
-   * Syncs LineMaterial resolution (drawing buffer pixel size) so polyline width
-   * renders correctly.
+   * Syncs polyline LineMaterial resolution and the symbol drawing-buffer size /
+   * pixel ratio.
    */
-  syncResolution(width: number, height: number) {
+  syncResolution(width: number, height: number, pixelRatio: number) {
+    this.lastWidth = width
+    this.lastHeight = height
+    this.lastPixelRatio = pixelRatio
     this.entities.forEach((entity) => {
       entity.polylineGraphicImpl?.syncResolution(width, height)
+      entity.symbolGraphicImpl?.syncResolution(width, height, pixelRatio)
     })
   }
 
