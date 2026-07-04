@@ -2,7 +2,8 @@
  * github-release.js
  * 功能：为指定版本创建/更新 GitHub Release，Release notes 取自 CHANGELOG.md 对应版本段
  *
- * 用法：node actions/github-release.js <version>   例如 0.1.8
+ * 用法：node actions/github-release.js <version> [--no-latest]   例如 0.1.8
+ *   --no-latest  不标记为 Latest（补建旧版本时使用，避免抢占最新版的 Latest 徽章）
  *
  * 前置条件：
  *   - 已安装并登录 gh CLI（gh auth status 正常）
@@ -20,9 +21,12 @@ import { fileURLToPath } from 'node:url'
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const changelogPath = resolve(projectRoot, 'CHANGELOG.md')
 
-const version = process.argv[2]
+const argv = process.argv.slice(2)
+const noLatest = argv.includes('--no-latest')
+const version = argv.find((a) => !a.startsWith('--'))
 if (!version) {
-  console.error('用法: node actions/github-release.js <version>   例如 0.1.8')
+  console.error('用法: node actions/github-release.js <version> [--no-latest]   例如 0.1.8')
+  console.error('  --no-latest  不标记为 Latest（补建旧版本时使用）')
   process.exit(1)
 }
 const tag = `v${version}`
@@ -39,7 +43,8 @@ function extractSection(content, ver) {
   if (start === -1) return null
   let end = lines.length
   for (let i = start + 1; i < lines.length; i++) {
-    if (lines[i].startsWith('## ')) { end = i; break }
+    // 版本段在下一个 ## 标题或链接引用定义（[name]: url）处结束
+    if (lines[i].startsWith('## ') || /^\[[^\]]+\]:/.test(lines[i])) { end = i; break }
   }
   return lines.slice(start + 1, end).join('\n').trim()
 }
@@ -78,9 +83,10 @@ try {
     exists = false
   }
 
+  const latestArgs = noLatest ? ['--latest=false'] : []
   const args = exists
-    ? ['release', 'edit', tag, '--notes-file', notesPath]
-    : ['release', 'create', tag, '--title', tag, '--notes-file', notesPath]
+    ? ['release', 'edit', tag, '--notes-file', notesPath, ...latestArgs]
+    : ['release', 'create', tag, '--title', tag, '--notes-file', notesPath, ...latestArgs]
   console.log(`\n🏷️  ${exists ? '更新' : '创建'} GitHub Release ${tag}...`)
   execFileSync('gh', args, { cwd: projectRoot, stdio: 'inherit' })
   console.log(`✅ GitHub Release ${tag} 已${exists ? '更新' : '创建'}`)

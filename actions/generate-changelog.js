@@ -7,10 +7,11 @@
  *   node actions/generate-changelog.js --version 0.1.8    写入版本段到 CHANGELOG.md
  *
  * 写入逻辑（--version）：
- *   - 若 [Unreleased] 段已有手写内容：将其标题改为 [版本] - 日期，并在其上方插入新的空 [Unreleased] 段
- *     （适合已手动整理的版本，如历史欠账）
- *   - 若 [Unreleased] 段为空：从上一个 tag 到 HEAD 的 commit 按 Conventional Commits 自动生成版本段
- *     （适合 commit 规范后的常规发版）
+ *   - 全手写：[Unreleased] 已含标准分类标题（### Added/Changed/...），仅改名迁移，不追加自动内容
+ *   - 混合（推荐）：[Unreleased] 已有摘要/亮点但无标准分类标题，保留摘要并追加自动分类清单
+ *   - 自动：[Unreleased] 为空，从上一个 tag 到 HEAD 的 commit 按 Conventional Commits 生成版本段
+ * 摘要写法：在 ## [Unreleased] 下写一段散文或几条 - 亮点 bullet（不要用 ### 标题），
+ *   发版时摘要成为版本段开头，下方自动追加 ### Added/Changed/Fixed。
  *
  * 自动归类规则：feat→Added、fix→Fixed、refactor/perf→Changed、revert→Removed；
  *   含 `!:` 标注 ⚠️ BREAKING；docs/style/test/chore/build/ci 及不规范 commit 跳过（打印提示）；
@@ -115,6 +116,26 @@ function unreleasedHasContent(lines, idx) {
   return false
 }
 
+const CATEGORY_HEADERS = ['### Added', '### Changed', '### Deprecated', '### Removed', '### Fixed', '### Security']
+
+// [Unreleased] 段是否已含标准分类标题（用于区分「全手写」与「混合摘要」）
+function unreleasedHasStandardCategories(lines, idx) {
+  for (let i = idx + 1; i < lines.length; i++) {
+    if (lines[i].startsWith('## ')) break
+    if (CATEGORY_HEADERS.includes(lines[i].trim())) return true
+  }
+  return false
+}
+
+// 去掉首尾空行
+function trimBlankEdges(arr) {
+  let s = 0
+  let e = arr.length
+  while (s < e && arr[s].trim() === '') s++
+  while (e > s && arr[e - 1].trim() === '') e--
+  return arr.slice(s, e)
+}
+
 function main() {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run')
@@ -148,24 +169,41 @@ function main() {
     process.exit(1)
   }
 
-  if (unreleasedHasContent(lines, idx)) {
-    // 手写模式：[Unreleased] 已有内容，改名为版本段，上方插入空 [Unreleased]
+  // [Unreleased] 段边界（到下一个 ## ）
+  let endIdx = lines.length
+  for (let i = idx + 1; i < lines.length; i++) {
+    if (lines[i].startsWith('## ')) { endIdx = i; break }
+  }
+
+  const hasContent = unreleasedHasContent(lines, idx)
+  const hasCategories = unreleasedHasStandardCategories(lines, idx)
+
+  if (hasContent && hasCategories) {
+    // 全手写：[Unreleased] 已含标准分类标题，仅改名迁移，不追加自动内容
     lines[idx] = `## [Unreleased]\n\n## [${version}] - ${today()}`
     writeFileSync(changelogPath, lines.join('\n'))
     console.log(`✅ 已将 [Unreleased] 手写内容迁移为 [${version}] 段，并新建空 [Unreleased]`)
+    return
+  }
+
+  // 自动 / 混合：都需要从 commit 生成分类清单
+  const { lastTag, commits, skipped, body } = generateFromCommits()
+  if (lastTag) console.log(`📌 上一版本 tag: ${lastTag}`)
+  console.log(`📦 待处理 commit: ${commits.length} 条`)
+  if (skipped.length) {
+    console.log(`ℹ️ 已跳过 ${skipped.length} 条非规范/内部 commit（建议补 commit 规范）`)
+  }
+
+  if (hasContent && !hasCategories) {
+    // 混合：保留手写摘要，追加自动分类清单
+    const summary = trimBlankEdges(lines.slice(idx + 1, endIdx))
+    const versionBlock = [`## [${version}] - ${today()}`, '', ...summary, '', body].join('\n')
+    const newLines = [...lines.slice(0, idx), '## [Unreleased]', '', versionBlock, '', ...lines.slice(endIdx)]
+    writeFileSync(changelogPath, newLines.join('\n'))
+    console.log(`✅ 已保留手写摘要并追加自动分类清单，生成 [${version}] 段`)
   } else {
-    // 自动模式：从 commit 生成版本段，插入 [Unreleased] 下方
-    const { lastTag, commits, skipped, body } = generateFromCommits()
-    if (lastTag) console.log(`📌 上一版本 tag: ${lastTag}`)
-    console.log(`📦 待处理 commit: ${commits.length} 条`)
-    if (skipped.length) {
-      console.log(`ℹ️ 已跳过 ${skipped.length} 条非规范/内部 commit（建议补 commit 规范）`)
-    }
+    // 自动：从 commit 生成版本段，插入 [Unreleased] 下方
     const section = `## [${version}] - ${today()}\n\n${body}\n`
-    let endIdx = lines.length
-    for (let i = idx + 1; i < lines.length; i++) {
-      if (lines[i].startsWith('## ')) { endIdx = i; break }
-    }
     const newLines = [...lines.slice(0, endIdx), section.trimEnd(), '', ...lines.slice(endIdx)]
     writeFileSync(changelogPath, newLines.join('\n'))
     console.log(`✅ 已从 commit 自动生成 [${version}] 段并写入`)
