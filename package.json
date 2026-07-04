@@ -40,8 +40,13 @@
     "deploy": "npm run build:examples && node actions/deploy.js",
     "deploy:ghpages": "node actions/deploy-ghpages.mjs",
     "prepublishOnly": "pnpm type-check && pnpm build",
+    "changelog": "node actions/generate-changelog.js --dry-run",
     "release:check": "pnpm type-check && pnpm build && npm pack --dry-run",
-    "release": "pnpm release:check && npm version patch -m \"发布 v%s\" && npm publish && git push --follow-tags"
+    "release": "node actions/release.js patch",
+    "release:patch": "node actions/release.js patch",
+    "release:minor": "node actions/release.js minor",
+    "release:major": "node actions/release.js major",
+    "prepare": "husky"
   },
   "peerDependencies": {
     "3d-tiles-renderer": "^0.4.27",
@@ -65,6 +70,8 @@
   "devDependencies": {
     "3d-tiles-renderer": "^0.4.27",
     "3d-tiles-rendererjs-3dgs-plugin": "^0.1.13",
+    "@commitlint/cli": "^21.2.0",
+    "@commitlint/config-conventional": "^21.2.0",
     "@mapbox/vector-tile": "^2.0.5",
     "@sparkjsdev/spark": "^2.1.0",
     "@takram/three-atmosphere": "0.19.1",
@@ -75,6 +82,7 @@
     "@types/three": "^0.184.1",
     "concurrently": "^9.2.1",
     "gh-pages": "^6.3.0",
+    "husky": "^9.1.7",
     "monaco-editor": "^0.52.2",
     "msdf-bmfont-xml": "^2.8.0",
     "pbf": "^4.0.2",
