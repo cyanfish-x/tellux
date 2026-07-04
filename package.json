@@ -41,7 +41,7 @@
     "deploy:ghpages": "node actions/deploy-ghpages.mjs",
     "prepublishOnly": "pnpm type-check && pnpm build",
     "changelog": "node actions/generate-changelog.js --dry-run",
-    "release:check": "pnpm type-check && pnpm build && npm pack --dry-run",
+    "release:check": "pnpm type-check && pnpm build && pnpm pack --dry-run",
     "release": "node actions/release.js patch",
     "release:patch": "node actions/release.js patch",
     "release:minor": "node actions/release.js minor",

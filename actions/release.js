@@ -5,12 +5,13 @@
  * 用法：node actions/release.js [patch|minor|major]
  *
  * 流程：
- *   1. pnpm release:check（type-check + build + npm pack --dry-run）
+ *   1. pnpm release:check（type-check + build + pnpm pack --dry-run）
  *   2. npm version <type> --no-git-tag-version（只改 package.json，不 commit/tag）
  *   3. node actions/generate-changelog.js --version <新版本>（写入 CHANGELOG.md）
  *   4. git add package.json CHANGELOG.md → commit → tag v<版本>
  *      （tag 指向的 commit 包含 changelog 改动）
- *   5. npm publish（触发 prepublishOnly 钩子再校验一次）
+ *   5. pnpm publish --no-git-checks（触发 prepublishOnly 钩子再校验一次；
+ *      发版流程在 push 之前发布，需 --no-git-checks 跳过 pnpm 对未推送 commit 的拦截）
  *   6. git push --follow-tags
  *
  * 注意：本脚本会真实发布到 npm 并推送 tag，请在主分支且工作区干净时执行。
@@ -74,8 +75,8 @@ function main() {
   git(['commit', '-m', `发布 v${newVersion}`])
   git(['tag', `v${newVersion}`])
 
-  console.log('\n🚀 [5/6] npm publish...')
-  run('npm publish')
+  console.log('\n🚀 [5/6] pnpm publish...')
+  run('pnpm publish --no-git-checks')
 
   console.log('\n📤 [6/6] 推送 commit + tag...')
   git(['push', '--follow-tags'])
