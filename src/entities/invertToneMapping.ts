@@ -215,3 +215,21 @@ export function resolveColor(input: ColorInput | undefined): THREE.Color {
 function srgbEncode(linear: number): number {
   return linear <= 0.0031308 ? linear * 12.92 : 1.055 * Math.pow(linear, 1 / 2.4) - 0.055
 }
+
+/**
+ * 把 ColorInput 解析成 display sRGB 编码色（不做任何 tone mapping 补偿）。
+ *
+ * 供 symbol（文字 / 图标）后合成路径使用：symbol 在整帧 tone mapping + sRGB 输出
+ * **之后**直接向 canvas 混合，shader 的 uniform 值即最终显示字节，因此需要
+ * sRGB 编码值而非工作空间 linear 值。`THREE.Color.set` 会把 sRGB 输入解码到
+ * linear，这里重新编码回去。`undefined` 视为白色。
+ *
+ * Resolves a ColorInput to display-encoded sRGB with no tone-mapping compensation.
+ * For the symbol post-composite path: symbols blend straight into the canvas after
+ * whole-frame tone mapping, so shader uniforms are final display bytes and must be
+ * sRGB-encoded. `THREE.Color.set` decodes sRGB input to linear; re-encode it here.
+ */
+export function resolveDisplayColor(input: ColorInput | undefined): THREE.Color {
+  const color = new THREE.Color(input ?? 0xffffff)
+  return color.convertLinearToSRGB()
+}

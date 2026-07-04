@@ -16,6 +16,11 @@ import {
   DebugSettingsPanel,
   Timeline,
   SpringControl,
+  preloadFontMsdfAtlas,
+  setMsdfAtlasForFont,
+  disposeGlyphAtlases,
+  loadMsdfAtlas,
+  disposeMsdfAtlas,
   telluxConfig,
   Viewer
 } from './Viewer'
@@ -40,6 +45,11 @@ export {
   SymbolGraphics,
   IconGraphics,
   TextGraphics,
+  preloadFontMsdfAtlas,
+  setMsdfAtlasForFont,
+  disposeGlyphAtlases,
+  loadMsdfAtlas,
+  disposeMsdfAtlas,
   Scene,
   AtmosphereLightingMode,
   DebugSettingsPanel,
@@ -74,6 +84,11 @@ export {
   type TextOptions,
   type SymbolAnchor,
   type SymbolTextRelative,
+  type GlyphTextConfig,
+  type GlyphTextRun,
+  type MsdfAtlas,
+  type MsdfAtlasData,
+  type MsdfGlyphMetrics,
   type FlyToTargetOffset,
   type FlyToTargetOptions,
   type FlyToTargetTarget,
@@ -164,6 +179,11 @@ const tellux = {
   RTCAutoUniforms,
   applyRTCInstancing,
   setRTCMatrixAt,
+  preloadFontMsdfAtlas,
+  setMsdfAtlasForFont,
+  disposeGlyphAtlases,
+  loadMsdfAtlas,
+  disposeMsdfAtlas,
 
   /**
    * Tellux 静态资源父级目录。

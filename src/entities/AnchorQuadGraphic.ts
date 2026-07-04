@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { ColorInput } from '../types'
-import { resolveColor } from './invertToneMapping'
+import { resolveDisplayColor } from './invertToneMapping'
 import { setSymbolOcclusionController } from './SymbolOcclusionPass'
 
 /**
@@ -9,19 +9,21 @@ import { setSymbolOcclusionController } from './SymbolOcclusionPass'
  * 顶点着色器把单位四边形按像素尺寸缩放、旋转、按像素偏移平移后，叠加到锚点世界
  * 位置的屏幕投影上——像素大小在 VS 里一次算完，不需每帧按距离 rescale。片元着色器
  * 图标使用 Tellux 自有 0.5-edge SDF；文字 glyph 使用 Mapbox/TinySDF 的 0.75-edge
- * SDF 与 glyph atlas UV。颜色作为 uniform（经 resolveColor 反求）。
+ * SDF 与 glyph atlas UV。颜色作为 uniform，取 display sRGB 编码值（symbol 在
+ * tone mapping 之后直接向 canvas 混合，见 SymbolOcclusionPass）。
  *
  * Symbol 不走实体 OIT：主场景渲染前由 SymbolOcclusionPass 临时隐藏，随后在独立
- * pass 中读取场景深度并按锚点全有 / 全无遮挡绘制。材质本身保持不透明队列，SDF
- * 透明边用 discard 处理，避免被 OIT 按 quad 片元深度切碎。
+ * pass 中读取场景深度并按锚点全有 / 全无遮挡绘制。材质使用普通 alpha 混合，让
+ * SDF 的半透明边缘真正混到已经合成好的场景颜色上；是否整块显示仍由锚点深度控制。
  *
  * Screen-space billboard quad primitive rendered from an SDF atlas texture
  * (or a procedural rounded rect). The VS sizes / rotates / offsets a unit quad in
  * pixels and adds it to the anchor's screen projection — pixel size is computed in
  * the VS, no per-distance rescale. Icons use Tellux's 0.5-edge SDF; text glyphs
  * use Mapbox/TinySDF's 0.75-edge SDF and atlas UVs. Symbols are rendered by
- * SymbolOcclusionPass rather than entity OIT; alpha edges use discard so the quad is
- * never partially clipped by per-fragment scene depth.
+ * SymbolOcclusionPass rather than entity OIT; SDF alpha edges are normally blended
+ * over the composed scene while anchor-depth testing keeps the whole symbol
+ * all-or-nothing.
  */
 export class AnchorQuadGraphic {
   readonly object3D: THREE.Mesh
@@ -46,6 +48,7 @@ export class AnchorQuadGraphic {
       uOpacity: { value: 1 },
       uHasMap: { value: 0 },
       uMode: { value: 0 },
+      uMsdfUnitRange: { value: new THREE.Vector2(0, 0) },
       uCornerRadius: { value: 0 },
       uSceneDepth: { value: null as THREE.Texture | null },
       uSceneDepthTexelSize: { value: new THREE.Vector2(1, 1) },
@@ -57,21 +60,20 @@ export class AnchorQuadGraphic {
     this.material = new THREE.ShaderMaterial({
       name: 'TelluxAnchorQuadSDF',
       uniforms: this.uniforms,
-      // 不透明渲染，绕过 OIT——symbol 是点锚定的 billboard，遮挡应该以锚点为准
-      // （全有或全无），而非 OIT 的逐片元深度 discard。OIT 的 telluxDepthDiscard 用
-      // gl_FragCoord.xy 采样场景深度，四边形不同片元的 xy 各异，会部分被 discard、
+      // 透明混合，但不进入实体 OIT——symbol 是点锚定的 billboard，遮挡应该以锚点
+      // 为准（全有或全无），而非 OIT 的逐片元深度 discard。OIT 的 telluxDepthDiscard
+      // 用 gl_FragCoord.xy 采样场景深度，四边形不同片元的 xy 各异，会部分被 discard、
       // 部分保留，加上 Float32 锚点抖动即产生闪烁。
-      // 改为 SymbolOcclusionPass：主场景先隐藏 symbol，之后单独读取 scene depth，
-      // 用锚点投影深度做全有 / 全无遮挡。锚点深度带一个朝相机方向的 bias，并采样
-      // 邻域 depth，避免贴近地表或落在瓦片边界时因深度量化来回翻转。
+      // SymbolOcclusionPass 会让主场景先隐藏 symbol，之后单独读取 scene depth，用锚点
+      // 投影深度做全有 / 全无遮挡；此处保留 normal alpha blending，让 SDF 字形边缘能
+      // 像 MapboxGL 一样按 coverage 混合到已合成的场景颜色上。
       //
-      // Opaque rendering bypasses OIT — symbols are point-anchored billboards, so
-      // occlusion should be all-or-nothing at the anchor, not per-fragment via OIT's
-      // telluxDepthDiscard (which samples scene depth at gl_FragCoord.xy, differing across
-      // the quad, causing partial discard + Float32 flicker). SymbolOcclusionPass samples
-      // scene depth at the anchor with a small camera-facing bias and neighbor taps, so
-      // surface-adjacent labels do not flip on depth quantization boundaries.
-      transparent: false,
+      // Transparent blending bypasses entity OIT — symbols are point-anchored billboards,
+      // so occlusion should be all-or-nothing at the anchor, not per-fragment via OIT's
+      // telluxDepthDiscard. SymbolOcclusionPass samples scene depth at the anchor while
+      // this material keeps standard coverage blending for antialiased SDF edges.
+      transparent: true,
+      blending: THREE.NormalBlending,
       depthWrite: false,
       depthTest: true,
       vertexShader: /* glsl */ `
@@ -112,6 +114,7 @@ export class AnchorQuadGraphic {
         uniform float uOpacity;
         uniform float uHasMap;
         uniform float uMode;
+        uniform vec2 uMsdfUnitRange;
         uniform vec2 uPixelSize;
         uniform float uCornerRadius;
         uniform sampler2D uSceneDepth;
@@ -122,6 +125,11 @@ export class AnchorQuadGraphic {
         varying vec2 vUv;
         varying vec2 vAnchorUv;
         varying float vAnchorDepth;
+
+        // MSDF median函数：从RGB三通道中取中值
+        float median(float r, float g, float b) {
+          return max(min(r, g), min(max(r, g), b));
+        }
 
         // 圆角矩形解析距离场：返回值 < 0 在内部，> 0 在外部。
         // Analytical rounded-rect SDF: < 0 inside, > 0 outside.
@@ -158,13 +166,60 @@ export class AnchorQuadGraphic {
           }
 
           float pxDist;
-          if (uMode > 1.5) {
+          if (uMode > 3.5) {
+            // 原色图标模式：直接采样 RGBA 纹理，保留图标原本颜色与细节。
+            // uTint 作为可选乘法调色（默认白色 = 不调）。symbol 在 tone mapping 之后
+            // 直接向 canvas 混合，纹理按 NoColorSpace 取原始 sRGB 字节直出。
+            if (uHasMap < 0.5) discard;
+            vec2 atlasUv = mix(uUvMin, uUvMax, vUv);
+            vec4 tex = texture2D(uMap, atlasUv);
+            float alpha = tex.a * uOpacity;
+            if (alpha < 0.01) discard;
+            gl_FragColor = vec4(tex.rgb * uTint, alpha);
+            return;
+          } else if (uMode > 2.5) {
+            // MSDF 模式（多通道距离场）—— msdfgen 官方 screenPxRange 解析 AA。
+            if (uHasMap < 0.5) discard;
+            vec2 atlasUv = mix(uUvMin, uUvMax, vUv);
+            vec3 msd = texture2D(uMap, atlasUv).rgb;
+            float sd = median(msd.r, msd.g, msd.b);
+
+            // screenPxRange：distanceRange 在当前屏幕缩放下覆盖多少个屏幕像素。
+            // = unitRange(UV 空间) / fwidth(atlasUv) 的分量，取 x/y 均值即可稳健。
+            // 这一步把 [0,1] 的距离场换算回真实屏幕像素，AA 只在边缘 ±0.5px 内过渡，
+            // 缩小采样时依然锐利——这是 MSDF 不糊的关键，取代原先过宽的 fwidth(sd)。
+            vec2 unitPerTexel = uMsdfUnitRange / max(fwidth(atlasUv), vec2(1e-6));
+            float screenPxRange = max(0.5 * (unitPerTexel.x + unitPerTexel.y), 1.0);
+
+            float fillPx = (sd - 0.5) * screenPxRange;
+            float fill = clamp(fillPx + 0.5, 0.0, 1.0);
+            // 描边：向外扩 outlineWidth 个屏幕像素（quad 已按 pr 放大，outlineWidth 亦然）。
+            // 距离场只能表达 ±0.5*screenPxRange 的范围：远场 sd 饱和为 0，
+            // fillPx = -0.5*screenPxRange。若 haloPx 超过该范围，quad 远场也会落进
+            // halo 区间，整个矩形被描边色填满（字形背后出现色块）。clamp 到可表达上限。
+            // The field only encodes ±0.5*screenPxRange; an unclamped halo floods the
+            // whole quad with outline color once it exceeds that range.
+            float maxHaloPx = max(0.5 * screenPxRange - 0.5, 0.0);
+            float outerPx = fillPx + min(uOutlineWidth, maxHaloPx);
+            float outer = clamp(outerPx + 0.5, 0.0, 1.0);
+
+            float ring = max(outer - fill, 0.0);
+            float alpha = max(fill, ring) * uOpacity;
+            if (alpha < 0.01) discard;
+            vec3 rgb = mix(uOutlineColor, uTint, fill / max(fill + ring, 1e-4));
+            gl_FragColor = vec4(rgb, alpha);
+            return;
+          } else if (uMode > 1.5) {
+            // Glyph SDF 模式（TinySDF，0.75 edge）
             if (uHasMap < 0.5) discard;
             vec2 atlasUv = mix(uUvMin, uUvMax, vUv);
             float r = texture2D(uMap, atlasUv).r;
             float fill = smoothstep(0.75 - uSmoothing, 0.75 + uSmoothing, r);
-            float haloEdge = 0.75 - uOutlineWidth / max(uSpread, 1e-4);
+            // halo 边缘不得低于远场（r=0）的过渡带下界，否则整块 quad 被描边色填满。
+            // Keep the halo edge above the far-field ramp so it never floods the quad.
+            float haloEdge = max(0.75 - uOutlineWidth / max(uSpread, 1e-4), uSmoothing + 0.02);
             float outer = smoothstep(haloEdge - uSmoothing, haloEdge + uSmoothing, r);
+            // 移除 Gamma 校正，让 Mapbox 的 smoothing 公式自己控制
             float ring = max(outer - fill, 0.0);
             float alpha = max(fill, ring) * uOpacity;
             if (alpha < 0.01) discard;
@@ -260,19 +315,19 @@ export class AnchorQuadGraphic {
   }
 
   setTint(color: ColorInput) {
-    ;(this.uniforms.uTint.value as THREE.Color).copy(resolveColor(color))
+    ;(this.uniforms.uTint.value as THREE.Color).copy(resolveDisplayColor(color))
   }
 
-  /** 直接设已反求的 linear 色（文字路径：颜色在 SymbolGraphic 已 resolveColor）。Set a pre-resolved linear tint. */
+  /** 直接设已解析的 display sRGB 色（文字路径：SymbolGraphic 已 resolveDisplayColor）。Set a pre-resolved display-sRGB tint. */
   setTintRaw(color: THREE.Color) {
     ;(this.uniforms.uTint.value as THREE.Color).copy(color)
   }
 
   setOutlineColor(color: ColorInput) {
-    ;(this.uniforms.uOutlineColor.value as THREE.Color).copy(resolveColor(color))
+    ;(this.uniforms.uOutlineColor.value as THREE.Color).copy(resolveDisplayColor(color))
   }
 
-  /** 直接设已反求的 linear 描边色。Set a pre-resolved linear outline color. */
+  /** 直接设已解析的 display sRGB 描边色。Set a pre-resolved display-sRGB outline color. */
   setOutlineColorRaw(color: THREE.Color) {
     ;(this.uniforms.uOutlineColor.value as THREE.Color).copy(color)
   }
@@ -289,14 +344,16 @@ export class AnchorQuadGraphic {
     this.uniforms.uOpacity.value = Math.max(0, Math.min(1, opacity))
   }
 
-  /** tint 的 hex（已反求的 linear 色）。Tint hex (resolved linear color). */
+  /** tint 的 hex（display sRGB 编码值，即用户传入的原始色）。Tint hex (display sRGB = the user's input color). */
   get tintHex(): number {
-    return (this.uniforms.uTint.value as THREE.Color).getHex()
+    // 存的分量已是 sRGB 编码值；getHex() 默认会再做一次 linear→sRGB 编码，须跳过。
+    // Components are already sRGB-encoded; default getHex() would double-encode.
+    return (this.uniforms.uTint.value as THREE.Color).getHex(THREE.LinearSRGBColorSpace)
   }
 
   /** 描边色的 hex。Outline-color hex. */
   get outlineColorHex(): number {
-    return (this.uniforms.uOutlineColor.value as THREE.Color).getHex()
+    return (this.uniforms.uOutlineColor.value as THREE.Color).getHex(THREE.LinearSRGBColorSpace)
   }
 
   /** 程序化圆角矩形背景的圆角半径（像素）。Corner radius (px) for procedural bg. */
@@ -318,12 +375,48 @@ export class AnchorQuadGraphic {
     ;(this.uniforms.uUvMax.value as THREE.Vector2).set(1, 1)
   }
 
+  /**
+   * 切到原色纹理模式（icon 保留原图颜色）。`texture` 仅被引用，生命周期由调用方管理。
+   * `uTint` 默认白色不调色；设 tint 则做乘法调色。
+   *
+   * Switch to raw-color texture mode (icon keeps its original colors). `texture` is
+   * only referenced; its lifetime is owned by the caller. `uTint` defaults to white
+   * (no tint); setting a tint multiplies.
+   */
+  setRawMap(texture: THREE.Texture) {
+    this.uniforms.uMode.value = 4
+    this.uniforms.uHasMap.value = 1
+    this.uniforms.uMap.value = texture
+    ;(this.uniforms.uUvMin.value as THREE.Vector2).set(0, 0)
+    ;(this.uniforms.uUvMax.value as THREE.Vector2).set(1, 1)
+  }
+
   setGlyphSdfMap(texture: THREE.Texture, uvMin: THREE.Vector2, uvMax: THREE.Vector2) {
     this.uniforms.uMode.value = 2
     this.uniforms.uHasMap.value = 1
     this.uniforms.uMap.value = texture
     ;(this.uniforms.uUvMin.value as THREE.Vector2).copy(uvMin)
     ;(this.uniforms.uUvMax.value as THREE.Vector2).copy(uvMax)
+  }
+
+  /**
+   * 设置 MSDF 字形纹理（多通道距离场，模式3）。
+   *
+   * `unitRange` 为 distanceRange 换算到 atlas UV 空间的值（distanceRange / atlasSize，
+   * x、y 各一），shader 用它 + fwidth 推 screenPxRange 做解析 AA。
+   */
+  setGlyphMsdfMap(
+    texture: THREE.Texture,
+    uvMin: THREE.Vector2,
+    uvMax: THREE.Vector2,
+    unitRange: THREE.Vector2
+  ) {
+    this.uniforms.uMode.value = 3
+    this.uniforms.uHasMap.value = 1
+    this.uniforms.uMap.value = texture
+    ;(this.uniforms.uUvMin.value as THREE.Vector2).copy(uvMin)
+    ;(this.uniforms.uUvMax.value as THREE.Vector2).copy(uvMax)
+    ;(this.uniforms.uMsdfUnitRange.value as THREE.Vector2).copy(unitRange)
   }
 
   /**

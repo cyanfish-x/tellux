@@ -79,6 +79,15 @@ export {
   IconGraphics,
   TextGraphics
 } from './entities/EntityGraphics'
+export {
+  preloadFontMsdfAtlas,
+  setMsdfAtlasForFont,
+  disposeGlyphAtlases,
+  type GlyphTextConfig,
+  type GlyphTextRun
+} from './entities/GlyphAtlas'
+export type { MsdfAtlas, MsdfAtlasData, MsdfGlyphMetrics } from './entities/MsdfAtlasLoader'
+export { loadMsdfAtlas, disposeMsdfAtlas } from './entities/MsdfAtlasLoader'
 export { EntityManager, type EntityManagerOptions } from './entities/EntityManager'
 export { ImageryLayer, LayerManager } from './LayerManager'
 export { Scene } from './Scene'
@@ -927,6 +936,38 @@ export class Viewer {
     this.entityRenderManager.beginFrame()
     this.symbolOcclusionPass?.beginFrame()
     this.rendererAdapter.render(this.scene.threeScene, this.threeCamera)
+    this.renderSymbolsAfterComposite()
+  }
+
+  /**
+   * 后合成绘制 symbol：canvas 已是 tone mapping + sRGB 后的最终图像，symbol 以
+   * display 色彩空间直接混合（Mapbox 同款做法），字形边缘的 coverage 渐变不再被
+   * AgX 压扁，也不再被 SMAA / dithering 二次处理。需旁路 effects 链避免递归。
+   *
+   * Post-composite symbol draw: the canvas already holds the tone-mapped sRGB frame,
+   * so symbols alpha-blend in display space (as Mapbox does). Glyph coverage ramps
+   * are no longer warped by AgX nor reprocessed by SMAA / dithering. The effects
+   * chain is bypassed around the draw to avoid recursing into it.
+   */
+  private renderSymbolsAfterComposite() {
+    const pass = this.symbolOcclusionPass
+    if (!pass) return
+    const renderer = this.renderer as TelluxWebGLRenderer
+    const draw = () => pass.renderAfterComposite(renderer)
+    if (this.postProcessing) {
+      this.postProcessing.renderWithEffectsBypassed(draw)
+      return
+    }
+    // 无后处理管线（如 atmosphere 关闭）时手动旁路：内置 setEffects 管线在
+    // NoToneMapping + 空 effects 时才会放行直绘。
+    const previousToneMapping = renderer.toneMapping
+    renderer.toneMapping = THREE.NoToneMapping
+    renderer.setEffects([])
+    try {
+      draw()
+    } finally {
+      renderer.toneMapping = previousToneMapping
+    }
   }
 
   private clearFrameBuffer() {

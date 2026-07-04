@@ -1,21 +1,39 @@
 import * as THREE from 'three'
 import type { ColorInput, IconOptions, SymbolAnchor, SymbolOptions, SymbolTextRelative } from '../types'
-import { resolveColor } from './invertToneMapping'
+import { resolveDisplayColor } from './invertToneMapping'
 import { AnchorQuadGraphic } from './AnchorQuadGraphic'
-import { generateSDF, sampleRoundedRectAlpha, sampleSdfAlpha, type SDFResult } from './sdf'
-import { createGlyphTextRun, type GlyphTextConfig, type GlyphTextRun } from './GlyphAtlas'
+import { generateSDF, sampleRoundedRectAlpha, sampleSdfAlpha } from './sdf'
+import { createGlyphTextRun, onFontAtlasChange, type GlyphTextConfig, type GlyphTextRun } from './GlyphAtlas'
 
 /** 图标 SDF 的源距离场半径（源像素）。Icon SDF source radius (source px). */
 const ICON_SPREAD = 16
 
+/**
+ * 统一图标纹理描述符：SDF 剪影染色（mode 0）或原色 RGBA（mode 4）。
+ *
+ * Unified icon texture descriptor: SDF silhouette tint (mode 0) or raw RGBA (mode 4).
+ */
+interface IconTexture {
+  /** 0 = SDF 剪影染色，4 = 原色 RGBA。0 = SDF silhouette tint, 4 = raw RGBA. */
+  mode: 0 | 4
+  texture: THREE.Texture
+  /** quad 宽（源像素；SDF 含 spread 边距，raw = natural）。quad width (source px; sdf incl spread, raw = natural). */
+  width: number
+  height: number
+  /** SDF 距离场半径（raw = 0）。SDF spread (0 for raw). */
+  spread: number
+  /** SDF 距离场画布（命中测试用）；raw 为 null。SDF canvas for hit-test; null for raw. */
+  sdfCanvas: HTMLCanvasElement | null
+}
+
 interface IconCacheEntry {
-  sdf: SDFResult
+  texture: IconTexture
   naturalWidth: number
   naturalHeight: number
   refCount: number
 }
 
-/** URL → 共享图标 SDF，多实体同 URL 复用同一张纹理（引用计数释放）。Shared icon SDF by URL. */
+/** URL+模式 → 共享图标纹理，多实体同 URL 复用同一张纹理（引用计数释放）。Shared icon texture by URL+mode. */
 const iconCache = new Map<string, IconCacheEntry>()
 
 interface Size2 {
@@ -55,8 +73,8 @@ interface SymbolGraphicOptions {
  * 背景 quad。icon 从图片 alpha 生成 SDF（按 URL 共享缓存），text 使用 Mapbox 同源
  * TinySDF glyph atlas：按 font stack 缓存单字形，label 排版为多个 glyph quad；
  * 描边 / halo 由 shader 按 TinySDF cutoff 实现。布局（textRelative / anchor / spacing /
- * pixelOffset）在 CPU 算，每个 quad 得到自己的像素偏移；颜色作为 uniform 经
- * {@link resolveColor} 反求（WYSIWYG）。
+ * pixelOffset）在 CPU 算，每个 quad 得到自己的像素偏移；颜色 uniform 为 display sRGB
+ * 编码值（symbol 在 tone mapping 之后直接向 canvas 混合，天然 WYSIWYG）。
  *
  * Symbol graphics: an icon + text label combo at one anchor, always screen-facing.
  * Holds 1–2 AnchorQuadGraphics (icon / text) and an optional procedural rounded-rect
@@ -64,7 +82,8 @@ interface SymbolGraphicOptions {
  * uses a Mapbox-style TinySDF glyph atlas: glyphs are cached by font stack and
  * labels are shaped into glyph quads. Outline / halo is shader-thresholded using
  * TinySDF's cutoff. Layout (textRelative / anchor / spacing / pixelOffset) is
- * computed on the CPU; colors are WYSIWYG uniforms via resolveColor.
+ * computed on the CPU; color uniforms are display-sRGB encoded (symbols blend
+ * straight into the tone-mapped canvas, WYSIWYG by construction).
  */
 export class SymbolGraphic {
   readonly object3D: THREE.Group
@@ -84,8 +103,9 @@ export class SymbolGraphic {
   // icon 状态 / icon state
   private iconScale: number
   private iconOpacity: number
+  private iconColorize: boolean
   private iconNatural: Size2 | null = null
-  private iconSdf: SDFResult | null = null
+  private iconTexture: IconTexture | null = null
   private iconCacheKey: string | null = null
   private iconOwnsTexture = false
 
@@ -103,6 +123,8 @@ export class SymbolGraphic {
   }
   private disposed = false
   private pickRects: PickRect[] = []
+  /** atlas 变化时重建文字的取消订阅函数 */
+  private readonly atlasChangeUnsubscribe: (() => void) | null = null
 
   constructor({ position, options, pixelRatio }: SymbolGraphicOptions) {
     this.position = position.clone()
@@ -120,6 +142,7 @@ export class SymbolGraphic {
     this.iconQuad = options.icon ? new AnchorQuadGraphic() : null
     this.iconScale = options.icon?.scale ?? 1
     this.iconOpacity = options.icon?.opacity ?? 1
+    this.iconColorize = options.icon?.colorize ?? false
     if (this.iconQuad) {
       this.iconQuad.setPosition(this.position)
       this.iconQuad.setTint(options.icon?.color ?? 0xffffff)
@@ -148,9 +171,9 @@ export class SymbolGraphic {
       lineHeight: text?.lineHeight ?? 1.2,
       maxWidth: text?.maxWidth,
       padding: text?.padding ? [text.padding[0], text.padding[1]] : [4, 2],
-      fillColor: resolveColor(text?.fillColor ?? 0xffffff),
-      outlineColor: resolveColor(text?.outlineColor ?? 0x000000),
-      backgroundColor: text?.backgroundColor === undefined ? null : resolveColor(text.backgroundColor),
+      fillColor: resolveDisplayColor(text?.fillColor ?? 0xffffff),
+      outlineColor: resolveDisplayColor(text?.outlineColor ?? 0x000000),
+      backgroundColor: text?.backgroundColor === undefined ? null : resolveDisplayColor(text.backgroundColor),
       backgroundCornerRadius: text?.backgroundCornerRadius ?? 0,
       opacity: text?.opacity ?? 1
     }
@@ -167,6 +190,15 @@ export class SymbolGraphic {
     }
     if (this.textEnabled) {
       this.rebuildTextGlyphs()
+      // 预加载 MSDF atlas 通常晚于 symbol 创建（异步 fetch）。监听 atlas 变化，
+      // 在对应字体的 atlas 加载完成后自动重建文字，让已显示的标签切到 MSDF。
+      this.atlasChangeUnsubscribe = onFontAtlasChange((font, fontWeight) => {
+        if (this.disposed) return
+        if (font === this.textConfig.font && fontWeight === this.textConfig.fontWeight) {
+          this.rebuildTextGlyphs()
+          this.update()
+        }
+      })
     }
 
     this.update()
@@ -201,10 +233,13 @@ export class SymbolGraphic {
   get iconScaleValue(): number { return this.iconScale }
   get iconOpacityValue(): number { return this.iconOpacity }
   get textValue(): string { return this.textConfig.text }
-  get fillColorHex(): number { return this.textConfig.fillColor.getHex() }
-  get outlineColorHex(): number { return this.textConfig.outlineColor.getHex() }
+  // 颜色存 display sRGB 编码值，getHex 需跳过默认的二次编码。
+  get fillColorHex(): number { return this.textConfig.fillColor.getHex(THREE.LinearSRGBColorSpace) }
+  get outlineColorHex(): number { return this.textConfig.outlineColor.getHex(THREE.LinearSRGBColorSpace) }
   get backgroundColorHex(): number | null {
-    return this.textConfig.backgroundColor ? this.textConfig.backgroundColor.getHex() : null
+    return this.textConfig.backgroundColor
+      ? this.textConfig.backgroundColor.getHex(THREE.LinearSRGBColorSpace)
+      : null
   }
   get fontSizeValue(): number { return this.textConfig.fontSize }
   get textOpacityValue(): number { return this.textConfig.opacity }
@@ -218,12 +253,12 @@ export class SymbolGraphic {
   }
 
   setFillColor(color: ColorInput) {
-    this.textConfig.fillColor = resolveColor(color)
+    this.textConfig.fillColor = resolveDisplayColor(color)
     this.applyTextUniforms()
   }
 
   setOutlineColor(color: ColorInput) {
-    this.textConfig.outlineColor = resolveColor(color)
+    this.textConfig.outlineColor = resolveDisplayColor(color)
     this.applyTextUniforms()
   }
 
@@ -248,7 +283,7 @@ export class SymbolGraphic {
   }
 
   setBackgroundColor(color: ColorInput | null) {
-    const resolved = color === null ? null : resolveColor(color)
+    const resolved = color === null ? null : resolveDisplayColor(color)
     this.textConfig.backgroundColor = resolved
     if (resolved && !this.bgQuad) {
       // 首次设置背景：创建 bg quad。
@@ -303,17 +338,18 @@ export class SymbolGraphic {
 
   dispose() {
     this.disposed = true
+    this.atlasChangeUnsubscribe?.()
     if (this.iconCacheKey) {
       const entry = iconCache.get(this.iconCacheKey)
       if (entry) {
         entry.refCount -= 1
         if (entry.refCount <= 0) {
-          entry.sdf.texture.dispose()
+          entry.texture.texture.dispose()
           iconCache.delete(this.iconCacheKey)
         }
       }
-    } else if (this.iconSdf && this.iconOwnsTexture) {
-      this.iconSdf.texture.dispose()
+    } else if (this.iconTexture && this.iconOwnsTexture) {
+      this.iconTexture.texture.dispose()
     }
     this.iconQuad?.dispose()
     this.clearTextQuads()
@@ -349,40 +385,50 @@ export class SymbolGraphic {
     if (this.disposed) return
     const natW = source instanceof HTMLImageElement ? source.naturalWidth : source.width
     const natH = source instanceof HTMLImageElement ? source.naturalHeight : source.height
+    const texture = this.iconColorize
+      ? createIconSdfTexture(source)
+      : createIconRawTexture(source)
     if (url) {
-      const cached = iconCache.get(url)
+      // 缓存键带上模式，避免同 URL 不同 colorize 复用错纹理类型。
+      // Key includes the mode so the same URL with different colorize doesn't share.
+      const key = `${url}|${this.iconColorize ? 'sdf' : 'raw'}`
+      const cached = iconCache.get(key)
       if (cached) {
         cached.refCount += 1
-        this.iconCacheKey = url
+        this.iconCacheKey = key
         this.iconNatural = { w: cached.naturalWidth, h: cached.naturalHeight }
-        this.iconSdf = cached.sdf
-        this.applyIconSdf()
+        this.iconTexture = cached.texture
+        // 本地生成的 texture 没进缓存，立即释放（缓存里有共享的那张）。
+        texture.texture.dispose()
+        this.applyIconTexture()
         return
       }
-      const sdf = generateSDF(source, ICON_SPREAD)
-      iconCache.set(url, {
-        sdf,
+      iconCache.set(key, {
+        texture,
         naturalWidth: natW,
         naturalHeight: natH,
         refCount: 1
       })
-      this.iconCacheKey = url
+      this.iconCacheKey = key
       this.iconNatural = { w: natW, h: natH }
-      this.iconSdf = sdf
-      this.applyIconSdf()
+      this.iconTexture = texture
+      this.applyIconTexture()
       return
     }
-    // 非 URL 源：每个实体独占一张 SDF，dispose 时释放。
-    const sdf = generateSDF(source, ICON_SPREAD)
-    this.iconSdf = sdf
+    // 非 URL 源：每个实体独占一张纹理，dispose 时释放。
+    this.iconTexture = texture
     this.iconOwnsTexture = true
     this.iconNatural = { w: natW, h: natH }
-    this.applyIconSdf()
+    this.applyIconTexture()
   }
 
-  private applyIconSdf() {
-    if (this.disposed || !this.iconQuad || !this.iconSdf) return
-    this.iconQuad.setMap(this.iconSdf.texture)
+  private applyIconTexture() {
+    if (this.disposed || !this.iconQuad || !this.iconTexture) return
+    if (this.iconTexture.mode === 4) {
+      this.iconQuad.setRawMap(this.iconTexture.texture)
+    } else {
+      this.iconQuad.setMap(this.iconTexture.texture)
+    }
     this.update()
   }
 
@@ -395,7 +441,12 @@ export class SymbolGraphic {
     for (const glyph of run.quads) {
       const quad = new AnchorQuadGraphic()
       quad.setPosition(this.position)
-      quad.setGlyphSdfMap(glyph.texture, glyph.uvMin, glyph.uvMax)
+      // 根据字形类型选择渲染模式：MSDF（模式3）或 TinySDF（模式2）
+      if (glyph.isMsdf) {
+        quad.setGlyphMsdfMap(glyph.texture, glyph.uvMin, glyph.uvMax, glyph.msdfUnitRange)
+      } else {
+        quad.setGlyphSdfMap(glyph.texture, glyph.uvMin, glyph.uvMax)
+      }
       quad.setPixelSize(glyph.w, glyph.h)
       quad.setSpread(glyph.sdfRadius)
       quad.setSmoothing(glyph.smoothing)
@@ -425,12 +476,14 @@ export class SymbolGraphic {
       : null
     const textBox = this.textContent ? { w: this.textContent.w, h: this.textContent.h } : null
 
-    // icon quad 尺寸 / spread（SDF 被拉伸 scale×pr）。
-    if (this.iconQuad && this.iconSdf && iconBox) {
-      const sx = this.iconSdf.width * this.iconScale * pr
-      const sy = this.iconSdf.height * this.iconScale * pr
+    // icon quad 尺寸 / spread（SDF 被拉伸 scale×pr；原色模式 spread=0 不设）。
+    if (this.iconQuad && iconBox && this.iconTexture) {
+      const sx = this.iconTexture.width * this.iconScale * pr
+      const sy = this.iconTexture.height * this.iconScale * pr
       this.iconQuad.setPixelSize(sx, sy)
-      this.iconQuad.setSpread(this.iconSdf.spread * this.iconScale * pr)
+      if (this.iconTexture.spread > 0) {
+        this.iconQuad.setSpread(this.iconTexture.spread * this.iconScale * pr)
+      }
     }
     // text glyph quad 尺寸 / spread（TinySDF atlas + drawing-buffer 口径）。
     if (this.textGlyphRun) {
@@ -457,21 +510,30 @@ export class SymbolGraphic {
     const [poX, poY] = this.pixelOffset
     this.pickRects = []
 
-    if (this.iconQuad && iconBox && this.iconSdf) {
+    if (this.iconQuad && iconBox && this.iconTexture) {
       const cx = layout.iconCenter[0] + shift[0] + poX
       const cy = layout.iconCenter[1] + shift[1] + poY
       this.iconQuad.setPixelOffset(cx * pr, cy * pr)
       this.iconQuad.setRotation(this.rotation)
-      const canvas = this.iconSdf.texture.image
-      if (canvas instanceof HTMLCanvasElement) {
+      if (this.iconTexture.sdfCanvas) {
         this.pickRects.push({
           cx, cy,
-          w: this.iconSdf.width * this.iconScale,
-          h: this.iconSdf.height * this.iconScale,
+          w: this.iconTexture.width * this.iconScale,
+          h: this.iconTexture.height * this.iconScale,
           kind: 'sdf',
-          canvas,
-          spread: this.iconSdf.spread * this.iconScale * pr,
+          canvas: this.iconTexture.sdfCanvas,
+          spread: this.iconTexture.spread * this.iconScale * pr,
           outlineWidth: 0,
+          smoothing: 0.5
+        })
+      } else {
+        // 原色图标：按包围盒命中（透明角落也可命中），简化拾取。
+        // Raw icon: bounding-box hit test (transparent corners also hit), simplified pick.
+        this.pickRects.push({
+          cx, cy,
+          w: this.iconTexture.width * this.iconScale,
+          h: this.iconTexture.height * this.iconScale,
+          kind: 'rect',
           smoothing: 0.5
         })
       }
@@ -579,6 +641,37 @@ export class SymbolGraphic {
       ? null
       : { distance: best.distance, screenDistance: best.screenDistance, point: this.position.clone() }
   }
+}
+
+/** 把位图源做成 SDF 剪影纹理（mode 0，alpha → 距离场，供 color 染色）。 */
+function createIconSdfTexture(source: HTMLImageElement | HTMLCanvasElement): IconTexture {
+  const sdf = generateSDF(source, ICON_SPREAD)
+  return {
+    mode: 0,
+    texture: sdf.texture,
+    width: sdf.width,
+    height: sdf.height,
+    spread: sdf.spread,
+    sdfCanvas: sdf.texture.image instanceof HTMLCanvasElement ? sdf.texture.image : null
+  }
+}
+
+/** 把位图源做成原色纹理（mode 4，保留 RGB，alpha 做形状）。 */
+function createIconRawTexture(source: HTMLImageElement | HTMLCanvasElement): IconTexture {
+  const texture = new THREE.Texture(source)
+  // 原色图标是普通颜色纹理（非距离场），缩小采样开 mipmap 抗锯齿是正确的。
+  // Raw color icons are ordinary color textures (not distance fields), so mipmap
+  // minification is correct here (unlike SDF/MSDF).
+  texture.generateMipmaps = true
+  texture.minFilter = THREE.LinearMipmapLinearFilter
+  texture.magFilter = THREE.LinearFilter
+  // symbol 后合成直出 sRGB：按 NoColorSpace 取原始 sRGB 字节，shader 不做解码，
+  // 输出直接写进 sRGB canvas。
+  texture.colorSpace = THREE.NoColorSpace
+  texture.needsUpdate = true
+  const w = source instanceof HTMLImageElement ? source.naturalWidth : source.width
+  const h = source instanceof HTMLImageElement ? source.naturalHeight : source.height
+  return { mode: 4, texture, width: w, height: h, spread: 0, sdfCanvas: null }
 }
 
 /** 把 IconOptions.image 解析成可光栅化的位图源；URL 走共享加载。Resolve icon image to a raster source. */

@@ -16,6 +16,7 @@ export class PostProcessingManager {
   private readonly smaaAdapter: ThreeEffectPass
   private readonly ditheringAdapter: ThreeEffectPass
   private currentEffectsKey = ''
+  private activeEffects: ThreeEffectPass[] = []
 
   constructor(
     private readonly renderer: ThreeRendererWithEffects,
@@ -122,7 +123,30 @@ export class PostProcessingManager {
     }
 
     this.currentEffectsKey = effectsKey
+    this.activeEffects = nextEffects
     this.renderer.setEffects(nextEffects)
+  }
+
+  /**
+   * 临时旁路 effects 链与 tone mapping，执行 `fn` 后恢复。
+   *
+   * 供 symbol 后合成绘制使用：`fn` 内的 `renderer.render()` 不进入内置 setEffects
+   * 管线（begin() 对 NoToneMapping + 空 effects 直接放行），直接向当前帧缓冲绘制。
+   *
+   * Temporarily bypasses the effects chain and tone mapping while running `fn`.
+   * Used by the symbol post-composite draw: render() calls inside `fn` skip the
+   * built-in setEffects pipeline and draw straight to the current framebuffer.
+   */
+  renderWithEffectsBypassed(fn: () => void) {
+    const previousToneMapping = this.renderer.toneMapping
+    this.renderer.toneMapping = THREE.NoToneMapping
+    this.renderer.setEffects([])
+    try {
+      fn()
+    } finally {
+      this.renderer.setEffects(this.activeEffects)
+      this.renderer.toneMapping = previousToneMapping
+    }
   }
 
   private shouldRenderCloudsAtHeight(currentHeight: number | null) {

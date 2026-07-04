@@ -19,53 +19,42 @@ interface MaterialDepthState {
 }
 
 /**
- * Symbol occlusion pass. Symbols are hidden during the main scene render, then
- * drawn here against the scene depth texture. Each quad samples depth at its
- * anchor projection, so occlusion is all-or-nothing for the whole icon/text.
+ * Symbol 遮挡与后合成绘制。
+ *
+ * symbol（文字 / 图标）必须在整帧 tone mapping + sRGB 输出**之后**、直接向 canvas
+ * 以 display 色彩空间做 alpha 混合——这是 Mapbox 等地图渲染器的标准做法。若像普通
+ * 实体一样画进 HDR linear 离屏缓冲，链尾的 AgX 会把字形边缘的 coverage 渐变非线性
+ * 压扁（半透明边缘像素被映射得远比预期亮/暗），文字看起来膨胀、发糊、带脏边；
+ * 后续 SMAA 还会把小字形再模糊一遍。
+ *
+ * 因此本类拆成两步：
+ * 1. 作为 effects 链内的 pass（{@link render}）：只捕获场景深度纹理与其 texel 尺寸，
+ *    不做任何绘制（needsSwap 恒为 false）。
+ * 2. {@link renderAfterComposite}：由 Viewer 在 `renderer.render()` 完成（canvas 已是
+ *    最终 sRGB 图像）后调用，绕过 effects 链直接把 symbol 子树画到默认帧缓冲。
+ *    锚点遮挡仍用捕获的深度纹理在 fragment shader 里判定（全有 / 全无）。
+ *
+ * Symbol occlusion + post-composite draw. Symbols must be alpha-blended in display
+ * color space AFTER whole-frame tone mapping (like Mapbox), otherwise AgX warps the
+ * antialiased coverage ramp of glyph edges (dirty, bloated text) and SMAA smears
+ * small glyphs. The in-chain pass only captures the scene depth texture;
+ * renderAfterComposite draws the symbols straight to the canvas afterwards,
+ * sampling that depth for all-or-nothing anchor occlusion.
  */
 export class SymbolOcclusionPass implements ThreeEffectPass {
   enabled = true
   needsSwap = false
 
-  private readonly fullscreenScene = new THREE.Scene()
-  private readonly fullscreenCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
-  private readonly copyMaterial: THREE.ShaderMaterial
-  private readonly copyMesh: THREE.Mesh
   private readonly hiddenSymbols: VisibilityState[] = []
   private readonly hiddenNonSymbols: VisibilityState[] = []
   private readonly materialDepthStates: MaterialDepthState[] = []
   private readonly depthTexelSize = new THREE.Vector2(1, 1)
+  private capturedDepth: THREE.Texture | null = null
 
   constructor(
     private readonly root: THREE.Object3D,
     private readonly camera: THREE.PerspectiveCamera
-  ) {
-    this.copyMaterial = new THREE.ShaderMaterial({
-      name: 'TelluxSymbolOcclusionBlit',
-      depthTest: false,
-      depthWrite: false,
-      transparent: false,
-      uniforms: { tDiffuse: { value: null } },
-      vertexShader: /* glsl */ `
-        varying vec2 vUv;
-        void main() {
-          vUv = uv;
-          gl_Position = vec4(position.xy, 0.0, 1.0);
-        }
-      `,
-      fragmentShader: /* glsl */ `
-        precision highp float;
-        uniform sampler2D tDiffuse;
-        varying vec2 vUv;
-        void main() {
-          gl_FragColor = texture2D(tDiffuse, vUv);
-        }
-      `
-    })
-    this.copyMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.copyMaterial)
-    this.copyMesh.frustumCulled = false
-    this.fullscreenScene.add(this.copyMesh)
-  }
+  ) {}
 
   beginFrame() {
     this.restoreHiddenSymbols()
@@ -76,34 +65,46 @@ export class SymbolOcclusionPass implements ThreeEffectPass {
     })
   }
 
+  /**
+   * effects 链内步骤：仅捕获本帧场景深度，供 {@link renderAfterComposite} 使用。
+   * In-chain step: captures this frame's scene depth for renderAfterComposite.
+   */
   render(
-    renderer: THREE.WebGLRenderer,
+    _renderer: THREE.WebGLRenderer,
     writeBuffer: THREE.WebGLRenderTarget,
     readBuffer: THREE.WebGLRenderTarget
   ) {
-    this.restoreHiddenSymbols()
-
     const depthOnRead = readBuffer.depthTexture ?? null
-    const depth = depthOnRead ?? writeBuffer.depthTexture ?? null
-    if (!depth || !this.hasRenderableSymbols()) {
+    this.capturedDepth = depthOnRead ?? writeBuffer.depthTexture ?? null
+    const source = depthOnRead ? readBuffer : writeBuffer
+    this.depthTexelSize.set(1 / Math.max(1, source.width), 1 / Math.max(1, source.height))
+    this.needsSwap = false
+  }
+
+  /**
+   * 后合成绘制：在 effects 链 + tone mapping 输出完成后，把 symbol 直接画到 canvas。
+   * 调用方需保证此时 renderer 的 effects 链已被旁路（否则会递归触发整条链）。
+   *
+   * Post-composite draw: renders symbols straight to the canvas after the effects
+   * chain and tone-mapped output finished. The caller must bypass the renderer's
+   * effects chain around this call.
+   */
+  renderAfterComposite(renderer: THREE.WebGLRenderer) {
+    this.restoreHiddenSymbols()
+    const depth = this.capturedDepth
+    this.capturedDepth = null
+    if (!this.hasRenderableSymbols()) {
       this.disableSymbolOcclusion()
-      this.needsSwap = false
       return
     }
 
-    const target = depthOnRead ? writeBuffer : readBuffer
     const previousRenderTarget = renderer.getRenderTarget()
     const previousAutoClear = renderer.autoClear
 
-    this.depthTexelSize.set(1 / Math.max(1, target.width), 1 / Math.max(1, target.height))
     this.configureSymbolRender(depth)
     try {
       renderer.autoClear = false
-      renderer.setRenderTarget(target)
-      if (depthOnRead) {
-        this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture
-        renderer.render(this.fullscreenScene, this.fullscreenCamera)
-      }
+      renderer.setRenderTarget(null)
       renderer.render(this.root, this.camera)
     } finally {
       renderer.setRenderTarget(previousRenderTarget)
@@ -112,8 +113,6 @@ export class SymbolOcclusionPass implements ThreeEffectPass {
       this.restoreMaterialDepthTests()
       this.disableSymbolOcclusion()
     }
-
-    this.needsSwap = depthOnRead !== null
   }
 
   setSize(_width: number, _height: number) {}
@@ -123,16 +122,17 @@ export class SymbolOcclusionPass implements ThreeEffectPass {
     this.restoreNonSymbolVisibility()
     this.restoreMaterialDepthTests()
     this.disableSymbolOcclusion()
-    this.copyMesh.geometry.dispose()
-    this.copyMaterial.dispose()
+    this.capturedDepth = null
   }
 
-  private configureSymbolRender(depth: THREE.Texture) {
+  private configureSymbolRender(depth: THREE.Texture | null) {
     this.root.traverse((object) => {
       const controller = getSymbolOcclusionController(object)
       if (controller) {
-        controller.setDepthTexture(depth, this.depthTexelSize)
-        controller.setEnabled(true)
+        // 无深度纹理时仍然绘制 symbol，只是不做锚点遮挡。
+        // Without a depth texture symbols still draw, just without anchor occlusion.
+        controller.setDepthTexture(depth, depth ? this.depthTexelSize : null)
+        controller.setEnabled(depth !== null)
         this.disableMaterialDepthTest(object)
         return
       }

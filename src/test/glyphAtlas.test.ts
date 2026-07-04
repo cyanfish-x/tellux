@@ -4,10 +4,10 @@ import { computeGlyphSdfUniforms, GLYPH_ATLAS_METRICS } from '../entities/GlyphA
 describe('GlyphAtlas', () => {
   it('uses Mapbox-compatible TinySDF source metrics', () => {
     expect(GLYPH_ATLAS_METRICS.oneEm).toBe(24)
-    expect(GLYPH_ATLAS_METRICS.sdfScale).toBe(2)
-    expect(GLYPH_ATLAS_METRICS.tinyFontSize).toBe(48)
-    expect(GLYPH_ATLAS_METRICS.tinyBuffer).toBe(6)
-    expect(GLYPH_ATLAS_METRICS.tinyRadius).toBe(16)
+    expect(GLYPH_ATLAS_METRICS.sdfScale).toBe(1)
+    expect(GLYPH_ATLAS_METRICS.tinyFontSize).toBe(24)
+    expect(GLYPH_ATLAS_METRICS.tinyBuffer).toBe(3)
+    expect(GLYPH_ATLAS_METRICS.tinyRadius).toBe(8)
   })
 
   it('scales glyph SDF radius and gamma by font size and drawing-buffer pixel ratio', () => {
@@ -15,6 +15,7 @@ describe('GlyphAtlas', () => {
 
     expect(uniforms.fontScale).toBeCloseTo(16 / 24, 6)
     expect(uniforms.sdfRadius).toBeCloseTo(8 * (16 / 24) * 2, 6)
-    expect(uniforms.smoothing).toBeCloseTo(0.105 / ((16 / 24) * 2), 6)
+    // Mapbox gamma 公式：(0.105 / dpr) / fontScale（对 fontScale 是倒数关系）。
+    expect(uniforms.smoothing).toBeCloseTo((0.105 / 2) / (16 / 24), 6)
   })
 })

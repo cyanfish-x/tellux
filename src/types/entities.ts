@@ -213,12 +213,12 @@ export type SymbolAnchor =
 export type SymbolTextRelative = 'left' | 'right' | 'top' | 'bottom'
 
 /**
- * 图标（billboard）配置。SDF 方案下图标按 alpha 剪影渲染：可任意缩放保持锐利，
- * tint 染色，颜色经反求还原（WYSIWYG）。
+ * 图标（billboard）配置。默认保留图标原色直接渲染（`colorize: false`）；
+ * 设 `colorize: true` 则按 alpha 剪影渲染并以 `color` 染色——任意缩放保持锐利。
  *
- * Icon (billboard) options. Under the SDF scheme the icon is rendered from its
- * alpha silhouette: it stays crisp at any scale, is tinted, and colors are
- * WYSIWYG via tone-mapping inversion.
+ * Icon (billboard) options. By default the icon's original colors are rendered
+ * directly (`colorize: false`); set `colorize: true` to render as an alpha
+ * silhouette tinted by `color` — crisp at any scale.
  */
 export interface IconOptions {
   /**
@@ -247,6 +247,15 @@ export interface IconOptions {
    * Tint color. Defaults to white (no tint). WYSIWYG via resolveColor.
    */
   color?: ColorInput
+  /**
+   * `false`（默认）= 保留图标原色直接渲染，`color` 作为可选乘法调色（默认白色=不调）。
+   * `true` = 按 alpha 剪影渲染并以 `color` 染色（单色 marker，任意缩放保持锐利）。
+   *
+   * `false` (default) = render the icon's original colors directly; `color` is an
+   * optional multiply tint (default white = no tint). `true` = render as an alpha
+   * silhouette tinted by `color` (monochrome marker, crisp at any scale).
+   */
+  colorize?: boolean
   /**
    * 透明度 `[0,1]`，默认 `1`。
    *

@@ -82,103 +82,59 @@ const viewer = new tellux.Viewer(container, {
 
 ;(window as any).viewer = viewer
 
+// 预加载 MSDF atlas（方案C：自建 MSDF + TinySDF 回退）
+// 命中 atlas 的字符走预生成 MSDF（最高质量、零运行时生成开销）；
+// 未命中的字符自动回退到 TinySDF 动态生成。加载失败时静默回退，不影响渲染。
+//
+// Preload the MSDF atlas (Plan C: self-built MSDF + TinySDF fallback). Characters
+// present in the atlas use pre-generated MSDF (best quality, no runtime cost);
+// misses fall back to TinySDF. A failed load silently falls back to TinySDF.
+tellux
+  .preloadFontMsdfAtlas("SimHei", "normal", `${import.meta.env.BASE_URL}fonts/simhei-regular`)
+  .catch((error) => {
+    console.warn("[symbol example] MSDF atlas 不可用，回退到 TinySDF:", error)
+  })
+
 const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
 })
 
-// ----- 图标剪影：程序化绘制白色 silhouette，天然契合 SDF（剪影 → 锐利染色 marker）。
-// ----- Icon silhouettes drawn procedurally as white shapes — ideal SDF input.
-
-function makePinSilhouette(size = 64): HTMLCanvasElement {
-  const canvas = document.createElement("canvas")
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext("2d")!
-  const cx = size / 2
-  const headR = size * 0.26
-  const headCy = size * 0.4
-  ctx.fillStyle = "#ffffff"
-  ctx.beginPath()
-  ctx.moveTo(cx - headR * 0.85, headCy + headR * 0.15)
-  ctx.lineTo(cx + headR * 0.85, headCy + headR * 0.15)
-  ctx.lineTo(cx, size * 0.92)
-  ctx.closePath()
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(cx, headCy, headR, 0, Math.PI * 2)
-  ctx.fill()
-  return canvas
-}
-
-function makeStarSilhouette(size = 64): HTMLCanvasElement {
-  const canvas = document.createElement("canvas")
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext("2d")!
-  const cx = size / 2
-  const cy = size / 2
-  const outer = size * 0.42
-  const inner = outer * 0.45
-  ctx.fillStyle = "#ffffff"
-  ctx.beginPath()
-  for (let i = 0; i < 10; i += 1) {
-    const r = i % 2 === 0 ? outer : inner
-    const a = (Math.PI / 5) * i - Math.PI / 2
-    const x = cx + Math.cos(a) * r
-    const y = cy + Math.sin(a) * r
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  }
-  ctx.closePath()
-  ctx.fill()
-  return canvas
-}
-
-function makeDiamondSilhouette(size = 64): HTMLCanvasElement {
-  const canvas = document.createElement("canvas")
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext("2d")!
-  const cx = size / 2
-  const cy = size / 2
-  const r = size * 0.4
-  ctx.fillStyle = "#ffffff"
-  ctx.beginPath()
-  ctx.moveTo(cx, cy - r)
-  ctx.lineTo(cx + r, cy)
-  ctx.lineTo(cx, cy + r)
-  ctx.lineTo(cx - r, cy)
-  ctx.closePath()
-  ctx.fill()
-  return canvas
-}
-
-const pinIcon = makePinSilhouette()
-const starIcon = makeStarSilhouette()
-const diamondIcon = makeDiamondSilhouette()
+// ----- 图标：从 public/icons 加载真实彩色图标（保留原色，colorize 默认 false）。
+// ----- Icons loaded from public/icons as full-color PNGs (original colors preserved).
+//
+// icon.colorize 默认 false = 保留图标原色直接渲染；若要单色 marker，设 colorize: true
+// 并用 color 染色（按 alpha 剪影）。原 30px/45px PNG 比旧的 64px canvas 小，scale
+// 相应放大以保持视觉尺寸（可见尺寸 ≈ contentW × scale）。
+const iconUrl = (name: string) => `${import.meta.env.BASE_URL}icons/${name}.png`
+const pinIcon = iconUrl('locate')
+const starIcon = iconUrl('star')
+const restaurantIcon = iconUrl('餐厅')
+const barIcon = iconUrl('酒吧')
 
 // ----- 1) POI：图标 + 文字标签（icon + text 共锚点，anchor bottom）。-----
 // ----- 1) POIs: icon + text sharing an anchor (anchor bottom). -----
-const poiList: Array<[number, number, string, HTMLCanvasElement, string]> = [
-  [FOCUS_LONGITUDE - 0.006, FOCUS_LATITUDE + 0.004, "陆家嘴", pinIcon, "#ef4444"],
-  [FOCUS_LONGITUDE + 0.005, FOCUS_LATITUDE + 0.005, "东方明珠", starIcon, "#f59e0b"],
-  [FOCUS_LONGITUDE + 0.008, FOCUS_LATITUDE - 0.004, "上海中心", diamondIcon, "#38bdf8"],
+const poiList: Array<[number, number, string, string]> = [
+  [FOCUS_LONGITUDE - 0.006, FOCUS_LATITUDE + 0.004, "陆家嘴", pinIcon],
+  [FOCUS_LONGITUDE + 0.005, FOCUS_LATITUDE + 0.005, "东方明珠", starIcon],
+  [FOCUS_LONGITUDE + 0.008, FOCUS_LATITUDE - 0.004, "上海中心", pinIcon],
 ]
 const poiIds: string[] = []
-poiList.forEach(([lon, lat, label, icon, color], index) => {
+poiList.forEach(([lon, lat, label, icon], index) => {
   const id = `poi-${index}`
   poiIds.push(id)
   viewer.entities.add({
     id,
     position: [lon, lat, SURFACE_OFFSET],
     symbol: {
-      icon: { image: icon, scale: 0.6, color },
+      // 原色图标（colorize 默认 false）；30px PNG 用 scale 1.3 保持与旧 64px×0.6 相近的视觉尺寸。
+      icon: { image: icon, scale: 1 },
       text: {
         text: label,
+        font: "SimHei",
         fontSize: 15,
         fillColor: "#ffffff",
         outlineColor: "#0f172a",
-        outlineWidth: 2,
+        outlineWidth: 1.2,
       },
       anchor: "bottom",
       textRelative: "right",
@@ -205,10 +161,11 @@ labelList.forEach(([lon, lat, label], index) => {
     symbol: {
       text: {
         text: label,
+        font: "SimHei",
         fontSize: 14,
         fillColor: "#fde68a",
         outlineColor: "#7c2d12",
-        outlineWidth: 3,
+        outlineWidth: 1.2,
       },
       anchor: "center",
     },
@@ -216,22 +173,23 @@ labelList.forEach(([lon, lat, label], index) => {
   })
 })
 
-// ----- 3) 纯图标 marker（不同剪影与染色）。-----
-// ----- 3) Icon-only markers (different silhouettes / tints). -----
-const iconList: Array<[number, number, HTMLCanvasElement, string]> = [
-  [FOCUS_LONGITUDE - 0.009, FOCUS_LATITUDE + 0.002, starIcon, "#a3e635"],
-  [FOCUS_LONGITUDE + 0.003, FOCUS_LATITUDE - 0.008, diamondIcon, "#f472b6"],
-  [FOCUS_LONGITUDE + 0.013, FOCUS_LATITUDE - 0.007, pinIcon, "#22d3ee"],
+// ----- 3) 纯图标 marker（不同彩色图标，保留原色）。-----
+// ----- 3) Icon-only markers (different full-color icons). -----
+// 45px 图标 scale 0.75、30px 图标 scale 1.1，统一到 ~34px 可见尺寸。
+const iconList: Array<[number, number, string, number]> = [
+  [FOCUS_LONGITUDE - 0.009, FOCUS_LATITUDE + 0.002, restaurantIcon, 0.75],
+  [FOCUS_LONGITUDE + 0.003, FOCUS_LATITUDE - 0.008, barIcon, 0.75],
+  [FOCUS_LONGITUDE + 0.013, FOCUS_LATITUDE - 0.007, starIcon, 1.1],
 ]
 const iconIds: string[] = []
-iconList.forEach(([lon, lat, icon, color], index) => {
+iconList.forEach(([lon, lat, icon, scale], index) => {
   const id = `icon-${index}`
   iconIds.push(id)
   viewer.entities.add({
     id,
     position: [lon, lat, SURFACE_OFFSET],
     symbol: {
-      icon: { image: icon, scale: 0.5, color },
+      icon: { image: icon, scale },
       anchor: "center",
     },
     properties: { kind: "icon", label: `图标 ${index + 1}` },
@@ -247,12 +205,13 @@ viewer.entities.add({
   symbol: {
     text: {
       text: "陆家嘴金融区\n东方明珠 · 上海中心",
+      font: "SimHei",
       fontSize: 13,
       lineHeight: 1.3,
       maxWidth: 120,
       fillColor: "#e0f2fe",
       outlineColor: "#082f49",
-      outlineWidth: 2,
+      outlineWidth: 1.2,
       backgroundColor: "rgba(15, 23, 42, 0.72)",
       backgroundCornerRadius: 6,
       padding: [8, 5],
@@ -272,10 +231,11 @@ viewer.entities.add({
   symbol: {
     text: {
       text: "圆点 + 标签",
+      font: "SimHei",
       fontSize: 13,
       fillColor: "#ffffff",
       outlineColor: "#064e3b",
-      outlineWidth: 2,
+      outlineWidth: 1.2,
     },
     anchor: "right",
     pixelOffset: [-8, 0],
