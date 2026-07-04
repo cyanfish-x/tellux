@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-07-04
+
 ### Added
 - 实现 SymbolEntity 基本渲染
 - 实现贴地多边形功能及案例
