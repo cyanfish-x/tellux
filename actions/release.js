@@ -8,11 +8,13 @@
  *   1. pnpm release:check（type-check + build + pnpm pack --dry-run）
  *   2. npm version <type> --no-git-tag-version（只改 package.json，不 commit/tag）
  *   3. node actions/generate-changelog.js --version <新版本>（写入 CHANGELOG.md）
- *   4. git add package.json CHANGELOG.md → commit → tag v<版本>
- *      （tag 指向的 commit 包含 changelog 改动）
+ *   4. git add package.json CHANGELOG.md → commit → 打 annotated tag v<版本>
+ *      （annotated tag 才会被 git push --follow-tags 推送；tag 指向含 changelog 的 commit）
  *   5. pnpm publish --no-git-checks（触发 prepublishOnly 钩子再校验一次；
  *      发版流程在 push 之前发布，需 --no-git-checks 跳过 pnpm 对未推送 commit 的拦截）
- *   6. git push --follow-tags
+ *   6. git push --follow-tags（推送 commit + annotated tag）
+ *   7. node actions/github-release.js <新版本>（用 gh 创建 GitHub Release，notes 取自 CHANGELOG；
+ *      需已安装并登录 gh；失败仅告警，不影响已完成的 npm 发布与 tag 推送）
  *
  * 注意：本脚本会真实发布到 npm 并推送 tag，请在主分支且工作区干净时执行。
  */
@@ -59,27 +61,35 @@ function main() {
   const oldVersion = readVersion()
   console.log(`📌 当前版本: ${oldVersion}`)
 
-  console.log('\n🧪 [1/6] release:check（type-check + build + pack dry-run）...')
+  console.log('\n🧪 [1/7] release:check（type-check + build + pack dry-run）...')
   run('pnpm release:check')
 
-  console.log('\n🔧 [2/6] 升版本号...')
+  console.log('\n🔧 [2/7] 升版本号...')
   run(`npm version ${type} --no-git-tag-version`)
   const newVersion = readVersion()
   console.log(`📌 新版本: ${oldVersion} → ${newVersion}`)
 
-  console.log('\n📝 [3/6] 生成 CHANGELOG...')
+  console.log('\n📝 [3/7] 生成 CHANGELOG...')
   run(`node actions/generate-changelog.js --version ${newVersion}`)
 
-  console.log('\n🏷️ [4/6] 提交版本 + 打 tag...')
+  console.log('\n🏷️ [4/7] 提交版本 + 打 annotated tag...')
   git(['add', 'package.json', 'CHANGELOG.md'])
   git(['commit', '-m', `chore(release): 发布 v${newVersion}`])
-  git(['tag', `v${newVersion}`])
+  git(['tag', '-a', `v${newVersion}`, '-m', `发布 v${newVersion}`])
 
-  console.log('\n🚀 [5/6] pnpm publish...')
+  console.log('\n🚀 [5/7] pnpm publish...')
   run('pnpm publish --no-git-checks')
 
-  console.log('\n📤 [6/6] 推送 commit + tag...')
+  console.log('\n📤 [6/7] 推送 commit + tag...')
   git(['push', '--follow-tags'])
+
+  console.log('\n🔖 [7/7] 创建 GitHub Release（gh）...')
+  try {
+    run(`node actions/github-release.js ${newVersion}`)
+  } catch {
+    console.warn('⚠️  GitHub Release 创建失败（gh 未安装或未登录？）。npm 包与 tag 已发布成功。')
+    console.warn(`   稍后补建：先 gh auth login，再  node actions/github-release.js ${newVersion}`)
+  }
 
   console.log(`\n🎉 已发布 v${newVersion}`)
 }
