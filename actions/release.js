@@ -72,7 +72,7 @@ function main() {
 
   console.log('\n🏷️ [4/6] 提交版本 + 打 tag...')
   git(['add', 'package.json', 'CHANGELOG.md'])
-  git(['commit', '-m', `发布 v${newVersion}`])
+  git(['commit', '-m', `chore(release): 发布 v${newVersion}`])
   git(['tag', `v${newVersion}`])
 
   console.log('\n🚀 [5/6] pnpm publish...')
