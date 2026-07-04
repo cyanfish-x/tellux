@@ -361,6 +361,35 @@ export class Camera {
     return this.getActiveEllipsoid()
   }
 
+  /**
+   * 是否正在执行 flyTo 飞行动画。
+   *
+   * Whether a flyTo flight animation is currently in progress.
+   */
+  get isFlying(): boolean {
+    return this.currentFlight !== null
+  }
+
+  /**
+   * 当前相机俯仰角（度，Cesium 约定：0=地平线，-90=朝下，+90=朝上）。未绑定地球时返回默认值。
+   * 复用 {@link getCurrentView} 的底层换算但不分配返回对象，便于每帧调用。
+   *
+   * Current camera pitch in degrees (Cesium convention: 0=horizon, -90=down, +90=up). Returns the
+   * default when not bound to a globe. Reuses the same conversion as {@link getCurrentView} but
+   * allocates no return object, so it is cheap to call every frame.
+   */
+  getPitch(): number {
+    const ellipsoid = this.getEllipsoid()
+    if (!ellipsoid) return DEFAULT_CAMERA.pitch
+    this.threeCamera.updateMatrix()
+    const cartographic = ellipsoid.getCartographicFromObjectFrame(
+      this.threeCamera.matrix,
+      SCRATCH_CARTOGRAPHIC,
+      CAMERA_FRAME
+    )
+    return cartographic.elevation / DEG2RAD
+  }
+
   private getCurrentView(ellipsoid: CameraEllipsoid): CameraViewState {
     this.threeCamera.updateMatrix()
     const cartographic = ellipsoid.getCartographicFromObjectFrame(this.threeCamera.matrix, SCRATCH_CARTOGRAPHIC, CAMERA_FRAME)
@@ -374,7 +403,6 @@ export class Camera {
       roll: cartographic.roll / DEG2RAD
     }
   }
-
   private resolveFlyToTarget(options: CameraFlyToOptions, start: CameraViewState): CameraViewState {
     const { destination, orientation } = options
     return {

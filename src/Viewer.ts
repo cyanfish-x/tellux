@@ -263,7 +263,7 @@ export class Viewer {
    *
    * Globe interaction controls.
    */
-  readonly controls: GlobeControls
+  readonly controls: TelluxGlobeControls
 
   /**
    * 实体集合管理器，用于运行时添加、查询和移除点、线、面实体。
@@ -448,6 +448,14 @@ export class Viewer {
     })
     this.controls.enableDamping = true
     this.controls.adjustHeight = false
+    // 注入相机 pitch 读取：低角度禁拖判定用应用自身的俯仰源（Cesium 约定）。
+    // Inject the camera-pitch reader so the low-angle no-drag test uses the app's own pitch
+    // source (Cesium convention).
+    this.controls.pitchProvider = () => this.camera.getPitch()
+    // 注入飞行状态：相机 flyTo 期间禁止闲置 pitch 回弹，避免与飞行动画争抢相机控制。
+    // Inject flight state so the idle pitch spring-back stays out of the way during flyTo
+    // animations and doesn't fight them for camera control.
+    this.controls.isFlyingProvider = () => this.camera.isFlying
     // viewer.camera.allowUnderground 变化时实时同步控件的离地约束（防穿地开关）。
     // Sync the controls' ground-clamp constraint live when viewer.camera.allowUnderground changes.
     this.camera.onAllowUndergroundChange = (value) => {
