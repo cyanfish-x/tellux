@@ -28,14 +28,15 @@
     "build": "vite build && node actions/copy-assets.js && tsc -p tsconfig.types.json",
     "build:examples": "vitepress build docs && vite build --config examples/vite.config.ts",
     "docs:build": "vitepress build docs",
-    "docs:dev": "vitepress dev docs --host 127.0.0.1 --port 5174 --strictPort",
+    "docs:dev": "vitepress dev docs --host 0.0.0.0 --port 5174 --strictPort",
     "docs:preview": "vitepress preview docs --host 127.0.0.1 --port 4174 --strictPort",
     "preview": "vite preview --config examples/vite.config.ts --host 127.0.0.1 --port 4173 --strictPort",
     "test": "vitest",
     "test:run": "vitest run",
+    "benchmark:hism": "node scripts/hism-benchmark.mjs",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
-    "dev": "concurrently -n examples,docs -c cyan,green \"vite examples --host 127.0.0.1 --port 5173 --strictPort\" \"vitepress dev docs --host 127.0.0.1 --port 5174 --strictPort\"",
+    "dev": "concurrently -n examples,docs -c cyan,green \"vite examples --host 0.0.0.0 --port 5173 --strictPort\" \"vitepress dev docs --host 0.0.0.0 --port 5174 --strictPort\"",
     "deploy": "npm run build:examples && node actions/deploy.js",
     "deploy:ghpages": "node actions/deploy-ghpages.mjs",
     "prepublishOnly": "pnpm type-check && pnpm build",
@@ -82,11 +83,13 @@
     "typescript": "~5.2.2",
     "vite": "^5.4.19",
     "vitepress": "^1.6.4",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "playwright": "^1.49.0"
   },
   "dependencies": {
     "@dgreenheck/ez-tree": "^1.1.0",
     "dotenv": "^17.4.2",
-    "tencentcloud-sdk-nodejs-cdn": "^4.1.200"
+    "tencentcloud-sdk-nodejs-cdn": "^4.1.200",
+    "three-mesh-bvh": "0.9.0"
   }
 }

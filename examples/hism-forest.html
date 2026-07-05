@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="72" />
+  <title>Tellux HISM Forest</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    .hism-hud {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 5;
+      min-width: 280px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(8, 16, 28, 0.82);
+      color: #e8f1ff;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+      pointer-events: none;
+    }
+
+    .hism-hud h2 {
+      margin: 0 0 8px;
+      font: 600 13px/1.2 system-ui, sans-serif;
+      color: #fff;
+    }
+
+    .hism-hud dl {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 4px 10px;
+      margin: 0;
+    }
+
+    .hism-hud dt {
+      color: #8fb4ff;
+    }
+
+    .hism-hud dd {
+      margin: 0;
+      text-align: right;
+    }
+
+    .hism-pick {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      color: #ffd27a;
+      min-height: 1.5em;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <aside class="hism-hud" aria-live="polite">
+      <h2>HISM Runtime</h2>
+      <dl>
+        <dt>FPS</dt>
+        <dd id="hism-fps">-</dd>
+        <dt>Layers</dt>
+        <dd id="hism-layers">-</dd>
+        <dt>Clusters</dt>
+        <dd id="hism-clusters">-</dd>
+        <dt>Instances</dt>
+        <dd id="hism-instances">-</dd>
+        <dt>Visible</dt>
+        <dd id="hism-visible">-</dd>
+        <dt>Draw Calls</dt>
+        <dd id="hism-drawcalls">-</dd>
+        <dt>LOD 0 / 1</dt>
+        <dd id="hism-lod">-</dd>
+      </dl>
+      <p id="hism-pick" class="hism-pick">点击场景拾取 HISM 实例</p>
+    </aside>
+    <section class="toolbar toolbar--wide" aria-label="HISM forest controls">
+      <header class="toolbar__header">
+        <h1>HISM 森林基准</h1>
+        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>
+        基于 Tellux HISM 管线的大规模实例化森林：空间簇划分、视锥剔除、LOD bucketing、
+        RTC 精度、PositionPipeline 风摆，以及 three-mesh-bvh 拾取。附带岩石散布层验证通用 API。
+      </p>
+      <p id="hism-status" class="status" aria-live="polite">正在准备 HISM 场景...</p>
+      <dl class="click-readout">
+        <dt>Trees</dt>
+        <dd id="hism-tree-count">-</dd>
+        <dt>Rocks</dt>
+        <dd id="hism-rock-count">-</dd>
+        <dt>Sampling</dt>
+        <dd id="hism-sampling-status">-</dd>
+      </dl>
+      <div class="toolbar__row">
+        <button class="button" id="fly-to-hism-forest" type="button">飞到场景</button>
+        <button class="button" id="regenerate-hism-forest" type="button">重新生成</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./hism-forest.ts"></script>
+</body>
+
+</html>

@@ -28,6 +28,8 @@ const categoryById: Record<string, string> = {
   terrain: "Terrain",
   "threejs-interop": "Models",
   vegetation: "Vegetation",
+  "hism-forest": "HISM",
+  "hism-compare": "HISM",
   "webgpu-basic": "Rendering",
 }
 

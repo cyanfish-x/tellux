@@ -1,4 +1,4 @@
-import tellux from "../../src"
+import tellux, { createWindSwayLeavesMaterial } from "../../src"
 import * as THREE from "three"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
@@ -139,6 +139,7 @@ function executeExampleScript(source: string) {
     "showTokenNotice",
     "mountLocationReadout",
     "formatHeight",
+    "createWindSwayLeavesMaterial",
     "__sandcastleImportMeta",
     `"use strict";\n${transformExampleScript(source)}\n//# sourceURL=tellux-sandcastle-example.js`
   )
@@ -154,6 +155,7 @@ function executeExampleScript(source: string) {
     showTokenNotice,
     mountLocationReadout,
     formatHeight,
+    createWindSwayLeavesMaterial,
     sandcastleImportMeta
   )
 }
