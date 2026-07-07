@@ -12,7 +12,7 @@
 
 随着 Tellux 功能迭代，以下三个问题同时浮现，且同源：
 
-1. **Shader 注入冲突**：vegetation 案例中 ez-tree 的风摆 shader 与 Tellux 自研 RTC（globe-scale 相对相机坐标）注入逻辑同时改写 Three.js `<project_vertex>` chunk，已存在两方字符串 patch 字符串的脆弱状态。任何第三层位置管线贡献者（GPU 实例剔除、impostor billboard、LOD 等）的加入都会使脆弱度成倍上升。详见 [ez-tree风摆与RTC争抢project_vertex坑点](../../notes/坑点记录/ez-tree风摆与RTC争抢project_vertex坑点.md)。
+1. **Shader 注入冲突**：vegetation 案例中 ez-tree 的风摆 shader 与 Tellux 自研 RTC（globe-scale 相对相机坐标）注入逻辑同时改写 Three.js `<project_vertex>` chunk，已存在两方字符串 patch 字符串的脆弱状态。任何第三层位置管线贡献者（GPU 实例剔除、impostor billboard、LOD 等）的加入都会使脆弱度成倍上升。详见 [ez-tree风摆与RTC争抢project_vertex坑点](../坑点记录/ez-tree风摆与RTC争抢project_vertex坑点.md)。
 
 2. **通用实例化系统需求**：vegetation 案例最初按窄类设计，但实际需求是"通用高性能实例化系统给整个引擎用，vegetation 只是第一个客户"。这意味着 culling / LOD / 排序 / 拾取 / shader 组合必须做成引擎级能力，不能在 vegetation 内部硬编码。
 
@@ -64,7 +64,7 @@ Tellux RTC 对 ez-tree 叶子材质只能走 [src/rendering/applyRTCInstancing.t
 - 依赖 ez-tree 输出格式不变，库升级会**静默失效**（不报错，shader 退化）
 - 加入第三、第四方贡献者（GPU 剔除 / impostor / LOD / 未来客户）会越套越脆
 - 调试极困难：最终 GLSL 看不出哪段来自谁
-- 在 WebGPU 渲染模式下整个 `onBeforeCompile` 机制失效（见 [WebGPU下onBeforeCompile着色器机制失效坑点](../../notes/坑点记录/WebGPU下onBeforeCompile着色器机制失效坑点.md)）
+- 在 WebGPU 渲染模式下整个 `onBeforeCompile` 机制失效（见 [WebGPU下onBeforeCompile着色器机制失效坑点](../坑点记录/WebGPU下onBeforeCompile着色器机制失效坑点.md)）
 
 ### 1.3 设计：PositionPipeline 协议
 
@@ -261,8 +261,8 @@ takram 出过多个开源库（如 `@takram/planetary-engine` 等地球引擎类
 
 ## 5. 关联文档
 
-- 坑点：[ez-tree风摆与RTC争抢project_vertex坑点](../../notes/坑点记录/ez-tree风摆与RTC争抢project_vertex坑点.md)
-- 坑点：[WebGPU下onBeforeCompile着色器机制失效坑点](../../notes/坑点记录/WebGPU下onBeforeCompile着色器机制失效坑点.md)
+- 坑点：[ez-tree风摆与RTC争抢project_vertex坑点](../坑点记录/ez-tree风摆与RTC争抢project_vertex坑点.md)
+- 坑点：[WebGPU下onBeforeCompile着色器机制失效坑点](../坑点记录/WebGPU下onBeforeCompile着色器机制失效坑点.md)
 - 案例：[vegetation.ts](../../examples/vegetation.ts)（第一个客户）
 - 现有 RTC 实现：[src/rendering/applyRTCInstancing.ts](../../src/rendering/applyRTCInstancing.ts)、[src/rendering/RTCAutoUniforms.ts](../../src/rendering/RTCAutoUniforms.ts)
 - 同目录设计文档：[ground-clamp.md](./ground-clamp.md)

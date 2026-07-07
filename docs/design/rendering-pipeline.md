@@ -609,7 +609,7 @@ ez-tree 风摆 shader 也改写 `<project_vertex>`，且整段替换 include（�
 - **标准材质（include 占位符仍在）：** 直接替换 `#include <project_vertex>` 为 RTC 版本（含 instancing 块）
 - **ez-tree 叶子材质（已经被替换为字面 shader）：** 用正则匹配 `mvPosition = modelViewMatrix * mvPosition; gl_Position = projectionMatrix * mvPosition;`，先补 instancing 块，再做 RTE 替换
 
-**风险：** 字符串级 patch 链依赖 ez-tree 输出格式不变，升级可能静默失效。长期方案是 PositionPipeline 协议（见 [engine-ownership-and-dependency-strategy.md](./engine-ownership-and-dependency-strategy.md) §1）。
+**风险：** 字符串级 patch 链依赖 ez-tree 输出格式不变，升级可能静默失效。长期方案是 PositionPipeline 协议（见 `engine-ownership-and-dependency-strategy.md` §1）。
 
 ### 11.5 包围盒修正
 
@@ -766,7 +766,7 @@ Tellux 不修改 Takram 等第三方库源码，而是在运行时通过 shader 
 
 ## 16. 关联文档
 
-- 引擎能力边界：[engine-ownership-and-dependency-strategy.md](./engine-ownership-and-dependency-strategy.md)
+- 引擎能力边界：`engine-ownership-and-dependency-strategy.md`（位于 `notes/架构/`）
 - 贴地 Entity 实现：[ground-clamp.md](./ground-clamp.md)
 - 坑点记录：ez-tree 风摆与 RTC 争抢 project_vertex
 - 坑点记录：WebGPU 下 onBeforeCompile 机制失效

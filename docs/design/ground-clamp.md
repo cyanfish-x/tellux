@@ -36,7 +36,7 @@
 
 ### 0.4 关键约束
 
-- **WebGPU 下 `onBeforeCompile` GLSL 注入失效**（见根 [TODO.md](../../TODO.md) 已记录坑点）。本方案的材质注入强依赖该机制，故 **WebGL 优先**；WebGPU 需改用 TSL/WGSL 原生着色器，**本期不做**。
+- **WebGPU 下 `onBeforeCompile` GLSL 注入失效**（已记录坑点）。本方案的材质注入强依赖该机制，故 **WebGL 优先**；WebGPU 需改用 TSL/WGSL 原生着色器，**本期不做**。
 - 点实体走 **CPU `clamp` 采样**（见 §3.7）。这是 Cesium 对点 / 布告板 / 标签 / 模型的**正解**（`Model.updateClamping`、`Billboard._updateClamping` 均 CPU 采样改 modelMatrix），不是妥协。线 / 面才用 GPU 分类。
 
 ---
