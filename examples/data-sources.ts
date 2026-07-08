@@ -15,6 +15,8 @@ const nasaGIBSLandCoverTime = "2024-01-01"
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
+const DEFAULT_TIANDITU_TOKEN = import.meta.env.VITE_TIANDITU_TOKEN ?? ""
+const tiandituImageryWMTSUrl = "http://t0.tianditu.gov.cn/img_w/wmts"
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -32,7 +34,7 @@ interface OverlayLayerExample {
   key: string
   label: string
   description: string
-  type: "xyz" | "wms" | "geojson" | "mvt"
+  type: "xyz" | "wms" | "wmts" | "geojson" | "mvt"
   initialVisible: boolean
   layer?: ImageryLayer
 }
@@ -128,6 +130,23 @@ const arcgisWorldImageryLayer: ImageryLayerOptions["source"] = {
   url: arcgisWorldImageryUrl,
 }
 
+const tiandituImageryWMTSOverlay: ImageryLayerOptions["source"] = {
+  type: "wmts",
+  url: tiandituImageryWMTSUrl,
+  layer: "img",
+  tileMatrixSet: "w",
+  style: "default",
+  format: "tiles",
+  projection: "EPSG:3857",
+  levels: 18,
+  preprocessURL(url) {
+    if (!DEFAULT_TIANDITU_TOKEN) return url
+    const nextUrl = new URL(url)
+    nextUrl.searchParams.set("tk", DEFAULT_TIANDITU_TOKEN)
+    return nextUrl.toString()
+  },
+}
+
 const nasaGIBSLandCoverOverlay: ImageryLayerOptions["source"] = {
   type: "wms",
   url: nasaGIBSWMSUrl,
@@ -194,6 +213,13 @@ const overlayLayers: OverlayLayerExample[] = [
     initialVisible: true,
   },
   {
+    key: "tianditu-imagery-wmts",
+    label: "天地图影像 WMTS",
+    description: "Tianditu img_w / Web Mercator",
+    type: "wmts",
+    initialVisible: Boolean(DEFAULT_TIANDITU_TOKEN),
+  },
+  {
     key: "openinframap-mvt",
     label: "OpenInfraMap 电力设施",
     description: "Mapbox Vector Tile",
@@ -223,6 +249,15 @@ const initialLayers: ImageryLayerOptions[] = [
     visible: true,
     style: {
       opacity: 0.82,
+    },
+  },
+  {
+    id: "tianditu-imagery-wmts",
+    name: "天地图影像 WMTS",
+    source: tiandituImageryWMTSOverlay,
+    visible: Boolean(DEFAULT_TIANDITU_TOKEN),
+    style: {
+      opacity: 1,
     },
   },
   {
@@ -526,10 +561,20 @@ function updateLayerStatus() {
   const activeCount = overlayLayers.filter((layer) =>
     layer.layer?.isVisible()
   ).length
-  layerStatus.textContent =
+  const tiandituVisible = overlayLayers.some(
+    (layer) => layer.key === "tianditu-imagery-wmts" && layer.layer?.isVisible()
+  )
+  const statusParts = [
     activeCount === 0
       ? "当前未显示叠加图层。"
-      : `当前显示 ${activeCount} 个叠加图层。`
+      : `当前显示 ${activeCount} 个叠加图层。`,
+  ]
+
+  if (tiandituVisible && !DEFAULT_TIANDITU_TOKEN) {
+    statusParts.push("天地图 WMTS 需要配置 VITE_TIANDITU_TOKEN。")
+  }
+
+  layerStatus.textContent = statusParts.join(" ")
 }
 
 window.addEventListener("beforeunload", () => {

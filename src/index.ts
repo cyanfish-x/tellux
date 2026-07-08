@@ -156,6 +156,8 @@ export {
   type TelluxWebGLRenderer,
   type TelluxWebGPURenderer,
   type WMSImagerySourceOptions,
+  type WMTSImagerySourceOptions,
+  type WMTSTileMatrix,
   type XYZImagerySourceOptions
 } from './Viewer'
 export { telluxAssetFileNames, telluxAssetUrls, type TelluxAssetName } from './assets'

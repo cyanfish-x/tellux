@@ -192,6 +192,8 @@ export type {
   ViewerWidgetOptions,
   ViewerOptions,
   WMSImagerySourceOptions,
+  WMTSImagerySourceOptions,
+  WMTSTileMatrix,
   XYZImagerySourceOptions
 } from './types'
 

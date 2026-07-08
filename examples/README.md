@@ -21,6 +21,12 @@ VITE_CESIUM_ION_TERRAIN_ASSET_ID=1
 VITE_CESIUM_ION_TOKEN=your_token
 ```
 
+`data-sources.html` 示例中的天地图 WMTS 图层需要天地图 `tk` 密钥：
+
+```txt
+VITE_TIANDITU_TOKEN=your_tianditu_token
+```
+
 ## 运行
 
 ```bash

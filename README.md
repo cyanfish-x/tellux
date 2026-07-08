@@ -208,6 +208,31 @@ viewer.layers.add({
 
 > WMS 图层应请求图片格式，例如 `image/png`。`format=application/openlayers` 通常是 GeoServer 的预览页格式，不适合作为影像贴图。
 
+WMTS 服务可以作为影像图层接入。下面以天地图影像为例（需申请 `tk` 密钥）：
+
+```ts
+viewer.layers.add({
+  name: '天地图影像',
+  source: {
+    type: 'wmts',
+    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
+    layer: 'img',
+    tileMatrixSet: 'w',
+    style: 'default',
+    format: 'tiles',
+    projection: 'EPSG:3857',
+    levels: 18,
+    preprocessURL(url) {
+      const next = new URL(url)
+      next.searchParams.set('tk', YOUR_TIANDITU_TOKEN)
+      return next.toString()
+    }
+  }
+})
+```
+
+> WMTS 使用 KVP 模式时只传服务根 URL；`format=tiles` 是天地图专用格式。示例站点可通过 `VITE_TDT_KEY` 配置密钥。
+
 ## glTF / GLB 模型
 
 可以通过 `viewer.addModel(...)` 加载普通 glTF 或 GLB 模型，并直接按经纬高放置到 Tellux 场景中。`coordinates` 支持 `[经度, 纬度, 高度]` 数组，也支持 `{ longitude, latitude, height }` 对象；高度单位为米。
@@ -484,7 +509,7 @@ flowchart TB
   Viewer --> AtmosphereManager["AtmosphereManager<br/>大气 / 云 / 太阳光 / 贴图"]
   Viewer --> PostProcessingManager["PostProcessingManager<br/>NormalPass / 大气云组合 / SMAA 等"]
 
-  TilesetManager --> Sources["layers[].source<br/>xyz / cesium-ion / mvt / wms / geojson"]
+  TilesetManager --> Sources["layers[].source<br/>xyz / cesium-ion / mvt / wms / wmts / geojson"]
   TilesetManager --> TilesRenderer["3d-tiles-renderer<br/>TilesRenderer / plugins"]
   TilesetManager --> TilePlugins["本地插件<br/>TerrainFetchPlugin<br/>图层级 TileCreasedNormalsPlugin"]
 

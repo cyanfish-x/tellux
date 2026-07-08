@@ -1166,6 +1166,12 @@ select.field__input {
   background: rgba(146, 64, 14, 0.34);
 }
 
+.layer-manager__tag--wmts {
+  border-color: rgba(196, 181, 253, 0.42);
+  color: #ddd6fe;
+  background: rgba(91, 33, 182, 0.34);
+}
+
 .layer-manager__tag--mvt {
   border-color: rgba(74, 222, 128, 0.42);
   color: #bbf7d0;

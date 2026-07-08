@@ -104,6 +104,7 @@ export type ImageryLayerSourceOptions =
   | CesiumIonImagerySourceOptions
   | XYZImagerySourceOptions
   | WMSImagerySourceOptions
+  | WMTSImagerySourceOptions
   | GeoJSONImagerySourceOptions
   | MVTImagerySourceOptions
 
@@ -223,6 +224,126 @@ export interface WMSImagerySourceOptions {
    * 内容范围，顺序为 `[west, south, east, north]`，单位由 `crs` 决定。
    *
    * Content bounds as `[west, south, east, north]`, in the units of `crs`.
+   */
+  contentBoundingBox?: [number, number, number, number]
+  /**
+   * 瓦片请求 URL 预处理函数，可用于追加 token 或签名参数。
+   *
+   * Preprocesses tile request URLs, useful for appending tokens or signatures.
+   */
+  preprocessURL?: (url: string) => string | null
+  /**
+   * 瓦片请求配置。
+   *
+   * Tile request options.
+   */
+  fetchOptions?: RequestInit
+}
+
+/**
+ * WMTS 瓦片矩阵定义，用于非标准网格。
+ *
+ * WMTS tile matrix definition for non-standard grids.
+ */
+export interface WMTSTileMatrix {
+  /** 矩阵标识。Matrix identifier. */
+  identifier: string
+  /** 该级别的列数。Number of tile columns at this level. */
+  matrixWidth: number
+  /** 该级别的行数。Number of tile rows at this level. */
+  matrixHeight: number
+  /** 瓦片宽度（像素）。Tile width in pixels. */
+  tileWidth?: number
+  /** 瓦片高度（像素）。Tile height in pixels. */
+  tileHeight?: number
+  /**
+   * 该级别瓦片网格范围（弧度），顺序为 `[west, south, east, north]`。
+   *
+   * Tile grid bounds in radians as `[west, south, east, north]`.
+   */
+  tileBounds: [number, number, number, number]
+}
+
+/**
+ * WMTS 影像数据源配置，用于影像图层。
+ *
+ * WMTS imagery source options used by imagery layers.
+ */
+export interface WMTSImagerySourceOptions {
+  /** 数据源类型。Source type. */
+  type: 'wmts'
+  /**
+   * WMTS 服务根 URL 或 RESTful 瓦片 URL 模板。
+   * 不含 `{` 占位符时走 KVP GetTile；含 `{TileMatrix}` 等占位符时走 RESTful。
+   *
+   * WMTS service root URL or RESTful tile URL template.
+   * Uses KVP GetTile when the URL has no `{` placeholders; uses RESTful otherwise.
+   */
+  url: string
+  /**
+   * WMTS 图层标识。
+   *
+   * WMTS layer identifier.
+   */
+  layer: string
+  /**
+   * 瓦片矩阵集标识。
+   *
+   * Tile matrix set identifier.
+   */
+  tileMatrixSet: string
+  /**
+   * WMTS 样式名，默认 `default`。
+   *
+   * WMTS style name. Defaults to `default`.
+   */
+  style?: string
+  /**
+   * 图片格式，默认 `image/jpeg`；天地图等服务可能使用 `tiles`。
+   *
+   * Image format. Defaults to `image/jpeg`; some services use `tiles`.
+   */
+  format?: string
+  /**
+   * WMTS dimension 键值，如 `{ TIME: '2024-01-01' }`。
+   *
+   * WMTS dimension values, e.g. `{ TIME: '2024-01-01' }`.
+   */
+  dimensions?: Record<string, string | number>
+  /**
+   * 各级别自定义 TileMatrix 标识。
+   *
+   * Custom TileMatrix identifiers per zoom level.
+   */
+  tileMatrixLabels?: string[]
+  /**
+   * 显式瓦片矩阵定义；提供时忽略 `levels` 和 `tileMatrixLabels`。
+   *
+   * Explicit tile matrix definitions; ignores `levels` and `tileMatrixLabels` when set.
+   */
+  tileMatrices?: WMTSTileMatrix[]
+  /**
+   * 投影标识，默认上游为 `EPSG:3857`。
+   *
+   * Projection identifier. Upstream defaults to `EPSG:3857`.
+   */
+  projection?: 'EPSG:3857' | 'EPSG:4326' | string
+  /**
+   * 瓦片级别数量，默认 `20`。
+   *
+   * Number of tile levels. Defaults to `20`.
+   */
+  levels?: number
+  /**
+   * 瓦片像素尺寸，默认 `256`。
+   *
+   * Tile pixel size. Defaults to `256`.
+   */
+  tileDimension?: number
+  /**
+   * 内容范围，顺序为 `[west, south, east, north]`，单位由 `projection` 决定。
+   *
+   * Content bounds as `[west, south, east, north]`, in the units of `projection`.
    */
   contentBoundingBox?: [number, number, number, number]
   /**

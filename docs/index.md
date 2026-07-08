@@ -17,7 +17,7 @@ features:
   - title: 地球与相机
     details: 使用经纬高、heading、pitch、roll 组织视角，并提供飞行定位、拾取和高度采样能力。
   - title: 地形、影像和 3D Tiles
-    details: 支持 Cesium quantized-mesh terrain、XYZ、WMS、GeoJSON、MVT 和独立 3D Tiles 场景。
+    details: 支持 Cesium quantized-mesh terrain、XYZ、WMS、WMTS、GeoJSON、MVT 和独立 3D Tiles 场景。
   - title: 大气、云和后处理
     details: 集成 Takram geospatial 生态中的大气、体积云、光照和后处理效果。
 ---

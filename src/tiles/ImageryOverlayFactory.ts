@@ -5,6 +5,7 @@ import {
   GeoJSONOverlay,
   ImageOverlayPlugin,
   WMSTilesOverlay,
+  WMTSTilesOverlay,
   type ImageOverlay,
   XYZTilesOverlay
 } from '3d-tiles-renderer/plugins'
@@ -16,7 +17,8 @@ import type {
   ImageryLayerStyleOptions,
   MVTGetStyleCallback,
   MVTImagerySourceOptions,
-  WMSImagerySourceOptions
+  WMSImagerySourceOptions,
+  WMTSImagerySourceOptions
 } from '../types'
 import type { TelluxRenderer } from '../rendering/RendererAdapter'
 
@@ -71,6 +73,13 @@ type ReleasableImageSource = {
 
 type WMSOverlayInstance = InstanceType<typeof WMSTilesOverlay> & {
   imageSource?: ReleasableImageSource
+  getTexture(range: number[], level?: number | null): THREE.Texture | null
+  lockTexture(range: number[], level?: number | null): Promise<THREE.Texture | null>
+}
+
+type WMTSOverlayInstance = InstanceType<typeof WMTSTilesOverlay> & {
+  imageSource?: ReleasableImageSource
+  fetchOptions?: RequestInit
   getTexture(range: number[], level?: number | null): THREE.Texture | null
   lockTexture(range: number[], level?: number | null): Promise<THREE.Texture | null>
 }
@@ -167,6 +176,9 @@ export class ImageryOverlayFactory {
         break
       case 'wms':
         overlay = this.createWMSOverlay(source, style)
+        break
+      case 'wmts':
+        overlay = this.createWMTSOverlay(source, style)
         break
     }
 
@@ -273,7 +285,10 @@ export class ImageryOverlayFactory {
       version: resource.version,
       levels: resource.levels,
       transparent: resource.transparent,
-      contentBoundingBox: this.normalizeWMSContentBoundingBox(resource),
+      contentBoundingBox: this.normalizeImageryContentBoundingBox(
+        resource.contentBoundingBox,
+        resource.crs ?? 'EPSG:4326'
+      ),
       opacity: style.opacity,
       color: style.color === undefined ? undefined : new THREE.Color(style.color),
       preprocessURL: this.createWMSPreprocessURL(resource)
@@ -283,13 +298,45 @@ export class ImageryOverlayFactory {
       overlay.fetchOptions = resource.fetchOptions
     }
 
-    this.patchMissingWMSReleaseGuard(overlay)
+    this.patchMissingTiledOverlayReleaseGuard(overlay)
     this.patchMissingTextureFallback(overlay)
 
     return overlay
   }
 
-  private patchMissingWMSReleaseGuard(overlay: WMSOverlayInstance) {
+  private createWMTSOverlay(resource: WMTSImagerySourceOptions, style: ImageryLayerStyleOptions = {}) {
+    const overlay = new WMTSTilesOverlay({
+      url: this.normalizeResourceUrl(resource.url),
+      layer: resource.layer,
+      tileMatrixSet: resource.tileMatrixSet,
+      style: resource.style,
+      format: resource.format,
+      dimensions: resource.dimensions,
+      tileMatrixLabels: resource.tileMatrixLabels,
+      ...(resource.tileMatrices ? { tileMatrices: resource.tileMatrices } : {}),
+      projection: resource.projection,
+      levels: resource.levels,
+      tileDimension: resource.tileDimension,
+      contentBoundingBox: this.normalizeImageryContentBoundingBox(
+        resource.contentBoundingBox,
+        resource.projection ?? 'EPSG:3857'
+      ),
+      opacity: style.opacity,
+      color: style.color === undefined ? undefined : new THREE.Color(style.color),
+      preprocessURL: resource.preprocessURL
+    } as ConstructorParameters<typeof WMTSTilesOverlay>[0]) as WMTSOverlayInstance
+
+    if (resource.fetchOptions) {
+      overlay.fetchOptions = resource.fetchOptions
+    }
+
+    this.patchMissingTiledOverlayReleaseGuard(overlay)
+    this.patchMissingTextureFallback(overlay)
+
+    return overlay
+  }
+
+  private patchMissingTiledOverlayReleaseGuard(overlay: WMSOverlayInstance | WMTSOverlayInstance) {
     const imageSource = overlay.imageSource
     if (!imageSource) return
 
@@ -304,7 +351,7 @@ export class ImageryOverlayFactory {
     }
   }
 
-  private patchMissingTextureFallback(overlay: Pick<GeoJSONOverlayInstance | MVTOverlayInstance | WMSOverlayInstance, 'getTexture' | 'lockTexture'>) {
+  private patchMissingTextureFallback(overlay: Pick<GeoJSONOverlayInstance | MVTOverlayInstance | WMSOverlayInstance | WMTSOverlayInstance, 'getTexture' | 'lockTexture'>) {
     const getTexture = overlay.getTexture.bind(overlay)
     overlay.getTexture = (range: number[], level?: number | null) => {
       return getTexture(range, level) ?? this.options.transparentOverlayTexture
@@ -361,11 +408,13 @@ export class ImageryOverlayFactory {
     }
   }
 
-  private normalizeWMSContentBoundingBox(resource: WMSImagerySourceOptions) {
-    const bbox = resource.contentBoundingBox
+  private normalizeImageryContentBoundingBox(
+    bbox: [number, number, number, number] | undefined,
+    projection: string
+  ) {
     if (!bbox) return undefined
 
-    const crs = (resource.crs ?? 'EPSG:4326').toUpperCase()
+    const crs = projection.toUpperCase()
     if (crs === 'EPSG:3857' || crs === 'EPSG:900913') {
       const [minX, minY, maxX, maxY] = bbox
       return [

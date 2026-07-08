@@ -328,6 +328,7 @@ Tellux 当前已使用：
 
 - `XYZTilesOverlay`：xyz imagery layer 使用。
 - `WMSTilesOverlay`：WMS imagery layer 使用。
+- `WMTSTilesOverlay`：WMTS imagery layer 使用。
 
 ### 平台影像 overlays
 
@@ -466,13 +467,14 @@ flowchart LR
 - `GeneratedSurfacePlugin`
 - `MVTOverlay`
 - `WMSTilesOverlay`
+- `WMTSTilesOverlay`
 - `QuantizedMeshPlugin`
 - `TerrainFetchPlugin`
 - `TileCreasedNormalsPlugin`
 
 当前未接入但适合后续评估：
 
-- WMTS / TMS plugin 和 overlay。
+- TMS plugin 和 overlay。
 - `GeoJSONOverlay`。
 - `PMTilesOverlay`。
 - `DebugTilesPlugin`。
@@ -490,7 +492,8 @@ flowchart LR
    - `type: 'cesium-ion'`
    - `type: 'mvt'`
    - `type: 'wms'`
-   - 后续 `type: 'tms'`、`type: 'wmts'`、`type: 'pmtiles'`
+   - `type: 'wmts'`
+   - 后续 `type: 'tms'`、`type: 'pmtiles'`
 
 2. 不直接暴露上游 plugin 类作为首选 API。
    - 上游插件很强，但配置细节偏底层。

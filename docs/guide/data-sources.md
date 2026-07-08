@@ -79,6 +79,35 @@ viewer.layers.add({
 })
 ```
 
+### 天地图影像（WMTS）
+
+天地图影像服务走 WMTS，需要申请 `tk` 密钥。Tellux 使用 KVP 模式：只传服务根 URL，由 `WMTSTilesOverlay` 自动拼装 GetTile 参数：
+
+```ts
+const tiandituToken = YOUR_TIANDITU_TOKEN
+
+viewer.layers.add({
+  name: '天地图影像',
+  source: {
+    type: 'wmts',
+    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
+    layer: 'img',
+    tileMatrixSet: 'w',
+    style: 'default',
+    format: 'tiles',
+    projection: 'EPSG:3857',
+    levels: 18,
+    preprocessURL(url) {
+      const next = new URL(url)
+      next.searchParams.set('tk', tiandituToken)
+      return next.toString()
+    }
+  }
+})
+```
+
+> 天地图 `format` 使用 `tiles`，不是常见的 `image/png`。示例站点可通过环境变量 `VITE_TIANDITU_TOKEN` 配置密钥。
+
 ### Cesium Ion 影像
 
 Cesium Ion 也提供 Bing 等影像底图（如 Bing 航空 asset id `2`）：

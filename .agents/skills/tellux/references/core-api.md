@@ -120,6 +120,7 @@ const threeCam = viewer.camera.threeCamera         // 底层 THREE.PerspectiveCa
 | --- | --- | --- |
 | `xyz` | 栅格瓦片底图 | `url`（支持 `{x}{y}{z}`）、`levels`(默认20) |
 | `wms` | WMS 服务 | `url`、`layer`、`crs`(默认 EPSG:4326)、`transparent` |
+| `wmts` | WMTS 服务 | `url`、`layer`、`tileMatrixSet`、`projection`、`format` |
 | `mvt` | 矢量瓦片 | `url`、`levels`、`resolution`(默认512)，需装 `@mapbox/vector-tile` `pbf` |
 | `geojson` | 矢量边界 | `geojson`(对象) 或 `url`、`resolution`(默认256) |
 | `cesium-ion` | Ion 影像 | `apiToken`、`assetId` |
@@ -144,6 +145,25 @@ viewer.layers.add({
     preprocessURL(url) { const u = new URL(url); u.searchParams.set('TIME', '2024-01-01'); return u.toString() }
   },
   style: { opacity: 0.82 }
+})
+
+// WMTS（天地图影像，需 tk 密钥）
+viewer.layers.add({
+  name: '天地图影像',
+  source: {
+    type: 'wmts',
+    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
+    layer: 'img',
+    tileMatrixSet: 'w',
+    format: 'tiles',
+    projection: 'EPSG:3857',
+    levels: 18,
+    preprocessURL(url) {
+      const u = new URL(url)
+      u.searchParams.set('tk', YOUR_TIANDITU_TOKEN)
+      return u.toString()
+    }
+  }
 })
 
 // GeoJSON

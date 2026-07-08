@@ -32,7 +32,7 @@ WebGPU 是实验能力，以下能力在 WebGPU 模式下**不渲染或不支持
 
 ### 影像图层
 
-- 栅格影像支持 XYZ、WMS、Cesium Ion 三种栅格源；矢量图层支持 GeoJSON 和 MVT。
+- 栅格影像支持 XYZ、WMS、WMTS、Cesium Ion 四种栅格源；矢量图层支持 GeoJSON 和 MVT。
 - GeoJSON / MVT 图层是**把矢量内容栅格化成纹理**贴到地表，不是矢量几何直接渲染。样式以像素为单位，受 `resolution` 影响；极度放大时会出现纹理模糊。
 - 图层透明度 `opacity` 作用于整层；`color` 乘色作用于整层色调。
 

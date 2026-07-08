@@ -211,6 +211,31 @@ viewer.layers.add({
 
 > WMS layers should request an image format such as `image/png`. `format=application/openlayers` is usually a GeoServer preview page format and is not suitable for imagery textures.
 
+WMTS services can be used as imagery layers. The example below uses Tianditu imagery (requires a `tk` token):
+
+```ts
+viewer.layers.add({
+  name: 'Tianditu Imagery',
+  source: {
+    type: 'wmts',
+    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
+    layer: 'img',
+    tileMatrixSet: 'w',
+    style: 'default',
+    format: 'tiles',
+    projection: 'EPSG:3857',
+    levels: 18,
+    preprocessURL(url) {
+      const next = new URL(url)
+      next.searchParams.set('tk', YOUR_TIANDITU_TOKEN)
+      return next.toString()
+    }
+  }
+})
+```
+
+> For KVP WMTS, pass only the service root URL. Tianditu uses `format=tiles`. Set `VITE_TIANDITU_TOKEN` in the examples app.
+
 ## glTF / GLB models
 
 Use `viewer.addModel(...)` to load regular glTF or GLB models and place them in the Tellux scene with cartographic coordinates. `coordinates` accepts a `[longitude, latitude, height]` tuple or a `{ longitude, latitude, height }` object. Height is in meters.

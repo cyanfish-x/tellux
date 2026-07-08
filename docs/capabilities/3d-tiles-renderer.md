@@ -6,7 +6,7 @@ Tellux 基于 `3d-tiles-renderer` 提供 3D Tiles 和地形能力封装。这里
 
 - 3D Tiles 场景加载：`tileset.json`、Cesium Ion endpoint。
 - Cesium quantized-mesh terrain：地形根目录或 `layer.json`。
-- 影像 overlay：XYZ、WMS、GeoJSON、MVT 等图层贴到地形或裸球表面。
+- 影像 overlay：XYZ、WMS、WMTS、GeoJSON、MVT 等图层贴到地形或裸球表面。
 - LOD 与缓存：通过 tiles renderer 的更新流程参与主渲染循环。
 - 采样：结合已加载瓦片、地形 availability 和临时局部加载区域做高度查询。
 

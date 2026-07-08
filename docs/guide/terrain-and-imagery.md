@@ -58,6 +58,34 @@ viewer.layers.add({
 })
 ```
 
+### WMTS 影像
+
+WMTS 支持 KVP 服务根 URL（由库自动拼装 GetTile 参数）或 RESTful 瓦片 URL 模板。下面以天地图影像为例，通过 `preprocessURL` 注入 `tk` 密钥：
+
+```ts
+const tiandituToken = import.meta.env.VITE_TIANDITU_TOKEN ?? ''
+
+viewer.layers.add({
+  name: '天地图影像',
+  source: {
+    type: 'wmts',
+    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
+    layer: 'img',
+    tileMatrixSet: 'w',
+    style: 'default',
+    format: 'tiles',
+    projection: 'EPSG:3857',
+    levels: 18,
+    preprocessURL(url) {
+      if (!tiandituToken) return url
+      const next = new URL(url)
+      next.searchParams.set('tk', tiandituToken)
+      return next.toString()
+    }
+  }
+})
+```
+
 ### Cesium Ion 影像
 
 ```ts

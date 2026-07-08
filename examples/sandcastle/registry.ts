@@ -76,6 +76,8 @@ const tagByTerm: Array<[string, string]> = [
   ["ez-tree", "Vegetation"],
   ["instancedmesh", "Instancing"],
   ["wms", "WMS"],
+  ["wmts", "WMTS"],
+  ["天地图", "Tianditu"],
   ["xyz", "XYZ"],
   ["体积云", "Clouds"],
   ["高斯", "3DGS"],

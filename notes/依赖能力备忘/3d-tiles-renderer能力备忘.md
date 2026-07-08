@@ -212,8 +212,8 @@ Tellux 当前不再通过影像瓦片插件作为公开入口；裸球由 `Gener
 
 当前接入和后续可扩展方向：
 
-- 已通过 `viewer.layers` 支持 xyz、Cesium Ion imagery、MVT、GeoJSON 和 WMS imagery layer。
-- 后续支持 WMTS / TMS。
+- 已通过 `viewer.layers` 支持 xyz、Cesium Ion imagery、MVT、GeoJSON、WMS 和 WMTS imagery layer。
+- 后续支持 TMS。
 - 后续支持 GeoJSON / PMTiles 叠加。
 - 继续增强多图层叠加、透明度和顺序控制。
 
