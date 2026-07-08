@@ -1,7 +1,7 @@
-import * as THREE from "three"
+﻿import * as THREE from "three"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import tellux from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
+import { tiandituImageryXYZUrl } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
@@ -77,8 +77,8 @@ const viewer = new tellux.Viewer(container, {
     {
       source: {
         type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
+        url: tiandituImageryXYZUrl,
+        levels: 18,
       },
     },
   ],

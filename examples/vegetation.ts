@@ -1,7 +1,7 @@
-import * as THREE from "three"
+﻿import * as THREE from "three"
 import { Tree } from "@dgreenheck/ez-tree"
 import tellux from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
+import { tiandituImageryXYZUrl } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const CENTER_LONGITUDE = 103.561611
@@ -93,8 +93,8 @@ const viewer = new tellux.Viewer(container, {
     {
       source: {
         type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
+        url: tiandituImageryXYZUrl,
+        levels: 18,
       },
     },
   ],

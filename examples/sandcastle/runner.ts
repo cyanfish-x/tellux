@@ -1,11 +1,11 @@
-import tellux from "../../src"
+﻿import tellux from "../../src"
 import * as THREE from "three"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import { Tree } from "@dgreenheck/ez-tree"
 import {
-  arcgisWorldImageryUrl,
+  tiandituImageryXYZUrl,
   defaultTerrainUrl,
   showTokenNotice,
 } from "../shared"
@@ -134,7 +134,7 @@ function executeExampleScript(source: string) {
     "GaussianSplatPlugin",
     "GLTFLoader",
     "Tree",
-    "arcgisWorldImageryUrl",
+    "tiandituImageryXYZUrl",
     "defaultTerrainUrl",
     "showTokenNotice",
     "mountLocationReadout",
@@ -149,7 +149,7 @@ function executeExampleScript(source: string) {
     GaussianSplatPlugin,
     GLTFLoader,
     Tree,
-    arcgisWorldImageryUrl,
+    tiandituImageryXYZUrl,
     defaultTerrainUrl,
     showTokenNotice,
     mountLocationReadout,

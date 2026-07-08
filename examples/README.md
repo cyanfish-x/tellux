@@ -7,7 +7,11 @@
 `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`
 放到 `examples/public/tellux/`，再在示例入口中临时设置 `tellux.baseUrl = '/tellux/'`。
 
-示例默认使用 `type: 'xyz'` 影像数据源；具体服务地址在示例源码中配置，不在 README 中列出。
+所有示例默认使用天地图卫星影像 XYZ 瓦片（`img_w`）作为底图，通过 `examples/shared.ts` 统一配置。请在项目根目录 `.env` 中配置天地图 `tk` 密钥：
+
+```txt
+VITE_TIANDITU_TOKEN=your_tianditu_token
+```
 
 所有普通示例会在检测到 `VITE_CESIUM_ION_TOKEN` 时默认加载 Cesium Ion 地形。默认地形
 asset id 是 `1`（Cesium World Terrain），可以通过 `.env` 覆盖：
@@ -17,11 +21,7 @@ VITE_CESIUM_ION_TERRAIN_ASSET_ID=1
 VITE_CESIUM_ION_TOKEN=your_token
 ```
 
-`data-sources.html` 示例中的天地图 WMTS 与 GeoJSON 图层需要天地图 `tk` 密钥；GeoJSON 通过单次 `v2/administrative` 请求加载成都市边界（`156510100`）：
-
-```txt
-VITE_TIANDITU_TOKEN=your_tianditu_token
-```
+`data-sources.html` 示例额外演示天地图 WMTS、卫星 WMS 与 GeoJSON 图层；GeoJSON 通过单次 `v2/administrative` 请求加载成都市边界（`156510100`），同样需要 `VITE_TIANDITU_TOKEN`。
 
 ## 运行
 

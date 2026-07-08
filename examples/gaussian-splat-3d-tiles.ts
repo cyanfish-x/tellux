@@ -1,7 +1,7 @@
-import tellux from "../src"
+﻿import tellux from "../src"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
-import { arcgisWorldImageryUrl } from "./shared"
+import { tiandituImageryXYZUrl } from "./shared"
 
 const container = document.querySelector("#viewer")
 const tilesetUrlInput = document.querySelector<HTMLInputElement>("#splat-tileset-url")
@@ -58,8 +58,8 @@ const viewer = new tellux.Viewer(container, {
     {
       source: {
         type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
+        url: tiandituImageryXYZUrl,
+        levels: 18,
       },
     },
   ],

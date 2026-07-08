@@ -1,6 +1,7 @@
 import type { TilesetLayer } from "../src"
 import tellux from "../src"
 import * as THREE from "three"
+import { tiandituImageryXYZUrl } from "./shared"
 
 const container = document.querySelector("#viewer")
 const tokenInput = document.querySelector<HTMLInputElement>("#ion-token")
@@ -45,6 +46,15 @@ const viewer = new tellux.Viewer(container, {
         },
       }
     : undefined,
+  layers: [
+    {
+      source: {
+        type: "xyz",
+        url: tiandituImageryXYZUrl,
+        levels: 18,
+      },
+    },
+  ],
   camera: TOKYO_VIEW,
   scene: {
     atmosphere: {

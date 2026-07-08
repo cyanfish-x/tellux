@@ -1,5 +1,5 @@
-import tellux, { type TerrainOptions } from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
+﻿import tellux, { type TerrainOptions } from "../src"
+import { tiandituImageryXYZUrl } from "./shared"
 
 type TerrainSource = "url" | "cesium-ion"
 
@@ -56,8 +56,8 @@ const viewer = new tellux.Viewer(container, {
     {
       source: {
         type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
+        url: tiandituImageryXYZUrl,
+        levels: 18,
       },
     },
   ],

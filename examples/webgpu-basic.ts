@@ -1,5 +1,5 @@
-import tellux from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
+﻿import tellux from "../src"
+import { tiandituImageryXYZUrl } from "./shared"
 
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
@@ -24,8 +24,8 @@ async function main() {
       {
         source: {
           type: "xyz",
-          url: arcgisWorldImageryUrl,
-          levels: 19,
+          url: tiandituImageryXYZUrl,
+          levels: 18,
         },
       },
     ],

@@ -1,4 +1,4 @@
-import * as THREE from "three"
+﻿import * as THREE from "three"
 import tellux from "../src"
 import type {
   Picked3DTilesFeature,
@@ -6,7 +6,7 @@ import type {
   ViewerClickEvent,
   ViewerMouseMoveEvent,
 } from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
+import { tiandituImageryXYZUrl } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const container = document.querySelector("#viewer")
@@ -55,8 +55,8 @@ const viewer = new tellux.Viewer(container, {
     {
       source: {
         type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
+        url: tiandituImageryXYZUrl,
+        levels: 18,
       },
     },
   ],

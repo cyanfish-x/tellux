@@ -46,7 +46,7 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 
 - 绑定锚点平滑滚动和顶部导航滚动状态。
 - 在 `#portal-globe-viewer` 中创建 `tellux.Viewer`。
-- 使用 ArcGIS World Imagery 作为默认影像底图。
+- 使用天地图卫星影像 XYZ 瓦片（`examples/shared.ts` 中的 `tiandituImageryXYZUrl`）作为默认影像底图。
 - 如果配置了 `VITE_CESIUM_TERRAIN_URL`，则加载 Cesium quantized-mesh 地形。
 - 开启云、大气、镜头光晕、SMAA 和曝光设置，让首页直接展示 Tellux 的渲染能力。
 

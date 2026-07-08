@@ -1,5 +1,5 @@
-import tellux from '../src'
-import { arcgisWorldImageryUrl } from './shared'
+﻿import tellux from '../src'
+import { tiandituImageryXYZUrl } from './shared'
 
 const container = document.querySelector('#viewer')
 const dujiangyanButton = document.querySelector<HTMLButtonElement>('#dujiangyan')
@@ -44,8 +44,8 @@ const viewer = new tellux.Viewer(container, {
     {
       source: {
         type: 'xyz',
-        url: arcgisWorldImageryUrl,
-        levels: 19
+        url: tiandituImageryXYZUrl,
+        levels: 18,
       }
     }
   ],

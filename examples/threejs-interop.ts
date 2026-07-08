@@ -1,5 +1,5 @@
-import tellux from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
+﻿import tellux from "../src"
+import { tiandituImageryXYZUrl } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const MODEL_LONGITUDE = 113.9958  
@@ -50,8 +50,8 @@ const viewer = new tellux.Viewer(container, {
     {
       source: {
         type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
+        url: tiandituImageryXYZUrl,
+        levels: 18,
       },
     },
   ],

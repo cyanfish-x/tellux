@@ -1,6 +1,6 @@
-import type { TilesetLayer } from "../src"
+﻿import type { TilesetLayer } from "../src"
 import tellux from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
+import { tiandituImageryXYZUrl } from "./shared"
 
 const container = document.querySelector("#viewer")
 const tilesetUrlInput = document.querySelector<HTMLInputElement>("#tileset-url")
@@ -70,8 +70,8 @@ const viewer = new tellux.Viewer(container, {
     {
       source: {
         type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
+        url: tiandituImageryXYZUrl,
+        levels: 18,
       },
     },
   ],

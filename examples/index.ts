@@ -1,11 +1,10 @@
-import tellux from "../src"
+﻿import tellux from "../src"
+import { tiandituImageryXYZUrl } from "./shared"
 
 const HERO_CLOCK_TIME = new Date(1780747337456)
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
-const arcgisWorldImageryUrl =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 
 const nav = document.querySelector(".portal-nav")
 const docsLink = document.querySelector<HTMLAnchorElement>("[data-docs-link]")
@@ -73,8 +72,8 @@ if (globeContainer instanceof HTMLElement) {
       {
         source: {
           type: "xyz",
-          url: arcgisWorldImageryUrl,
-          levels: 19,
+          url: tiandituImageryXYZUrl,
+          levels: 18,
         },
       },
     ],

@@ -6,6 +6,7 @@ import tellux, {
   type ImageryLayer,
   type ImageryLayerOptions,
 } from "../src"
+import { defaultTiandituToken, tiandituImageryXYZUrl } from "./shared"
 
 const container = document.querySelector("#viewer")
 const overlayList = document.querySelector<HTMLElement>("#overlay-list")
@@ -13,12 +14,8 @@ const layerStatus = document.querySelector<HTMLElement>("#layer-status")
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
-const DEFAULT_TIANDITU_TOKEN = import.meta.env.VITE_TIANDITU_TOKEN ?? ""
-const tiandituImageryXYZUrl = DEFAULT_TIANDITU_TOKEN
-  ? `https://t0.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${DEFAULT_TIANDITU_TOKEN}`
-  : "https://t0.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}"
-const tiandituImageryWMTSUrl = DEFAULT_TIANDITU_TOKEN
-  ? `http://t0.tianditu.gov.cn/cia_w/wmts?tk=${DEFAULT_TIANDITU_TOKEN}`
+const tiandituImageryWMTSUrl = defaultTiandituToken
+  ? `http://t0.tianditu.gov.cn/cia_w/wmts?tk=${defaultTiandituToken}`
   : "http://t0.tianditu.gov.cn/cia_w/wmts?tk="
 const nsmcGeosWMSUrl =
   "https://data.nsmc.org.cn/NSMCAPI/v1/nsmc/image/wms/compose"
@@ -310,7 +307,7 @@ const overlayLayers: OverlayLayerExample[] = [
     label: "天地图影像 XYZ",
     description: "DataServer img_w / Web Mercator",
     type: "xyz",
-    initialVisible: Boolean(DEFAULT_TIANDITU_TOKEN),
+    initialVisible: Boolean(defaultTiandituToken),
   },
   {
     key: "nsmc-geos-wms",
@@ -324,14 +321,14 @@ const overlayLayers: OverlayLayerExample[] = [
     label: "天地图影像注记 WMTS",
     description: "cia_w / Web Mercator",
     type: "wmts",
-    initialVisible: Boolean(DEFAULT_TIANDITU_TOKEN),
+    initialVisible: Boolean(defaultTiandituToken),
   },
   {
     key: "chengdu-admin-geojson",
     label: "成都市行政区划",
     description: "天地图 v2/administrative / 156510100",
     type: "geojson",
-    initialVisible: Boolean(DEFAULT_TIANDITU_TOKEN),
+    initialVisible: Boolean(defaultTiandituToken),
   },
 ]
 
@@ -339,7 +336,7 @@ async function main() {
   let chengduAdminGeoJSON: GeoJSONFeatureCollection | null = null
   let adminLoadIssue: string | null = null
 
-  const adminLoadResult = await loadChengduAdminGeoJSON(DEFAULT_TIANDITU_TOKEN)
+  const adminLoadResult = await loadChengduAdminGeoJSON(defaultTiandituToken)
   chengduAdminGeoJSON = adminLoadResult.geojson
   adminLoadIssue = adminLoadResult.issue
 
@@ -365,7 +362,7 @@ async function main() {
     id: "tianditu-imagery-xyz",
     name: "天地图影像 XYZ",
     source: tiandituImageryXYZLayer,
-    visible: Boolean(DEFAULT_TIANDITU_TOKEN),
+    visible: Boolean(defaultTiandituToken),
   },
   {
     id: "nsmc-geos-wms",
@@ -380,7 +377,7 @@ async function main() {
     id: "tianditu-imagery-wmts",
     name: "天地图影像注记 WMTS",
     source: tiandituImageryWMTSOverlay,
-    visible: Boolean(DEFAULT_TIANDITU_TOKEN),
+    visible: Boolean(defaultTiandituToken),
     style: {
       opacity: 1,
     },
@@ -689,7 +686,7 @@ function updateLayerStatus() {
       : `当前显示 ${activeCount} 个叠加图层。`,
   ]
 
-  if (tiandituVisible && !DEFAULT_TIANDITU_TOKEN) {
+  if (tiandituVisible && !defaultTiandituToken) {
     statusParts.push("天地图图层需要配置 VITE_TIANDITU_TOKEN。")
   }
 
