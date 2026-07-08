@@ -101,7 +101,7 @@ useEffect(() => {
 ## 产出代码的规范
 
 1. **完整可运行**：包含 import、容器准备、Viewer 创建。不要只给"核心片段"让用户自己拼。
-2. **用真实可用的公开数据源**示范（见各 reference 里的"数据源"小节），避免占位 `https://example.com`。
+2. **文档与 skill reference 使用占位 URL**（`https://example.com/...`）；可运行示例中的真实服务地址见 `examples/` 源码与环境变量配置。
 3. **配置用领域分组结构**：`scene.atmosphere.lighting.mode` 而不是拍平的 `atmosphereLightingMode`。初始化配置和运行时入口同构（路径一致）。
 4. **代码后跟简短中文说明**：解释关键参数为什么这么取值、有什么副作用，不展开成长篇。
 5. **标注限制**：若用到 WebGPU 下不可用的能力，在说明里点明。

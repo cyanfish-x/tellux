@@ -1,22 +1,231 @@
 import tellux, {
   type CameraSetViewOptions,
+  type GeoJSONFeature,
+  type GeoJSONFeatureCollection,
+  type GeoJSONGeometry,
   type ImageryLayer,
   type ImageryLayerOptions,
 } from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
 
 const container = document.querySelector("#viewer")
 const overlayList = document.querySelector<HTMLElement>("#overlay-list")
 const layerStatus = document.querySelector<HTMLElement>("#layer-status")
-const openInfraMapUrl = "https://openinframap.org/tiles/{z}/{x}/{y}.pbf"
-const nasaGIBSWMSUrl =
-  "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi"
-const nasaGIBSLandCoverTime = "2024-01-01"
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 const DEFAULT_TIANDITU_TOKEN = import.meta.env.VITE_TIANDITU_TOKEN ?? ""
-const tiandituImageryWMTSUrl = "http://t0.tianditu.gov.cn/img_w/wmts"
+const tiandituImageryXYZUrl = DEFAULT_TIANDITU_TOKEN
+  ? `https://t0.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${DEFAULT_TIANDITU_TOKEN}`
+  : "https://t0.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}"
+const tiandituImageryWMTSUrl = DEFAULT_TIANDITU_TOKEN
+  ? `http://t0.tianditu.gov.cn/cia_w/wmts?tk=${DEFAULT_TIANDITU_TOKEN}`
+  : "http://t0.tianditu.gov.cn/cia_w/wmts?tk="
+const nsmcGeosWMSUrl =
+  "https://data.nsmc.org.cn/NSMCAPI/v1/nsmc/image/wms/compose"
+
+function formatGeosIrDatetime(date: Date): string {
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0")
+  const day = String(date.getUTCDate()).padStart(2, "0")
+  const hour = String(date.getUTCHours()).padStart(2, "0")
+  return `${year}${month}${day}${hour}00`
+}
+
+/** 取上一整点 UTC，避免请求尚未发布的时次。 */
+function getGeosIrDatetime(): string {
+  const date = new Date()
+  date.setUTCMinutes(0, 0, 0)
+  date.setUTCHours(date.getUTCHours() - 1)
+  return formatGeosIrDatetime(date)
+}
+
+const TIANDITU_ADMINISTRATIVE_URL = import.meta.env.DEV
+  ? "/tianditu-administrative/v2/administrative"
+  : "https://api.tianditu.gov.cn/v2/administrative"
+const CHENGDU_ADMIN_CODE = "156510100"
+
+interface TiandituDistrict {
+  name: string
+  gb: string
+  level: number
+  boundary?: string
+  children?: TiandituDistrict[]
+}
+
+interface TiandituAdministrativeResponse {
+  status?: number
+  message?: string
+  code?: number
+  data?: {
+    district?: TiandituDistrict[]
+  }
+}
+
+function buildTiandituAdministrativeUrl(
+  token: string,
+  keyword: string,
+  childLevel: number,
+  extensions: boolean
+): string {
+  const url = new URL(TIANDITU_ADMINISTRATIVE_URL, window.location.origin)
+  url.searchParams.set("keyword", keyword)
+  url.searchParams.set("childLevel", String(childLevel))
+  url.searchParams.set("extensions", String(extensions))
+  url.searchParams.set("tk", token)
+  return url.toString()
+}
+
+function districtToFeature(district: TiandituDistrict): GeoJSONFeature | null {
+  const boundary = district.boundary?.trim()
+  if (!boundary) return null
+
+  const geometry = parseTiandituBoundary(boundary)
+  if (!geometry) return null
+
+  return {
+    type: "Feature",
+    geometry,
+    properties: {
+      name: district.name,
+      gb: district.gb,
+      level: district.level,
+    },
+  }
+}
+
+function parseCoordinatePair(pair: string): [number, number] {
+  const [lng, lat] = pair.trim().split(/\s+/).map(Number)
+  return [lng, lat]
+}
+
+function parseRingCoordinates(ring: string): number[][] {
+  return ring.split(",").map((pair) => {
+    const [lng, lat] = parseCoordinatePair(pair)
+    return [lng, lat]
+  })
+}
+
+/** 天地图 boundary 为 MULTIPOLYGON WKT，需转为 GeoJSON 几何。 */
+function parseTiandituBoundary(boundary: string): GeoJSONGeometry | null {
+  const trimmed = boundary.trim()
+  if (!trimmed) return null
+
+  if (trimmed.startsWith("MULTIPOLYGON")) {
+    let inner = trimmed.slice("MULTIPOLYGON".length).trim()
+    if (inner.startsWith("(")) inner = inner.slice(1)
+    if (inner.endsWith(")")) inner = inner.slice(0, -1)
+
+    const polygonChunks = inner.split(")),((")
+    const coordinates = polygonChunks.map((chunk, index, chunks) => {
+      let poly = chunk
+      if (index === 0) poly = poly.replace(/^\(\(/, "")
+      if (index === chunks.length - 1) poly = poly.replace(/\)\)$/, "")
+      return poly.split("),(").map(parseRingCoordinates)
+    })
+
+    if (coordinates.length === 1) {
+      return { type: "Polygon", coordinates: coordinates[0] }
+    }
+
+    return { type: "MultiPolygon", coordinates }
+  }
+
+  if (trimmed.startsWith("POLYGON")) {
+    let inner = trimmed.slice("POLYGON".length).trim()
+    if (inner.startsWith("(")) inner = inner.slice(1)
+    if (inner.endsWith(")")) inner = inner.slice(0, -1)
+    inner = inner.replace(/^\(/, "").replace(/\)$/, "")
+    const rings = inner.split("),(").map(parseRingCoordinates)
+    return { type: "Polygon", coordinates: rings }
+  }
+
+  return { type: "Polygon", coordinates: [parseRingCoordinates(trimmed)] }
+}
+
+async function fetchTiandituAdministrative(
+  token: string,
+  keyword: string,
+  childLevel: number,
+  extensions: boolean
+): Promise<TiandituAdministrativeResponse> {
+  const response = await fetch(
+    buildTiandituAdministrativeUrl(token, keyword, childLevel, extensions)
+  )
+
+  let payload: TiandituAdministrativeResponse
+  try {
+    payload = (await response.json()) as TiandituAdministrativeResponse
+  } catch {
+    throw new Error(
+      `Tianditu administrative returned non-JSON response (HTTP ${response.status}).`
+    )
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      payload.message ??
+        `Tianditu administrative request failed (HTTP ${response.status}).`
+    )
+  }
+
+  if (payload.status !== 200) {
+    throw new Error(
+      payload.message ??
+        `Tianditu administrative returned status ${payload.status ?? payload.code ?? "unknown"}.`
+    )
+  }
+
+  return payload
+}
+
+/** 单次 v2 请求：keyword=156510100&childLevel=0&extensions=true */
+async function fetchChengduAdminGeoJSON(
+  token: string
+): Promise<GeoJSONFeatureCollection> {
+  const response = await fetchTiandituAdministrative(
+    token,
+    CHENGDU_ADMIN_CODE,
+    0,
+    true
+  )
+  const district = response.data?.district?.[0]
+  if (!district) {
+    throw new Error("Tianditu administrative returned no Chengdu district.")
+  }
+
+  const feature = districtToFeature(district)
+  if (!feature) {
+    throw new Error(
+      `Tianditu returned Chengdu metadata (${district.name}) but boundary is empty.`
+    )
+  }
+
+  return { type: "FeatureCollection", features: [feature] }
+}
+
+async function loadChengduAdminGeoJSON(
+  token: string
+): Promise<{ geojson: GeoJSONFeatureCollection | null; issue: string | null }> {
+  if (!token) {
+    return {
+      geojson: null,
+      issue: "未配置 VITE_TIANDITU_TOKEN。",
+    }
+  }
+
+  try {
+    return {
+      geojson: await fetchChengduAdminGeoJSON(token),
+      issue: null,
+    }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Tianditu administrative failed."
+
+    console.warn("[data-sources] Failed to load Chengdu administrative boundary:", error)
+    return { geojson: null, issue: message }
+  }
+}
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -34,226 +243,142 @@ interface OverlayLayerExample {
   key: string
   label: string
   description: string
-  type: "xyz" | "wms" | "wmts" | "geojson" | "mvt"
+  type: "xyz" | "wms" | "wmts" | "geojson"
   initialVisible: boolean
   layer?: ImageryLayer
 }
 
-const openInfraMapOverlay: ImageryLayerOptions["source"] = {
-  type: "mvt",
-  url: openInfraMapUrl,
-  levels: 15,
-  resolution: 1024,
-}
-
-const openInfraMapStyle: ImageryLayerOptions["style"] = {
-  getStyle(layerName, properties) {
-    if (properties === null) {
-      if (
-        layerName === "power_substation" ||
-        layerName === "power_substation_point"
-      )
-        return { order: 10 }
-      if (layerName === "power_line") return { order: 20 }
-      if (layerName === "power_tower" || layerName === "power_pole")
-        return { order: 30 }
-      if (
-        layerName === "power_plant" ||
-        layerName === "power_plant_point" ||
-        layerName === "power_generator"
-      )
-        return { order: 35 }
-      return { order: 40 }
-    }
-
-    if (layerName === "power_substation") {
-      return {
-        fill: "rgba(2, 201, 213, 0.5)",
-        stroke: "#000000",
-        strokeWidth: 1,
-        order: 10,
-      }
-    }
-
-    if (layerName === "power_substation_point") {
-      return {
-        fill: "#02c9d5",
-        stroke: "#000000",
-        strokeWidth: 1.2,
-        radius: 4,
-        order: 10,
-      }
-    }
-
-    if (layerName === "power_line") {
-      return {
-        stroke: "#e6b800",
-        strokeWidth: 2,
-        order: 20,
-      }
-    }
-
-    if (layerName === "power_tower" || layerName === "power_pole") {
-      return {
-        fill: "#ffffff",
-        stroke: "#000000",
-        strokeWidth: 1,
-        radius: 3,
-        order: 30,
-      }
-    }
-
-    if (
-      layerName === "power_plant" ||
-      layerName === "power_plant_point" ||
-      layerName === "power_generator"
-    ) {
-      return {
-        fill: "rgba(34, 197, 94, 0.72)",
-        stroke: "#052e16",
-        strokeWidth: 1.2,
-        radius: 4,
-        order: 35,
-      }
-    }
-
-    if (layerName.includes("pipeline")) {
-      return { stroke: "rgba(125, 211, 252, 0.72)", strokeWidth: 2, order: 38 }
-    }
-
-    return { visible: false }
-  },
-}
-
-const arcgisWorldImageryLayer: ImageryLayerOptions["source"] = {
+const tiandituImageryXYZLayer: ImageryLayerOptions["source"] = {
   type: "xyz",
-  url: arcgisWorldImageryUrl,
+  url: tiandituImageryXYZUrl,
+  projection: "EPSG:3857",
+  levels: 18,
 }
 
 const tiandituImageryWMTSOverlay: ImageryLayerOptions["source"] = {
   type: "wmts",
   url: tiandituImageryWMTSUrl,
-  layer: "img",
+  layer: "cia",
   tileMatrixSet: "w",
   style: "default",
   format: "tiles",
   projection: "EPSG:3857",
   levels: 18,
-  preprocessURL(url) {
-    if (!DEFAULT_TIANDITU_TOKEN) return url
-    const nextUrl = new URL(url)
-    nextUrl.searchParams.set("tk", DEFAULT_TIANDITU_TOKEN)
-    return nextUrl.toString()
-  },
 }
 
-const nasaGIBSLandCoverOverlay: ImageryLayerOptions["source"] = {
+/** NSMC GEOS_IRX 是全球粗分辨率拼图，BBOX 过小会返回空白图；官方示例也使用 lon/lat 顺序。 */
+function normalizeNsmcWmsUrl(url: string): string {
+  const nextUrl = new URL(url)
+  nextUrl.searchParams.set("datetime", getGeosIrDatetime())
+
+  const bbox = nextUrl.searchParams.get("bbox")?.split(",").map(Number)
+  if (bbox?.length === 4 && bbox.every(Number.isFinite)) {
+    // WMS 1.3.0 EPSG:4326 输出 lat/lon，NSMC 需要 lon/lat。
+    nextUrl.searchParams.set(
+      "bbox",
+      [bbox[1], bbox[0], bbox[3], bbox[2]].join(",")
+    )
+  }
+
+  return nextUrl.toString()
+}
+
+const nsmcGeosWMSOverlay: ImageryLayerOptions["source"] = {
   type: "wms",
-  url: nasaGIBSWMSUrl,
-  layer: "MODIS_Combined_L3_IGBP_Land_Cover_Type_Annual",
-  version: "1.1.1",
+  url: nsmcGeosWMSUrl,
+  layer: "GEOS_IRX",
+  version: "1.3.0",
   crs: "EPSG:4326",
-  styles: "default",
   format: "image/png",
-  transparent: true,
-  levels: 10,
-  tileDimension: 512,
+  transparent: false,
+  // GEOS 拼图在 BBOX 经纬跨度 < ~25° 时返回空白图。levels:4 时最细瓦片约 22.5°，放大后部分区域会空图。
+  levels: 3,
+  tileDimension: 256,
   contentBoundingBox: [-180, -90, 180, 90],
-  preprocessURL(url) {
-    const nextUrl = new URL(url)
-    nextUrl.searchParams.set("TIME", nasaGIBSLandCoverTime)
-    return nextUrl.toString()
-  },
+  preprocessURL: normalizeNsmcWmsUrl,
 }
 
-const chinaProvinceOverlay: ImageryLayerOptions["source"] = {
-  type: "geojson",
-  url: "/中国省级行政区划.geojson",
-  resolution: 1024,
-}
-
-const chinaProvinceStyle: ImageryLayerOptions["style"] = {
-  fill: "rgba(20, 184, 166, 0.14)",
-  stroke: "#ff0000",
-  strokeWidth: 3,
-  getStyle(_feature, properties) {
-    if (properties?.province_type === "直辖市") {
-      return {
-        fill: "rgba(244, 114, 182, 0.2)",
-        stroke: "#f9a8d4",
-        strokeWidth: 1.8,
-      }
-    }
-
-    if (properties?.province_type === "自治区") {
-      return {
-        fill: "rgba(96, 165, 250, 0.18)",
-        stroke: "#93c5fd",
-        strokeWidth: 1.5,
-      }
-    }
-
-    return {}
-  },
+const chengduAdminStyle: ImageryLayerOptions["style"] = {
+  fill: "rgba(20, 184, 166, 0.12)",
+  stroke: "#f97316",
+  strokeWidth: 2.5,
 }
 
 const overlayLayers: OverlayLayerExample[] = [
   {
-    key: "arcgis-world-imagery",
-    label: "ArcGIS XYZ 影像",
-    description: "XYZ / World Imagery",
+    key: "tianditu-imagery-xyz",
+    label: "天地图影像 XYZ",
+    description: "DataServer img_w / Web Mercator",
     type: "xyz",
-    initialVisible: true,
+    initialVisible: Boolean(DEFAULT_TIANDITU_TOKEN),
   },
   {
-    key: "nasa-gibs-land-cover-wms",
-    label: "NASA GIBS 土地覆盖 WMS",
-    description: `MODIS IGBP Land Cover ${nasaGIBSLandCoverTime}`,
+    key: "nsmc-geos-wms",
+    label: "风云卫星 GEOS 红外云图 WMS",
+    description: "NSMC GEOS_IRX / 全球拼图 / 粗粒度 WMS",
     type: "wms",
     initialVisible: true,
   },
   {
     key: "tianditu-imagery-wmts",
-    label: "天地图影像 WMTS",
-    description: "Tianditu img_w / Web Mercator",
+    label: "天地图影像注记 WMTS",
+    description: "cia_w / Web Mercator",
     type: "wmts",
     initialVisible: Boolean(DEFAULT_TIANDITU_TOKEN),
   },
   {
-    key: "openinframap-mvt",
-    label: "OpenInfraMap 电力设施",
-    description: "Mapbox Vector Tile",
-    type: "mvt",
-    initialVisible: false,
-  },
-  {
-    key: "china-province-geojson",
-    label: "中国省级行政区划",
-    description: "GeoJSONOverlay / public GeoJSON",
+    key: "chengdu-admin-geojson",
+    label: "成都市行政区划",
+    description: "天地图 v2/administrative / 156510100",
     type: "geojson",
-    initialVisible: true,
+    initialVisible: Boolean(DEFAULT_TIANDITU_TOKEN),
   },
 ]
 
-const initialLayers: ImageryLayerOptions[] = [
+async function main() {
+  let chengduAdminGeoJSON: GeoJSONFeatureCollection | null = null
+  let adminLoadIssue: string | null = null
+
+  const adminLoadResult = await loadChengduAdminGeoJSON(DEFAULT_TIANDITU_TOKEN)
+  chengduAdminGeoJSON = adminLoadResult.geojson
+  adminLoadIssue = adminLoadResult.issue
+
+  const adminLayerMeta = overlayLayers.find(
+    (layer) => layer.key === "chengdu-admin-geojson"
+  )
+  const adminLayerReady = Boolean(chengduAdminGeoJSON?.features.length)
+  if (adminLayerMeta) {
+    adminLayerMeta.initialVisible = adminLayerReady
+  }
+
+  const chengduAdminOverlay: ImageryLayerOptions["source"] = {
+    type: "geojson",
+    geojson: chengduAdminGeoJSON ?? {
+      type: "FeatureCollection",
+      features: [],
+    },
+    resolution: 1024,
+  }
+
+  const initialLayers: ImageryLayerOptions[] = [
   {
-    id: "arcgis-world-imagery",
-    name: "ArcGIS XYZ 影像",
-    source: arcgisWorldImageryLayer,
-    visible: true,
+    id: "tianditu-imagery-xyz",
+    name: "天地图影像 XYZ",
+    source: tiandituImageryXYZLayer,
+    visible: Boolean(DEFAULT_TIANDITU_TOKEN),
   },
   {
-    id: "nasa-gibs-land-cover-wms",
-    name: "NASA GIBS 土地覆盖 WMS",
-    source: nasaGIBSLandCoverOverlay,
+    id: "nsmc-geos-wms",
+    name: "风云卫星 GEOS 红外云图 WMS",
+    source: nsmcGeosWMSOverlay,
     visible: true,
     style: {
-      opacity: 0.82,
+      opacity: 0.85,
     },
   },
   {
     id: "tianditu-imagery-wmts",
-    name: "天地图影像 WMTS",
+    name: "天地图影像注记 WMTS",
     source: tiandituImageryWMTSOverlay,
     visible: Boolean(DEFAULT_TIANDITU_TOKEN),
     style: {
@@ -261,19 +386,12 @@ const initialLayers: ImageryLayerOptions[] = [
     },
   },
   {
-    id: "openinframap-mvt",
-    name: "OpenInfraMap 电力设施",
-    source: openInfraMapOverlay,
-    visible: false,
-    style: openInfraMapStyle,
-  },
-  {
-    id: "china-province-geojson",
-    name: "中国省级行政区划",
-    source: chinaProvinceOverlay,
-    visible: true,
+    id: "chengdu-admin-geojson",
+    name: "成都市行政区划",
+    source: chengduAdminOverlay,
+    visible: adminLayerReady,
     style: {
-      ...chinaProvinceStyle,
+      ...chengduAdminStyle,
       opacity: 0.92,
     },
   },
@@ -293,12 +411,12 @@ const viewer = new tellux.Viewer(container, {
     : undefined,
   layers: initialLayers,
   camera: {
-    latitude: 34.232536488878544,
-    longitude: 108.89693500346492,
-    height: 2327601.728382909,
-    heading: -5.3848576035288485,
-    pitch: -89.07936389527404,
-    roll: 0.28388699925116934,
+    latitude: 30.5728,
+    longitude: 104.0668,
+    height: 420000,
+    heading: 0,
+    pitch: -89,
+    roll: 0,
   },
   scene: {
     atmosphere: {
@@ -562,7 +680,8 @@ function updateLayerStatus() {
     layer.layer?.isVisible()
   ).length
   const tiandituVisible = overlayLayers.some(
-    (layer) => layer.key === "tianditu-imagery-wmts" && layer.layer?.isVisible()
+    (layer) =>
+      layer.key.startsWith("tianditu-") && layer.layer?.isVisible()
   )
   const statusParts = [
     activeCount === 0
@@ -571,7 +690,19 @@ function updateLayerStatus() {
   ]
 
   if (tiandituVisible && !DEFAULT_TIANDITU_TOKEN) {
-    statusParts.push("天地图 WMTS 需要配置 VITE_TIANDITU_TOKEN。")
+    statusParts.push("天地图图层需要配置 VITE_TIANDITU_TOKEN。")
+  }
+
+  const adminLayer = overlayLayers.find(
+    (layer) => layer.key === "chengdu-admin-geojson"
+  )
+  if (adminLayer?.layer?.isVisible() && !adminLayerReady) {
+    statusParts.push(
+      adminLoadIssue ??
+        "成都市 GeoJSON 未加载成功。请检查 tk 是否开通 v2/administrative。"
+    )
+  } else if (adminLoadIssue && adminLayerReady) {
+    statusParts.push(adminLoadIssue)
   }
 
   layerStatus.textContent = statusParts.join(" ")
@@ -579,4 +710,9 @@ function updateLayerStatus() {
 
 window.addEventListener("beforeunload", () => {
   viewer.destroy()
+})
+}
+
+main().catch((error) => {
+  console.error("[data-sources] Failed to initialize example:", error)
 })

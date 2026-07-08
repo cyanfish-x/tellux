@@ -1,4 +1,4 @@
-import { WMTSTilesOverlay } from '3d-tiles-renderer/plugins'
+import { WMSTilesOverlay, WMTSTilesOverlay } from '3d-tiles-renderer/plugins'
 import * as THREE from 'three'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -14,6 +14,41 @@ function createFactory() {
     transparentOverlayTexture: new THREE.Texture()
   })
 }
+
+describe('ImageryOverlayFactory WMS overlays', () => {
+  it('lowercases WMS KVP names in preprocessURL for strict servers', () => {
+    const factory = createFactory()
+    const overlay = factory.createOverlay({
+      type: 'wms',
+      url: 'https://example.test/wms/compose',
+      layer: 'GEOS_IRX',
+      version: '1.3.0',
+      crs: 'EPSG:4326',
+      preprocessURL(url) {
+        const next = new URL(url)
+        next.searchParams.set('datetime', '202607081100')
+        return next.toString()
+      }
+    })
+
+    expect(overlay).not.toBeNull()
+    expect(overlay).toBeInstanceOf(WMSTilesOverlay)
+
+    const processed = overlay?.preprocessURL?.(
+      'https://example.test/wms/compose?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=GEOS_IRX&CRS=EPSG%3A4326&BBOX=112.5,33.75,118.125,39.375&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng'
+    )
+    expect(processed).toBeDefined()
+
+    const nextUrl = new URL(processed!)
+    expect(nextUrl.searchParams.get('service')).toBe('WMS')
+    expect(nextUrl.searchParams.get('request')).toBe('GetMap')
+    expect(nextUrl.searchParams.get('layers')).toBe('GEOS_IRX')
+    expect(nextUrl.searchParams.get('bbox')).toBe('112.5,33.75,118.125,39.375')
+    expect(nextUrl.searchParams.get('datetime')).toBe('202607081100')
+    expect(nextUrl.searchParams.has('SERVICE')).toBe(false)
+    expect(nextUrl.searchParams.has('REQUEST')).toBe(false)
+  })
+})
 
 describe('ImageryOverlayFactory WMTS overlays', () => {
   it('creates a WMTSTilesOverlay for tianditu-style wmts source config', () => {

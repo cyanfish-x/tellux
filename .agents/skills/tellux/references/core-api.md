@@ -1,6 +1,6 @@
 # 核心 API：Viewer / 相机 / 图层 / 地形 / 3D Tiles / 模型
 
-本文件覆盖使用 Tellux 的 80% 高频场景。所有示例都可直接运行，配合真实公开数据源。
+本文件覆盖使用 Tellux 的 80% 高频场景。示例代码中的 `url` 使用占位域名 `example.com`。
 
 ## 初始化 Viewer
 
@@ -14,7 +14,7 @@ const viewer = new tellux.Viewer('viewer', {
       name: 'ArcGIS 影像',
       source: {
         type: 'xyz',
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        url: 'https://example.com/imagery/{z}/{y}/{x}',
         levels: 19
       }
     }
@@ -129,7 +129,7 @@ const threeCam = viewer.camera.threeCamera         // 底层 THREE.PerspectiveCa
 // XYZ 底图
 viewer.layers.add({
   name: 'ArcGIS 影像',
-  source: { type: 'xyz', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', levels: 19 }
+  source: { type: 'xyz', url: 'https://example.com/imagery/{z}/{y}/{x}', levels: 19 }
 })
 
 // WMS（NASA GIBS 土地覆盖）
@@ -137,7 +137,7 @@ viewer.layers.add({
   name: '土地覆盖',
   source: {
     type: 'wms',
-    url: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+    url: 'https://example.com/wms',
     layer: 'MODIS_Combined_L3_IGBP_Land_Cover_Type_Annual',
     version: '1.1.1', crs: 'EPSG:4326', format: 'image/png',
     transparent: true, tileDimension: 512,
@@ -152,7 +152,7 @@ viewer.layers.add({
   name: '天地图影像',
   source: {
     type: 'wmts',
-    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
+    url: 'https://example.com/wmts',
     layer: 'img',
     tileMatrixSet: 'w',
     format: 'tiles',
@@ -176,7 +176,7 @@ viewer.layers.add({
 // MVT（按图层名区分样式）
 viewer.layers.add({
   name: '电力设施',
-  source: { type: 'mvt', url: 'https://openinframap.org/tiles/{z}/{x}/{y}.pbf', levels: 15, resolution: 1024 },
+  source: { type: 'mvt', url: 'https://example.com/tiles/{z}/{x}/{y}.pbf', levels: 15, resolution: 1024 },
   style: {
     getStyle(layerName, properties) {
       if (layerName === 'power_line') return { stroke: '#e6b800', strokeWidth: 2 }
@@ -247,7 +247,7 @@ viewer.setTerrain(null)
 const layer = viewer.load3DTileset({
   id: 'city',
   type: 'url',
-  url: 'https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json'
+  url: 'https://example.com/tileset.json'
 })
 
 // 从 Cesium Ion

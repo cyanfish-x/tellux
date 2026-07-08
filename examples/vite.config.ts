@@ -54,6 +54,11 @@ export default defineConfig(({ mode }) => {
           target: "http://localhost",
           changeOrigin: true,
         },
+        "/tianditu-administrative": {
+          target: "https://api.tianditu.gov.cn",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/tianditu-administrative/, ""),
+        },
       },
     },
     build: {

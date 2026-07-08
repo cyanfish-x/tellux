@@ -7,11 +7,7 @@
 `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`
 放到 `examples/public/tellux/`，再在示例入口中临时设置 `tellux.baseUrl = '/tellux/'`。
 
-示例默认使用 `type: 'xyz'` 影像数据源加载 ArcGIS World Imagery：
-
-```txt
-https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
-```
+示例默认使用 `type: 'xyz'` 影像数据源；具体服务地址在示例源码中配置，不在 README 中列出。
 
 所有普通示例会在检测到 `VITE_CESIUM_ION_TOKEN` 时默认加载 Cesium Ion 地形。默认地形
 asset id 是 `1`（Cesium World Terrain），可以通过 `.env` 覆盖：
@@ -21,7 +17,7 @@ VITE_CESIUM_ION_TERRAIN_ASSET_ID=1
 VITE_CESIUM_ION_TOKEN=your_token
 ```
 
-`data-sources.html` 示例中的天地图 WMTS 图层需要天地图 `tk` 密钥：
+`data-sources.html` 示例中的天地图 WMTS 与 GeoJSON 图层需要天地图 `tk` 密钥；GeoJSON 通过单次 `v2/administrative` 请求加载成都市边界（`156510100`）：
 
 ```txt
 VITE_TIANDITU_TOKEN=your_tianditu_token
@@ -51,13 +47,7 @@ pnpm examples
 `3d-tiles.html` 演示 `viewer.load3DTileset(...)`。3D Tiles 会作为独立场景数据加入 Viewer，
 不参与影像 overlay 管线。示例支持直接加载 `tileset.json` URL，也支持加载 Cesium Ion 3D Tiles 资源。
 
-未配置 `.env` 时，示例会默认加载 CesiumGS `3d-tiles-samples` 仓库中的公开 sample：
-
-```txt
-https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json
-```
-
-可以在项目根目录 `.env` 中配置默认值：
+未配置 `.env` 时，示例会回退到源码中的默认 tileset 地址。可以在项目根目录 `.env` 中配置：
 
 ```txt
 VITE_3D_TILESET_URL=https://example.com/tileset.json
@@ -72,13 +62,7 @@ VITE_CESIUM_ION_TOKEN=your_token
 `TilesRenderer` 加载带 `KHR_gaussian_splatting` / SPZ 压缩扩展的 3DGS
 tileset，并挂到 Tellux 的 Three.js 场景中。
 
-示例默认使用插件仓库公开样例：
-
-```txt
-https://raw.githubusercontent.com/WilliamLiu-1997/3D-Tiles-RendererJS-3DGS-Plugin/main/data/gaussianSplat1/tileset.json
-```
-
-可以在项目根目录 `.env` 中替换默认地址：
+示例默认使用插件仓库中的样例 tileset。可以在项目根目录 `.env` 中替换默认地址：
 
 ```txt
 VITE_GAUSSIAN_SPLAT_3D_TILESET_URL=https://example.com/3dgs/tileset.json

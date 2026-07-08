@@ -438,12 +438,25 @@ export class ImageryOverlayFactory {
 
   private createWMSPreprocessURL(resource: WMSImagerySourceOptions) {
     const preprocessURL = resource.preprocessURL
-    if (!this.isWMS11Version(resource.version)) return preprocessURL
 
     return (url: string) => {
-      const normalizedUrl = this.normalizeWMS11URL(url)
+      let normalizedUrl = url
+      if (this.isWMS11Version(resource.version)) {
+        normalizedUrl = this.normalizeWMS11URL(normalizedUrl)
+      }
+      normalizedUrl = this.normalizeWMSKVPLowercase(normalizedUrl)
       return preprocessURL ? preprocessURL(normalizedUrl) : normalizedUrl
     }
+  }
+
+  private normalizeWMSKVPLowercase(url: string) {
+    const nextUrl = new URL(url, location.href)
+    const params = [...nextUrl.searchParams.entries()]
+    nextUrl.search = ''
+    for (const [key, value] of params) {
+      nextUrl.searchParams.set(key.toLowerCase(), value)
+    }
+    return nextUrl.toString()
   }
 
   private isWMS11Version(version: string | undefined) {

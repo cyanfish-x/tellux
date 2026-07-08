@@ -35,7 +35,7 @@ const layer = viewer.layers.add({
   name: 'World imagery',
   source: {
     type: 'xyz',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    url: 'https://example.com/imagery/{z}/{y}/{x}',
     levels: 19
   }
 })

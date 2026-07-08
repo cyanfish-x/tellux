@@ -1,6 +1,6 @@
 # 数据源
 
-本章给出几类常见的、可直接复制运行的公开数据源配置，覆盖地形、栅格影像、矢量图层和 3D Tiles。这些数据源来自公开服务，可作为快速上手和验证使用。
+本章给出几类常见的数据源配置示例，覆盖地形、栅格影像、矢量图层和 3D Tiles。代码片段中的 `url` 统一使用占位域名 `example.com`；实际服务地址请替换为你自托管或已获授权的数据源。可运行示例与密钥配置见仓库 `examples/` 目录。
 
 ## 地形
 
@@ -28,7 +28,7 @@ const viewer = new tellux.Viewer(container, {
 ```ts
 const viewer = new tellux.Viewer(container, {
   terrain: {
-    url: 'https://your-server/terrain/layer.json'
+    url: 'https://example.com/terrain/layer.json'
   }
 })
 ```
@@ -37,14 +37,14 @@ const viewer = new tellux.Viewer(container, {
 
 ### ArcGIS World Imagery（XYZ）
 
-全球卫星影像，无需令牌，是最常用的底图：
+全球卫星影像 XYZ 瓦片是最常用的底图之一。将 `url` 替换为你的 XYZ 服务地址：
 
 ```ts
 viewer.layers.add({
-  name: 'ArcGIS World Imagery',
+  name: 'World Imagery',
   source: {
     type: 'xyz',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    url: 'https://example.com/imagery/{z}/{y}/{x}',
     levels: 19
   }
 })
@@ -52,14 +52,14 @@ viewer.layers.add({
 
 ### NASA GIBS（WMS）
 
-NASA GIBS 提供大量全球科学图层（土地覆盖、气溶胶、温度等），走 WMS。下面以 MODIS 土地覆盖为例，通过 `preprocessURL` 追加 `TIME` 参数：
+科学 WMS 服务通常提供大量全球专题图层（土地覆盖、气溶胶、温度等）。下面以土地覆盖图层为例，通过 `preprocessURL` 追加 `TIME` 参数：
 
 ```ts
 viewer.layers.add({
-  name: 'NASA GIBS Land Cover',
+  name: 'Land Cover',
   source: {
     type: 'wms',
-    url: 'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+    url: 'https://example.com/wms',
     layer: 'MODIS_Combined_L3_IGBP_Land_Cover_Type_Annual',
     version: '1.1.1',
     crs: 'EPSG:4326',
@@ -90,7 +90,7 @@ viewer.layers.add({
   name: '天地图影像',
   source: {
     type: 'wmts',
-    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
+    url: 'https://example.com/wmts',
     layer: 'img',
     tileMatrixSet: 'w',
     style: 'default',
@@ -106,7 +106,7 @@ viewer.layers.add({
 })
 ```
 
-> 天地图 `format` 使用 `tiles`，不是常见的 `image/png`。示例站点可通过环境变量 `VITE_TIANDITU_TOKEN` 配置密钥。
+> 部分 WMTS 服务（如天地图）的 `format` 使用 `tiles`，不是常见的 `image/png`。示例站点可通过环境变量 `VITE_TIANDITU_TOKEN` 配置密钥。
 
 ### Cesium Ion 影像
 
@@ -125,16 +125,16 @@ viewer.layers.add({
 
 ## 矢量图层
 
-### OpenInfraMap（MVT）
+### MVT 矢量瓦片
 
-OpenInfraMap 提供全球电力 / 能源设施的矢量瓦片，可作为 MVT 叠加层。配合 `getStyle` 回调按 MVT 图层名区分样式：
+MVT 适合大规模矢量数据叠加。配合 `getStyle` 回调按 MVT 内部图层名区分样式：
 
 ```ts
 viewer.layers.add({
-  name: 'OpenInfraMap 电力设施',
+  name: '矢量设施',
   source: {
     type: 'mvt',
-    url: 'https://openinframap.org/tiles/{z}/{x}/{y}.pbf',
+    url: 'https://example.com/tiles/{z}/{x}/{y}.pbf',
     levels: 15,
     resolution: 1024
   },
@@ -174,15 +174,15 @@ viewer.layers.add({
 
 ## 3D Tiles
 
-### 3D Tiles 样例仓库（URL）
+### 自托管 3D Tiles（URL）
 
-Cesium 官方维护的 3D Tiles 样例仓库，托管在 GitHub raw 上，可直接用 URL 加载，无需令牌：
+自托管或已获授权的 3D Tiles 可直接用 `tileset.json` URL 加载：
 
 ```ts
 const layer = viewer.load3DTileset({
   id: 'discrete-lod',
   type: 'url',
-  url: 'https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json'
+  url: 'https://example.com/tileset.json'
 })
 
 viewer.flyToTarget(layer.tileset, { distance: 1200 })
@@ -200,6 +200,46 @@ const layer = viewer.load3DTileset({
   assetId: 75343
 })
 ```
+
+### 卫星 WMS 专题层
+
+部分卫星 WMS 服务需要额外时间参数，且 BBOX 轴序与 WMS 1.3.0 默认约定不同。下面演示通过 `preprocessURL` 注入 `datetime` 并交换 BBOX 轴序：
+
+```ts
+function normalizeSatelliteWmsUrl(url: string): string {
+  const next = new URL(url)
+  next.searchParams.set('datetime', '202507081100') // UTC，YYYYMMDDhhmm
+
+  const bbox = next.searchParams.get('bbox')?.split(',').map(Number)
+  if (bbox?.length === 4 && bbox.every(Number.isFinite)) {
+    // WMS 1.3.0 EPSG:4326 为 lat/lon；部分服务要求 lon/lat
+    next.searchParams.set('bbox', [bbox[1], bbox[0], bbox[3], bbox[2]].join(','))
+  }
+  return next.toString()
+}
+
+viewer.layers.add({
+  name: '卫星红外',
+  source: {
+    type: 'wms',
+    url: 'https://example.com/satellite/wms',
+    layer: 'GEOS_IRX',
+    version: '1.3.0',
+    crs: 'EPSG:4326',
+    format: 'image/png',
+    levels: 3,
+    contentBoundingBox: [-180, -90, 180, 90],
+    preprocessURL: normalizeSatelliteWmsUrl
+  },
+  style: { opacity: 0.85 }
+})
+```
+
+::: warning 卫星 WMS 使用注意
+- 参数名须为小写（Tellux 会自动处理）。
+- 全球粗分辨率拼图图层**BBOX 过小可能返回空白图**，建议 `levels` 设为 **3**（最细瓦片约 45°×45°）。`levels: 4` 时最细约 22.5°，放大后边缘区域容易出现空瓦片。
+- 必须在 `preprocessURL` 中追加时间参数，并按服务要求调整 BBOX 轴序。
+:::
 
 ### Google Photorealistic 3D Tiles
 

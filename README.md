@@ -241,7 +241,7 @@ viewer.layers.add({
 const model = viewer.addModel({
   type: 'gltf',
   id: 'littlest-tokyo',
-  url: 'https://threejs.org/examples/models/gltf/LittlestTokyo.glb',
+  url: 'https://example.com/models/LittlestTokyo.glb',
   coordinates: [114, 30, 0],
   scale: 0.45,
   heading: 180,
