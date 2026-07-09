@@ -7,6 +7,7 @@ import { Tree } from "@dgreenheck/ez-tree"
 import {
   tiandituImageryXYZUrl,
   defaultTerrainUrl,
+  defaultTiandituToken,
   showTokenNotice,
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
@@ -136,6 +137,7 @@ function executeExampleScript(source: string) {
     "Tree",
     "tiandituImageryXYZUrl",
     "defaultTerrainUrl",
+    "defaultTiandituToken",
     "showTokenNotice",
     "mountLocationReadout",
     "formatHeight",
@@ -151,6 +153,7 @@ function executeExampleScript(source: string) {
     Tree,
     tiandituImageryXYZUrl,
     defaultTerrainUrl,
+    defaultTiandituToken,
     showTokenNotice,
     mountLocationReadout,
     formatHeight,
