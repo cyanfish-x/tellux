@@ -1,0 +1,358 @@
+import { Vector3 } from 'three'
+import { TilingScheme } from '3d-tiles-renderer/src/three/plugins/images/utils/TilingScheme.js'
+import { ProjectionScheme } from '3d-tiles-renderer/src/three/plugins/images/utils/ProjectionScheme.js'
+import {
+  createFlatTiandituHeights,
+  decompressGzipBuffer,
+  decodeTiandituElvC,
+  TiandituHeightmapLoader
+} from './TiandituHeightmapLoader'
+import { lonLatToTiandituTileXY, parseTiandituServiceError } from './TiandituSlippyTile'
+
+const TILE_X = Symbol('TILE_X')
+const TILE_Y = Symbol('TILE_Y')
+const TILE_LEVEL = Symbol('TILE_LEVEL')
+const TILE_AVAILABLE = Symbol('TILE_AVAILABLE')
+const TILE_SPLIT_SOURCE_SCENE = Symbol('TILE_SPLIT_SOURCE_SCENE')
+
+const INITIAL_HEIGHT_RANGE = 1e4
+const DEFAULT_TOP_LEVEL = 5
+const DEFAULT_BOTTOM_LEVEL = 12
+const DEFAULT_SUBDOMAINS = ['0', '1', '2', '3', '4', '5', '6', '7']
+const FLAT_TILE_URI = 'tianditu.flat.terrain'
+const MIN_TERRAIN_TILE_BYTES = 1000
+const _vec = new Vector3()
+
+export type TiandituTerrainPluginOptions = {
+  token: string
+  urls?: string[]
+  subdomains?: string[]
+  topLevel?: number
+  bottomLevel?: number
+  useRecommendedSettings?: boolean
+  skirtLength?: number | null
+  generateNormals?: boolean
+}
+
+function buildDefaultUrls(token: string, subdomains: string[]) {
+  return subdomains.map(
+    (subdomain) => `https://t${subdomain}.tianditu.gov.cn/mapservice/swdx?T=elv_c&tk=${token}`
+  )
+}
+
+function buildTileContentUri(tileX: number, tileY: number, zoom: number, flat: boolean) {
+  if (flat) {
+    return FLAT_TILE_URI
+  }
+
+  const params = new URLSearchParams({
+    x: String(tileX),
+    y: String(tileY),
+    l: String(zoom)
+  })
+  return `tianditu.terrain?${params.toString()}`
+}
+
+export class TiandituTerrainPlugin {
+  readonly name = 'TELLUX_TIANDITU_TERRAIN_PLUGIN'
+  readonly priority = -1000
+
+  private readonly token: string
+  private readonly urls: string[]
+  private readonly topLevel: number
+  private readonly bottomLevel: number
+  private readonly useRecommendedSettings: boolean
+  private readonly skirtLength: number | null
+  private readonly generateNormals: boolean
+  private lastServiceError: string | null = null
+
+  private tiles: {
+    ellipsoid: import('3d-tiles-renderer/three').Ellipsoid
+    manager: import('three').LoadingManager
+    fetchOptions: RequestInit
+    errorTarget: number
+    rootURL: string
+    invokeAllPlugins: (callback: (plugin: { preprocessURL?: (url: string | URL) => string | URL }) => void) => void
+    preprocessTileset: (tileset: object, baseUrl: string) => void
+    processNodeQueue: { remove: (tile: object) => void }
+  } | null = null
+
+  private readonly tiling = new TilingScheme()
+  private readonly projection = new ProjectionScheme('EPSG:3857')
+
+  constructor(options: TiandituTerrainPluginOptions) {
+    if (!options.token) {
+      throw new Error('TiandituTerrainPlugin: token is required.')
+    }
+
+    const subdomains = options.subdomains ?? DEFAULT_SUBDOMAINS
+    this.token = options.token
+    this.urls = options.urls?.length
+      ? options.urls
+      : buildDefaultUrls(options.token, subdomains)
+    this.topLevel = options.topLevel ?? DEFAULT_TOP_LEVEL
+    this.bottomLevel = options.bottomLevel ?? DEFAULT_BOTTOM_LEVEL
+    this.useRecommendedSettings = options.useRecommendedSettings ?? true
+    this.skirtLength = options.skirtLength ?? null
+    this.generateNormals = options.generateNormals ?? true
+  }
+
+  init(tiles: NonNullable<TiandituTerrainPlugin['tiles']>) {
+    if (this.useRecommendedSettings) {
+      tiles.errorTarget = 2
+    }
+
+    this.tiles = tiles
+  }
+
+  loadRootTileset() {
+    const { tiles } = this
+    if (!tiles) {
+      throw new Error('TiandituTerrainPlugin: plugin is not initialized.')
+    }
+
+    const { tiling, projection } = this
+    projection.setScheme('EPSG:3857')
+    tiling.setProjection(projection)
+    tiling.generateLevels(this.bottomLevel, projection.tileCountX, projection.tileCountY)
+
+    const children = []
+    for (let x = 0; x < projection.tileCountX; x++) {
+      const child = this.createChild(0, x, 0)
+      if (child) {
+        children.push(child)
+      }
+    }
+
+    const tileset = {
+      asset: {
+        version: '1.1'
+      },
+      geometricError: Infinity,
+      root: {
+        refine: 'REPLACE',
+        geometricError: Infinity,
+        boundingVolume: {
+          region: [...tiling.getContentBounds(), -INITIAL_HEIGHT_RANGE, INITIAL_HEIGHT_RANGE]
+        },
+        children,
+        [TILE_AVAILABLE]: null,
+        [TILE_LEVEL]: -1
+      }
+    }
+
+    let baseUrl = tiles.rootURL
+    tiles.invokeAllPlugins((plugin: { preprocessURL?: (url: string | URL, tile: unknown) => string | URL }) => {
+      if (plugin.preprocessURL) {
+        baseUrl = String(plugin.preprocessURL(baseUrl, null))
+      }
+    })
+    tiles.preprocessTileset(tileset, baseUrl)
+
+    return Promise.resolve(tileset)
+  }
+
+  parseToMesh(
+    buffer: ArrayBuffer,
+    tile: {
+      boundingVolume: { region: number[] }
+      geometricError: number
+      parent?: { boundingVolume: { region: number[] }; engineData: { scene?: object } }
+      engineData: { boundingVolume: { setRegionData: (...args: number[]) => void } }
+      children: object[]
+      internal: { virtualChildCount: number }
+      [key: symbol]: unknown
+    },
+    extension: string
+  ) {
+    const tiles = this.tiles
+    if (!tiles || extension !== 'terrain') {
+      return
+    }
+
+    const [west, south, east, north] = tile.boundingVolume.region
+    const heights =
+      buffer.byteLength === 0
+        ? createFlatTiandituHeights()
+        : decodeTiandituElvC(buffer)
+
+    const loader = new TiandituHeightmapLoader({
+      ellipsoid: tiles.ellipsoid,
+      minLat: south,
+      minLon: west,
+      maxLat: north,
+      maxLon: east,
+      skirtLength: this.skirtLength ?? tile.geometricError,
+      generateNormals: this.generateNormals
+    })
+    const result = loader.parse(heights)
+
+    const { minHeight, maxHeight } = result.userData
+    tile.boundingVolume.region[4] = minHeight
+    tile.boundingVolume.region[5] = maxHeight
+    ;(
+      tile.engineData.boundingVolume as {
+        setRegionData: (ellipsoid: unknown, ...region: number[]) => void
+      }
+    ).setRegionData(tiles.ellipsoid, ...tile.boundingVolume.region)
+
+    tile[TILE_SPLIT_SOURCE_SCENE] = result
+    this.expandChildren(tile)
+
+    return result
+  }
+
+  async fetchData(url: string | URL, options?: RequestInit) {
+    const urlString = String(url)
+
+    if (urlString.includes(FLAT_TILE_URI)) {
+      return new ArrayBuffer(0)
+    }
+
+    if (!urlString.includes('tianditu.terrain')) {
+      return null
+    }
+
+    const requestUrl = new URL(urlString, location.href)
+    const tileX = Number(requestUrl.searchParams.get('x'))
+    const tileY = Number(requestUrl.searchParams.get('y'))
+    const zoom = Number(requestUrl.searchParams.get('l'))
+
+    if (!Number.isFinite(tileX) || !Number.isFinite(tileY) || !Number.isFinite(zoom)) {
+      throw new Error(`TiandituTerrainPlugin: invalid tile request URL "${urlString}".`)
+    }
+
+    const serviceUrl = this.buildServiceUrl(tileX, tileY, zoom)
+    const response = await fetch(serviceUrl, options)
+    if (!response.ok) {
+      throw new Error(
+        `TiandituTerrainPlugin: failed to load elv_c tile (${response.status} ${response.statusText}).`
+      )
+    }
+
+    const buffer = await response.arrayBuffer()
+    const serviceError = parseTiandituServiceError(buffer)
+    if (serviceError) {
+      this.reportServiceError(serviceError)
+      throw new Error(`TiandituTerrainPlugin: ${serviceError}`)
+    }
+
+    if (buffer.byteLength < MIN_TERRAIN_TILE_BYTES) {
+      throw new Error(
+        `TiandituTerrainPlugin: elv_c tile response is too small (${buffer.byteLength} bytes).`
+      )
+    }
+
+    return decompressGzipBuffer(buffer)
+  }
+
+  disposeTile(tile: {
+    [key: symbol]: unknown
+    children: object[]
+    internal: { virtualChildCount: number }
+  }) {
+    const tiles = this.tiles
+    if (!tiles) return
+
+    delete tile[TILE_SPLIT_SOURCE_SCENE]
+
+    if (TILE_AVAILABLE in tile) {
+      const virtualChildCount = tile.internal.virtualChildCount
+      const len = tile.children.length
+      const start = len - virtualChildCount
+      for (let i = start; i < len; i++) {
+        tiles.processNodeQueue.remove(tile.children[i])
+      }
+
+      tile.children.length = 0
+      tile.internal.virtualChildCount = 0
+    }
+  }
+
+  private reportServiceError(message: string) {
+    if (this.lastServiceError === message) {
+      return
+    }
+
+    this.lastServiceError = message
+    console.warn(`Tellux Tianditu terrain: ${message}`)
+  }
+
+  private buildServiceUrl(tileX: number, tileY: number, zoom: number) {
+    const baseUrl = this.urls[(tileX + tileY) % this.urls.length]
+    const url = new URL(baseUrl, location.href)
+
+    if (!url.searchParams.has('T')) {
+      url.searchParams.set('T', 'elv_c')
+    }
+    if (!url.searchParams.has('tk')) {
+      url.searchParams.set('tk', this.token)
+    }
+
+    url.searchParams.set('x', String(tileX))
+    url.searchParams.set('y', String(tileY))
+    url.searchParams.set('l', String(zoom))
+
+    return url.toString()
+  }
+
+  private createChild(level: number, x: number, y: number) {
+    const tiles = this.tiles
+    if (!tiles) return null
+
+    const { tiling, projection } = this
+    const ellipsoid = tiles.ellipsoid
+    const region = [...tiling.getTileBounds(x, y, level), -INITIAL_HEIGHT_RANGE, INITIAL_HEIGHT_RANGE]
+    const [west, , , north, , maxHeight] = region
+    const [, south] = region
+    const midLat = south > 0 !== north > 0 ? 0 : Math.min(Math.abs(south), Math.abs(north))
+
+    ellipsoid.getCartographicToPosition(midLat, 0, maxHeight, _vec)
+    _vec.z = 0
+
+    const tileCountX = projection.tileCountX
+    const maxRadius = Math.max(...ellipsoid.radius)
+    const rootGeometricError = (maxRadius * 2 * Math.PI * 0.25) / (65 * tileCountX)
+    const geometricError = rootGeometricError / 2 ** level
+    const useFlatTile = level < this.topLevel
+    const zoom = level + 1
+    const slippyTile = lonLatToTiandituTileXY(west, north, zoom)
+
+    return {
+      [TILE_AVAILABLE]: null,
+      [TILE_LEVEL]: level,
+      [TILE_X]: x,
+      [TILE_Y]: y,
+      refine: 'REPLACE',
+      geometricError,
+      boundingVolume: { region },
+      content: {
+        uri: buildTileContentUri(slippyTile.x, slippyTile.y, zoom, useFlatTile)
+      },
+      children: []
+    }
+  }
+
+  private expandChildren(tile: {
+    [key: symbol]: unknown
+    children: object[]
+    internal: { virtualChildCount: number }
+  }) {
+    const level = tile[TILE_LEVEL] as number
+    const x = tile[TILE_X] as number
+    const y = tile[TILE_Y] as number
+
+    if (level >= this.bottomLevel - 1) {
+      return
+    }
+
+    for (let cx = 0; cx < 2; cx++) {
+      for (let cy = 0; cy < 2; cy++) {
+        const child = this.createChild(level + 1, 2 * x + cx, 2 * y + cy)
+        if (child) {
+          tile.children.push(child)
+        }
+      }
+    }
+  }
+}

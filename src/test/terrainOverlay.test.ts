@@ -110,6 +110,32 @@ describe('terrain imagery overlays', () => {
     expect(overlayPlugin?.enableTileSplitting).toBe(true)
   })
 
+  it('registers the Tianditu terrain plugin for tianditu terrain options', () => {
+    const imageryOverlayFactory = new ImageryOverlayFactory({
+      renderer: {} as never,
+      transparentOverlayTexture: {} as never
+    })
+    const terrainTilesetFactory = new TerrainTilesetFactory({
+      imageryOverlayFactory,
+      getSurfaceMaterialMode: () => 'standard',
+      getSurfaceMaterialOptions: () => ({
+        roughness: 1,
+        metalness: 0,
+        useRoughnessMap: false
+      }),
+      useDirectOverlayTexture: false,
+      registerCommonTilesetPlugins: () => {}
+    })
+
+    const { tileset } = terrainTilesetFactory.create({
+      type: 'tianditu',
+      token: 'test-token'
+    }, [], () => 0)
+
+    expect(tileset.getPluginByName('TELLUX_TIANDITU_TERRAIN_PLUGIN')).not.toBeNull()
+    expect(tileset.getPluginByName('QUANTIZED_MESH_PLUGIN')).toBeNull()
+  })
+
   it('uses a WebGPU compatible terrain overlay plugin for direct overlay textures', () => {
     const imageryOverlayFactory = new ImageryOverlayFactory({
       renderer: {} as never,

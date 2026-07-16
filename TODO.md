@@ -108,3 +108,106 @@
   - 背景：WebGPU 模式下地球瓦片层级切换时直接 pop，没有 WebGL 版的丝滑淡入淡出。
   - 根因：`TilesFadePlugin` 依赖 Three.js `onBeforeCompile` GLSL 注入，WebGPURenderer 不支持该机制。
   - 详细分析与完善方向见 [notes/坑点记录/WebGPU下onBeforeCompile着色器机制失效坑点.md](./notes/坑点记录/WebGPU下onBeforeCompile着色器机制失效坑点.md)。
+
+## 场景裁剪（Clipping）
+
+设计文档待建（`docs/design/clipping.md`）。
+
+- 背景：当前无法对地形 / 3D Tiles / 模型 / 实体做剖切或区域裁剪；地下漫游、基坑开挖、建筑剖面等场景需要对标 Cesium `ClippingPlaneCollection` / `ClippingPolygon` 的裁剪能力。
+- 方案方向：引擎级裁剪集合（平面 / 多边形），统一作用于 tileset、地形 mesh、模型图层与实体 pass；裁剪面由世界坐标定义，支持 union / intersection 模式与运行时增删改。
+- 渲染器：WebGL 优先（shader discard / clip distance）；WebGPU 单独立项（TSL clip node 或 stencil 路径）。
+
+- [ ] CL0 裁剪 API 与领域边界
+
+  - 公开 `viewer.clipping`（或等价分组对象）：`addPlane` / `addPolygon` / `remove` / `clear` / `enabled` / `unionClippingRegions`。
+  - 裁剪目标选择：`terrain` / `tilesets` / `models` / `entities` / `all`。
+  - 验证：API 形状与初始化 / 运行时控制同构（对齐 `scene.clouds.quality` 模式）。
+- [ ] CL1 平面裁剪（单面剖切）
+
+  - 世界空间平面方程 → 各受控渲染 pass 的 fragment discard 或 `clipDistance`。
+  - 接入 3D Tiles tileset 与 glTF 模型图层（优先用户可见收益最大的两类）。
+  - 验证：单平面剖切 tileset / 模型，剖面边缘稳定、无 z-fighting 闪烁。
+- [ ] CL2 多边形裁剪（区域开挖）
+
+  - 椭球面 / 局部 ENU 多边形挤出体裁剪（port Cesium `ClippingPolygon` 语义）。
+  - 接入地形 mesh（Quantized Mesh / heightmap 路径）。
+  - 验证：矩形开挖区内地形与 tileset 被正确裁掉，边界与影像对齐。
+- [ ] CL3 实体与后处理交互
+
+  - 实体 OIT pass 与裁剪 pass 合成顺序厘清；被裁实体不参与拾取。
+  - 与大气 / 云层 / 后处理链无双重 discard 或深度冲突。
+  - 验证：裁掉一半建筑后，剩余部分拾取与半透明合成正确。
+- [ ] CL4 案例 + 文档
+
+  - Sandcastle / examples 案例：基坑剖切、隧道纵剖、模型切片浏览。
+  - `docs/guide/` 裁剪使用指南。
+
+## 动态特效图元（Effect Primitives）
+
+设计文档待建（`docs/design/effect-primitives.md`）。
+
+- 背景：实体层目前只有静态点 / 线 / 面 / symbol，缺少 GIS 可视化常见的动态 shader 特效（流光、雷达扫描、能量罩、脉冲扩散、光锥等）。
+- 方案方向：在 Entity 体系下新增特效图形组件（`FlowLineGraphic`、`RadarGraphic`、`EnergyDomeGraphic`、`PulseCircleGraphic`、`LightConeGraphic`），共享位置 / show / dispose / 拾取语义；材质走自定义 ShaderMaterial + `uTime` 动画，半透明走现有 OIT 路径。
+- 非目标（v1）：粒子系统、后处理全屏泛光（依赖单独 bloom pass）、WebGPU 路径。
+
+### 流光线（Flow Line）
+
+- [ ] E1 FlowLineGraphic 原语
+
+  - 沿折线 UV 的流动纹理 / 渐变 shader（`speed`、`color`、`glowPower`、`repeat`）；支持 `width` 与 `clampToGround`。
+  - 验证：折线上流光方向正确、线宽像素恒定、缩放相机时动画速率视觉一致。
+- [ ] E2 Entity 集成 + API
+
+  - `FlowLineGraphics` 句柄、`FlowLineOptions`、`entity.flowLine`；与 `polyline` 互斥或可共存策略拍板。
+  - 验证：add / remove / setPositions / setShow 生命周期正确。
+
+### 扫光雷达（Radar Sweep）
+
+- [ ] E3 RadarGraphic 原语
+
+  - 扇形 / 圆形扫描区域：中心锚点 + `radius` + `startAngle` / `endAngle` + `sweepSpeed`；扫描臂渐变尾迹 + 可选同心波纹。
+  - 支持贴地（`clampToGround`）与绝对高（空中雷达）。
+  - 验证：扫描臂旋转流畅、扇形边界抗锯齿、贴地时贴地形无穿插。
+- [ ] E4 Entity 集成 + API
+
+  - `RadarGraphics` 句柄、`RadarOptions`、`entity.radar`。
+  - 验证：多个雷达实例互不干扰，raycast 命中扇形区域。
+
+### 能量罩（Energy Dome）
+
+- [ ] E5 EnergyDomeGraphic 原语
+
+  - 半球 / 椭球罩：菲涅尔边缘发光 + 网格 / 六边形纹理 + 呼吸式透明度脉动（`pulseSpeed`、`baseColor`、`rimColor`）。
+  - 验证：内外视角均可见边缘光，相机穿入罩内无闪烁或背面剔除异常。
+- [ ] E6 Entity 集成 + API
+
+  - `EnergyDomeGraphics` 句柄、`EnergyDomeOptions`、`entity.energyDome`。
+  - 验证：缩放半径 / 修改脉动参数实时生效。
+
+### 脉冲圆（Pulse Circle）
+
+- [ ] E7 PulseCircleGraphic 原语
+
+  - 地面同心扩散环：中心锚点 + `maxRadius` + `ringCount` + `speed` + `color` 衰减；环带宽度与间隔可配。
+  - 支持贴地椭圆（ENU 缩放）与正圆两种模式。
+  - 验证：多环错峰扩散、环到达 `maxRadius` 后淡出或循环重置可配置。
+- [ ] E8 Entity 集成 + API
+
+  - `PulseCircleGraphics` 句柄、`PulseCircleOptions`、`entity.pulseCircle`。
+  - 验证：与雷达 / 能量罩同屏多实例性能可接受。
+
+### 光锥特效集成案例
+
+- [ ] E9 LightConeGraphic 原语
+
+  - 锥形光束：顶点锚点 + 方向（heading / pitch 或终点坐标）+ `angle` + `length` + 体积光渐变 / 噪声闪烁。
+  - 验证：锥体方向随 ENU 旋转正确，近处亮远端衰减，半透明不与地形深度冲突。
+- [ ] E10 Entity 集成 + API
+
+  - `LightConeGraphics` 句柄、`LightConeOptions`、`entity.lightCone`。
+  - 验证：动态改长度 / 角度 / 颜色实时更新。
+- [ ] E11 综合集成案例
+
+  - 新增 `examples/effect-primitives.ts`（或 Sandcastle 条目）：同屏演示流光线路径 + 扫光雷达 + 能量罩 + 脉冲圆 + 光锥（如「基地警戒」场景）。
+  - 注册 vite 入口与 Sandcastle registry；`docs/guide/entities.md` 或独立 `docs/guide/effect-primitives.md` 补充用法。
+  - 验证：案例可一键运行，各特效可独立 toggle，destroy 无泄漏。

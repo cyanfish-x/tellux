@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
         "/3dtiles": {
-          target: "http://localhost",
+          target: "https://data.cyanfish.site",
           changeOrigin: true,
         },
         "/tianditu-administrative": {

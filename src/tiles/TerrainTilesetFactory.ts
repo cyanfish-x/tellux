@@ -3,10 +3,12 @@ import { CesiumIonAuthPlugin, QuantizedMeshPlugin } from '3d-tiles-renderer/plug
 import { TerrainFetchPlugin } from '../TerrainFetchPlugin'
 import type { ImageryLayer } from '../LayerManager'
 import type { SurfaceMaterialOptions } from '../materials/materialMode'
+import { TiandituTerrainPlugin } from './TiandituTerrainPlugin'
 import type {
   CesiumIonTerrainOptions,
   TerrainOptions,
   TerrainRenderOptions,
+  TiandituTerrainOptions,
   UrlTerrainOptions
 } from '../types'
 import {
@@ -88,6 +90,10 @@ export class TerrainTilesetFactory {
   }
 
   private createTerrainRenderer(terrain: TerrainOptions) {
+    if (this.isTiandituTerrainOptions(terrain)) {
+      return new TilesRenderer(this.getTiandituRootUrl(terrain))
+    }
+
     if (this.isUrlTerrainOptions(terrain)) {
       return new TilesRenderer(this.normalizeTerrainUrl(terrain.url))
     }
@@ -97,6 +103,23 @@ export class TerrainTilesetFactory {
 
   private registerTerrainProvider(tileset: TilesRenderer, terrain: TerrainOptions | undefined) {
     if (!terrain) return
+
+    if (this.isTiandituTerrainOptions(terrain)) {
+      tileset.registerPlugin(
+        new TiandituTerrainPlugin({
+          token: terrain.token,
+          urls: terrain.urls,
+          subdomains: terrain.subdomains,
+          topLevel: terrain.topLevel,
+          bottomLevel: terrain.bottomLevel,
+          useRecommendedSettings: terrain.useRecommendedSettings,
+          skirtLength: terrain.skirtLength ?? undefined,
+          generateNormals: terrain.generateNormals
+        })
+      )
+      this.applyTerrainLoadingOptions(tileset, terrain)
+      return
+    }
 
     const terrainOptions = this.createQuantizedMeshTerrainOptions(terrain)
 
@@ -158,6 +181,23 @@ export class TerrainTilesetFactory {
     }
 
     return terrainUrl.toString()
+  }
+
+  private getTiandituRootUrl(terrain: TiandituTerrainOptions) {
+    const url = terrain.urls?.[0]
+    if (url) {
+      const rootUrl = new URL(url, location.href)
+      if (!rootUrl.pathname.endsWith('/')) {
+        rootUrl.pathname += '/'
+      }
+      return rootUrl.toString()
+    }
+
+    return 'https://t0.tianditu.gov.cn/mapservice/swdx/'
+  }
+
+  private isTiandituTerrainOptions(terrain: TerrainOptions): terrain is TiandituTerrainOptions {
+    return terrain.type === 'tianditu'
   }
 
   private isCesiumIonTerrainOptions(terrain: TerrainOptions): terrain is CesiumIonTerrainOptions {

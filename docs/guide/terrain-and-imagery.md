@@ -1,6 +1,44 @@
 # 地形与影像
 
-Tellux 可以在裸球或 Cesium quantized-mesh terrain 上叠加影像图层。地形负责几何表面，影像图层负责纹理或矢量内容。
+Tellux 可以在裸球、Cesium quantized-mesh terrain 或天地图 swdx `elv_c` 地形上叠加影像图层。地形负责几何表面，影像图层负责纹理或矢量内容。
+
+## 天地图 swdx 地形
+
+```ts
+const tiandituToken = import.meta.env.VITE_TIANDITU_TOKEN ?? ''
+
+const viewer = new tellux.Viewer(container, {
+  terrain: {
+    type: 'tianditu',
+    token: tiandituToken,
+    tileLoading: {
+      enableTileSplitting: true
+    }
+  },
+  layers: [
+    {
+      source: {
+        type: 'xyz',
+        url: `https://t0.tianditu.gov.cn/DataServer?T=img_w&x={x}&y={y}&l={z}&tk=${tiandituToken}`,
+        levels: 18
+      }
+    }
+  ]
+})
+```
+
+也可以显式传入多子域 swdx URL 列表（与 Cesium `GeoTerrainProvider` 官方示例一致）：
+
+```ts
+viewer.setTerrain({
+  type: 'tianditu',
+  token: tiandituToken,
+  urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
+    (subdomain) =>
+      `https://t${subdomain}.tianditu.gov.cn/mapservice/swdx?T=elv_c&tk=${tiandituToken}`
+  )
+})
+```
 
 ## Cesium 地形
 

@@ -18,10 +18,12 @@ const loadIonButton =
 const removeButton =
   document.querySelector<HTMLButtonElement>("#remove-tileset")
 
-const PUBLIC_SAMPLE_TILESET_URL =
-  "https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json"
+// 打包后直连数据源；开发服务器下走 vite proxy（/3dtiles -> https://data.cyanfish.site）避免跨域。
+const PROD_TILESET_URL = "https://data.cyanfish.site/3dtiles/hk/tileset.json"
+const DEV_TILESET_URL = "/3dtiles/hk/tileset.json"
 const DEFAULT_TILESET_URL =
-  import.meta.env.VITE_3D_TILESET_URL ?? PUBLIC_SAMPLE_TILESET_URL
+  import.meta.env.VITE_3D_TILESET_URL ??
+  (import.meta.env.DEV ? DEV_TILESET_URL : PROD_TILESET_URL)
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_ASSET_ID =
@@ -144,6 +146,9 @@ function loadUrlTileset() {
       type: "url",
       id: "example-3d-tiles",
       url,
+      // 香港摄影测量瓦片法线常缺失/不稳定；post-process 光照依赖 NormalPass，
+      // 不开 creasedNormals 时 albedo 会被乘成接近 0，模型显示全黑。
+      creasedNormals: true,
     }),
     "URL 3D Tiles"
   )
@@ -188,11 +193,7 @@ removeControl.addEventListener("click", () => {
 
 if (DEFAULT_TILESET_URL) {
   loadUrlTileset()
-  setStatus(
-    DEFAULT_TILESET_URL === PUBLIC_SAMPLE_TILESET_URL
-      ? "已自动加载 CesiumGS 公开 3D Tiles 示例；也可以替换 URL 后重新加载。"
-      : "已从 VITE_3D_TILESET_URL 自动加载默认 3D Tiles。"
-  )
+  setStatus("已自动加载默认 3D Tiles；也可以替换 URL 后重新加载。")
 } else if (DEFAULT_ION_ASSET_ID && DEFAULT_ION_TOKEN) {
   setStatus("已读取 Cesium Ion 默认配置，可点击“加载 Cesium Ion”。")
 } else {

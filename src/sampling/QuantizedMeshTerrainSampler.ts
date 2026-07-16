@@ -142,6 +142,10 @@ export class QuantizedMeshTerrainSampler {
       return this.resolveCesiumIonTerrainResource(terrain)
     }
 
+    if (terrain.type === 'tianditu') {
+      throw new Error('Tellux terrain sampler: Tianditu terrain does not support direct quantized-mesh sampling.')
+    }
+
     return this.resolveUrlTerrainResource(terrain)
   }
 
@@ -726,6 +730,10 @@ export class QuantizedMeshTerrainSampler {
         terrain.apiToken,
         terrain.autoRefreshToken ?? true
       ].join(':')
+    }
+
+    if (terrain.type === 'tianditu') {
+      return ['tianditu', terrain.token, ...(terrain.urls ?? [])].join(':')
     }
 
     return this.normalizeTerrainRootUrl(terrain.url)

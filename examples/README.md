@@ -47,7 +47,8 @@ pnpm examples
 `3d-tiles.html` 演示 `viewer.load3DTileset(...)`。3D Tiles 会作为独立场景数据加入 Viewer，
 不参与影像 overlay 管线。示例支持直接加载 `tileset.json` URL，也支持加载 Cesium Ion 3D Tiles 资源。
 
-未配置 `.env` 时，示例会回退到源码中的默认 tileset 地址。可以在项目根目录 `.env` 中配置：
+默认加载 `data.cyanfish.site` 的香港 3D Tiles：开发服务器下经 Vite proxy（`/3dtiles -> https://data.cyanfish.site`）
+避免跨域，打包构建后直连 `https://data.cyanfish.site/3dtiles/hk/tileset.json`。可以在项目根目录 `.env` 中覆盖：
 
 ```txt
 VITE_3D_TILESET_URL=https://example.com/tileset.json
@@ -68,17 +69,30 @@ tileset，并挂到 Tellux 的 Three.js 场景中。
 VITE_GAUSSIAN_SPLAT_3D_TILESET_URL=https://example.com/3dgs/tileset.json
 ```
 
-## Cesium 地形示例
+## 天地图地形示例
 
-`terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.setTerrain(...)`。它支持输入 Cesium
-quantized-mesh 地形根目录或 `layer.json` 地址，也支持通过 Cesium Ion terrain asset 加载地形。
+`terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.setTerrain(...)`。默认使用天地图 swdx
+`elv_c` 高程地形，也支持切换到 Cesium Ion terrain asset。
 
-可以在项目根目录 `.env` 中配置 Cesium Ion 默认值。未配置 Ion token 时，示例仍支持回退到
-URL 地形：
+请在项目根目录 `.env` 中配置天地图 `tk` 密钥：
+
+```txt
+VITE_TIANDITU_TOKEN=your_tianditu_token
+```
+
+如需对比 Cesium Ion 地形，可额外配置：
 
 ```txt
 VITE_CESIUM_ION_TERRAIN_ASSET_ID=1
 VITE_CESIUM_ION_TOKEN=your_token
+```
+
+## Cesium 地形示例（Ion / URL）
+
+Tellux 也支持 Cesium quantized-mesh URL 与 Cesium Ion 地形。未配置天地图 token 时，
+`terrain.html` 会回退到 Cesium Ion 默认配置；也可以手动切换到 URL quantized-mesh：
+
+```txt
 VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
 ```
 

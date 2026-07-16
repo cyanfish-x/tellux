@@ -1,9 +1,13 @@
 ﻿import tellux, { type TerrainOptions } from "../src"
-import { tiandituImageryXYZUrl } from "./shared"
+import {
+  buildTiandituTerrainUrls,
+  defaultTiandituToken,
+  tiandituImageryXYZUrl,
+  tiandituTerrainServiceTemplate,
+} from "./shared"
 
-type TerrainSource = "url" | "cesium-ion"
+type TerrainSource = "tianditu" | "cesium-ion"
 
-const DEFAULT_TERRAIN_URL = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ""
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
@@ -11,9 +15,13 @@ const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 const container = document.querySelector("#viewer")
 const terrainSourceSelect =
   document.querySelector<HTMLSelectElement>("#terrain-source")
-const urlTerrainField =
-  document.querySelector<HTMLElement>("#url-terrain-field")
-const terrainUrlInput = document.querySelector<HTMLInputElement>("#terrain-url")
+const tiandituTerrainFields = document.querySelector<HTMLElement>(
+  "#tianditu-terrain-fields"
+)
+const tiandituTokenInput =
+  document.querySelector<HTMLInputElement>("#tianditu-token")
+const tiandituTerrainHint =
+  document.querySelector<HTMLElement>("#tianditu-terrain-hint")
 const ionTerrainFields = document.querySelector<HTMLElement>(
   "#ion-terrain-fields"
 )
@@ -32,8 +40,8 @@ if (!(container instanceof HTMLElement)) {
 
 if (
   !terrainSourceSelect ||
-  !urlTerrainField ||
-  !terrainUrlInput ||
+  !tiandituTerrainFields ||
+  !tiandituTokenInput ||
   !ionTerrainFields ||
   !ionTerrainAssetIdInput ||
   !ionTerrainTokenInput ||
@@ -43,8 +51,8 @@ if (
 }
 
 const terrainSourceField = terrainSourceSelect
-const urlTerrainFieldGroup = urlTerrainField
-const terrainUrlField = terrainUrlInput
+const tiandituTerrainFieldGroup = tiandituTerrainFields
+const tiandituTokenField = tiandituTokenInput
 const ionTerrainFieldGroup = ionTerrainFields
 const ionTerrainAssetIdField = ionTerrainAssetIdInput
 const ionTerrainTokenField = ionTerrainTokenInput
@@ -79,11 +87,14 @@ const viewer = new tellux.Viewer(container, {
 viewer.clock.hourUTC = 11
 ;(window as any).viewer = viewer
 
-terrainUrlField.value = ""
-terrainUrlField.placeholder = DEFAULT_TERRAIN_URL
-  ? "留空使用 VITE_CESIUM_TERRAIN_URL"
-  : "输入地形根目录或 layer.json 地址"
-terrainSourceField.value = DEFAULT_ION_TOKEN ? "cesium-ion" : "url"
+tiandituTokenField.value = ""
+tiandituTokenField.placeholder = defaultTiandituToken
+  ? "留空使用 VITE_TIANDITU_TOKEN"
+  : "输入天地图 tk"
+if (tiandituTerrainHint) {
+  tiandituTerrainHint.textContent = `服务模板：${tiandituTerrainServiceTemplate}`
+}
+terrainSourceField.value = defaultTiandituToken ? "tianditu" : "cesium-ion"
 ionTerrainAssetIdField.value = DEFAULT_ION_TERRAIN_ASSET_ID
 ionTerrainTokenField.value = ""
 ionTerrainTokenField.placeholder = DEFAULT_ION_TOKEN
@@ -94,26 +105,31 @@ function setStatus(message: string) {
   if (terrainStatus) terrainStatus.textContent = message
 }
 
-function getTerrainUrl() {
-  return terrainUrlField.value.trim() || DEFAULT_TERRAIN_URL
+function getTiandituToken() {
+  return tiandituTokenField.value.trim() || defaultTiandituToken
+}
+
+function getTiandituTerrainUrls(token: string) {
+  return buildTiandituTerrainUrls(token)
 }
 
 function getSelectedTerrainSource(): TerrainSource {
-  return terrainSourceField.value === "cesium-ion" ? "cesium-ion" : "url"
+  return terrainSourceField.value === "cesium-ion" ? "cesium-ion" : "tianditu"
 }
 
-function createUrlTerrainOptions(): TerrainOptions | null {
-  const url = getTerrainUrl()
-  if (!url) {
-    setStatus(
-      "请先输入 quantized-mesh 地形根目录或 layer.json 地址，或配置 VITE_CESIUM_TERRAIN_URL。"
-    )
+function createTiandituTerrainOptions(): TerrainOptions | null {
+  const token = getTiandituToken()
+  const urls = token ? getTiandituTerrainUrls(token) : []
+
+  if (!token || urls.length === 0) {
+    setStatus("请先输入天地图 tk，或在 .env 中配置 VITE_TIANDITU_TOKEN。")
     return null
   }
 
   return {
-    type: "url",
-    url,
+    type: "tianditu",
+    token,
+    urls,
     tileLoading: {
       enableTileSplitting: true,
     },
@@ -142,20 +158,23 @@ function createIonTerrainOptions(): TerrainOptions | null {
 }
 
 function createSelectedTerrainOptions(): TerrainOptions | null {
-  return getSelectedTerrainSource() === "url"
-    ? createUrlTerrainOptions()
+  return getSelectedTerrainSource() === "tianditu"
+    ? createTiandituTerrainOptions()
     : createIonTerrainOptions()
 }
 
 function syncTerrainSourceFields() {
   const source = getSelectedTerrainSource()
-  const isUrl = source === "url"
+  const isTianditu = source === "tianditu"
 
-  urlTerrainFieldGroup.hidden = !isUrl
-  terrainUrlField.disabled = !isUrl
-  ionTerrainAssetIdField.disabled = isUrl
-  ionTerrainTokenField.disabled = isUrl
-  ionTerrainFieldGroup.hidden = isUrl
+  tiandituTerrainFieldGroup.hidden = !isTianditu
+  tiandituTokenField.disabled = !isTianditu
+  if (tiandituTerrainHint) {
+    tiandituTerrainHint.hidden = !isTianditu
+  }
+  ionTerrainAssetIdField.disabled = isTianditu
+  ionTerrainTokenField.disabled = isTianditu
+  ionTerrainFieldGroup.hidden = isTianditu
 }
 
 function enableSelectedTerrain() {
@@ -167,8 +186,8 @@ function enableSelectedTerrain() {
 
   viewer.setTerrain(terrain)
   setStatus(
-    getSelectedTerrainSource() === "url"
-      ? "URL 地形已通过 viewer.setTerrain 加载。"
+    getSelectedTerrainSource() === "tianditu"
+      ? "天地图 swdx 地形已通过 viewer.setTerrain 加载。"
       : "Cesium Ion 地形已通过 viewer.setTerrain 加载。"
   )
 }
@@ -192,8 +211,8 @@ terrainSourceField.addEventListener("change", () => {
     enableSelectedTerrain()
   } else {
     setStatus(
-      getSelectedTerrainSource() === "url"
-        ? "已选择 URL 地形来源，勾选后加载 quantized-mesh 地形。"
+      getSelectedTerrainSource() === "tianditu"
+        ? "已选择天地图 swdx 地形，勾选后加载 elv_c 高程瓦片。"
         : "已选择 Cesium Ion 地形来源，勾选后加载 terrain asset。"
     )
   }
@@ -201,7 +220,7 @@ terrainSourceField.addEventListener("change", () => {
 
 terrainEnabledControl.addEventListener("change", syncTerrainEnabledState)
 
-terrainUrlField.addEventListener("keydown", (event) => {
+tiandituTokenField.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     terrainEnabledControl.checked = true
     syncTerrainEnabledState()
@@ -224,19 +243,23 @@ ionTerrainTokenField.addEventListener("keydown", (event) => {
 
 syncTerrainSourceFields()
 
-if (DEFAULT_ION_TOKEN) {
-  terrainEnabledControl.checked = true
-  enableSelectedTerrain()
-  setStatus("已从 Cesium Ion 默认配置自动加载地形；也可以切换到 URL 地形。")
-} else if (DEFAULT_TERRAIN_URL) {
+if (defaultTiandituToken) {
   terrainEnabledControl.checked = true
   enableSelectedTerrain()
   setStatus(
-    "未检测到 Cesium Ion token，已从 VITE_CESIUM_TERRAIN_URL 自动加载 URL 地形。"
+    "已从天地图 swdx 默认配置自动加载地形；也可以切换到 Cesium Ion 地形。"
+  )
+} else if (DEFAULT_ION_TOKEN) {
+  terrainSourceField.value = "cesium-ion"
+  syncTerrainSourceFields()
+  terrainEnabledControl.checked = true
+  enableSelectedTerrain()
+  setStatus(
+    "未检测到 VITE_TIANDITU_TOKEN，已从 Cesium Ion 默认配置自动加载地形。"
   )
 } else {
   setStatus(
-    "输入 terrain URL，或提供 Cesium Ion terrain asset id 和 token 后加载。"
+    "请配置 VITE_TIANDITU_TOKEN，或输入天地图 tk / Cesium Ion 凭据后加载。"
   )
 }
 

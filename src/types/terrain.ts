@@ -131,11 +131,52 @@ export interface CesiumIonTerrainOptions extends TerrainRenderOptions {
 }
 
 /**
+ * 天地图 swdx elv_c 高程地形配置，用于 {@link ViewerOptions.terrain}。
+ *
+ * Tianditu swdx `elv_c` heightmap terrain options used by
+ * {@link ViewerOptions.terrain}.
+ */
+export interface TiandituTerrainOptions extends TerrainRenderOptions {
+  /** 数据源类型。Data source type. */
+  type: 'tianditu'
+  /** 天地图 tk 密钥。Tianditu API token (`tk`). */
+  token: string
+  /**
+   * swdx 服务 URL 列表（多子域负载均衡）。
+   *
+   * 不传时使用 `t0`–`t7` 默认地址。
+   *
+   * swdx service URLs for subdomain load balancing.
+   *
+   * When omitted, Tellux uses the default `t0`–`t7` endpoints.
+   */
+  urls?: string[]
+  /**
+   * 子域编号，默认 `['0',…,'7']`。
+   *
+   * Subdomain ids. Defaults to `['0',…,'7']`.
+   */
+  subdomains?: string[]
+  /**
+   * 开始请求真实 elv_c 数据的层级，默认 `5`。
+   *
+   * First level that requests real `elv_c` tiles. Defaults to `5`.
+   */
+  topLevel?: number
+  /**
+   * 停止继续细分的层级（不含），默认 `12`。
+   *
+   * Level at which refinement stops (exclusive). Defaults to `12`.
+   */
+  bottomLevel?: number
+}
+
+/**
  * Viewer 支持的地形配置。
  *
  * Terrain options supported by Viewer.
  */
-export type TerrainOptions = UrlTerrainOptions | CesiumIonTerrainOptions
+export type TerrainOptions = UrlTerrainOptions | CesiumIonTerrainOptions | TiandituTerrainOptions
 
 /**
  * 3D Tiles 图层渲染选项。

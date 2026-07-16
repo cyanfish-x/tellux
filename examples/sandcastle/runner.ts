@@ -6,6 +6,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import { Tree } from "@dgreenheck/ez-tree"
 import {
   tiandituImageryXYZUrl,
+  tiandituTerrainServiceTemplate,
+  buildTiandituTerrainUrls,
   defaultTerrainUrl,
   defaultTiandituToken,
   showTokenNotice,
@@ -136,6 +138,8 @@ function executeExampleScript(source: string) {
     "GLTFLoader",
     "Tree",
     "tiandituImageryXYZUrl",
+    "tiandituTerrainServiceTemplate",
+    "buildTiandituTerrainUrls",
     "defaultTerrainUrl",
     "defaultTiandituToken",
     "showTokenNotice",
@@ -152,6 +156,8 @@ function executeExampleScript(source: string) {
     GLTFLoader,
     Tree,
     tiandituImageryXYZUrl,
+    tiandituTerrainServiceTemplate,
+    buildTiandituTerrainUrls,
     defaultTerrainUrl,
     defaultTiandituToken,
     showTokenNotice,

@@ -80,12 +80,12 @@ export interface ViewerOptions {
   /**
    * 地形瓦片资源配置。
    *
-   * `url` 指向 Cesium quantized-mesh terrain 根目录或 `layer.json` 文件。
+   * 支持 Cesium quantized-mesh URL / Ion 地形，以及天地图 swdx `elv_c` 高程地形。
    *
    * Terrain tile resource options.
    *
-   * The `url` points to a Cesium quantized-mesh terrain root directory or
-   * `layer.json` file.
+   * Supports Cesium quantized-mesh URL / Ion terrain and Tianditu swdx `elv_c`
+   * heightmap terrain.
    */
   terrain?: TerrainOptions
   /**

@@ -237,7 +237,7 @@ export class HeightSampler {
 
   private async sampleTerrainMostDetailedDirect(positions: CartographicCoordinateTuple[]) {
     const terrain = this.tilesets.terrainOptions
-    if (!terrain || !this.tilesets.terrainTileset) return null
+    if (!terrain || !this.tilesets.terrainTileset || terrain.type === 'tianditu') return null
 
     try {
       return await this.terrainSampler.sampleMostDetailed(terrain, positions)

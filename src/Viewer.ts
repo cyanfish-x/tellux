@@ -114,6 +114,7 @@ export type {
   CartographicHeightTuple,
   CartographicInput,
   CesiumIonTerrainOptions,
+  TiandituTerrainOptions,
   CesiumIon3DTilesetOptions,
   CesiumIonImagerySourceOptions,
   EntityTransparencyMode,

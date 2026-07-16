@@ -74,6 +74,7 @@ export {
   type CesiumIon3DTilesetOptions,
   type CesiumIonImagerySourceOptions,
   type CesiumIonTerrainOptions,
+  type TiandituTerrainOptions,
   type ColorInput,
   type EntityOptions,
   type PointOptions,
