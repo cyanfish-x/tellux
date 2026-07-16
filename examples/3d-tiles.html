@@ -18,10 +18,19 @@
         </header>
         <p>通过 <code>viewer.load3DTileset</code> 加载独立场景 3D Tiles，默认加载 <code>data.cyanfish.site</code> 的香港 3D Tiles，也可以替换为自定义 URL 或 Cesium Ion 资源。</p>
         <label class="field">
-          <span>tileset.json URL</span>
-          <input id="tileset-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
+          <span>加载方式</span>
+          <select id="tileset-source" class="field__input">
+            <option value="url">tileset.json URL</option>
+            <option value="cesium-ion">Cesium Ion</option>
+          </select>
         </label>
-        <div class="toolbar__row">
+        <div id="url-tileset-fields">
+          <label class="field">
+            <span>tileset.json URL</span>
+            <input id="tileset-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
+          </label>
+        </div>
+        <div id="ion-tileset-fields" class="toolbar__row" hidden>
           <label class="field">
             <span>Cesium Ion asset id</span>
             <input id="ion-asset-id" class="field__input" type="text" autocomplete="off" spellcheck="false" />
@@ -41,8 +50,7 @@
         </label>
         <p id="tileset-status" class="status" aria-live="polite"></p>
         <div class="toolbar__row">
-          <button class="button" id="load-url-tileset" type="button">加载 URL</button>
-          <button class="button" id="load-ion-tileset" type="button">加载 Cesium Ion</button>
+          <button class="button" id="load-tileset" type="button">加载</button>
           <button class="button" id="remove-tileset" type="button">移除</button>
         </div>
       </section>

@@ -527,11 +527,13 @@ export class TilesetManager {
   }
 
   private createSceneTileset(options: Load3DTilesetOptions) {
+    let tileset: TilesRenderer
     switch (options.type) {
       case 'url':
-        return new TilesRenderer(options.url)
+        tileset = new TilesRenderer(options.url)
+        break
       case 'cesium-ion': {
-        const tileset = new TilesRenderer()
+        tileset = new TilesRenderer()
         tileset.registerPlugin(
           new CesiumIonAuthPlugin({
             apiToken: options.apiToken,
@@ -542,8 +544,21 @@ export class TilesetManager {
             }
           })
         )
-        return tileset
+        break
       }
+    }
+
+    this.applySceneTilesetLoadingOptions(tileset, options)
+    return tileset
+  }
+
+  private applySceneTilesetLoadingOptions(tileset: TilesRenderer, options: Load3DTilesetOptions) {
+    const tileLoading = options.tileLoading
+    if (tileLoading?.errorTarget !== undefined) {
+      tileset.errorTarget = tileLoading.errorTarget
+    }
+    if (tileLoading?.loadSiblings !== undefined) {
+      tileset.loadSiblings = tileLoading.loadSiblings
     }
   }
 

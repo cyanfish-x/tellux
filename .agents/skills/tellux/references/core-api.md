@@ -270,6 +270,20 @@ viewer.remove3DTileset('city')
 - `materialMode: 'unlit'`：强制不受光材质，用于 post-process 光照场景（默认随光照模式）。
 - `creasedNormals: true`：为摄影测量瓦片重生成折痕法线，改善后处理光照边缘（增加加载 CPU 成本）。
 
+`tileLoading`（场景 3D Tiles LOD）：
+
+```ts
+viewer.load3DTileset({
+  type: 'url',
+  url: '/3dtiles/hk/tileset.json',
+  creasedNormals: true,
+  tileLoading: {
+    errorTarget: 4,      // 目标屏幕空间误差（像素），越小越细，默认 16
+    loadSiblings: true,  // 细化时一并加载兄弟瓦片，默认 true
+  },
+})
+```
+
 ## 模型（glTF / GLB）
 
 `addModel` 按经纬高放置，内部处理矩阵计算和 Draco 解码：

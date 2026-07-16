@@ -2,7 +2,17 @@
 import tellux from "../src"
 import { tiandituImageryXYZUrl } from "./shared"
 
+type TilesetSource = "url" | "cesium-ion"
+
 const container = document.querySelector("#viewer")
+const tilesetSourceSelect =
+  document.querySelector<HTMLSelectElement>("#tileset-source")
+const urlTilesetFieldGroup = document.querySelector<HTMLElement>(
+  "#url-tileset-fields"
+)
+const ionTilesetFieldGroup = document.querySelector<HTMLElement>(
+  "#ion-tileset-fields"
+)
 const tilesetUrlInput = document.querySelector<HTMLInputElement>("#tileset-url")
 const ionAssetIdInput =
   document.querySelector<HTMLInputElement>("#ion-asset-id")
@@ -11,10 +21,7 @@ const visibleToggle =
   document.querySelector<HTMLInputElement>("#tileset-visible")
 const flyToToggle = document.querySelector<HTMLInputElement>("#tileset-fly-to")
 const statusElement = document.querySelector<HTMLElement>("#tileset-status")
-const loadUrlButton =
-  document.querySelector<HTMLButtonElement>("#load-url-tileset")
-const loadIonButton =
-  document.querySelector<HTMLButtonElement>("#load-ion-tileset")
+const loadButton = document.querySelector<HTMLButtonElement>("#load-tileset")
 const removeButton =
   document.querySelector<HTMLButtonElement>("#remove-tileset")
 
@@ -27,7 +34,7 @@ const DEFAULT_TILESET_URL =
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_3D_TILESET_ASSET_ID ?? ""
+  import.meta.env.VITE_CESIUM_ION_3D_TILESET_ASSET_ID ?? "354307"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 if (!(container instanceof HTMLElement)) {
@@ -35,25 +42,27 @@ if (!(container instanceof HTMLElement)) {
 }
 
 if (
+  !tilesetSourceSelect ||
+  !urlTilesetFieldGroup ||
+  !ionTilesetFieldGroup ||
   !tilesetUrlInput ||
   !ionAssetIdInput ||
   !ionTokenInput ||
   !visibleToggle ||
   !flyToToggle ||
-  !loadUrlButton ||
-  !loadIonButton ||
+  !loadButton ||
   !removeButton
 ) {
   throw new Error("3D Tiles controls not found.")
 }
 
+const tilesetSourceField = tilesetSourceSelect
 const tilesetUrlField = tilesetUrlInput
 const ionAssetIdField = ionAssetIdInput
 const ionTokenField = ionTokenInput
 const tilesetVisibleToggle = visibleToggle
 const flyToTilesetToggle = flyToToggle
-const loadUrlControl = loadUrlButton
-const loadIonControl = loadIonButton
+const loadControl = loadButton
 const removeControl = removeButton
 
 const viewer = new tellux.Viewer(container, {
@@ -108,6 +117,20 @@ function setStatus(message: string) {
   if (statusElement) statusElement.textContent = message
 }
 
+function getSelectedTilesetSource(): TilesetSource {
+  return tilesetSourceField.value === "cesium-ion" ? "cesium-ion" : "url"
+}
+
+function syncTilesetSourceFields() {
+  const isUrl = getSelectedTilesetSource() === "url"
+
+  urlTilesetFieldGroup.hidden = !isUrl
+  ionTilesetFieldGroup.hidden = isUrl
+  tilesetUrlField.disabled = !isUrl
+  ionAssetIdField.disabled = isUrl
+  ionTokenField.disabled = isUrl
+}
+
 function clearActiveLayer() {
   activeLayer?.remove()
   activeLayer = null
@@ -154,9 +177,7 @@ function loadUrlTileset() {
   )
 }
 
-loadUrlControl.addEventListener("click", loadUrlTileset)
-
-loadIonControl.addEventListener("click", () => {
+function loadIonTileset() {
   const assetId = ionAssetIdField.value.trim()
   const apiToken = ionTokenField.value.trim() || DEFAULT_ION_TOKEN
 
@@ -172,10 +193,31 @@ loadIonControl.addEventListener("click", () => {
       id: "example-3d-tiles",
       assetId,
       apiToken,
+      creasedNormals: true,
     }),
     "Cesium Ion 3D Tiles"
   )
+}
+
+function loadSelectedTileset() {
+  if (getSelectedTilesetSource() === "url") {
+    loadUrlTileset()
+    return
+  }
+
+  loadIonTileset()
+}
+
+tilesetSourceField.addEventListener("change", () => {
+  syncTilesetSourceFields()
+  setStatus(
+    getSelectedTilesetSource() === "url"
+      ? "已切换到 URL 加载；填写 tileset.json 地址后点击“加载”。"
+      : "已切换到 Cesium Ion 加载；填写 asset id 和 token 后点击“加载”。"
+  )
 })
+
+loadControl.addEventListener("click", loadSelectedTileset)
 
 tilesetVisibleToggle.addEventListener("change", () => {
   syncLayerVisibility()
@@ -192,13 +234,27 @@ removeControl.addEventListener("click", () => {
 })
 
 if (DEFAULT_TILESET_URL) {
+  tilesetSourceField.value = "url"
+} else if (DEFAULT_ION_ASSET_ID && DEFAULT_ION_TOKEN) {
+  tilesetSourceField.value = "cesium-ion"
+}
+
+syncTilesetSourceFields()
+
+if (DEFAULT_TILESET_URL && getSelectedTilesetSource() === "url") {
   loadUrlTileset()
   setStatus("已自动加载默认 3D Tiles；也可以替换 URL 后重新加载。")
-} else if (DEFAULT_ION_ASSET_ID && DEFAULT_ION_TOKEN) {
-  setStatus("已读取 Cesium Ion 默认配置，可点击“加载 Cesium Ion”。")
+} else if (
+  DEFAULT_ION_ASSET_ID &&
+  DEFAULT_ION_TOKEN &&
+  getSelectedTilesetSource() === "cesium-ion"
+) {
+  setStatus("已读取 Cesium Ion 默认配置，可点击“加载”。")
 } else {
   setStatus(
-    "输入 tileset.json URL，或配置 Cesium Ion asset id 和 token 后加载。"
+    getSelectedTilesetSource() === "url"
+      ? "输入 tileset.json URL 后点击“加载”。"
+      : "输入 Cesium Ion asset id 和 token 后点击“加载”。"
   )
 }
 

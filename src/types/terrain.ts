@@ -179,6 +179,36 @@ export interface TiandituTerrainOptions extends TerrainRenderOptions {
 export type TerrainOptions = UrlTerrainOptions | CesiumIonTerrainOptions | TiandituTerrainOptions
 
 /**
+ * 场景 3D Tiles 图层瓦片加载参数，用于调整 LOD 和细化策略。
+ *
+ * Scene 3D Tiles layer loading options used to tune LOD and refinement behavior.
+ */
+export interface Scene3DTileLoadingOptions {
+  /**
+   * 3D Tiles 目标屏幕空间误差（像素），默认 `16`。
+   *
+   * 值越小越倾向加载更高层级瓦片，但会增加请求、解析和渲染成本。
+   *
+   * Target screen-space error for 3D Tiles in pixels. Defaults to `16`.
+   *
+   * Lower values prefer higher-detail tiles, but increase request, parsing, and
+   * rendering cost.
+   */
+  errorTarget?: number
+  /**
+   * 是否在细化某个瓦片时一并加载其兄弟瓦片，默认 `true`。
+   *
+   * 开启后可减少相机移动时的空洞，但会增加并发下载量。
+   *
+   * Whether to load sibling tiles while refining a tile. Defaults to `true`.
+   *
+   * Enabling this can reduce holes while the camera moves, but increases
+   * concurrent downloads.
+   */
+  loadSiblings?: boolean
+}
+
+/**
  * 3D Tiles 图层渲染选项。
  *
  * Rendering options shared by 3D Tiles layers.
@@ -210,6 +240,16 @@ export interface ThreeDTilesRenderOptions {
    * memory cost while tiles load.
    */
   creasedNormals?: boolean
+  /**
+   * 3D Tiles 瓦片加载参数。
+   *
+   * 用于调节场景 3D Tiles 图层的 LOD 和细化策略。
+   *
+   * 3D Tiles tile loading options.
+   *
+   * Tunes LOD and refinement behavior for scene 3D Tiles layers.
+   */
+  tileLoading?: Scene3DTileLoadingOptions
 }
 
 export interface Url3DTilesetOptions extends ThreeDTilesRenderOptions {

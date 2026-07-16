@@ -161,6 +161,7 @@ export type {
   TerrainRenderOptions,
   TerrainOptions,
   TerrainTileLoadingOptions,
+  Scene3DTileLoadingOptions,
   ThreeDTilesRenderOptions,
   ViewerSurfaceMaterialOptions,
   SurfaceMaterialMode,

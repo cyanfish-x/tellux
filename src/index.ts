@@ -125,6 +125,7 @@ export {
   type TerrainRenderOptions,
   type TerrainOptions,
   type TerrainTileLoadingOptions,
+  type Scene3DTileLoadingOptions,
   type ThreeDTilesRenderOptions,
   type TelluxConfig,
   type TilesetFeatureProperties,
