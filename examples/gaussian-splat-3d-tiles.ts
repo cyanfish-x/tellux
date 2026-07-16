@@ -1,7 +1,7 @@
 ﻿import tellux from "../src"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
-import { tiandituImageryXYZUrl } from "./shared"
+import { createTiandituXYZImagery } from "./shared"
 
 const container = document.querySelector("#viewer")
 const tilesetUrlInput = document.querySelector<HTMLInputElement>("#splat-tileset-url")
@@ -56,11 +56,7 @@ const viewer = new tellux.Viewer(container, {
   camera: SAMPLE_VIEW,
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   scene: {

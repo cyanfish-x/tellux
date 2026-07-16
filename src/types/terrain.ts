@@ -139,8 +139,21 @@ export interface CesiumIonTerrainOptions extends TerrainRenderOptions {
 export interface TiandituTerrainOptions extends TerrainRenderOptions {
   /** 数据源类型。Data source type. */
   type: 'tianditu'
-  /** 天地图 tk 密钥。Tianditu API token (`tk`). */
-  token: string
+  /**
+   * 天地图 tk 密钥。
+   *
+   * 传单个 key 时行为与旧版一致；传数组时，Tellux 会按瓦片坐标确定性
+   * 分片到不同 key 上做负载均衡，避免单 key 额度被快速耗尽。同一瓦片
+   * 始终命中同一 key，不会破坏浏览器缓存。
+   *
+   * Tianditu API token (`tk`).
+   *
+   * A single key keeps the legacy behavior. When an array is provided, Tellux
+   * shards deterministically by tile coordinates across the keys for load
+   * balancing, so a single key's quota is not exhausted quickly. The same tile
+   * always resolves to the same key, preserving browser caching.
+   */
+  token: string | string[]
   /**
    * swdx 服务 URL 列表（多子域负载均衡）。
    *

@@ -1,8 +1,9 @@
 ﻿import tellux, { type TerrainOptions } from "../src"
 import {
   buildTiandituTerrainUrls,
+  createTiandituXYZImagery,
   defaultTiandituToken,
-  tiandituImageryXYZUrl,
+  defaultTiandituTokens,
   tiandituTerrainServiceTemplate,
 } from "./shared"
 
@@ -62,11 +63,7 @@ const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   camera: {
@@ -105,10 +102,6 @@ function setStatus(message: string) {
   if (terrainStatus) terrainStatus.textContent = message
 }
 
-function getTiandituToken() {
-  return tiandituTokenField.value.trim() || defaultTiandituToken
-}
-
 function getTiandituTerrainUrls(token: string) {
   return buildTiandituTerrainUrls(token)
 }
@@ -118,10 +111,15 @@ function getSelectedTerrainSource(): TerrainSource {
 }
 
 function createTiandituTerrainOptions(): TerrainOptions | null {
-  const token = getTiandituToken()
-  const urls = token ? getTiandituTerrainUrls(token) : []
+  const userInput = tiandituTokenField.value.trim()
+  // 用户输入了就用输入的单 key；否则用 .env 解析出的多 key 数组做负载均衡。
+  // A user-entered key takes precedence; otherwise the multi-key array parsed
+  // from .env is used for load balancing.
+  const token: string | string[] = userInput || defaultTiandituTokens
+  const firstToken = userInput || defaultTiandituTokens[0] || ""
+  const urls = firstToken ? getTiandituTerrainUrls(firstToken) : []
 
-  if (!token || urls.length === 0) {
+  if (!firstToken || urls.length === 0) {
     setStatus("请先输入天地图 tk，或在 .env 中配置 VITE_TIANDITU_TOKEN。")
     return null
   }

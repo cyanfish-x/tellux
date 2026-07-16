@@ -1,5 +1,5 @@
 ﻿import tellux from '../src'
-import { tiandituImageryXYZUrl } from './shared'
+import { createTiandituXYZImagery } from './shared'
 
 const container = document.querySelector('#viewer')
 const dujiangyanButton = document.querySelector<HTMLButtonElement>('#dujiangyan')
@@ -42,11 +42,7 @@ const viewer = new tellux.Viewer(container, {
     : undefined,
   layers: [
     {
-      source: {
-        type: 'xyz',
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      }
+      source: createTiandituXYZImagery()
     }
   ],
   camera: {

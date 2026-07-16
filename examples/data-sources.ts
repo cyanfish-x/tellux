@@ -6,7 +6,11 @@ import tellux, {
   type ImageryLayer,
   type ImageryLayerOptions,
 } from "../src"
-import { defaultTiandituToken, tiandituImageryXYZUrl } from "./shared"
+import {
+  createTiandituWmtsPreprocessURL,
+  createTiandituXYZImagery,
+  defaultTiandituToken,
+} from "./shared"
 
 const container = document.querySelector("#viewer")
 const overlayList = document.querySelector<HTMLElement>("#overlay-list")
@@ -14,9 +18,17 @@ const layerStatus = document.querySelector<HTMLElement>("#layer-status")
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
-const tiandituImageryWMTSUrl = defaultTiandituToken
-  ? `http://t0.tianditu.gov.cn/cia_w/wmts?tk=${defaultTiandituToken}`
-  : "http://t0.tianditu.gov.cn/cia_w/wmts?tk="
+
+/**
+ * 天地图 WMTS 注记（cia_w）URL 预处理：按瓦片坐标确定性轮换子域和 token，
+ * 兼顾并发与额度，同时保证同一瓦片 URL 稳定以命中浏览器缓存。
+ *
+ * Tianditu WMTS (cia_w) URL preprocessor: deterministically rotates subdomain
+ * and token per tile for both concurrency and quota, while keeping each tile's
+ * URL stable for browser caching.
+ */
+const tiandituWmtsPreprocessURL = createTiandituWmtsPreprocessURL()
+const tiandituImageryWMTSUrl = "https://t0.tianditu.gov.cn/cia_w/wmts"
 const nsmcGeosWMSUrl =
   "https://data.nsmc.org.cn/NSMCAPI/v1/nsmc/image/wms/compose"
 
@@ -245,12 +257,8 @@ interface OverlayLayerExample {
   layer?: ImageryLayer
 }
 
-const tiandituImageryXYZLayer: ImageryLayerOptions["source"] = {
-  type: "xyz",
-  url: tiandituImageryXYZUrl,
-  projection: "EPSG:3857",
-  levels: 18,
-}
+const tiandituImageryXYZLayer: ImageryLayerOptions["source"] =
+  createTiandituXYZImagery()
 
 const tiandituImageryWMTSOverlay: ImageryLayerOptions["source"] = {
   type: "wmts",
@@ -261,6 +269,7 @@ const tiandituImageryWMTSOverlay: ImageryLayerOptions["source"] = {
   format: "tiles",
   projection: "EPSG:3857",
   levels: 18,
+  preprocessURL: tiandituWmtsPreprocessURL,
 }
 
 /** NSMC GEOS_IRX 是全球粗分辨率拼图，BBOX 过小会返回空白图；官方示例也使用 lon/lat 顺序。 */

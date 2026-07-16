@@ -6,7 +6,7 @@ import type {
   ViewerClickEvent,
   ViewerMouseMoveEvent,
 } from "../src"
-import { tiandituImageryXYZUrl } from "./shared"
+import { createTiandituXYZImagery } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const container = document.querySelector("#viewer")
@@ -53,11 +53,7 @@ const viewer = new tellux.Viewer(container, {
     : undefined,
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   camera: {

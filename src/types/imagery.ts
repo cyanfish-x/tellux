@@ -156,6 +156,18 @@ export interface XYZImagerySourceOptions {
    * Projection identifier. Defaults to `EPSG:3857`.
    */
   projection?: 'EPSG:3857' | 'EPSG:4326' | string
+  /**
+   * 瓦片请求 URL 预处理函数，可用于追加 token 或签名参数。
+   *
+   * Preprocesses tile request URLs, useful for appending tokens or signatures.
+   */
+  preprocessURL?: (url: string) => string | null
+  /**
+   * 瓦片请求配置。
+   *
+   * Tile request options.
+   */
+  fetchOptions?: RequestInit
 }
 
 /**

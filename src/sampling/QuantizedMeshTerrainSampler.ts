@@ -733,7 +733,7 @@ export class QuantizedMeshTerrainSampler {
     }
 
     if (terrain.type === 'tianditu') {
-      return ['tianditu', terrain.token, ...(terrain.urls ?? [])].join(':')
+      return ['tianditu', String(terrain.token), ...(terrain.urls ?? [])].join(':')
     }
 
     return this.normalizeTerrainRootUrl(terrain.url)

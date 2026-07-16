@@ -1,6 +1,6 @@
 ﻿import type { TilesetLayer } from "../src"
 import tellux from "../src"
-import { tiandituImageryXYZUrl } from "./shared"
+import { createTiandituXYZImagery } from "./shared"
 
 type TilesetSource = "url" | "cesium-ion"
 
@@ -79,11 +79,7 @@ const viewer = new tellux.Viewer(container, {
     : undefined,
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   scene: {

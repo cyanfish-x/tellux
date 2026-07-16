@@ -156,7 +156,8 @@ export class ImageryOverlayFactory {
           tileDimension: source.tileDimension,
           projection: source.projection,
           opacity: style.opacity,
-          color: style.color === undefined ? undefined : new THREE.Color(style.color)
+          color: style.color === undefined ? undefined : new THREE.Color(style.color),
+          preprocessURL: source.preprocessURL
         })
         break
       case 'cesium-ion':

@@ -5,7 +5,7 @@ import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import { Tree } from "@dgreenheck/ez-tree"
 import {
-  tiandituImageryXYZUrl,
+  createTiandituXYZImagery,
   tiandituTerrainServiceTemplate,
   buildTiandituTerrainUrls,
   defaultTerrainUrl,
@@ -137,7 +137,7 @@ function executeExampleScript(source: string) {
     "GaussianSplatPlugin",
     "GLTFLoader",
     "Tree",
-    "tiandituImageryXYZUrl",
+    "createTiandituXYZImagery",
     "tiandituTerrainServiceTemplate",
     "buildTiandituTerrainUrls",
     "defaultTerrainUrl",
@@ -155,7 +155,7 @@ function executeExampleScript(source: string) {
     GaussianSplatPlugin,
     GLTFLoader,
     Tree,
-    tiandituImageryXYZUrl,
+    createTiandituXYZImagery,
     tiandituTerrainServiceTemplate,
     buildTiandituTerrainUrls,
     defaultTerrainUrl,

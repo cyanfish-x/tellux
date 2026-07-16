@@ -1,7 +1,7 @@
 ﻿import * as THREE from "three"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import tellux from "../src"
-import { tiandituImageryXYZUrl } from "./shared"
+import { createTiandituXYZImagery } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
@@ -75,11 +75,7 @@ const viewer = new tellux.Viewer(container, {
     : undefined,
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   camera: {

@@ -1,5 +1,5 @@
 ﻿import tellux from "../src"
-import { tiandituImageryXYZUrl } from "./shared"
+import { createTiandituXYZImagery } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const DEFAULT_ION_TERRAIN_ASSET_ID =
@@ -53,11 +53,7 @@ const viewer = new tellux.Viewer(container, {
     : undefined,
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   camera: {

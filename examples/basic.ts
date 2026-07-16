@@ -1,5 +1,5 @@
 import tellux from "../src"
-import { tiandituImageryXYZUrl } from "./shared"
+import { createTiandituXYZImagery } from "./shared"
 
 const DEFAULT_ION_TERRAIN_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
@@ -18,11 +18,7 @@ const viewer = new tellux.Viewer("viewer", {
     : undefined,
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   camera: {

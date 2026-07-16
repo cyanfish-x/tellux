@@ -21,10 +21,20 @@ const DEFAULT_BOTTOM_LEVEL = 12
 const DEFAULT_SUBDOMAINS = ['0', '1', '2', '3', '4', '5', '6', '7']
 const FLAT_TILE_URI = 'tianditu.flat.terrain'
 const MIN_TERRAIN_TILE_BYTES = 1000
+const SHARD_X = 31
+const SHARD_Y = 257
+const SHARD_LEVEL = 6151
 const _vec = new Vector3()
 
 export type TiandituTerrainPluginOptions = {
-  token: string
+  /**
+   * 天地图 tk 密钥，支持单个或多个。传多个时按瓦片坐标确定性分片做
+   * 负载均衡，避免单 key 额度被快速耗尽。
+   *
+   * Tianditu API token (`tk`), single or multiple. When multiple are provided,
+   * tiles are sharded deterministically by coordinates for load balancing.
+   */
+  token: string | string[]
   urls?: string[]
   subdomains?: string[]
   topLevel?: number
@@ -34,10 +44,41 @@ export type TiandituTerrainPluginOptions = {
   generateNormals?: boolean
 }
 
+/**
+ * 把单个或多个 token 归一化为去重、去空后的数组。空输入返回空数组。
+ *
+ * Normalizes a single token or a list into a deduped, non-empty array. Empty
+ * input returns an empty array.
+ */
+function resolveTiandituTokens(token: string | string[] | undefined): string[] {
+  if (!token) return []
+  const raw = Array.isArray(token) ? token : [token]
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const piece of raw) {
+    const value = piece.trim()
+    if (value && !seen.has(value)) {
+      seen.add(value)
+      result.push(value)
+    }
+  }
+  return result
+}
+
 function buildDefaultUrls(token: string, subdomains: string[]) {
   return subdomains.map(
     (subdomain) => `https://t${subdomain}.tianditu.gov.cn/mapservice/swdx?T=elv_c&tk=${token}`
   )
+}
+
+/**
+ * 确定性分片索引：同一瓦片坐标永远得到同一索引，保证浏览器缓存命中。
+ *
+ * Deterministic shard index: the same tile coordinates always yield the same
+ * index, keeping URLs stable and cache-friendly.
+ */
+function tiandituShardIndex(x: number, y: number, level: number): number {
+  return x * SHARD_X + y * SHARD_Y + level * SHARD_LEVEL
 }
 
 function buildTileContentUri(tileX: number, tileY: number, zoom: number, flat: boolean) {
@@ -58,6 +99,7 @@ export class TiandituTerrainPlugin {
   readonly priority = -1000
 
   private readonly token: string
+  private readonly tokens: string[]
   private readonly urls: string[]
   private readonly topLevel: number
   private readonly bottomLevel: number
@@ -81,15 +123,17 @@ export class TiandituTerrainPlugin {
   private readonly projection = new ProjectionScheme('EPSG:3857')
 
   constructor(options: TiandituTerrainPluginOptions) {
-    if (!options.token) {
+    const tokens = resolveTiandituTokens(options.token)
+    if (tokens.length === 0) {
       throw new Error('TiandituTerrainPlugin: token is required.')
     }
 
     const subdomains = options.subdomains ?? DEFAULT_SUBDOMAINS
-    this.token = options.token
+    this.tokens = tokens
+    this.token = tokens[0]
     this.urls = options.urls?.length
       ? options.urls
-      : buildDefaultUrls(options.token, subdomains)
+      : buildDefaultUrls(tokens[0], subdomains)
     this.topLevel = options.topLevel ?? DEFAULT_TOP_LEVEL
     this.bottomLevel = options.bottomLevel ?? DEFAULT_BOTTOM_LEVEL
     this.useRecommendedSettings = options.useRecommendedSettings ?? true
@@ -285,9 +329,17 @@ export class TiandituTerrainPlugin {
     if (!url.searchParams.has('T')) {
       url.searchParams.set('T', 'elv_c')
     }
-    if (!url.searchParams.has('tk')) {
-      url.searchParams.set('tk', this.token)
-    }
+
+    // 按瓦片坐标确定性选 token，多 key 负载均衡。
+    // 同一瓦片始终命中同一 token，保证浏览器缓存不被破坏。
+    //
+    // Pick the token deterministically by tile coordinates for multi-key load
+    // balancing. The same tile always resolves to the same token, preserving
+    // browser caching.
+    const idx = tiandituShardIndex(tileX, tileY, zoom)
+    const tokenIdx =
+      ((idx % this.tokens.length) + this.tokens.length) % this.tokens.length
+    url.searchParams.set('tk', this.tokens[tokenIdx])
 
     url.searchParams.set('x', String(tileX))
     url.searchParams.set('y', String(tileY))

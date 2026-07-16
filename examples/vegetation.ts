@@ -1,7 +1,7 @@
 ﻿import * as THREE from "three"
 import { Tree } from "@dgreenheck/ez-tree"
 import tellux from "../src"
-import { tiandituImageryXYZUrl } from "./shared"
+import { createTiandituXYZImagery } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const CENTER_LONGITUDE = 103.561611
@@ -91,11 +91,7 @@ const viewer = new tellux.Viewer(container, {
     : undefined,
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   camera: {

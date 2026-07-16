@@ -1,5 +1,5 @@
 ﻿import tellux from "../src"
-import { tiandituImageryXYZUrl } from "./shared"
+import { createTiandituXYZImagery } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const MODEL_LONGITUDE = 113.9958  
@@ -48,11 +48,7 @@ const viewer = new tellux.Viewer(container, {
     : undefined,
   layers: [
     {
-      source: {
-        type: "xyz",
-        url: tiandituImageryXYZUrl,
-        levels: 18,
-      },
+      source: createTiandituXYZImagery(),
     },
   ],
   camera: {
