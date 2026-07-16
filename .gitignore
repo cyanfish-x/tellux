@@ -13,6 +13,7 @@ docs/.vitepress/cache
 .vscode/*
 !.vscode/extensions.json
 .env
+.zcode
 
 # MSDF atlas 生成脚本的中间产物
 scripts/charset.txt
