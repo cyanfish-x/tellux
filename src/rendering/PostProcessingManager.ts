@@ -94,9 +94,6 @@ export class PostProcessingManager {
     if (shouldRenderAtmosphere) {
       nextEffects.push(this.normalAdapter)
     }
-    if (this.entityRenderer) {
-      nextEffects.push(this.entityRenderer)
-    }
     if (this.groundClampPass) {
       // 贴地分类：读并集深度、渲分类几何、合成回主色。空场景时 pass 内部 no-op。
       nextEffects.push(this.groundClampPass)
@@ -105,6 +102,14 @@ export class PostProcessingManager {
       nextEffects.push(this.cloudAtmosphereAdapter)
     } else if (shouldRenderAtmosphere) {
       nextEffects.push(this.atmosphereAdapter)
+    }
+    if (this.entityRenderer) {
+      // 透明实体在大气之后合成：实体不写深度，若排在大气前，大气的天空分支会把背景
+      // 为天空（深度=远平面 1.0）的实体像素当作天空重画，导致实体在地平线处被"裁
+      // 剪"。移到大气后，实体直接叠加在成图上始终清晰（与 symbol 标注同理）。pass
+      // 内部从 read/write 两侧探测场景深度做遮挡剔除，故 swap 后 readBuffer 无深度
+      // 也能正确取到 targetA 的深度。
+      nextEffects.push(this.entityRenderer)
     }
     if (this.symbolOcclusionPass) {
       // Labels are screen-space overlays: draw them after atmosphere/cloud composition so
