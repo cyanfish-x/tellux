@@ -98,7 +98,10 @@ postprocessing EffectComposer 链
   │     in:  readBuffer.texture（主色） + readBuffer.depthTexture（地表深度）
   │     渲:  groundClampRoot（贴地线墙体积 + 贴地面阴影体，分类材质）
   │     出:  writeBuffer（主色 ⊕ 分类着色）
-  └─ 后续 effects（大气 / tonemap / ...）
+  ├─ 云 / 大气 EffectPass（可能 swap；之后的 readBuffer 可能无深度）
+  ├─ EntityRenderManager（透明实体 OIT，位于大气之后，就地叠加）
+  ├─ SymbolOcclusionPass
+  └─ LensFlare → SMAA → Dithering
 ```
 
 数据流（分类片元）：
@@ -128,7 +131,7 @@ gl_FragCoord → 采样 depthTexture → 窗口深度 z
 
 ### 3.1 深度源与坐标还原
 
-- **深度源**：复用 `readBuffer.depthTexture`。clamped 实体 `depthWrite:false`，不污染地表深度；该纹理所含即 terrain + 3D Tiles 深度（Phase 1 = union）。需**核实** 3D Tiles 是否也渲入该 readBuffer（render loop 顺序，见 §6 开放问题）。
+- **深度源**：贴地分类位于大气之前，复用主场景的 `readBuffer.depthTexture`。clamped 实体 `depthWrite:false`，不污染地表深度；该纹理所含即 terrain + 3D Tiles 深度（Phase 1 = union）。
 - **还原**（ShaderMaterial 内置 `projectionMatrix` / `viewMatrix`）：
   ```glsl
   float z = texture2D(telluxGroundDepth, gl_FragCoord.xy / uResolution).r;  // [0,1] 窗口深度
@@ -174,7 +177,8 @@ gl_FragCoord → 采样 depthTexture → 窗口深度 z
 - 维护 `groundClampRoot: THREE.Group`，挂所有 `GroundPolylineGraphic` / `GroundPolygonGraphic` 的 `object3D`。
 - 绑定 `readBuffer.depthTexture` 到分类材质的 `telluxGroundDepth` uniform（同 OIT 的 `telluxSceneDepth` 注入范式）。
 - 渲分类几何到 `writeBuffer`（主色 ⊕ 分类色）；`needsSwap = true`。
-- **插入位置**：effects 链中、`EntityRenderManager` 邻近、tonemap / 大气合成之前（具体顺序 §6 核实）。
+- **插入位置**：effects 链中、`EntityRenderManager` 邻近，但必须在云 / 大气合成之前。真实顺序为 `GroundClamp → Atmosphere → Entity OIT`。透明实体必须在大气之后，否则大气天空分支会抹掉其地平线像素。
+- **大气之后的深度规则**：大气 pass 可能 swap 到无深度的 targetB。因此 `EntityRenderManager` 及其他需要场景深度的后处理 pass 必须从 `readBuffer.depthTexture ?? writeBuffer.depthTexture` 两侧探测，不能只读 `readBuffer`。
 
 ### 3.7 点：clamp CPU 采样（正解，非妥协）
 

@@ -119,3 +119,4 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 
 + 除非用户指定了输出语言，否则默认用中文回答
 + 改动源码后检查是否需要更新文档和skill
++ 提交信息使用中文

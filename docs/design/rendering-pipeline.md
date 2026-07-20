@@ -19,7 +19,8 @@ Tellux 的渲染管线以 **Three.js WebGL/WebGPU** 为底层渲染原语，在 
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐    │
 │  │              PostProcessingManager                    │    │
-│  │  Normal → (Cloud+)Atmosphere → LensFlare → SMAA →   │    │
+│  │  Normal → GroundClamp → (Cloud+)Atmosphere →         │    │
+│  │  Entity OIT → SymbolOcclusion → LensFlare → SMAA →   │    │
 │  │  Dithering                                            │    │
 │  └──────────────────────────────────────────────────────┘    │
 │                                                              │
@@ -99,7 +100,10 @@ threeScene (THREE.Scene)
 6. TilesetManager → 地表 + 地形 + 场景 3D Tiles
 7. PostProcessingManager (仅 WebGL)
    ├─ NormalPass → 为大气效果提供 normal buffer
+   ├─ GroundClampPass → 贴地分类（读场景深度）
    ├─ 可选云+大气 / 纯大气 pass
+   ├─ EntityRenderManager → 透明实体 OIT（大气之后）
+   ├─ SymbolOcclusionPass → 屏幕空间标注遮挡
    ├─ LensFlareEffect
    ├─ SMAAEffect
    └─ DitheringEffect
@@ -429,12 +433,15 @@ intensity = baseIntensity × (1 - smoothstep(0, 100000, cameraHeight))
 ### 9.1 Effect Pass 链
 
 ```
-setEffects 顺序（不可交换, 因为需要 swap buffer 链）:
+setEffects 顺序（不可交换；大气会 swap，透明实体还依赖 swap 前的场景深度）:
 
 1. NormalPass(scene, camera)
    └─ 输出 RGBA HalfFloat normal 纹理 → 喂给 aerialPerspectiveEffect.normalBuffer
 
-2. [可选] EntityRenderManager (OIT composite)
+2. [条件] GroundClampPass
+   └─ 读取场景深度，绘制贴地分类几何；位于大气之前
+
+5. [可选] EntityRenderManager (OIT composite)
    └─ 仅在 weighted-oit 模式下且存在透明实体时
 
 3. [条件] EffectPass(camera, cloudsEffect, aerialPerspectiveEffect)
@@ -443,13 +450,19 @@ setEffects 顺序（不可交换, 因为需要 swap buffer 链）:
 4. [条件] EffectPass(camera, aerialPerspectiveEffect)
    └─ 有大气无云时：仅大气
 
-5. [可选] EffectPass(camera, LensFlareEffect)
+5. [可选] EntityRenderManager (OIT composite)
+   └─ 位于大气之后；颜色直接叠加到成图，不写深度、不 swap
+
+6. [可选] SymbolOcclusionPass
+   └─ 位于实体 OIT 之后，读取场景深度绘制屏幕空间标注
+
+7. [可选] EffectPass(camera, LensFlareEffect)
    └─ lensFlare.enabled = true
 
-6. [可选] EffectPass(camera, SMAAEffect)
+8. [可选] EffectPass(camera, SMAAEffect)
    └─ smaa.enabled = true
 
-7. [可选] EffectPass(camera, DitheringEffect)
+9. [可选] EffectPass(camera, DitheringEffect)
    └─ dithering.enabled = true
 ```
 
@@ -458,7 +471,7 @@ setEffects 顺序（不可交换, 因为需要 swap buffer 链）:
 每个 `EffectPass` 通过 `EffectPassAdapter` 适配为 Three.js `Effect` 接口：
 
 - **懒初始化**：首次 `render()` 才调用 `pass.initialize()`
-- **depth texture 传递**：将 readBuffer 的 depthTexture 传给需要 depth 的 pass（如大气需要深度做散射积分）
+- **depth texture 传递**：大气从场景深度做散射积分；大气之后的 OIT / symbol 等 pass 必须从 `readBuffer.depthTexture ?? writeBuffer.depthTexture` 两侧探测场景深度，因为大气 swap 后当前 `readBuffer` 可能是无深度的 targetB。
 - **camera settings 同步**：每帧将 camera near/far 同步到 pass 的 fullscreenMaterial
 - **deltaTime 传递**：用于时间相关的效果（云动画）
 
@@ -492,7 +505,7 @@ threeScene
 
 ### 10.3 Weighted OIT 渲染流程
 
-当启用 weighted-oit 时，`EntityRenderManager` 作为后处理 pass 插入 chain：
+当启用 weighted-oit 时，`EntityRenderManager` 作为后处理 pass 插入 chain，且必须位于大气 pass 之后。透明实体不写深度；若放在大气之前，大气天空分支会把深度为远平面的实体像素重新画成天空，造成地平线裁剪。
 
 **beginFrame()：**
 1. 恢复上一帧的 visibility（清理 `mainSceneHiddenObjects`）
@@ -513,12 +526,12 @@ threeScene
    └─ 还原原始材质
 6. renderComposite(writeBuffer, readBuffer, accumulation, revealage)
    ├─ 全屏 quad: mix(base.rgb, accumulation.rgb / accumulation.a, 1 - revealage.a)
-   └─ 写入 writeBuffer
+   └─ 颜色就地 alpha 混合到大气后的 readBuffer（不清屏、不 swap）；OIT 遮挡深度从 readBuffer / writeBuffer 两侧探测
 ```
 
 ### 10.4 Symbol 锚点遮挡流程
 
-`SymbolOcclusionPass` 作为独立后处理 pass 插入在实体 OIT / 贴地分类之后、大气与云之前：
+`SymbolOcclusionPass` 作为独立后处理 pass 插入在大气和实体 OIT 之后：
 
 **beginFrame()：**
 1. 恢复上一帧被隐藏的 symbol quad。
