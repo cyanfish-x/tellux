@@ -277,6 +277,59 @@ model.remove()
 
 `type` 固定 `'gltf'`，`url` 可指 `.gltf` 或 `.glb`。`scale` 支持数字（均匀）或 `[x,y,z]`。需要贴合地形时先用 `sampleHeight` 查高度再传入 `height`。
 
+## HISM 大规模实例化
+
+面向森林、岩石场等大量重复静态 mesh。Tellux 负责簇分桶、视锥剔除、LOD、RTC 定位与 BVH 拾取。
+
+```ts
+import tellux, { createWindSwayLeavesMaterial, type HismArchetype } from 'tellux'
+
+const layer = viewer.addHismLayer({
+  id: 'forest',
+  archetypes: [
+    {
+      name: 'oak',
+      lodLevels: [
+        {
+          maxDistanceMeters: 600,
+          parts: [
+            { geometry: branchesGeo, material: branchesMat },
+            { geometry: leavesGeo, material: leavesMat }
+          ]
+        },
+        {
+          maxDistanceMeters: Number.POSITIVE_INFINITY,
+          parts: [{ geometry: impostorGeo, material: impostorMat }]
+        }
+      ]
+    }
+  ],
+  instances: sampledPlacements.map((p) => ({
+    coordinates: [p.longitude, p.latitude, p.height],
+    heading: p.heading,
+    scale: p.scale,
+    archetype: p.presetIndex
+  })),
+  clusterCellSizeMeters: 512,
+  referenceLongitude: centerLon,
+  referenceLatitude: centerLat,
+  onUpdate: (_dt, elapsed) => tree.update(elapsed)
+})
+
+// 拾取（坐标相对 canvas 左上角）
+viewer.on('click', (e) => {
+  const hit = viewer.pickHism(e.position)
+  if (hit) console.log(hit.layerId, hit.instanceId)
+})
+
+layer.remove()
+viewer.getHismRuntimeStats() // 可见实例数、draw calls、LOD 分布
+```
+
+ez-tree 叶片风摆：`createWindSwayLeavesMaterial({ rtcUniforms: viewer.hism.rtcUniforms, ... })`。
+
+完整说明见仓库 `docs/guide/hism.md`；性能 demo 见 `examples/hism/hism-forest.html`。
+
 ## 渲染循环
 
 默认接管动画循环。接入外部循环时关掉并手动推进：

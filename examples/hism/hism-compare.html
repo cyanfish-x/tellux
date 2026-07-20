@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="sandcastle-order" content="73" />
+  <title>Tellux HISM Compare</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .compare-hud {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 5;
+      width: min(360px, calc(100vw - 24px));
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(8, 16, 28, 0.88);
+      color: #e8f1ff;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+      pointer-events: none;
+    }
+
+    .compare-hud h2 {
+      margin: 0 0 8px;
+      font: 600 13px/1.2 system-ui, sans-serif;
+      color: #fff;
+    }
+
+    .compare-hud dl {
+      display: grid;
+      grid-template-columns: 118px 1fr;
+      gap: 4px 10px;
+      margin: 0;
+    }
+
+    .compare-hud dt {
+      color: #8fb4ff;
+    }
+
+    .compare-hud dd {
+      margin: 0;
+      text-align: right;
+    }
+
+    .compare-table {
+      width: 100%;
+      margin-top: 10px;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .compare-table th,
+    .compare-table td {
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 4px 6px;
+      text-align: right;
+    }
+
+    .compare-table th:first-child,
+    .compare-table td:first-child {
+      text-align: left;
+      color: #8fb4ff;
+    }
+
+    .compare-form label {
+      display: block;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .compare-form input[type="number"],
+    .compare-form select {
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .compare-form .hint {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .compare-form .mode-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .compare-form .mode-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 0;
+    }
+
+    progress {
+      width: 100%;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+    <aside class="compare-hud" aria-live="polite">
+      <h2>Live Metrics</h2>
+      <dl>
+        <dt>Mode</dt>
+        <dd id="compare-live-mode">-</dd>
+        <dt>FPS</dt>
+        <dd id="compare-live-fps">-</dd>
+        <dt>Instances</dt>
+        <dd id="compare-live-instances">-</dd>
+        <dt>Visible</dt>
+        <dd id="compare-live-visible">-</dd>
+        <dt>Draw Calls</dt>
+        <dd id="compare-live-drawcalls">-</dd>
+        <dt>Load</dt>
+        <dd id="compare-live-load">-</dd>
+      </dl>
+      <table class="compare-table" aria-label="Legacy vs HISM comparison">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Legacy</th>
+            <th>HISM</th>
+          </tr>
+        </thead>
+        <tbody id="compare-summary-body">
+          <tr>
+            <td colspan="3">生成后自动填入对比结果</td>
+          </tr>
+        </tbody>
+      </table>
+    </aside>
+    <section class="toolbar toolbar--wide" aria-label="HISM compare controls">
+      <header class="toolbar__header">
+        <h1>Legacy vs HISM 性能对比</h1>
+        <a class="icon-button icon-button--back" href="../index.html" aria-label="返回目录" title="返回目录"></a>
+      </header>
+      <p>
+        在相同散布点下对比传统 <code>InstancedMesh</code>（Legacy）与 Tellux
+        <code>HISM</code> 工具包。实例上限 <strong>1000 万</strong>；大规模场景会自动切换快速散布并跳过地形采样。
+      </p>
+      <form class="compare-form" id="compare-form">
+        <label>
+          实例数量（1 – 10,000,000）
+          <input id="compare-count" type="number" min="1" max="10000000" step="1" value="10000" />
+        </label>
+        <div class="mode-row">
+          <label><input type="radio" name="compare-mode" value="legacy" /> Legacy InstancedMesh</label>
+          <label><input type="radio" name="compare-mode" value="hism" checked /> HISM</label>
+        </div>
+        <label>
+          <input id="compare-sample-terrain" type="checkbox" checked />
+          地形采样（≤ 5000 实例时可用）
+        </label>
+        <p class="hint" id="compare-hint">
+          超过 5000 实例将使用快速随机散布 + 椭球高度 0，以保证百万级规模可生成。
+        </p>
+        <progress id="compare-progress" max="100" value="0" hidden></progress>
+      </form>
+      <p id="compare-status" class="status" aria-live="polite">正在初始化模板...</p>
+      <div class="toolbar__row">
+        <button class="button" id="compare-generate" type="button">生成并测速</button>
+        <button class="button" id="compare-flyto" type="button" disabled>飞到场景</button>
+        <button class="button" id="compare-clear" type="button">清空场景</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./hism-compare.ts"></script>
+</body>
+
+</html>
