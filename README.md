@@ -8,7 +8,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript GIS viewer，用于在�
 
 它以 Three.js 的渲染与互操作能力为基础，提供地球相机、Cesium quantized-mesh 地形、多源图层、3D Tiles、大气、体积云和后处理的一致 API，适合从轻量可视化到复杂三维地理场景。
 
-![](https://picture.cyanfish.site/202607201519080.png)
+![](https://picture.cyanfish.site/202607201619427.png)
 
 ---
 

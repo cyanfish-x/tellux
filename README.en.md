@@ -8,7 +8,7 @@ Tellux is an open-source ESM TypeScript GIS viewer built on Three.js for digital
 
 Built on Three.js rendering and interoperability, Tellux provides a consistent API for globe camera controls, Cesium quantized-mesh terrain, multi-source layers, 3D Tiles, atmosphere, volumetric clouds, and post-processing, from focused visualizations to complex 3D geospatial scenes.
 
-![](https://picture.cyanfish.site/202607201519080.png)
+![](https://picture.cyanfish.site/202607201619427.png)
 
 ---
 
