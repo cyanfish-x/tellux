@@ -2,19 +2,46 @@
 
 English | [中文](./README.md)
 
-Tellux is a Three.js-based GIS viewer for Cesium Ion 3D Tiles with globe controls, atmospheric scattering, clouds, lens flare, SMAA, and dithering effects.
+[![npm version](https://img.shields.io/npm/v/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![license](https://img.shields.io/npm/l/tellux?style=flat-square)](./LICENSE)
 
-The npm package name is `tellux` because npm package names must be lowercase.
+Tellux is an open-source ESM TypeScript GIS viewer built on Three.js for digital-globe, terrain, imagery, and 3D Tiles applications in the browser.
 
-Live demo: https://tellux.cyanfish.site
+Built on Three.js rendering and interoperability, Tellux provides a consistent API for globe camera controls, Cesium quantized-mesh terrain, multi-source layers, 3D Tiles, atmosphere, volumetric clouds, and post-processing, from focused visualizations to complex 3D geospatial scenes.
 
-## Install
+---
+
+[🌐 Examples](https://tellux.cyanfish.site) | [📚 Documentation (Chinese)](https://tellux.cyanfish.site/docs/) | [🧪 Sandcastle](https://tellux.cyanfish.site/sandcastle.html) | [💻 GitHub](https://github.com/cyanfish-x/tellux)
+
+---
+
+## 🚀 Get started
+
+### npm
+
+Tellux is an ESM package. When using a module bundler such as Vite, Webpack, or Rollup, install Tellux and its required peer dependencies:
 
 ```bash
-npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphere @takram/three-clouds @takram/three-geospatial @takram/three-geospatial-effects @mapbox/vector-tile pbf
+pnpm add tellux three 3d-tiles-renderer @takram/three-geospatial @takram/three-geospatial-effects @takram/three-atmosphere @takram/three-clouds postprocessing
 ```
 
-## Usage
+Install optional dependencies when using MVT vector tiles:
+
+```bash
+pnpm add @mapbox/vector-tile pbf
+```
+
+Create a container with a non-zero size, then initialize a Viewer:
+
+```html
+<div id="viewer"></div>
+
+<style>
+  #viewer {
+    width: 100vw;
+    height: 100vh;
+  }
+</style>
+```
 
 ```ts
 import tellux from 'tellux'
@@ -32,509 +59,58 @@ const viewer = new tellux.Viewer('viewer', {
     }
   ],
   camera: {
-    latitude: 35.6812,
-    longitude: 139.8,
-    height: 500
+    longitude: 121.4737,
+    latitude: 31.2304,
+    height: 1200,
+    pitch: -25
   }
 })
 ```
 
-`terrain.url` accepts a Cesium quantized-mesh terrain root directory or a direct `layer.json` URL. You can also select a Cesium Ion terrain asset during initialization or at runtime:
+### 📚 What next?
 
-```ts
-const viewer = new tellux.Viewer('viewer', {
-  terrain: {
-    type: 'cesium-ion',
-    assetId: 1,
-    apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-  }
-})
+- Read the [Getting Started guide](https://tellux.cyanfish.site/docs/guide/getting-started) for Draco decoders, asset paths, and Viewer lifecycle.
+- Explore the [guides](https://tellux.cyanfish.site/docs/guide/viewer) for cameras, interaction, terrain, imagery, 3D Tiles, models, atmosphere, and post-processing.
+- Browse and edit runnable examples in [Sandcastle](https://tellux.cyanfish.site/sandcastle.html).
+- Consult the public [Viewer API](https://tellux.cyanfish.site/docs/api/viewer) and [type reference](https://tellux.cyanfish.site/docs/api/types).
+- Interested in contributing? Read the [Contributing Guide](./CONTRIBUTING.en.md), then open an issue or pull request. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
+
+## ⚖️ License
+
+[MIT](./LICENSE). Tellux is free for commercial and non-commercial use.
+
+## 🌍 Where does geospatial content come from?
+
+Tellux is a runtime and rendering library; it does not bind or host base geospatial content. Use any combination of:
+
+- Cesium quantized-mesh terrain, XYZ, WMS, WMTS, GeoJSON, MVT, and 3D Tiles from self-hosted or public services.
+- Terrain, imagery, and 3D Tiles assets accessed with a Cesium Ion token.
+- Application-owned glTF / GLB models and Three.js objects placed at cartographic coordinates.
+
+Cesium Ion is an optional data service. Tellux APIs support both self-hosted URLs and Cesium Ion assets for terrain, imagery, and 3D Tiles. Data licensing, availability, and access control remain the responsibility of the application and data provider.
+
+## ✨ Features
+
+- Control a WGS84 globe using longitude, latitude, height, heading, pitch, and roll, with flights, picking, and height sampling.
+- Load Cesium quantized-mesh terrain, XYZ, WMS, WMTS, Cesium Ion imagery, and draped GeoJSON and MVT vector overlays.
+- Load URL- or Cesium Ion-based 3D Tiles, plus glTF / GLB models with animation and ground alignment.
+- Build geospatial scenes with atmospheric sky, aerial perspective, volumetric clouds, day-night lighting, SMAA, lens flare, and dithering.
+- Interoperate with Three.js scenes, objects, coordinate conversion, and custom render loops.
+- Use WebGL by default. The experimental WebGPU renderer supports the base globe, terrain, imagery, 3D Tiles, models, picking, and atmosphere; see [Known limitations](https://tellux.cyanfish.site/docs/guide/limitations).
+
+## 🛠️ Development
+
+```bash
+pnpm install
+pnpm type-check
+pnpm test:run
+pnpm build
 ```
 
-You can switch terrain at runtime:
-
-```ts
-viewer.setTerrain({
-  url: 'https://example.com/another-terrain/layer.json'
-})
-
-viewer.setTerrain({
-  type: 'cesium-ion',
-  assetId: 1,
-  apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-})
-
-viewer.setTerrain(null)
-```
-
-You can also use Cesium Ion imagery sources:
-
-```ts
-new tellux.Viewer(container, {
-  layers: [
-    {
-      source: {
-        type: 'cesium-ion',
-        assetId: 123456,
-        apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-      }
-    }
-  ]
-})
-```
-
-The `type: 'cesium-ion'` source in `layers` is for Cesium Ion imagery assets. Google Photorealistic 3D Tiles is a 3D Tiles asset and should be loaded with `viewer.load3DTileset(...)`:
-
-```ts
-const photorealisticLayer = viewer.load3DTileset({
-  type: 'cesium-ion',
-  assetId: 2275207,
-  apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-})
-
-// When using it as a global 3D basemap, hide the default base globe surface
-// to avoid overlap with the photogrammetry mesh.
-viewer.tileset.group.visible = false
-```
-
-Imagery layers are managed through `viewer.layers`. Layers are drawn from bottom to top:
-
-```ts
-const imageryLayer = viewer.layers.add({
-  name: 'World Imagery',
-  source: {
-    type: 'xyz',
-    url: 'https://example.com/imagery/{z}/{y}/{x}.png'
-  }
-})
-
-imageryLayer.setVisible(false)
-imageryLayer.setStyle({ opacity: 0.65 })
-imageryLayer.moveTo(0)
-imageryLayer.remove()
-```
-
-MVT vector tiles can be used as imagery layers:
-
-```ts
-viewer.layers.add({
-  name: 'Water and roads',
-  source: {
-    type: 'mvt',
-    url: 'https://example.com/tiles/{z}/{x}/{y}.pbf'
-  },
-  style: {
-    getStyle(layerName) {
-      if (layerName.includes('water')) return { fill: '#38bdf8', order: 10 }
-      if (layerName.includes('transportation')) return { stroke: '#facc15', strokeWidth: 1.4, order: 30 }
-      return null
-    }
-  }
-})
-```
-
-MVT layers use the `3d-tiles-renderer` MVT overlay and require `@mapbox/vector-tile` and `pbf` at runtime.
-
-GeoJSON can be used as a draped vector overlay:
-
-```ts
-viewer.layers.add({
-  name: 'Area boundary',
-  source: {
-    type: 'geojson',
-    url: '/data/boundary.geojson'
-  },
-  style: {
-    opacity: 0.85,
-    fill: 'rgba(20, 184, 166, 0.28)',
-    stroke: '#14b8a6',
-    strokeWidth: 2,
-    getStyle(feature, properties) {
-      if (properties?.kind === 'restricted') return { fill: 'rgba(244, 63, 94, 0.32)', stroke: '#f43f5e' }
-      return {}
-    }
-  }
-})
-```
-
-You can also pass a GeoJSON object directly:
-
-```ts
-viewer.layers.add({
-  source: {
-    type: 'geojson',
-    geojson
-  }
-})
-```
-
-WMS services can be used as imagery layers:
-
-```ts
-viewer.layers.add({
-  name: 'Province boundary',
-  source: {
-    type: 'wms',
-    url: 'https://example.com/geoserver/wms',
-    layer: 'workspace:layer',
-    crs: 'EPSG:4326',
-    format: 'image/png',
-    transparent: true
-  },
-  style: {
-    opacity: 0.7
-  }
-})
-```
-
-For example, a GeoServer WMS 1.1.0 service:
-
-```ts
-viewer.layers.add({
-  name: 'China Province WMS',
-  source: {
-    type: 'wms',
-    url: 'https://example.com/geoserver/wms',
-    layer: 'workspace:province_boundary',
-    version: '1.1.0',
-    crs: 'EPSG:4326',
-    styles: '',
-    format: 'image/png',
-    transparent: true,
-    contentBoundingBox: [73.501142, 3.397162, 135.088511, 53.560901]
-  },
-  style: {
-    opacity: 0.72
-  }
-})
-```
-
-> WMS layers should request an image format such as `image/png`. `format=application/openlayers` is usually a GeoServer preview page format and is not suitable for imagery textures.
-
-WMTS services can be used as imagery layers. The example below uses Tianditu imagery (requires a `tk` token):
-
-```ts
-viewer.layers.add({
-  name: 'Tianditu Imagery',
-  source: {
-    type: 'wmts',
-    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
-    layer: 'img',
-    tileMatrixSet: 'w',
-    style: 'default',
-    format: 'tiles',
-    projection: 'EPSG:3857',
-    levels: 18,
-    preprocessURL(url) {
-      const next = new URL(url)
-      next.searchParams.set('tk', YOUR_TIANDITU_TOKEN)
-      return next.toString()
-    }
-  }
-})
-```
-
-> For KVP WMTS, pass only the service root URL. Tianditu uses `format=tiles`. Set `VITE_TIANDITU_TOKEN` in the examples app.
-
-## glTF / GLB models
-
-Use `viewer.addModel(...)` to load regular glTF or GLB models and place them in the Tellux scene with cartographic coordinates. `coordinates` accepts a `[longitude, latitude, height]` tuple or a `{ longitude, latitude, height }` object. Height is in meters.
-
-```ts
-const model = viewer.addModel({
-  type: 'gltf',
-  id: 'littlest-tokyo',
-  url: 'https://example.com/models/LittlestTokyo.glb',
-  coordinates: [114, 30, 0],
-  scale: 0.45,
-  heading: 180,
-  alignToGround: true,
-  animate: true,
-  animationChannel: 0
-})
-
-await model.ready
-
-viewer.flyToTarget(model.root, {
-  heading: -35,
-  pitch: -28,
-  distance: 2600
-})
-
-model.playAnimation(0)
-model.pauseAnimation()
-model.stopAnimation()
-model.remove()
-```
-
-`type` is always `'gltf'`, and the URL can point to either `.gltf` or `.glb`. When `animate: true` is set, the first animation channel plays after loading by default. Use `animationChannel` to choose another channel.
-
-If you need to place your own Three.js objects, reuse Tellux coordinate conversion APIs:
-
-```ts
-const position = viewer.cartographicToVector3([114, 30, 100])
-
-const matrix = viewer.cartographicToMatrix4([114, 30, 0], {
-  heading: 90,
-  pitch: 0,
-  roll: 0
-})
-
-object.matrixAutoUpdate = false
-object.matrix.copy(matrix)
-viewer.scene.threeScene.add(object)
-```
-
-`cartographicToVector3(...)` returns the underlying Three.js world position. `cartographicToMatrix4(...)` returns a local Three.js object matrix where `+Y` points up and `+Z` points forward.
-
-## Lighting Modes
-
-Tellux provides two atmosphere lighting modes. The default is `light-source`:
-
-```ts
-const viewer = new tellux.Viewer(container, {
-  scene: {
-    atmosphere: {
-      lighting: {
-        mode: 'light-source'
-      }
-    }
-  }
-})
-```
-
-`light-source` uses Takram's sun directional light and sky light probe in the Three.js scene. It is the best default for most 3D GIS scenes: 3D Tiles, terrain, imagery overlays, custom Three.js objects, and PBR materials can all use the normal Three.js lighting path. You can tune the light source intensity with `scene.atmosphere.lighting`:
-
-```ts
-viewer.scene.atmosphere.lighting.mode = 'light-source'
-viewer.scene.atmosphere.lighting.sunLight = true
-viewer.scene.atmosphere.lighting.skyLight = true
-viewer.scene.atmosphere.lighting.sunLightIntensity = 1.2
-viewer.scene.atmosphere.lighting.skyLightIntensity = 0.8
-```
-
-Tellux also applies automatic nighttime lighting: when the sun is below the local horizon for the current view, it adds low-intensity cool moonlight based on the moon direction and phase, plus a small cool ambient fill so the scene does not become fully black. The nighttime effect applies to the sky, moon disc and halo, stars, volumetric clouds, and the ground surface. In `light-source` mode the ground uses a Three.js moon directional light and ambient light; in `post-process` mode the ground receives moonlight and ambient fill from `AerialPerspectiveEffect` based on surface albedo. Tune this with `scene.atmosphere.night`:
-
-```ts
-const viewer = new tellux.Viewer(container, {
-  scene: {
-    atmosphere: {
-      lighting: {
-        mode: 'light-source'
-      },
-      night: {
-        enabled: true,
-        color: 0x9bbcff,
-        moonLightIntensity: 0.18,
-        ambientIntensity: 0.08,
-        useMoonPhase: true,
-        transitionRange: [-0.08, 0.05]
-      }
-    }
-  }
-})
-
-viewer.scene.atmosphere.night.moonLightIntensity = 0.22
-viewer.scene.atmosphere.night.ambientIntensity = 0.1
-```
-
-`post-process` is Takram's native aerial-perspective post-process lighting path. It treats the rendered color buffer as surface albedo, then applies sun light, sky light, atmospheric transmittance, and in-scattering in `AerialPerspectiveEffect`. This mode is useful for advanced scenes that want a more unified atmospheric post-process look, but the input materials should be albedo materials unaffected by Three.js lights, such as `MeshBasicMaterial` or glTF `KHR_materials_unlit`.
-
-When loading 3D Tiles, if the source data is not already unlit but you want it to participate in `post-process` lighting, use `materialMode: 'unlit'` explicitly:
-
-```ts
-viewer.scene.atmosphere.lighting.mode = 'post-process'
-viewer.scene.atmosphere.lighting.sunLight = true
-viewer.scene.atmosphere.lighting.skyLight = true
-viewer.scene.atmosphere.lighting.albedoScale = 0.6
-
-const layer = viewer.load3DTileset({
-  type: 'url',
-  url: 'https://example.com/tileset.json',
-  materialMode: 'unlit'
-})
-```
-
-If PBR or other lit materials are used in `post-process` mode, the Three.js light sources are disabled and the tiles may already be dark or black before the post-process lighting runs. In that case, either use the default `light-source` mode or load the 3D Tiles that need post-process lighting with `materialMode: 'unlit'`.
-
-Make sure the container has a non-zero size:
-
-```css
-#viewer {
-  width: 100vw;
-  height: 100vh;
-}
-```
-
-## Renderer type
-
-By default, the Viewer uses the Three.js `WebGLRenderer` with full support for atmosphere, volumetric clouds, stars, and post-processing effects. You can switch to the experimental WebGPU renderer with `renderer.type`:
-
-```ts
-const viewer = await tellux.Viewer.create(container, {
-  renderer: {
-    type: 'webgpu'
-  },
-  scene: {
-    atmosphere: {
-      show: true,
-      lighting: {
-        mode: 'light-source'
-      }
-    },
-    clouds: {
-      show: false
-    }
-  }
-})
-```
-
-The WebGPU renderer requires asynchronous initialization. Prefer `Viewer.create(...)`, which awaits renderer initialization before resolving; if you use `new Viewer(...)` with an external manual render loop, `await viewer.ready` before calling `viewer.render()`:
-
-```ts
-const viewer = new tellux.Viewer(container, {
-  renderer: { type: 'webgpu' },
-  useDefaultRenderLoop: false
-})
-
-await viewer.ready
-viewer.render()
-```
-
-> WebGPU support is currently **experimental**; both the API and the set of supported effects may change. The base globe, 3D Tiles, terrain, imagery, models, picking, and atmospheric sky / aerial perspective run through the WebGPU pipeline, while **volumetric clouds, stars, and WebGL-only post-processing effects (SMAA, lens flare, dithering, etc.) are not rendered in WebGPU mode**. The first version of the WebGPU atmosphere uses Takram's node-based pipeline, with fuller support for the `light-source` lighting mode; some WebGL-only scattering debug parameters are not yet mapped. Globe tile LOD transitions currently switch directly without the smooth fade of the WebGL renderer.
-
-WebGPU mode does **not automatically fall back to WebGL** on unsupported environments: in browsers without WebGPU, `renderer.init()` rejects and `Viewer.create(...)` throws. The application should detect support and choose `renderer.type` accordingly, or set `renderer.forceWebGL: true` to make `WebGPURenderer` use Three.js' WebGL2 fallback backend (still the WebGPU code path, but WebGL2 underneath).
-
-## Draco decoder
-
-Tellux uses `DRACOLoader` for glTF tiles and glTF / GLB models. By default it loads decoders from `/draco/gltf/`.
-
-Copy the decoder files from `three/examples/jsm/libs/draco/gltf/` into your app's public directory, or pass a custom path:
-
-```ts
-new Viewer(container, {
-  dracoDecoderPath: '/assets/draco/gltf/'
-})
-```
-
-## Static asset directory
-
-Tellux ships cloud, STBN, and star field assets with the npm package. When using modern bundlers such as
-Vite, Webpack, or Rollup, `new tellux.Viewer(...)` works directly and the bundler copies these assets into
-your app build output.
-
-If your app needs to load assets from a CDN, intranet static directory, or non-bundled environment, put
-`local_weather.png`, `turbulence.png`, `shape.bin`, `shape_detail.bin`, `stbn.bin`, and `stars.bin` in your
-own static directory and set `tellux.baseUrl` before creating the Viewer:
-
-```ts
-import tellux from 'tellux'
-
-tellux.baseUrl = '/assets/tellux/'
-
-new tellux.Viewer(container)
-```
-
-You can also read Tellux default asset URLs directly:
-
-```ts
-import { telluxAssetUrls } from 'tellux/assets'
-
-console.log(telluxAssetUrls.stbn)
-```
-
-## API
-
-```ts
-viewer.camera.setView({
-  latitude: 31.2304,
-  longitude: 121.4737,
-  height: 1000,
-  heading: -90,
-  pitch: -15
-})
-
-viewer.flyToTarget({
-  latitude: 31.2304,
-  longitude: 121.4737,
-  height: 0
-}, {
-  heading: -90,
-  pitch: -30,
-  distance: 1200
-})
-
-const layer = viewer.load3DTileset({
-  type: 'url',
-  url: 'https://example.com/tileset.json'
-})
-
-viewer.flyToTarget(layer.tileset, {
-  heading: 0,
-  pitch: -30
-})
-
-const model = viewer.addModel({
-  type: 'gltf',
-  url: '/models/site.glb',
-  coordinates: [121.4737, 31.2304, 0],
-  animate: true
-})
-
-await model.ready
-viewer.flyToTarget(model.root)
-
-viewer.scene.clouds.show = false
-viewer.scene.atmosphere.show = true
-viewer.scene.postProcess.smaa.enabled = true
-viewer.toneMappingExposure = 8
-viewer.resolutionScale = 1.5
-
-viewer.destroy()
-```
-
-## Contributing
-
-### Commit Convention
-
-This project follows the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification, enforced by commitlint + husky on every commit. The commit message format:
-
-```
-<type>(<scope>): <subject>
-```
-
-**type** (required):
-
-| type | description | in CHANGELOG |
-|---|---|---|
-| `feat` | a new feature | ✓ |
-| `fix` | a bug fix | ✓ |
-| `refactor` | refactor (neither adds a feature nor fixes a bug) | ✓ |
-| `perf` | performance improvement | ✓ |
-| `revert` | revert a previous commit | ✓ |
-| `docs` | documentation only | ✗ |
-| `style` | formatting (no functional change) | ✗ |
-| `test` | tests | ✗ |
-| `chore` | build / tooling / deps | ✗ |
-| `build` | build system or external dependencies | ✗ |
-| `ci` | CI configuration | ✗ |
-
-`scope` is optional and indicates the affected area, e.g. `feat(viewer): ...`; `subject` is a short description.
-
-Examples:
-
-```
-feat: implement basic SymbolEntity rendering
-fix(viewer): fix flyToTarget event listener not being removed
-refactor: split TilesetManager responsibilities
-docs: update lighting mode docs
-chore: bump three dependency
-```
-
-For breaking changes, add `!` after the type, or write `BREAKING CHANGE: ...` in the body:
-
-```
-feat!: rework the camera system, config fields changed
-```
-
-> Husky validates every commit automatically; non-conforming commits are rejected. The CHANGELOG is generated from commits at release time by a script — see [CHANGELOG.md](CHANGELOG.md).
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Start the examples and documentation sites |
+| `pnpm type-check` | Run TypeScript type checking |
+| `pnpm test:run` | Run tests |
+| `pnpm build` | Build library output and declarations |
+| `pnpm build:examples` | Build the documentation and examples site |

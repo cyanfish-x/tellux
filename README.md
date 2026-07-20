@@ -2,17 +2,46 @@
 
 [English](./README.en.md) | 中文
 
-Tellux 是一个基于 Three.js 的三维地理空间引擎，用 Three.js 构建数字地球、地形、影像与 3D Tiles 场景。
+[![npm version](https://img.shields.io/npm/v/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![license](https://img.shields.io/npm/l/tellux?style=flat-square)](./LICENSE)
 
-在线预览：https://tellux.cyanfish.site
+Tellux 是一个基于 Three.js 的开源 ESM TypeScript GIS viewer，用于在浏览器中构建数字地球、地形、影像和 3D Tiles 应用。
 
-## 安装
+它以 Three.js 的渲染与互操作能力为基础，提供地球相机、Cesium quantized-mesh 地形、多源图层、3D Tiles、大气、体积云和后处理的一致 API，适合从轻量可视化到复杂三维地理场景。
+
+---
+
+[🌐 示例](https://tellux.cyanfish.site) | [📚 文档](https://tellux.cyanfish.site/docs/) | [🧪 Sandcastle](https://tellux.cyanfish.site/sandcastle.html) | [💻 GitHub](https://github.com/cyanfish-x/tellux)
+
+---
+
+## 🚀 开始使用
+
+### npm
+
+Tellux 是 ESM 包。使用 Vite、Webpack、Rollup 等模块打包器时，安装 Tellux 及其必需的 peer dependencies：
 
 ```bash
-npm install tellux three 3d-tiles-renderer postprocessing @takram/three-atmosphere @takram/three-clouds @takram/three-geospatial @takram/three-geospatial-effects @mapbox/vector-tile pbf
+pnpm add tellux three 3d-tiles-renderer @takram/three-geospatial @takram/three-geospatial-effects @takram/three-atmosphere @takram/three-clouds postprocessing
 ```
 
-## 使用
+使用 MVT 矢量瓦片时，再安装可选依赖：
+
+```bash
+pnpm add @mapbox/vector-tile pbf
+```
+
+创建一个具有非零尺寸的容器，然后初始化 Viewer：
+
+```html
+<div id="viewer"></div>
+
+<style>
+  #viewer {
+    width: 100vw;
+    height: 100vh;
+  }
+</style>
+```
 
 ```ts
 import tellux from 'tellux'
@@ -30,594 +59,51 @@ const viewer = new tellux.Viewer('viewer', {
     }
   ],
   camera: {
-    latitude: 35.6812,
-    longitude: 139.8,
-    height: 500
+    longitude: 121.4737,
+    latitude: 31.2304,
+    height: 1200,
+    pitch: -25
   }
 })
 ```
 
-`terrain.url` 支持 Cesium quantized-mesh 地形根目录，也可以直接传入 `layer.json` 地址。也可以在初始化或运行时选择 Cesium Ion 地形资源：
+### 📚 下一步
 
-```ts
-const viewer = new tellux.Viewer('viewer', {
-  terrain: {
-    type: 'cesium-ion',
-    assetId: 1,
-    apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-  }
-})
-```
+- 查看[快速开始](https://tellux.cyanfish.site/docs/guide/getting-started)，了解 Draco 解码器、资源路径和 Viewer 生命周期。
+- 阅读[指南](https://tellux.cyanfish.site/docs/guide/viewer)，配置相机、交互、地形、影像、3D Tiles、模型、大气和后处理。
+- 在 [Sandcastle](https://tellux.cyanfish.site/sandcastle.html) 中浏览并编辑可运行示例。
+- 查看[公开 API](https://tellux.cyanfish.site/docs/api/viewer) 与[类型参考](https://tellux.cyanfish.site/docs/api/types)。
+- 希望参与开发？请阅读[贡献指南](./CONTRIBUTING.md)，然后提交 Issue 或 Pull Request；提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/)。
 
-运行时可以热切换地形：
+## ⚖️ License
 
-```ts
-viewer.setTerrain({
-  url: 'https://example.com/another-terrain/layer.json'
-})
+[MIT](./LICENSE)。Tellux 可用于商业和非商业项目。
 
-viewer.setTerrain({
-  type: 'cesium-ion',
-  assetId: 1,
-  apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-})
+## 🌍 地理内容从哪里来？
 
-viewer.setTerrain(null)
-```
+Tellux 是运行时和渲染库，不绑定或托管任何基础地理内容。你可以自由组合以下数据源：
 
-也可以使用 Cesium Ion 影像数据源：
+- 自托管或公开服务提供的 Cesium quantized-mesh 地形、XYZ、WMS、WMTS、GeoJSON、MVT 和 3D Tiles。
+- 通过 Cesium Ion token 访问的 terrain、imagery 和 3D Tiles 资源。
+- 按经纬高放置的应用自有 glTF / GLB 模型和 Three.js 对象。
 
-```ts
-new tellux.Viewer(container, {
-  layers: [
-    {
-      source: {
-        type: 'cesium-ion',
-        assetId: 123456,
-        apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-      }
-    }
-  ]
-})
-```
+Cesium Ion 是可选的数据服务；Tellux 的地形、影像和 3D Tiles API 同时支持自托管 URL 与 Cesium Ion 资源。数据的授权、可用性与访问控制由使用方和数据提供方负责。
 
-`layers` 中的 `type: 'cesium-ion'` 用于 Cesium Ion 影像资源。Google Photorealistic 3D Tiles 这类 3D Tiles 资源应通过 `viewer.load3DTileset(...)` 加载：
+## ✨ 特性
 
-```ts
-const photorealisticLayer = viewer.load3DTileset({
-  type: 'cesium-ion',
-  assetId: 2275207,
-  apiToken: import.meta.env.VITE_CESIUM_ION_TOKEN
-})
+- 在 WGS84 地球上使用经纬高、heading、pitch、roll 控制相机，并支持飞行定位、拾取和高度采样。
+- 加载 Cesium quantized-mesh 地形、XYZ、WMS、WMTS、Cesium Ion 影像，以及 GeoJSON、MVT 贴地矢量 overlay。
+- 加载 URL 或 Cesium Ion 3D Tiles，并处理 glTF / GLB 模型、动画和贴地放置。
+- 使用大气天空、空气透视、体积云、昼夜光照、SMAA、镜头光晕和抖动等效果构建地理场景。
+- 与 Three.js 场景、对象、坐标转换及自定义渲染循环互操作。
+- 默认使用 WebGL；实验性的 WebGPU renderer 支持基础地球、地形、影像、3D Tiles、模型、拾取与大气，具体限制见[能力边界](https://tellux.cyanfish.site/docs/guide/limitations)。
 
-// 作为全球三维底图使用时，可隐藏默认基础地球表面，避免与摄影测量网格重叠。
-viewer.tileset.group.visible = false
-```
+## 🛠️ 开发
 
-影像图层统一通过 `viewer.layers` 管理，图层顺序按数组从下到上绘制：
-
-```ts
-const imageryLayer = viewer.layers.add({
-  name: 'World Imagery',
-  source: {
-    type: 'xyz',
-    url: 'https://example.com/imagery/{z}/{y}/{x}.png'
-  }
-})
-
-imageryLayer.setVisible(false)
-imageryLayer.setStyle({ opacity: 0.65 })
-imageryLayer.moveTo(0)
-imageryLayer.remove()
-```
-
-MVT 矢量瓦片可以作为影像图层接入：
-
-```ts
-viewer.layers.add({
-  name: 'Water and roads',
-  source: {
-    type: 'mvt',
-    url: 'https://example.com/tiles/{z}/{x}/{y}.pbf'
-  },
-  style: {
-    getStyle(layerName) {
-      if (layerName.includes('water')) return { fill: '#38bdf8', order: 10 }
-      if (layerName.includes('transportation')) return { stroke: '#facc15', strokeWidth: 1.4, order: 30 }
-      return null
-    }
-  }
-})
-```
-
-MVT 图层依赖 `3d-tiles-renderer` 的 MVT overlay 能力，运行时需要安装 `@mapbox/vector-tile` 和 `pbf`。
-
-GeoJSON 可以作为贴地矢量 overlay 接入：
-
-```ts
-viewer.layers.add({
-  name: 'Area boundary',
-  source: {
-    type: 'geojson',
-    url: '/data/boundary.geojson'
-  },
-  style: {
-    opacity: 0.85,
-    fill: 'rgba(20, 184, 166, 0.28)',
-    stroke: '#14b8a6',
-    strokeWidth: 2,
-    getStyle(feature, properties) {
-      if (properties?.kind === 'restricted') return { fill: 'rgba(244, 63, 94, 0.32)', stroke: '#f43f5e' }
-      return {}
-    }
-  }
-})
-```
-
-也可以直接传入 GeoJSON 对象：
-
-```ts
-viewer.layers.add({
-  source: {
-    type: 'geojson',
-    geojson
-  }
-})
-```
-
-WMS 服务可以作为影像图层接入：
-
-```ts
-viewer.layers.add({
-  name: 'Province boundary',
-  source: {
-    type: 'wms',
-    url: 'https://example.com/geoserver/wms',
-    layer: 'workspace:layer',
-    crs: 'EPSG:4326',
-    format: 'image/png',
-    transparent: true
-  },
-  style: {
-    opacity: 0.7
-  }
-})
-```
-
-例如 GeoServer WMS 1.1.0 服务：
-
-```ts
-viewer.layers.add({
-  name: '中国省界 WMS',
-  source: {
-    type: 'wms',
-    url: 'https://example.com/geoserver/wms',
-    layer: 'workspace:province_boundary',
-    version: '1.1.0',
-    crs: 'EPSG:4326',
-    styles: '',
-    format: 'image/png',
-    transparent: true,
-    contentBoundingBox: [73.501142, 3.397162, 135.088511, 53.560901]
-  },
-  style: {
-    opacity: 0.72
-  }
-})
-```
-
-> WMS 图层应请求图片格式，例如 `image/png`。`format=application/openlayers` 通常是 GeoServer 的预览页格式，不适合作为影像贴图。
-
-WMTS 服务可以作为影像图层接入。下面以天地图影像为例（需申请 `tk` 密钥）：
-
-```ts
-viewer.layers.add({
-  name: '天地图影像',
-  source: {
-    type: 'wmts',
-    url: 'http://t0.tianditu.gov.cn/img_w/wmts',
-    layer: 'img',
-    tileMatrixSet: 'w',
-    style: 'default',
-    format: 'tiles',
-    projection: 'EPSG:3857',
-    levels: 18,
-    preprocessURL(url) {
-      const next = new URL(url)
-      next.searchParams.set('tk', YOUR_TIANDITU_TOKEN)
-      return next.toString()
-    }
-  }
-})
-```
-
-> WMTS 使用 KVP 模式时只传服务根 URL；`format=tiles` 是天地图专用格式。示例站点可通过 `VITE_TDT_KEY` 配置密钥。
-
-## glTF / GLB 模型
-
-可以通过 `viewer.addModel(...)` 加载普通 glTF 或 GLB 模型，并直接按经纬高放置到 Tellux 场景中。`coordinates` 支持 `[经度, 纬度, 高度]` 数组，也支持 `{ longitude, latitude, height }` 对象；高度单位为米。
-
-```ts
-const model = viewer.addModel({
-  type: 'gltf',
-  id: 'littlest-tokyo',
-  url: 'https://example.com/models/LittlestTokyo.glb',
-  coordinates: [114, 30, 0],
-  scale: 0.45,
-  heading: 180,
-  alignToGround: true,
-  animate: true,
-  animationChannel: 0
-})
-
-await model.ready
-
-viewer.flyToTarget(model.root, {
-  heading: -35,
-  pitch: -28,
-  distance: 2600
-})
-
-model.playAnimation(0)
-model.pauseAnimation()
-model.stopAnimation()
-model.remove()
-```
-
-`type` 固定为 `'gltf'`，URL 可以指向 `.gltf` 或 `.glb`。当 `animate: true` 时，模型加载完成后默认播放第 `0` 个动画通道；可以用 `animationChannel` 指定其他通道。
-
-如果你需要自己放置 Three.js 对象，也可以复用 Tellux 的坐标转换 API：
-
-```ts
-const position = viewer.cartographicToVector3([114, 30, 100])
-
-const matrix = viewer.cartographicToMatrix4([114, 30, 0], {
-  heading: 90,
-  pitch: 0,
-  roll: 0
-})
-
-object.matrixAutoUpdate = false
-object.matrix.copy(matrix)
-viewer.scene.threeScene.add(object)
-```
-
-`cartographicToVector3(...)` 返回底层 Three.js 世界坐标；`cartographicToMatrix4(...)` 返回适合 Three.js 对象的当地坐标矩阵，`+Y` 指向当地上方，`+Z` 指向对象前方。
-
-## 光照模式
-
-Tellux 提供两种大气光照模式，默认使用 `light-source`：
-
-```ts
-const viewer = new tellux.Viewer(container, {
-  scene: {
-    atmosphere: {
-      lighting: {
-        mode: 'light-source'
-      }
-    }
-  }
-})
-```
-
-`light-source` 会在 Three.js 场景中使用 Takram 的太阳方向光和天空光探针。它适合大多数 3D GIS 场景：3D Tiles、地形、overlay 影像、自定义 Three.js 模型和 PBR 材质都可以沿用 Three.js 的常规受光方式。可以通过 `scene.atmosphere.lighting` 调整光源强度：
-
-```ts
-viewer.scene.atmosphere.lighting.mode = 'light-source'
-viewer.scene.atmosphere.lighting.sunLight = true
-viewer.scene.atmosphere.lighting.skyLight = true
-viewer.scene.atmosphere.lighting.sunLightIntensity = 1.2
-viewer.scene.atmosphere.lighting.skyLightIntensity = 0.8
-```
-
-Tellux 还会自动应用夜间光照：当当前视角所在地的太阳低于地平线时，会根据月亮方向和月相叠加冷色低强度月光，并加少量冷色环境补光，避免夜晚完全变黑。夜间效果会同时作用于天空、月盘/月晕、星空、体积云和地表；`light-source` 模式下地表会使用 Three.js 月光方向光和环境光，`post-process` 模式下地表会在 `AerialPerspectiveEffect` 中基于表面 albedo 补充月光和环境补光。可以通过 `scene.atmosphere.night` 调整：
-
-```ts
-const viewer = new tellux.Viewer(container, {
-  scene: {
-    atmosphere: {
-      lighting: {
-        mode: 'light-source'
-      },
-      night: {
-        enabled: true,
-        color: 0x9bbcff,
-        moonLightIntensity: 0.18,
-        ambientIntensity: 0.08,
-        useMoonPhase: true,
-        transitionRange: [-0.08, 0.05]
-      }
-    }
-  }
-})
-
-viewer.scene.atmosphere.night.moonLightIntensity = 0.22
-viewer.scene.atmosphere.night.ambientIntensity = 0.1
-```
-
-`post-process` 是 Takram 的原生空气透视后处理光照路径。它会把渲染结果当作表面反照率（albedo），再在 `AerialPerspectiveEffect` 中应用太阳光、天空光、大气透射和空气散射。这个模式适合想获得更统一的大气后处理效果的高级场景，但输入材质应是不受 Three.js 光源影响的 albedo 材质，例如 `MeshBasicMaterial` 或 glTF 的 `KHR_materials_unlit`。
-
-加载 3D Tiles 时，如果数据本身不是 unlit 材质，但希望它参与 `post-process` 光照，可以显式使用 `materialMode: 'unlit'`：
-
-```ts
-viewer.scene.atmosphere.lighting.mode = 'post-process'
-viewer.scene.atmosphere.lighting.sunLight = true
-viewer.scene.atmosphere.lighting.skyLight = true
-viewer.scene.atmosphere.lighting.albedoScale = 0.6
-
-const layer = viewer.load3DTileset({
-  type: 'url',
-  url: 'https://example.com/tileset.json',
-  materialMode: 'unlit'
-})
-```
-
-如果在 `post-process` 模式下仍使用 PBR 或其他受光材质，场景中的 Three.js 光源会被关闭，瓦片在进入后处理前可能已经变暗甚至变黑。此时要么改用默认的 `light-source`，要么为需要后处理光照的 3D Tiles 使用 `materialMode: 'unlit'`。
-
-请确保容器具有非零尺寸：
-
-```css
-#viewer {
-  width: 100vw;
-  height: 100vh;
-}
-```
-
-## Renderer 类型
-
-默认情况下，Viewer 使用 Three.js `WebGLRenderer`，完整支持大气、体积云、星空和后处理效果。也可以通过 `renderer.type` 切换到实验性的 WebGPU renderer：
-
-```ts
-const viewer = await tellux.Viewer.create(container, {
-  renderer: {
-    type: 'webgpu'
-  },
-  scene: {
-    atmosphere: {
-      show: true,
-      lighting: {
-        mode: 'light-source'
-      }
-    },
-    clouds: {
-      show: false
-    }
-  }
-})
-```
-
-WebGPU renderer 需要异步初始化。推荐使用 `Viewer.create(...)`，它会在返回前等待 renderer 初始化完成；如果使用 `new Viewer(...)` 并接入外部手动渲染循环，建议先 `await viewer.ready` 再调用 `viewer.render()`：
-
-```ts
-const viewer = new tellux.Viewer(container, {
-  renderer: { type: 'webgpu' },
-  useDefaultRenderLoop: false
-})
-
-await viewer.ready
-viewer.render()
-```
-
-> WebGPU 支持目前是**实验能力**，API 和效果范围后续可能调整。基础地球、3D Tiles、地形、影像、模型、拾取和大气天空 / 空气透视会走 WebGPU 管线；**体积云、星空和 WebGL 专属后处理效果（SMAA、镜头光晕、抖动等）在 WebGPU 模式下会降级为不渲染**。WebGPU 大气首版使用 Takram 的 node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射；地球瓦片 LOD 切换目前为直接切换，暂不支持 WebGL 版的丝滑淡入淡出。
-
-WebGPU 模式目前**不会在不支持的环境上自动回退 WebGL**：在不支持 WebGPU 的浏览器中 `renderer.init()` 会失败，`Viewer.create(...)` 会抛错。需要应用层自行检测后决定 `renderer.type`，或设置 `renderer.forceWebGL: true` 让 `WebGPURenderer` 走 Three.js 的 WebGL2 fallback backend（仍走 WebGPU 代码路径，但底层用 WebGL2）。
-
-## Draco 解码器
-
-Tellux 使用 `DRACOLoader` 加载 glTF tiles 和 glTF / GLB 模型。默认情况下，解码器会从 `/draco/gltf/` 加载。
-
-你可以将 `three/examples/jsm/libs/draco/gltf/` 中的解码器文件复制到应用的 public 目录，或传入自定义路径：
-
-```ts
-new Viewer(container, {
-  dracoDecoderPath: '/assets/draco/gltf/'
-})
-```
-
-## 静态资源目录
-
-Tellux 随 npm 包内置云、STBN 和星空资源。使用 Vite、Webpack、Rollup 等现代打包器时，直接
-`new tellux.Viewer(...)` 即可，打包器会把这些资源复制到应用构建产物中。
-
-如果你的项目需要从 CDN、内网静态目录或非打包环境加载资源，可以把
-`local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`
-放到自己的静态目录，并在创建 Viewer 前设置 `tellux.baseUrl` 覆盖默认资源地址：
-
-```ts
-import tellux from 'tellux'
-
-tellux.baseUrl = '/assets/tellux/'
-
-new tellux.Viewer(container)
-```
-
-也可以按需读取 Tellux 默认资源 URL：
-
-```ts
-import { telluxAssetUrls } from 'tellux/assets'
-
-console.log(telluxAssetUrls.stbn)
-```
-
-## API
-
-```ts
-viewer.camera.setView({
-  latitude: 31.2304,
-  longitude: 121.4737,
-  height: 1000,
-  heading: -90,
-  pitch: -15
-})
-
-viewer.flyToTarget({
-  latitude: 31.2304,
-  longitude: 121.4737,
-  height: 0
-}, {
-  heading: -90,
-  pitch: -30,
-  distance: 1200
-})
-
-const layer = viewer.load3DTileset({
-  type: 'url',
-  url: 'https://example.com/tileset.json'
-})
-
-viewer.flyToTarget(layer.tileset, {
-  heading: 0,
-  pitch: -30
-})
-
-const model = viewer.addModel({
-  type: 'gltf',
-  url: '/models/site.glb',
-  coordinates: [121.4737, 31.2304, 0],
-  animate: true
-})
-
-await model.ready
-viewer.flyToTarget(model.root)
-
-viewer.scene.clouds.show = false
-viewer.scene.atmosphere.show = true
-viewer.scene.postProcess.smaa.enabled = true
-viewer.toneMappingExposure = 8
-viewer.resolutionScale = 1.5
-
-viewer.destroy()
-```
-
-## 项目架构
-
-Tellux 采用 `Viewer` 门面加多个内部 manager 协作的结构。用户侧只需要面对 `Viewer`、`Camera`、`Scene`、`Clock` 和资源配置对象；复杂的瓦片、地形、影像、大气、云和后处理逻辑由内部模块分工管理。
-
-```mermaid
-flowchart TB
-  User["用户代码<br/>new tellux.Viewer"] --> Entry["src/index.ts<br/>tellux 入口"]
-  Entry --> Viewer["Viewer<br/>主门面 / 生命周期 / 事件 / render loop"]
-
-  Viewer --> Camera["Camera<br/>Cesium 风格相机 API"]
-  Viewer --> Scene["Scene<br/>云 / 大气 / 后处理开关"]
-  Viewer --> Clock["Clock<br/>太阳时间"]
-  Viewer --> Controls["GlobeControls<br/>地球交互控制"]
-  Viewer --> Renderer["Three.WebGLRenderer<br/>canvas / render"]
-
-  Viewer --> TilesetManager["TilesetManager<br/>surface / terrain / imagery / overlays"]
-  Viewer --> Models["ModelLayer<br/>glTF / GLB / AnimationMixer"]
-  Viewer --> AtmosphereManager["AtmosphereManager<br/>大气 / 云 / 太阳光 / 贴图"]
-  Viewer --> PostProcessingManager["PostProcessingManager<br/>NormalPass / 大气云组合 / SMAA 等"]
-
-  TilesetManager --> Sources["layers[].source<br/>xyz / cesium-ion / mvt / wms / wmts / geojson"]
-  TilesetManager --> TilesRenderer["3d-tiles-renderer<br/>TilesRenderer / plugins"]
-  TilesetManager --> TilePlugins["本地插件<br/>TerrainFetchPlugin<br/>图层级 TileCreasedNormalsPlugin"]
-
-  AtmosphereManager --> Takram["@takram<br/>atmosphere / clouds / geospatial"]
-  PostProcessingManager --> Postprocessing["postprocessing<br/>EffectPass / NormalPass"]
-
-  Scene --> PostProcessingManager
-  Clock --> AtmosphereManager
-  Camera --> TilesRenderer
-  Controls --> Camera
-  Renderer --> Scene
-```
-
-主要模块职责：
-
-- `Viewer`：主入口和门面类，负责创建 renderer、scene、camera、clock、controls，提供 glTF / GLB 模型加载入口，并协调各 manager 的生命周期。
-- `Camera`：封装 Cesium 风格的 `setView`、`flyTo` 和当前视角读取。
-- `Scene`：保存云、大气、后处理等场景状态，并在状态变化时触发后处理重组。
-- `TilesetManager`：创建和热切换基础地球表面、quantized-mesh 地形、影像底图和影像叠加层。
-- `ModelLayer`：由 `viewer.addModel(...)` 创建，管理 glTF / GLB 模型、动画通道、显隐和资源释放。
-- `AtmosphereManager`：创建大气、云、太阳光、天空光，并加载云纹理和 STBN 资源。
-- `PostProcessingManager`：根据 `Scene` 状态组合 normal pass、大气云 pass、SMAA、dithering 和 lens flare。
-
-## 渲染流程
-
-从 `new tellux.Viewer(container, options)` 到画面渲染出来，大致会经历以下流程：
-
-```mermaid
-sequenceDiagram
-  participant U as 用户
-  participant V as Viewer
-  participant R as WebGLRenderer
-  participant S as Scene
-  participant A as AtmosphereManager
-  participant T as TilesetManager
-  participant P as PostProcessingManager
-  participant C as Camera/GlobeControls
-
-  U->>V: new Viewer(container, options)
-  V->>R: 创建 WebGLRenderer 并挂载 canvas
-  V->>S: 创建 Scene 状态对象
-  V->>A: 创建大气 / 云 / 光源
-  A->>S: 添加 sunLight / skyLight
-  V->>T: 创建 surface / terrain tileset
-  T->>S: 将 tileset.group 加入 threeScene
-  T->>T: 注册 3d-tiles-renderer 插件
-  V->>C: 设置初始视角并创建 GlobeControls
-  V->>P: 创建后处理 pass
-  P->>R: renderer.setEffects(...)
-  V->>A: 异步加载大气和云贴图
-  V->>V: 注册 resize / click / mousemove
-  V->>R: setAnimationLoop(render)
-
-  loop 每帧
-    R->>V: render(time)
-    V->>V: resize()
-    V->>C: controls.update()
-    V->>T: tilesets.update()
-    T->>T: 根据相机加载和更新可见瓦片
-    V->>V: updateModelLayers(deltaTime)
-    V->>R: renderer.render(scene, camera)
-  end
-```
-
-运行时，`Viewer` 只负责串联流程：先同步容器尺寸，再更新地球控制器，然后让 `TilesetManager` 推进瓦片加载与 LOD 更新，接着更新已加载模型的动画，最后交给 Three.js renderer 渲染当前场景。影像、地形和叠加层切换时，`Viewer` 会转发给 `TilesetManager`；云、大气和后处理开关变化时，`Scene` 会触发 `PostProcessingManager` 重新组合渲染效果。
-
-## 贡献
-
-### 提交规范
-
-本项目使用 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/) 规范，通过 commitlint + husky 在提交时强制校验。提交信息格式：
-
-```
-<type>(<scope>): <subject>
-```
-
-**type**（必填）：
-
-| type | 说明 | 写入 CHANGELOG |
-|---|---|---|
-| `feat` | 新功能 | ✓ |
-| `fix` | bug 修复 | ✓ |
-| `refactor` | 重构（非新增功能、非修复） | ✓ |
-| `perf` | 性能优化 | ✓ |
-| `revert` | 回滚提交 | ✓ |
-| `docs` | 文档变更 | ✗ |
-| `style` | 代码格式（不影响功能） | ✗ |
-| `test` | 测试相关 | ✗ |
-| `chore` | 构建 / 工具 / 依赖等杂项 | ✗ |
-| `build` | 构建系统或外部依赖变更 | ✗ |
-| `ci` | CI 配置变更 | ✗ |
-
-`scope` 可选，表示影响范围，如 `feat(viewer): ...`；`subject` 为简短描述，中英文均可。
-
-示例：
-
-```
-feat: 实现 SymbolEntity 基本渲染
-fix(viewer): 修复 flyToTarget 事件监听未卸载的 bug
-refactor: 拆分 TilesetManager 职责
-docs: 更新光照模式文档
-chore: 升级 three 依赖
-```
-
-破坏性变更在 type 后加 `!`，或在正文写 `BREAKING CHANGE: ...`：
-
-```
-feat!: 重构相机系统，配置字段变更
-```
-
-> 提交时 husky 会自动校验，不符合规范的提交会被拒绝。CHANGELOG 在发版时由脚本根据 commit 自动生成，详见 [CHANGELOG.md](CHANGELOG.md)。
+| 命令                    | 说明                           |
+| ----------------------- | ------------------------------ |
+| `pnpm dev`            | 启动示例站点与文档站点开发服务 |
+| `pnpm type-check`     | 执行 TypeScript 类型检查       |
+| `pnpm test:run`       | 运行测试                       |
+| `pnpm build`          | 构建库产物和声明文件           |
+| `pnpm build:examples` | 构建文档和示例站点             |
