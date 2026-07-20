@@ -1,6 +1,6 @@
 # Contributing to Tellux
 
-English | [中文](./CONTRIBUTING.md)
+[中文](./CONTRIBUTING.md) | English
 
 Thank you for your interest in Tellux. Contributions are welcome through issues, pull requests, documentation, and examples.
 

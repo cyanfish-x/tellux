@@ -1,12 +1,14 @@
 # Tellux
 
-English | [中文](./README.md)
+[中文](./README.md) | English
 
 [![npm version](https://img.shields.io/npm/v/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![license](https://img.shields.io/npm/l/tellux?style=flat-square)](./LICENSE)
 
 Tellux is an open-source ESM TypeScript GIS viewer built on Three.js for digital-globe, terrain, imagery, and 3D Tiles applications in the browser.
 
 Built on Three.js rendering and interoperability, Tellux provides a consistent API for globe camera controls, Cesium quantized-mesh terrain, multi-source layers, 3D Tiles, atmosphere, volumetric clouds, and post-processing, from focused visualizations to complex 3D geospatial scenes.
+
+![](https://picture.cyanfish.site/202607201519080.png)
 
 ---
 
@@ -107,10 +109,10 @@ pnpm test:run
 pnpm build
 ```
 
-| Command | Description |
-| --- | --- |
-| `pnpm dev` | Start the examples and documentation sites |
-| `pnpm type-check` | Run TypeScript type checking |
-| `pnpm test:run` | Run tests |
-| `pnpm build` | Build library output and declarations |
-| `pnpm build:examples` | Build the documentation and examples site |
+| Command                 | Description                                |
+| ----------------------- | ------------------------------------------ |
+| `pnpm dev`            | Start the examples and documentation sites |
+| `pnpm type-check`     | Run TypeScript type checking               |
+| `pnpm test:run`       | Run tests                                  |
+| `pnpm build`          | Build library output and declarations      |
+| `pnpm build:examples` | Build the documentation and examples site  |

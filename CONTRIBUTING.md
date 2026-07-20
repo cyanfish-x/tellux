@@ -1,6 +1,6 @@
 # Contributing to Tellux
 
-[English](./CONTRIBUTING.en.md) | 中文
+中文 | [English](./CONTRIBUTING.en.md)
 
 感谢你关注 Tellux 并愿意参与贡献。Tellux 是一个基于 Three.js 的 ESM TypeScript GIS viewer，欢迎通过 Issue、Pull Request、文档和示例改进项目。
 

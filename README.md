@@ -1,12 +1,14 @@
 # Tellux
 
-[English](./README.en.md) | 中文
+中文 | [English](./README.en.md)
 
 [![npm version](https://img.shields.io/npm/v/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![license](https://img.shields.io/npm/l/tellux?style=flat-square)](./LICENSE)
 
 Tellux 是一个基于 Three.js 的开源 ESM TypeScript GIS viewer，用于在浏览器中构建数字地球、地形、影像和 3D Tiles 应用。
 
 它以 Three.js 的渲染与互操作能力为基础，提供地球相机、Cesium quantized-mesh 地形、多源图层、3D Tiles、大气、体积云和后处理的一致 API，适合从轻量可视化到复杂三维地理场景。
+
+![](https://picture.cyanfish.site/202607201519080.png)
 
 ---
 
