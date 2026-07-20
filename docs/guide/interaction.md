@@ -97,6 +97,23 @@ if (entityHit) {
 
 `tolerance` 只影响点、线实体；面实体和体实体仍走原有 Three.js raycaster 拾取路径。
 
+### `pickHism(position)`
+
+拾取 HISM 实例化图层中的具体实例。坐标为**相对 canvas 左上角**的像素位置，与鼠标事件中的 `event.position` 一致。未命中返回 `null`。
+
+```ts
+viewer.on('click', (event) => {
+  const hit = viewer.pickHism(event.position)
+  if (hit) {
+    console.log('图层', hit.layerId)
+    console.log('实例', hit.instanceId, 'LOD', hit.lodIndex)
+    console.log('命中点', hit.point)
+  }
+})
+```
+
+HISM 实例不在 Entity 树内，需单独调用此方法。详见 [HISM 大规模实例化](./hism.md)。
+
 ### `pickEntities(position, options?)`
 
 拾取屏幕位置对应的实体列表。结果按距离从近到远排序；同一个实体如果有多个图形同时命中，只返回该实体距离最近的命中结果。未命中时返回空数组。
@@ -195,5 +212,6 @@ results.forEach((result, i) => {
 | 点击查询 3D Tiles 属性 | `pick3DTilesFeature` |
 | 点击 / 悬停查询单个实体 | `on('click' \| 'mousemove')` 事件的 `entities[0]`，或 `pickEntity` |
 | 点击 / 悬停查询多个实体 | `on('click' \| 'mousemove')` 事件的 `entities`，或 `pickEntities` |
+| 点击 HISM 实例（森林、岩石场等） | `pickHism` |
 | 每帧让对象贴地（高频、当前视图内） | `sampleHeight` |
 | 批量预计算路径地表高度（可能跨视图） | `sampleHeightMostDetailed` |

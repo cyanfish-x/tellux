@@ -1,14 +1,11 @@
 ﻿import tellux from "../src"
-import { createTiandituXYZImagery } from "./shared"
+import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const MODEL_LONGITUDE = 113.9958  
 const MODEL_LATITUDE = 30.0072
 const MODEL_HEIGHT = 0
 const MODEL_URL = "https://threejs.org/examples/models/gltf/LittlestTokyo.glb"
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 const container = document.querySelector("#viewer")
 const statusElement = document.querySelector<HTMLElement>("#model-status")
@@ -36,19 +33,10 @@ if (!flyToModelButton || !toggleAnimationButton) {
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {

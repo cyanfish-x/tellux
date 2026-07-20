@@ -1,7 +1,7 @@
 import type { TilesetLayer } from "../src"
 import tellux from "../src"
 import * as THREE from "three"
-import { createTiandituXYZImagery } from "./shared"
+import { exampleMapServiceConfig } from "./shared"
 
 const container = document.querySelector("#viewer")
 const tokenInput = document.querySelector<HTMLInputElement>("#ion-token")
@@ -14,8 +14,6 @@ const attributionsElement = document.querySelector<HTMLElement>(
 )
 
 const GOOGLE_PHOTOREALISTIC_ASSET_ID = 2275207
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 const TOKYO_VIEW = {
   latitude: 35.67892292593304,
@@ -36,19 +34,10 @@ if (!tokenInput || !loadButton || !flyToCityButton) {
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: TOKYO_VIEW,

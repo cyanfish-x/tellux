@@ -1,24 +1,11 @@
 import tellux from "../src"
-import { createTiandituXYZImagery } from "./shared"
-
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
+import { exampleMapServiceConfig } from "./shared"
 
 const viewer = new tellux.Viewer("viewer", {
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {

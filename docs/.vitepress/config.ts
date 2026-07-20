@@ -65,6 +65,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
           { text: '3D Tiles', link: '/guide/3d-tiles' },
           { text: '实体绘制', link: '/guide/entities' },
           { text: '坐标系与自定义对象', link: '/guide/coordinate-system' },
+          { text: 'HISM 大规模实例化', link: '/guide/hism' },
           { text: '光照模式与参数', link: '/guide/lighting' },
           { text: '大气、云与后处理', link: '/guide/atmosphere-and-effects' },
           { text: '数据源', link: '/guide/data-sources' },

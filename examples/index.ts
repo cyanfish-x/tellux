@@ -1,9 +1,6 @@
 ﻿import tellux from "../src"
-import { createTiandituXYZImagery } from "./shared"
+import { exampleMapServiceConfig } from "./shared"
 
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 // Hero 地球自转角速度（度/秒），约 120 秒一圈。
 // Auto-rotation angular speed (degrees/second), roughly one revolution per 120 s.
@@ -69,19 +66,10 @@ document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((link) => {
 if (globeContainer instanceof HTMLElement) {
   const viewer = new tellux.Viewer(globeContainer, {
     dracoDecoderPath: "/draco/gltf/",
-    terrain: DEFAULT_ION_TOKEN
-      ? {
-          type: "cesium-ion",
-          assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-          apiToken: DEFAULT_ION_TOKEN,
-          tileLoading: {
-            enableTileSplitting: true,
-          },
-        }
-      : undefined,
+    terrain: exampleMapServiceConfig.createTerrainOptions(),
     layers: [
       {
-        source: createTiandituXYZImagery(),
+        source: exampleMapServiceConfig.createImagerySource(),
       },
     ],
     camera: {

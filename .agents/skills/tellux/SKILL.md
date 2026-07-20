@@ -16,6 +16,7 @@ Tellux 是一个基于 Three.js 的 ESM TypeScript 库，用于在网页里构�
 - 加载 3D Tiles 或在经纬度放置 glTF 模型
 - 配置大气、光照模式、体积云、后处理
 - 相机飞行 / 定位、鼠标交互、拾取、高度采样
+- HISM 大规模实例化（森林、岩石场、多 LOD、实例拾取）
 - 把自定义 Three.js 对象按经纬高放到地球上
 
 ## 核心约定（先读这一段）
@@ -91,7 +92,7 @@ useEffect(() => {
 
 | 用户需求 | 读取的 reference |
 | --- | --- |
-| 初始化 Viewer、相机飞行、加影像/地形/3D Tiles/模型 | `references/core-api.md` |
+| 初始化 Viewer、相机飞行、加影像/地形/3D Tiles/模型、HISM 实例化 | `references/core-api.md` |
 | 大气、光照模式、体积云、后处理、地表材质 | `references/scene-effects.md` |
 | 鼠标事件、拾取坐标 / feature、高度采样 | `references/interaction.md` |
 | 把自定义 Three.js 对象按经纬度放到地球 | `references/coordinates.md` |

@@ -1,7 +1,7 @@
 ﻿import * as THREE from "three"
 import { Tree } from "@dgreenheck/ez-tree"
 import tellux from "../src"
-import { createTiandituXYZImagery } from "./shared"
+import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const CENTER_LONGITUDE = 103.561611
@@ -12,9 +12,6 @@ const PLACEMENT_RADIUS_METERS = 3000
 const EARTH_RADIUS_METERS = 6378137
 const DEG2RAD = Math.PI / 180
 const RAD2DEG = 180 / Math.PI
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 // 初始视角与"飞到森林"共享同一份相机姿态。
 const VIEW_POSE = {
@@ -79,19 +76,10 @@ if (!flyToForestButton || !regenerateButton) {
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {

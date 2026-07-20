@@ -60,6 +60,12 @@ const viewer = await tellux.Viewer.create(container, {
 
 影像图层管理器。
 
+### `hism`
+
+类型：`HismManager`
+
+HISM 实例化图层管理器。提供 `add()`、`get()`、`list()`、`remove()`、`pick()`、`getRuntimeStats()` 以及 `rtcUniforms`（自定义材质接入 RTC 时使用）。等价于 `viewer.addHismLayer()` 等 Viewer 级方法的底层入口。
+
 ### `tileset`
 
 底层 3D Tiles renderer。启用地形时返回地形渲染器，否则返回基础裸球渲染器。
@@ -182,6 +188,18 @@ const entityHit = viewer.pickEntity({ x: 400, y: 300 }, { tolerance: 6 })
 ```ts
 const entityHits = viewer.pickEntities({ x: 400, y: 300 }, { tolerance: 6 })
 ```
+
+### `addHismLayer(options)`
+
+添加 HISM 实例化图层，用于大规模静态 mesh（森林、岩石场等）。返回 `HismLayer` 句柄，支持 `show` 与 `remove()`。配置见 [HISM 指南](../guide/hism.md)。
+
+### `pickHism(position)`
+
+拾取 HISM 实例。`position` 为相对 canvas 左上角的像素坐标（与 `ViewerMouseEvent.position` 一致）。未命中返回 `null`；命中返回 `HismPickResult`（含 `layerId`、`instanceId`、`archetypeIndex`、`lodIndex`、`point` 等）。
+
+### `getHismLayer(id)` / `removeHismLayer(id)` / `getHismRuntimeStats()`
+
+按 id 获取或移除 HISM 图层；`getHismRuntimeStats()` 返回全局可见实例数、簇数、draw calls 与各 LOD 分布。
 
 ### `sampleHeight(position, options?)`
 

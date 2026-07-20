@@ -1,4 +1,4 @@
-﻿import tellux from "../../src"
+import tellux, { createWindSwayLeavesMaterial } from "../../src"
 import * as THREE from "three"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
@@ -11,8 +11,21 @@ import {
   defaultTerrainUrl,
   defaultTiandituToken,
   showTokenNotice,
+  exampleMapServiceConfig,
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
+import {
+  HISM_DEMO_CENTER,
+  HISM_DEMO_VIEW_POSE,
+  HISM_TREE_PRESETS,
+  buildHismTreeTemplate,
+  buildLegacyTreeTemplate,
+  buildLodTreeArchetypes,
+  buildSimpleTreeArchetypes,
+  createHismDemoViewerOptions,
+  generateFastPlacements,
+  generatePoissonPlacements,
+} from "../hism/shared"
 import exampleStyles from "../styles.css?raw"
 import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
@@ -145,6 +158,18 @@ function executeExampleScript(source: string) {
     "showTokenNotice",
     "mountLocationReadout",
     "formatHeight",
+    "createWindSwayLeavesMaterial",
+    "exampleMapServiceConfig",
+    "HISM_DEMO_CENTER",
+    "HISM_DEMO_VIEW_POSE",
+    "HISM_TREE_PRESETS",
+    "buildHismTreeTemplate",
+    "buildLegacyTreeTemplate",
+    "buildLodTreeArchetypes",
+    "buildSimpleTreeArchetypes",
+    "createHismDemoViewerOptions",
+    "generateFastPlacements",
+    "generatePoissonPlacements",
     "__sandcastleImportMeta",
     `"use strict";\n${transformExampleScript(source)}\n//# sourceURL=tellux-sandcastle-example.js`
   )
@@ -163,6 +188,18 @@ function executeExampleScript(source: string) {
     showTokenNotice,
     mountLocationReadout,
     formatHeight,
+    createWindSwayLeavesMaterial,
+    exampleMapServiceConfig,
+    HISM_DEMO_CENTER,
+    HISM_DEMO_VIEW_POSE,
+    HISM_TREE_PRESETS,
+    buildHismTreeTemplate,
+    buildLegacyTreeTemplate,
+    buildLodTreeArchetypes,
+    buildSimpleTreeArchetypes,
+    createHismDemoViewerOptions,
+    generateFastPlacements,
+    generatePoissonPlacements,
     sandcastleImportMeta
   )
 }

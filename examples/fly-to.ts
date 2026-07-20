@@ -1,10 +1,7 @@
 ﻿import tellux from "../src"
-import { createTiandituXYZImagery, showTokenNotice } from "./shared"
+import { exampleMapServiceConfig, showTokenNotice } from "./shared"
 import type { CameraFlyToOptions } from "../src"
 
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 /**
  * 飞行目的地顶层配置：按钮名称、飞行参数（位置、姿态、时长）与目标时刻
@@ -116,19 +113,10 @@ showTokenNotice(tokenStatus)
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {

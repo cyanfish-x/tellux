@@ -3,8 +3,15 @@ import {
   createTiandituXYZImagerySource,
   createTiandituWmtsPreprocessURLSource
 } from "./tiandituLoadBalancer"
+import type { TerrainOptions, XYZImagerySourceOptions } from "../src"
 
 export const defaultTerrainUrl = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ""
+export const arcgisWorldImageryUrl =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+const defaultCesiumIonTerrainAssetId =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const defaultCesiumIonTerrainToken = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 export const defaultTiandituToken = import.meta.env.VITE_TIANDITU_TOKEN ?? ""
 
@@ -87,8 +94,87 @@ export function buildTiandituTerrainUrls(token = defaultTiandituToken): string[]
   )
 }
 
+export interface ExampleMapServiceConfig {
+  createImagerySource(): XYZImagerySourceOptions
+  createTerrainOptions(): TerrainOptions | undefined
+}
+
+export interface CreateExampleMapServiceConfigOptions {
+  isDevelopment: boolean
+  cesiumTerrainUrl: string
+  cesiumIonTerrainAssetId: string | number
+  cesiumIonTerrainToken: string
+  tiandituTokens: string[]
+}
+
+/**
+ * 创建示例默认的底图与地形服务配置：开发环境使用 ArcGIS 与 Cesium，
+ * 生产环境使用天地图影像和地形。
+ *
+ * Creates the default example imagery and terrain services: ArcGIS and Cesium
+ * in development, Tianditu imagery and terrain in production.
+ */
+export function createExampleMapServiceConfig(
+  options: CreateExampleMapServiceConfigOptions
+): ExampleMapServiceConfig {
+  if (options.isDevelopment) {
+    return {
+      createImagerySource: () => ({
+        type: "xyz",
+        url: arcgisWorldImageryUrl,
+        levels: 19,
+      }),
+      createTerrainOptions: () => {
+        if (options.cesiumTerrainUrl) {
+          return {
+            type: "url",
+            url: options.cesiumTerrainUrl,
+            tileLoading: { enableTileSplitting: true },
+          }
+        }
+        if (options.cesiumIonTerrainToken) {
+          return {
+            type: "cesium-ion",
+            assetId: options.cesiumIonTerrainAssetId,
+            apiToken: options.cesiumIonTerrainToken,
+            tileLoading: { enableTileSplitting: true },
+          }
+        }
+        return undefined
+      },
+    }
+  }
+
+  return {
+    createImagerySource: () => createTiandituXYZImagerySource(options.tiandituTokens),
+    createTerrainOptions: () => {
+      const [firstToken] = options.tiandituTokens
+      if (!firstToken) return undefined
+      return {
+        type: "tianditu",
+        token: options.tiandituTokens,
+        urls: buildTiandituTerrainUrls(firstToken),
+        tileLoading: { enableTileSplitting: true },
+      }
+    },
+  }
+}
+
+/** 示例默认底图和地形配置。 / Default example imagery and terrain services. */
+export const exampleMapServiceConfig = createExampleMapServiceConfig({
+  isDevelopment: import.meta.env.DEV,
+  cesiumTerrainUrl: defaultTerrainUrl,
+  cesiumIonTerrainAssetId: defaultCesiumIonTerrainAssetId,
+  cesiumIonTerrainToken: defaultCesiumIonTerrainToken,
+  tiandituTokens: defaultTiandituTokens,
+})
 export function showTokenNotice(element: HTMLElement | null) {
   if (!element) return
+
+  if (import.meta.env.DEV) {
+    element.textContent = "当前示例使用 ArcGIS World Imagery XYZ 瓦片。"
+    return
+  }
 
   element.textContent = defaultTiandituToken
     ? "当前示例使用天地图卫星影像 XYZ 瓦片。"

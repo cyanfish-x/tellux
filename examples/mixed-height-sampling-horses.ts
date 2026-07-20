@@ -2,7 +2,7 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import type { TilesetLayer } from "../src"
 import tellux from "../src"
-import { createTiandituXYZImagery } from "./shared"
+import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const MIXED_TILESET_URL =
@@ -19,9 +19,6 @@ const HORSE_MODEL_URL = "https://threejs.org/examples/models/gltf/Horse.glb"
 const EARTH_RADIUS_METERS = 6378137
 const DEG2RAD = Math.PI / 180
 const RAD2DEG = 180 / Math.PI
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 type PlacementPoint = {
   longitude: number
@@ -67,19 +64,10 @@ if (!toggleAnimationButton || !regenerateButton) {
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {

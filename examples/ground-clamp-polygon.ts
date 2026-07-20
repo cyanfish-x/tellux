@@ -1,10 +1,7 @@
 ﻿import tellux from "../src"
-import { createTiandituXYZImagery } from "./shared"
+import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 const container = document.querySelector("#viewer")
 const statusElement = document.querySelector<HTMLElement>("#clamp-status")
@@ -38,19 +35,10 @@ const REFERENCE_OFFSET_LON = 0.06
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {
@@ -109,9 +97,9 @@ viewer.entities.add({
   properties: { kind: "reference", label: "固定高平面" },
 })
 
-if (!DEFAULT_ION_TOKEN) {
+if (!exampleMapServiceConfig.createTerrainOptions()) {
   setStatus(
-    "未配置 Cesium Ion Token（VITE_CESIUM_ION_TOKEN），无地形数据，贴地效果不可见。"
+    "未配置默认地形服务，无地形数据，贴地效果不可见。"
   )
 } else {
   setStatus(

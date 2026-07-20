@@ -1,6 +1,6 @@
 ﻿import type { TilesetLayer } from "../src"
 import tellux from "../src"
-import { createTiandituXYZImagery } from "./shared"
+import { exampleMapServiceConfig } from "./shared"
 
 type TilesetSource = "url" | "cesium-ion"
 
@@ -31,8 +31,6 @@ const DEV_TILESET_URL = "/3dtiles/hk/tileset.json"
 const DEFAULT_TILESET_URL =
   import.meta.env.VITE_3D_TILESET_URL ??
   (import.meta.env.DEV ? DEV_TILESET_URL : PROD_TILESET_URL)
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_ION_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_3D_TILESET_ASSET_ID ?? "354307"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
@@ -67,19 +65,10 @@ const removeControl = removeButton
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   scene: {

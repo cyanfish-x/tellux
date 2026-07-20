@@ -6,7 +6,7 @@ import type {
   ViewerClickEvent,
   ViewerMouseMoveEvent,
 } from "../src"
-import { createTiandituXYZImagery } from "./shared"
+import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 
 const container = document.querySelector("#viewer")
@@ -19,8 +19,6 @@ const hoverElement = document.querySelector<HTMLElement>("#feature-hover")
 const popupElement = document.querySelector<HTMLElement>("#feature-popup")
 
 const DEFAULT_ASSET_ID = "75343"
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
 const DEFAULT_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 const HIGHLIGHT_ATTRIBUTE_NAMES = new Set([
   "_BATCHID",
@@ -41,19 +39,10 @@ if (!assetIdInput || !tokenInput || !loadButton || !clearButton || !hoverElement
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: createTiandituXYZImagery(),
+      source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {

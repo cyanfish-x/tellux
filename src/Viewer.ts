@@ -13,6 +13,7 @@ import { TargetFlightController } from './controls/TargetFlightController'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
 import { LayerManager } from './LayerManager'
+import { HismManager } from './hism'
 import { ModelManager } from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
@@ -43,6 +44,7 @@ import {
 } from './ViewerOptionsResolver'
 import { WidgetManager } from './widgets/WidgetManager'
 import type {
+  AddHismLayerOptions,
   AddModelOptions,
   CartographicFrameOptions,
   CartographicCoordinates,
@@ -52,6 +54,9 @@ import type {
   FlyToTargetOptions,
   FlyToTargetTarget,
   Load3DTilesetOptions,
+  HismLayer,
+  HismPickResult,
+  HismRuntimeStats,
   ModelLayer,
   PickEntityOptions,
   Picked3DTilesFeature,
@@ -89,6 +94,32 @@ export {
 export type { MsdfAtlas, MsdfAtlasData, MsdfGlyphMetrics } from './entities/MsdfAtlasLoader'
 export { loadMsdfAtlas, disposeMsdfAtlas } from './entities/MsdfAtlasLoader'
 export { EntityManager, type EntityManagerOptions } from './entities/EntityManager'
+export { HismManager, type HismManagerOptions } from './hism'
+export {
+  PositionPipeline,
+  HismCluster,
+  HismPickMarker,
+  createInstancedVegetationPipeline,
+  createRTCPositionPipeline,
+  createRTCPositionStage,
+  createWindSwayLeavesMaterial,
+  createWindSwayStage,
+  createWindSwayUniforms,
+  collectHismRuntimeStats,
+  hasTelluxPositionPipeline,
+  TELLUX_POSITION_PIPELINE_KEY,
+  RTC_POSITION_STAGE_NAME,
+  RTC_POSITION_STAGE_ORDER,
+  WIND_SWAY_STAGE_NAME,
+  WIND_SWAY_STAGE_ORDER,
+  type PositionPipelineStage,
+  type PositionPipelineStageContext,
+  type PositionPipelineStagePhase,
+  type PositionPipelineApplyOptions,
+  type PositionPipelineComposeOptions,
+  type WindSwayLeavesMaterialOptions,
+  type WindSwayUniformValues
+} from './hism'
 export { ImageryLayer, LayerManager } from './LayerManager'
 export { Scene } from './Scene'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
@@ -145,6 +176,16 @@ export type {
   ImageryLayerOptions,
   ImageryLayerSourceOptions,
   ImageryLayerStyleOptions,
+  AddHismLayerOptions,
+  HismApplyInstanceMatrix,
+  HismLayer,
+  HismLayerRuntimeStats,
+  HismPickResult,
+  HismRuntimeStats,
+  HismArchetype,
+  HismInstancePlacement,
+  HismLodLevel,
+  HismMeshPart,
   Load3DTilesetOptions,
   ModelLayer,
   MVTImagerySourceOptions,
@@ -297,6 +338,15 @@ export class Viewer {
     return this.entitiesManager
   }
 
+  /**
+   * HISM 实例化图层管理器，用于大规模静态实例渲染。
+   *
+   * HISM instanced layer manager for large-scale static instance rendering.
+   */
+  get hism() {
+    return this.hismManager
+  }
+
   private readonly threeCamera: THREE.PerspectiveCamera
   private readonly rendererAdapter: TelluxRendererAdapter
   private readonly dracoLoader: DRACOLoader
@@ -304,6 +354,7 @@ export class Viewer {
   private readonly cameraCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly gltfLoader: GLTFLoader
   private readonly models: ModelManager
+  private readonly hismManager: HismManager
   private readonly entitiesManager: EntityManager
   private readonly entityRenderManager: EntityRenderManager
   private readonly symbolOcclusionPass: SymbolOcclusionPass | null
@@ -527,6 +578,22 @@ export class Viewer {
         this.atmosphere?.setPostProcessMaterialLights(enabled)
       }
     })
+    const hismScaleMatrix = new THREE.Matrix4()
+    this.hismManager = new HismManager({
+      scene: this.scene.threeScene,
+      camera: this.threeCamera,
+      domElement: this.renderer.domElement,
+      applyInstanceMatrix: (coordinates, frame, scale, target) => {
+        this.cartographicToMatrix4(coordinates, frame, target)
+        if (scale === undefined) return
+        if (typeof scale === 'number') {
+          hismScaleMatrix.makeScale(scale, scale, scale)
+        } else {
+          hismScaleMatrix.makeScale(scale[0], scale[1], scale[2])
+        }
+        target.multiply(hismScaleMatrix)
+      }
+    })
     this.widgets = new WidgetManager(this, options.widgets)
     this.widgets.applyInitialSettings()
     this.renderLoop = new ViewerRenderLoop({
@@ -673,6 +740,63 @@ export class Viewer {
    */
   addModel(options: AddModelOptions): ModelLayer {
     return this.models.add(options)
+  }
+
+  /**
+   * 添加 HISM 实例化图层，用于大规模静态 mesh 渲染。
+   *
+   * 图层内部按空间簇划分实例，并在每帧做簇级视锥剔除；globe-scale 精度
+   * 由 RTC 实例化管线保证。
+   *
+   * Adds a HISM instanced layer for large-scale static mesh rendering.
+   *
+   * Instances are grouped into spatial clusters with per-frame cluster-level
+   * frustum culling; globe-scale precision is handled by the RTC instancing
+   * pipeline.
+   */
+  addHismLayer(options: AddHismLayerOptions): HismLayer {
+    return this.hismManager.add(options)
+  }
+
+  /**
+   * 拾取 HISM 实例。
+   *
+   * 传入屏幕像素坐标（相对 canvas 左上角）。未命中时返回 `null`。
+   *
+   * Picks a HISM instance.
+   *
+   * Accepts screen pixel coordinates relative to the canvas top-left corner.
+   * Returns `null` when nothing is hit.
+   */
+  pickHism(screenPosition: ScreenPosition): HismPickResult | null {
+    return this.hismManager.pick(screenPosition)
+  }
+
+  /**
+   * 获取 HISM 图层。
+   *
+   * Gets a HISM layer by id.
+   */
+  getHismLayer(id: string): HismLayer | null {
+    return this.hismManager.get(id)
+  }
+
+  /**
+   * 移除 HISM 图层。
+   *
+   * Removes a HISM layer by id.
+   */
+  removeHismLayer(id: string): boolean {
+    return this.hismManager.remove(id)
+  }
+
+  /**
+   * 获取 HISM 运行时统计。
+   *
+   * Gets HISM runtime statistics.
+   */
+  getHismRuntimeStats(): HismRuntimeStats {
+    return this.hismManager.getRuntimeStats()
   }
 
   /**
@@ -900,6 +1024,7 @@ export class Viewer {
     this.viewport.dispose()
     this.interactions.dispose()
     this.models.dispose()
+    this.hismManager.dispose()
     this.entityRenderManager.dispose()
     this.symbolOcclusionPass?.dispose()
     this.entitiesManager.dispose()
@@ -936,6 +1061,7 @@ export class Viewer {
     }
     this.atmosphere?.updateLightSources()
     this.models.update(deltaTime)
+    this.hismManager.update(deltaTime)
     this.entitiesManager.update(deltaTime)
     this.entityRenderManager.beginFrame()
     this.symbolOcclusionPass?.beginFrame()
