@@ -19,8 +19,8 @@ const htmlInputs = {
   instancedHorses: resolve(__dirname, "instanced-horses.html"),
   mixedHeightSamplingHorses: resolve(__dirname, "mixed-height-sampling-horses.html"),
   vegetation: resolve(__dirname, "vegetation.html"),
-  hismForest: resolve(__dirname, "hism-forest.html"),
-  hismCompare: resolve(__dirname, "hism-compare.html"),
+  hismForest: resolve(__dirname, "hism/hism-forest.html"),
+  hismCompare: resolve(__dirname, "hism/hism-compare.html"),
   sandcastle: resolve(__dirname, "sandcastle.html"),
   sandcastleRunner: resolve(__dirname, "sandcastle/runner.html"),
 }

@@ -7,7 +7,7 @@ HISM（Hierarchical Instanced Static Mesh）是 Tellux 内置的大规模静态�
 - **RTC 高精度定位**，与 Tellux 椭球坐标系一致
 - **BVH 加速拾取**，点击可命中具体实例
 
-完整性能演示见示例 [`hism-forest.html`](../../hism-forest.html)（Sandcastle 中「HISM Forest」）。
+完整性能演示见示例 [`hism/hism-forest.html`](../../hism/hism-forest.html)（Sandcastle 中「HISM Forest」）。
 
 ## 快速上手
 
@@ -178,12 +178,12 @@ Tellux 内部 RTC 实例化已复用 HISM 的 `createRTCPositionPipeline()`，�
 | 示例 | 说明 |
 | --- | --- |
 | [`vegetation.html`](../../vegetation.html) | **Legacy** 入门：InstancedMesh + RTC 实例化森林 |
-| [`hism-forest.html`](../../hism-forest.html) | **HISM** 能力演示：LOD、拾取、岩石第二层 |
-| [`hism-compare.html`](../../hism-compare.html) | **Legacy vs HISM 对比**：手动设置 1–1000 万实例并测速 |
+| [`hism/hism-forest.html`](../../hism/hism-forest.html) | **HISM** 能力演示：LOD、拾取、岩石第二层 |
+| [`hism/hism-compare.html`](../../hism/hism-compare.html) | **Legacy vs HISM 对比**：手动设置 1–1000 万实例并测速 |
 
 ## 性能对比（Legacy vs HISM）
 
-[`hism-compare.html`](../../hism-compare.html) 专门用于对比，与 `vegetation`（Legacy）和 `hism-forest`（HISM 演示）分离：
+[`hism/hism-compare.html`](../../hism/hism-compare.html) 专门用于对比，与 `vegetation`（Legacy）和 `hism-forest`（HISM 演示）分离：
 
 1. 输入实例数量（**1 – 10,000,000**）
 2. 选择 **Legacy InstancedMesh** 或 **HISM**
@@ -236,8 +236,8 @@ pnpm benchmark:hism -- --counts 5000,10000,15000
 也可手动打开对比页：
 
 ```
-http://127.0.0.1:5173/hism-compare.html
-http://127.0.0.1:5173/hism-compare.html?autorun=1&trees=10000&mode=hism
+http://127.0.0.1:5173/hism/hism-compare.html
+http://127.0.0.1:5173/hism/hism-compare.html?autorun=1&trees=10000&mode=hism
 ```
 
 ::: tip 首次运行

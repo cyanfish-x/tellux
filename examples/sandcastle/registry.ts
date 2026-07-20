@@ -1,16 +1,30 @@
 import type { SandcastleExample } from "./types"
 
-const htmlModules = import.meta.glob("../*.html", {
-  eager: true,
-  query: "?raw",
-  import: "default",
-}) as Record<string, string>
+const htmlModules = {
+  ...import.meta.glob("../*.html", {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  }),
+  ...import.meta.glob("../hism/*.html", {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  }),
+} as Record<string, string>
 
-const scriptModules = import.meta.glob("../*.ts", {
-  eager: true,
-  query: "?raw",
-  import: "default",
-}) as Record<string, string>
+const scriptModules = {
+  ...import.meta.glob("../*.ts", {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  }),
+  ...import.meta.glob("../hism/*.ts", {
+    eager: true,
+    query: "?raw",
+    import: "default",
+  }),
+} as Record<string, string>
 
 const categoryById: Record<string, string> = {
   "3d-tiles": "Tiles",
@@ -108,11 +122,20 @@ function normalizeHtmlForEditor(html: string) {
   return `<!doctype html>\n${document.documentElement.outerHTML}\n`
 }
 
-function findScriptPath(html: string) {
+function findScriptPath(htmlPath: string, html: string) {
   const document = parseHtmlDocument(html)
   const script = document.querySelector<HTMLScriptElement>('script[type="module"][src]')
   const source = script?.getAttribute("src")
-  return source ? `..${source.replace(/^\./, "")}` : null
+  if (!source) return null
+
+  const htmlDir = htmlPath.replace(/\/[^/]+$/, "")
+  if (source.startsWith("./")) {
+    return `${htmlDir}/${source.slice(2)}`
+  }
+  if (source.startsWith("/")) {
+    return `..${source}`
+  }
+  return `${htmlDir}/${source}`
 }
 
 function getScriptSource(scriptPath: string | null) {
@@ -171,7 +194,7 @@ function createExample(path: string, html: string): SandcastleExample | null {
     return null
   }
 
-  const scriptPath = findScriptPath(html)
+  const scriptPath = findScriptPath(path, html)
   const javascript = getScriptSource(scriptPath)
   if (!scriptPath || javascript === undefined) {
     return null

@@ -328,7 +328,7 @@ viewer.getHismRuntimeStats() // 可见实例数、draw calls、LOD 分布
 
 ez-tree 叶片风摆：`createWindSwayLeavesMaterial({ rtcUniforms: viewer.hism.rtcUniforms, ... })`。
 
-完整说明见仓库 `docs/guide/hism.md`；性能 demo 见 `examples/hism-forest.html`。
+完整说明见仓库 `docs/guide/hism.md`；性能 demo 见 `examples/hism/hism-forest.html`。
 
 ## 渲染循环
 

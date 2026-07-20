@@ -1,11 +1,18 @@
 import * as THREE from "three"
-import { Tree } from "@dgreenheck/ez-tree"
-import tellux, {
-  createWindSwayLeavesMaterial,
-  type HismArchetype,
-  type HismLayer,
-} from "../src"
-import { arcgisWorldImageryUrl } from "./shared"
+import tellux, { type HismLayer } from "../../src"
+import {
+  HISM_DEMO_CENTER,
+  HISM_DEMO_VIEW_POSE,
+  HISM_TREE_PRESETS,
+  buildHismTreeTemplate,
+  buildLegacyTreeTemplate,
+  buildSimpleTreeArchetypes,
+  createHismDemoViewerOptions,
+  generateFastPlacements,
+  generatePoissonPlacements,
+  type HismDemoPlacement,
+  type HismDemoPresetTemplate,
+} from "./shared"
 
 const MAX_INSTANCE_COUNT = 10_000_000
 const SAMPLING_MAX_COUNT = 5000
@@ -13,46 +20,9 @@ const POISSON_MAX_COUNT = 5000
 const SINGLE_PRESET_THRESHOLD = 50_000
 const YIELD_EVERY = 20_000
 
-const CENTER_LONGITUDE = 103.561611
-const CENTER_LATITUDE = 31.016963
-const EARTH_RADIUS_METERS = 6378137
-const DEG2RAD = Math.PI / 180
-const RAD2DEG = 180 / Math.PI
-
-const VIEW_POSE = {
-  latitude: 31.01740061257519,
-  longitude: 103.55668103900562,
-  height: 1188.4025046429122,
-  heading: 12.641958573261494,
-  pitch: -27.183678322477718,
-  roll: -0.000007808919233872686,
-} as const
-
-const ALL_PRESETS = [
-  { name: "oak_medium", baseScale: 1.0 },
-  { name: "pine_medium", baseScale: 1.0 },
-  { name: "aspen_medium", baseScale: 1.0 },
-] as const
-
 type RenderMode = "legacy" | "hism"
-
-type Placement = {
-  longitude: number
-  latitude: number
-  heading: number
-  scale: number
-  presetIndex: number
-}
-
-type PresetTemplate = {
-  name: string
-  baseScale: number
-  tree: Tree
-  branchesGeometry: THREE.BufferGeometry
-  leavesGeometry: THREE.BufferGeometry
-  branchesMaterial: THREE.Material | THREE.Material[]
-  leavesMaterial: THREE.Material | THREE.Material[]
-}
+type Placement = HismDemoPlacement
+type PresetTemplate = HismDemoPresetTemplate
 
 type SampledPlacement = {
   placement: Placement
@@ -126,35 +96,10 @@ if (
   throw new Error("Compare controls not found.")
 }
 
-const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/gltf/",
-  layers: [
-    {
-      source: {
-        type: "xyz",
-        url: arcgisWorldImageryUrl,
-        levels: 19,
-      },
-    },
-  ],
-  camera: {
-    latitude: VIEW_POSE.latitude,
-    longitude: VIEW_POSE.longitude,
-    height: VIEW_POSE.height,
-    heading: VIEW_POSE.heading,
-    pitch: VIEW_POSE.pitch,
-    roll: VIEW_POSE.roll,
-  },
-  scene: {
-    atmosphere: {
-      show: true,
-      lighting: { mode: "light-source" },
-      fallbackAmbientLight: { intensity: 0.85 },
-    },
-    clouds: { show: false },
-    postProcess: { toneMappingExposure: 7 },
-  },
-})
+const viewer = new tellux.Viewer(
+  container,
+  createHismDemoViewerOptions({ includeTerrain: false })
+)
 
 ;(window as any).viewer = viewer
 
@@ -197,7 +142,9 @@ function clampCount(raw: number) {
 }
 
 function resolvePresetDefs(count: number) {
-  return count > SINGLE_PRESET_THRESHOLD ? [ALL_PRESETS[0]] : ALL_PRESETS
+  return count > SINGLE_PRESET_THRESHOLD
+    ? [HISM_TREE_PRESETS[0]!]
+    : [...HISM_TREE_PRESETS]
 }
 
 function resolvePlacementRadius(count: number) {
@@ -237,74 +184,15 @@ function updateHint(count: number) {
   }
 }
 
-function buildLegacyTemplate(name: string, baseScale: number): PresetTemplate {
-  const tree = new Tree()
-  tree.loadPreset(name)
-  return {
-    name,
-    baseScale,
-    tree,
-    branchesGeometry: tree.branchesMesh.geometry,
-    leavesGeometry: tree.leavesMesh.geometry,
-    branchesMaterial: tree.branchesMesh.material,
-    leavesMaterial: tree.leavesMesh.material,
-  }
-}
-
-function buildHismTemplate(name: string, baseScale: number): PresetTemplate {
-  const tree = new Tree()
-  tree.loadPreset(name)
-  const branchesMaterial = tree.branchesMesh.material
-  const ezLeavesMaterial = tree.leavesMesh.material as THREE.MeshPhongMaterial
-  const leavesMaterial = createWindSwayLeavesMaterial({
-    map: ezLeavesMaterial.map,
-    color: ezLeavesMaterial.color,
-    alphaTest: ezLeavesMaterial.alphaTest,
-    dithering: ezLeavesMaterial.dithering,
-    rtcUniforms: viewer.hism.rtcUniforms,
-  })
-  ezLeavesMaterial.dispose()
-  tree.leavesMesh.material = leavesMaterial
-  return {
-    name,
-    baseScale,
-    tree,
-    branchesGeometry: tree.branchesMesh.geometry,
-    leavesGeometry: tree.leavesMesh.geometry,
-    branchesMaterial,
-    leavesMaterial,
-  }
-}
-
 async function initializeTemplates(mode: RenderMode, count: number) {
   const presetDefs = resolvePresetDefs(count)
   setStatus(`正在初始化 ${presetDefs.length} 个 ez-tree 模板...`)
   templates = presetDefs.map((preset) =>
     mode === "hism"
-      ? buildHismTemplate(preset.name, preset.baseScale)
-      : buildLegacyTemplate(preset.name, preset.baseScale)
+      ? buildHismTreeTemplate(preset.name, preset.baseScale, viewer.hism.rtcUniforms)
+      : buildLegacyTreeTemplate(preset.name, preset.baseScale)
   )
   await yieldToBrowser()
-}
-
-function buildArchetypes(presetTemplates: PresetTemplate[]) {
-  return presetTemplates.map(
-    (template): HismArchetype => ({
-      name: template.name,
-      parts: [
-        {
-          name: "branches",
-          geometry: template.branchesGeometry,
-          material: template.branchesMaterial,
-        },
-        {
-          name: "leaves",
-          geometry: template.leavesGeometry,
-          material: template.leavesMaterial,
-        },
-      ],
-    })
-  )
 }
 
 function disposeActiveScene() {
@@ -328,159 +216,23 @@ async function yieldToBrowser() {
   })
 }
 
-function createSeededRandom(seed: number) {
-  let state = seed >>> 0
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0
-    return state / 4294967296
-  }
-}
-
-function offsetToCartographic(
-  centerLongitude: number,
-  centerLatitude: number,
-  eastMeters: number,
-  northMeters: number
-) {
-  return {
-    latitude:
-      centerLatitude + (northMeters / EARTH_RADIUS_METERS) * RAD2DEG,
-    longitude:
-      centerLongitude +
-      (eastMeters /
-        (EARTH_RADIUS_METERS * Math.cos(centerLatitude * DEG2RAD))) *
-        RAD2DEG,
-  }
-}
-
-function cartographicOffsetMeters(
-  centerLongitude: number,
-  centerLatitude: number,
-  longitude: number,
-  latitude: number
-) {
-  return {
-    east:
-      (longitude - centerLongitude) *
-      DEG2RAD *
-      EARTH_RADIUS_METERS *
-      Math.cos(centerLatitude * DEG2RAD),
-    north: (latitude - centerLatitude) * DEG2RAD * EARTH_RADIUS_METERS,
-  }
-}
-
-function generateFastPlacements(options: {
-  count: number
-  centerLongitude: number
-  centerLatitude: number
-  radiusMeters: number
-  seed: number
-  presetCount: number
-}) {
-  const random = createSeededRandom(options.seed)
-  const points: Placement[] = new Array(options.count)
-  for (let index = 0; index < options.count; index += 1) {
-    const radius = Math.sqrt(random()) * options.radiusMeters
-    const angle = random() * Math.PI * 2
-    const east = Math.cos(angle) * radius
-    const north = Math.sin(angle) * radius
-    const coordinates = offsetToCartographic(
-      options.centerLongitude,
-      options.centerLatitude,
-      east,
-      north
-    )
-    const presetIndex = Math.floor(random() * options.presetCount)
-    points[index] = {
-      longitude: coordinates.longitude,
-      latitude: coordinates.latitude,
-      heading: random() * 360,
-      scale: (0.78 + random() * 0.5) * (ALL_PRESETS[presetIndex]?.baseScale ?? 1),
-      presetIndex,
-    }
-  }
-  return points
-}
-
-function generatePoissonPlacements(options: {
-  count: number
-  centerLongitude: number
-  centerLatitude: number
-  radiusMeters: number
-  minSpacingMeters: number
-  seed: number
-  presetCount: number
-}) {
-  const random = createSeededRandom(options.seed)
-  const points: Placement[] = []
-  const minSpacingSquared = options.minSpacingMeters * options.minSpacingMeters
-  const maxAttempts = options.count * 220
-
-  for (
-    let attempt = 0;
-    attempt < maxAttempts && points.length < options.count;
-    attempt += 1
-  ) {
-    const radius = Math.sqrt(random()) * options.radiusMeters
-    const angle = random() * Math.PI * 2
-    const east = Math.cos(angle) * radius
-    const north = Math.sin(angle) * radius
-
-    if (
-      points.some((point) => {
-        const offset = cartographicOffsetMeters(
-          options.centerLongitude,
-          options.centerLatitude,
-          point.longitude,
-          point.latitude
-        )
-        const dx = offset.east - east
-        const dy = offset.north - north
-        return dx * dx + dy * dy < minSpacingSquared
-      })
-    ) {
-      continue
-    }
-
-    const coordinates = offsetToCartographic(
-      options.centerLongitude,
-      options.centerLatitude,
-      east,
-      north
-    )
-    const presetIndex = Math.floor(random() * options.presetCount)
-    points.push({
-      longitude: coordinates.longitude,
-      latitude: coordinates.latitude,
-      heading: random() * 360,
-      scale: (0.78 + random() * 0.5) * (ALL_PRESETS[presetIndex]?.baseScale ?? 1),
-      presetIndex,
-    })
-  }
-
-  return points
-}
-
 async function generatePlacements(count: number, radiusMeters: number, seed: number) {
-  const presetCount = resolvePresetDefs(count).length
+  const presets = resolvePresetDefs(count)
+  const common = {
+    count,
+    centerLongitude: HISM_DEMO_CENTER.longitude,
+    centerLatitude: HISM_DEMO_CENTER.latitude,
+    radiusMeters,
+    seed,
+    presetCount: presets.length,
+    presetScales: presets.map((preset) => preset.baseScale),
+  }
   if (count > POISSON_MAX_COUNT) {
-    return generateFastPlacements({
-      count,
-      centerLongitude: CENTER_LONGITUDE,
-      centerLatitude: CENTER_LATITUDE,
-      radiusMeters,
-      seed,
-      presetCount,
-    })
+    return generateFastPlacements(common)
   }
   return generatePoissonPlacements({
-    count,
-    centerLongitude: CENTER_LONGITUDE,
-    centerLatitude: CENTER_LATITUDE,
-    radiusMeters,
+    ...common,
     minSpacingMeters: 6,
-    seed,
-    presetCount,
   })
 }
 
@@ -587,7 +339,7 @@ function buildHismScene(
 ) {
   const layer = viewer.addHismLayer({
     id: `hism-compare-${Date.now()}`,
-    archetypes: buildArchetypes(presetTemplates),
+    archetypes: buildSimpleTreeArchetypes(presetTemplates),
     instances: sampledPlacements.map(({ placement, height }) => ({
       coordinates: [placement.longitude, placement.latitude, height],
       heading: placement.heading,
@@ -595,8 +347,8 @@ function buildHismScene(
       archetype: placement.presetIndex,
     })),
     clusterCellSizeMeters,
-    referenceLongitude: CENTER_LONGITUDE,
-    referenceLatitude: CENTER_LATITUDE,
+    referenceLongitude: HISM_DEMO_CENTER.longitude,
+    referenceLatitude: HISM_DEMO_CENTER.latitude,
     onUpdate: (_delta, elapsed) => {
       for (const template of activeScene?.templates ?? presetTemplates) {
         template.tree.update(elapsed)
@@ -615,14 +367,14 @@ function buildHismScene(
 function flyToScene(onComplete?: () => void) {
   viewer.camera.flyTo({
     destination: {
-      latitude: VIEW_POSE.latitude,
-      longitude: VIEW_POSE.longitude,
-      height: VIEW_POSE.height,
+      latitude: HISM_DEMO_VIEW_POSE.latitude,
+      longitude: HISM_DEMO_VIEW_POSE.longitude,
+      height: HISM_DEMO_VIEW_POSE.height,
     },
     orientation: {
-      heading: VIEW_POSE.heading,
-      pitch: VIEW_POSE.pitch,
-      roll: VIEW_POSE.roll,
+      heading: HISM_DEMO_VIEW_POSE.heading,
+      pitch: HISM_DEMO_VIEW_POSE.pitch,
+      roll: HISM_DEMO_VIEW_POSE.roll,
     },
     complete: onComplete,
   })
