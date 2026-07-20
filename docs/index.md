@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: Tellux
-  text: Three.js GIS Viewer
-  tagline: 面向数字地球、三维地形、影像图层和 3D Tiles 场景的 TypeScript API。
+  text: Three.js 3D Earth Engine
+  tagline: 面向数字地球、数字孪生、三维地图及各类 3D Earth 应用的 TypeScript API。
   actions:
     - theme: brand
       text: 快速开始

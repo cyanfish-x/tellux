@@ -2,9 +2,9 @@
 
 中文 | [English](./CONTRIBUTING.en.md)
 
-感谢你关注 Tellux 并愿意参与贡献。Tellux 是一个基于 Three.js 的 ESM TypeScript GIS viewer，欢迎通过 Issue、Pull Request、文档和示例改进项目。
+感谢你关注 Tellux 并愿意参与贡献。Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用于构建数字地球、数字孪生、三维地图及各类 3D Earth 应用；欢迎通过 Issue、Pull Request、文档和示例改进项目。
 
-Thank you for your interest in Tellux. Contributions are welcome through issues, pull requests, documentation, and examples.
+Thank you for your interest in Tellux. It is an open-source ESM TypeScript 3D Earth Engine built on Three.js; contributions through issues, pull requests, documentation, and examples are welcome.
 
 ## 🚀 开始开发
 

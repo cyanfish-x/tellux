@@ -38,7 +38,7 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 `examples/index.html` 负责页面结构和文案：
 
 - 顶部导航包含 Tellux 品牌、能力、工作流、Sandcastle 和 GitHub 入口。
-- Hero 区域展示 Tellux 的定位：基于 Three.js 的 GIS viewer。
+- Hero 区域展示 Tellux 的定位：基于 Three.js 的 3D Earth Engine。
 - 页面中部介绍地球与相机、多源影像图层、3D Tiles、Cesium 地形、大气云和工程默认值。
 - 后续展示真实地形、大气和体积云效果素材。
 

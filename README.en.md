@@ -4,9 +4,9 @@
 
 [![npm version](https://img.shields.io/npm/v/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![license](https://img.shields.io/npm/l/tellux?style=flat-square)](./LICENSE)
 
-Tellux is an open-source ESM TypeScript GIS viewer built on Three.js for digital-globe, terrain, imagery, and 3D Tiles applications in the browser.
+**Tellux is an open-source 3D Earth Engine built on Three.js for creating digital globes, digital twins, 3D maps, and a wide range of 3D Earth applications in the browser.**
 
-Built on Three.js rendering and interoperability, Tellux provides a consistent API for globe camera controls, Cesium quantized-mesh terrain, multi-source layers, 3D Tiles, atmosphere, volumetric clouds, and post-processing, from focused visualizations to complex 3D geospatial scenes.
+**Built on Three.js's powerful rendering capabilities and open-source ecosystem, Tellux provides a unified API for organizing globe cameras, Cesium Quantized Mesh terrain, multi-source imagery and vector layers, 3D Tiles, atmospheric sky, volumetric clouds, and post-processing effects. It lets developers focus on building modern web applications ranging from lightweight visualizations to complex 3D Earth scenes.**
 
 ![](https://picture.cyanfish.site/202607201619427.png)
 

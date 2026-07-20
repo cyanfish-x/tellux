@@ -4,7 +4,7 @@
 
 Thank you for your interest in Tellux. Contributions are welcome through issues, pull requests, documentation, and examples.
 
-Tellux is an ESM TypeScript GIS viewer built on Three.js. This guide explains how to set up the project, validate changes, and submit a contribution.
+Tellux is an open-source ESM TypeScript 3D Earth Engine built on Three.js for digital globes, digital twins, 3D maps, and a wide range of 3D Earth applications. This guide explains how to set up the project, validate changes, and submit a contribution.
 
 ## 🚀 Development setup
 

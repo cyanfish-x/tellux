@@ -1,6 +1,8 @@
 # 快速开始
 
-Tellux 是一个 ESM TypeScript 库，公开包名为 `tellux`。它基于 Three.js 组织 GIS viewer，适合加载 Cesium 地形、影像图层、3D Tiles、大气、体积云和后处理效果。
+Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，公开包名为 `tellux`。它用于构建数字地球、数字孪生、三维地图及各类 3D Earth 应用。
+
+Tellux 建立在 Three.js 的渲染能力与开源生态之上，提供统一 API 来组织地球相机、Cesium Quantized Mesh 地形、多源影像与矢量图层、3D Tiles、天空大气、体积云及后处理效果。
 
 ## 安装
 

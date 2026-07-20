@@ -4,9 +4,9 @@
 
 [![npm version](https://img.shields.io/npm/v/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![license](https://img.shields.io/npm/l/tellux?style=flat-square)](./LICENSE)
 
-Tellux 是一个基于 Three.js 的开源 ESM TypeScript GIS viewer，用于在浏览器中构建数字地球、地形、影像和 3D Tiles 应用。
+**Tellux 是一个基于 Three.js 的开源 3D Earth Engine，用于在浏览器中构建数字地球、数字孪生、三维地图以及各类 3D Earth 应用。**
 
-它以 Three.js 的渲染与互操作能力为基础，提供地球相机、Cesium quantized-mesh 地形、多源图层、3D Tiles、大气、体积云和后处理的一致 API，适合从轻量可视化到复杂三维地理场景。
+**它建立在 Three.js 强大的渲染能力与开源生态之上，提供统一的 API 来组织地球相机、Cesium Quantized Mesh 地形、多源影像与矢量图层、3D Tiles、天空大气、体积云及后处理效果，让开发者能够专注于构建从轻量级可视化到复杂三维地球场景的现代 Web 应用。**
 
 ![](https://picture.cyanfish.site/202607201619427.png)
 

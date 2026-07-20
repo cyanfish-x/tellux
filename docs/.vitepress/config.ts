@@ -3,7 +3,7 @@ import type { ConfigEnv } from 'vite'
 
 export default ({ command }: ConfigEnv) => defineConfig({
   title: 'Tellux',
-  description: 'Three.js GIS viewer for terrain, imagery, 3D Tiles, atmosphere, clouds, and post-processing.',
+  description: 'An open-source 3D Earth Engine built on Three.js for digital globes, digital twins, 3D maps, and modern web applications.',
   // 开发用相对 base（本地预览）。
   // 构建时按部署目标区分：
   //   - GitHub Pages（仓库名 tellux 作为前缀）：DEPLOY_TARGET=ghpages → /tellux/docs/
