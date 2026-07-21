@@ -121,3 +121,31 @@ const results = await viewer.sampleHeightMostDetailed(positions)
 | 点击查 3D Tiles 属性 | `pick3DTilesFeature` |
 | 每帧让对象贴地（当前视图内） | `sampleHeight` |
 | 批量预计算路径高度（可能跨视图） | `sampleHeightMostDetailed` |
+
+## 高亮
+
+`viewer.highlight` 统一选中态视觉：
+
+- `Object3D` → WebGL 后处理描边（`scene.highlight.outline`）
+- `Picked3DTilesFeature` → 半透明叠加几何（`scene.highlight.overlay`）
+
+```ts
+viewer.on('click', (event) => {
+  if (event.tilesetFeature) viewer.highlight.set(event.tilesetFeature)
+  else viewer.highlight.clear()
+})
+viewer.highlight.setHover(featureOrNull)
+viewer.highlight.clear()
+```
+
+WebGPU 下描边不可用；Tiles overlay 仍可用。HISM 单实例高亮尚未纳入本门面。
+
+## 通用 Object3D 拾取
+
+```ts
+const hit = viewer.pickObject(position)                 // 整 scene
+const hit = viewer.pickObject(position, model.root)     // 限定根节点
+viewer.pickObjects(position, root?)                     // 全部命中，近→远
+```
+
+跳过 `userData.telluxPickingIgnore`。用于自定义 mesh / `addModel` 的 `model.root` 点击高亮等。

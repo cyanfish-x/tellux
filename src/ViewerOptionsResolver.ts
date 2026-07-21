@@ -103,6 +103,25 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
       smaa: options?.postProcess?.smaa ?? true,
       dithering: options?.postProcess?.dithering ?? false,
       toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 5
+    },
+    highlight: {
+      outline: {
+        enabled: options?.highlight?.outline?.enabled ?? true,
+        color: options?.highlight?.outline?.color ?? '#7cff5b',
+        hiddenColor:
+          options?.highlight?.outline?.hiddenColor ??
+          options?.highlight?.outline?.color ??
+          '#7cff5b',
+        edgeStrength: options?.highlight?.outline?.edgeStrength ?? 1.5,
+        xray: options?.highlight?.outline?.xray ?? true
+      },
+      overlay: {
+        enabled: options?.highlight?.overlay?.enabled ?? true,
+        color: options?.highlight?.overlay?.color ?? '#7cff5b',
+        opacity: options?.highlight?.overlay?.opacity ?? 0.55,
+        hoverColor: options?.highlight?.overlay?.hoverColor ?? '#38bdf8',
+        hoverOpacity: options?.highlight?.overlay?.hoverOpacity ?? 0.42
+      }
     }
   }
 }

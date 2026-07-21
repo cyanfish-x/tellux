@@ -1,5 +1,4 @@
-﻿import * as THREE from "three"
-import tellux from "../src"
+﻿import tellux from "../src"
 import type {
   Picked3DTilesFeature,
   TilesetLayer,
@@ -20,14 +19,6 @@ const popupElement = document.querySelector<HTMLElement>("#feature-popup")
 
 const DEFAULT_ASSET_ID = "75343"
 const DEFAULT_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
-const HIGHLIGHT_ATTRIBUTE_NAMES = new Set([
-  "_BATCHID",
-  "BATCHID",
-  "_BATCH_ID",
-  "BATCH_ID",
-  "BATCHID_0",
-  "_BATCHID_0",
-])
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -54,13 +45,21 @@ const viewer = new tellux.Viewer(container, {
     roll: 0.0716951918898415,
   },
   scene: {
-    atmosphere:{
-      lighting:{
-        mode:'light-source'
-      }
+    atmosphere: {
+      lighting: {
+        mode: "light-source",
+      },
     },
     clouds: {
       show: false,
+    },
+    highlight: {
+      overlay: {
+        color: "#7cff5b",
+        opacity: 0.58,
+        hoverColor: "#38bdf8",
+        hoverOpacity: 0.42,
+      },
     },
   },
 })
@@ -90,13 +89,13 @@ function getFeatureKey(feature: Picked3DTilesFeature) {
 
 function clearHover() {
   hoverKey = null
-  hoverHighlight.clear()
+  viewer.highlight.setHover(null)
   hoverElement.hidden = true
 }
 
 function clearSelection() {
   selectedKey = null
-  selectedHighlight.clear()
+  viewer.highlight.clear()
   popupElement.hidden = true
 }
 
@@ -140,13 +139,13 @@ function handleMouseMove(event: ViewerMouseMoveEvent) {
 
   if (nextHoverKey === selectedKey) {
     hoverKey = nextHoverKey
-    hoverHighlight.clear()
+    viewer.highlight.setHover(null)
     return
   }
 
   if (nextHoverKey !== hoverKey) {
     hoverKey = nextHoverKey
-    hoverHighlight.show(feature)
+    viewer.highlight.setHover(feature)
   }
 }
 
@@ -158,9 +157,9 @@ function handleClick(event: ViewerClickEvent) {
   }
 
   selectedKey = getFeatureKey(feature)
-  selectedHighlight.show(feature)
+  viewer.highlight.set(feature)
   if (hoverKey === selectedKey) {
-    hoverHighlight.clear()
+    viewer.highlight.setHover(null)
   }
   renderFeaturePopup(feature)
 }
@@ -247,147 +246,6 @@ function positionFloatingElement(element: HTMLElement, x: number, y: number) {
   element.style.top = `${Math.min(Math.max(y, margin), maxY)}px`
 }
 
-class FeatureHighlightLayer {
-  private object: THREE.Object3D | null = null
-
-  constructor(
-    private readonly color: THREE.ColorRepresentation,
-    private readonly opacity: number
-  ) {}
-
-  show(feature: Picked3DTilesFeature) {
-    this.clear()
-    const object = createHighlightObject(feature, this.color, this.opacity)
-    if (!object) return
-
-    this.object = object
-    object.userData.telluxPickingIgnore = true
-    viewer.scene.threeScene.add(object)
-  }
-
-  clear() {
-    if (!this.object) return
-
-    viewer.scene.threeScene.remove(this.object)
-    disposeHighlightObject(this.object)
-    this.object = null
-  }
-}
-
-function disposeHighlightObject(object: THREE.Object3D) {
-  object.traverse((child) => {
-    if ((child as THREE.Mesh).isMesh || (child as THREE.LineSegments).isLineSegments) {
-      const renderable = child as THREE.Mesh | THREE.LineSegments
-      renderable.geometry?.dispose()
-      const materials = Array.isArray(renderable.material) ? renderable.material : [renderable.material]
-      materials.forEach((material) => material?.dispose())
-    }
-  })
-}
-
-function createHighlightObject(
-  feature: Picked3DTilesFeature,
-  color: THREE.ColorRepresentation,
-  opacity: number
-) {
-  const object = feature.object
-  object.updateMatrixWorld(true)
-
-  if ((object as THREE.Mesh).isMesh) {
-    const mesh = object as THREE.Mesh
-    const geometry = createFeatureGeometry(mesh, feature) ?? createWholeMeshGeometry(mesh)
-    if (!geometry) return null
-
-    const material = new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      polygonOffset: true,
-      polygonOffsetFactor: -4,
-    })
-    const overlay = new THREE.Mesh(geometry, material)
-    overlay.frustumCulled = false
-    overlay.renderOrder = 1000
-    return overlay
-  }
-
-  const box = new THREE.Box3().setFromObject(object)
-  if (box.isEmpty()) return null
-
-  const helper = new THREE.Box3Helper(box, color)
-  helper.userData.telluxPickingIgnore = true
-  return helper
-}
-
-function createWholeMeshGeometry(mesh: THREE.Mesh) {
-  const geometry = mesh.geometry?.clone()
-  if (!geometry) return null
-
-  geometry.applyMatrix4(mesh.matrixWorld)
-  return geometry
-}
-
-function createFeatureGeometry(mesh: THREE.Mesh, feature: Picked3DTilesFeature) {
-  if (feature.featureId === null) return null
-
-  const geometry = mesh.geometry
-  const position = geometry.getAttribute("position")
-  const featureIdAttribute = getFeatureIdAttribute(geometry)
-  if (!position || !featureIdAttribute) return null
-
-  const index = geometry.index
-  const triangleCount = index ? Math.floor(index.count / 3) : Math.floor(position.count / 3)
-  const positions: number[] = []
-  const vertex = new THREE.Vector3()
-
-  for (let triangle = 0; triangle < triangleCount; triangle += 1) {
-    const a = index ? index.getX(triangle * 3) : triangle * 3
-    const b = index ? index.getX(triangle * 3 + 1) : triangle * 3 + 1
-    const c = index ? index.getX(triangle * 3 + 2) : triangle * 3 + 2
-    if (Math.round(featureIdAttribute.getX(a)) !== feature.featureId) continue
-
-    pushWorldVertex(position, a, mesh.matrixWorld, vertex, positions)
-    pushWorldVertex(position, b, mesh.matrixWorld, vertex, positions)
-    pushWorldVertex(position, c, mesh.matrixWorld, vertex, positions)
-  }
-
-  if (positions.length === 0) return null
-
-  const highlightGeometry = new THREE.BufferGeometry()
-  highlightGeometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
-  highlightGeometry.computeBoundingSphere()
-  return highlightGeometry
-}
-
-function pushWorldVertex(
-  position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
-  index: number,
-  matrixWorld: THREE.Matrix4,
-  vertex: THREE.Vector3,
-  target: number[]
-) {
-  vertex
-    .set(position.getX(index), position.getY(index), position.getZ(index))
-    .applyMatrix4(matrixWorld)
-  target.push(vertex.x, vertex.y, vertex.z)
-}
-
-function getFeatureIdAttribute(geometry: THREE.BufferGeometry) {
-  for (const key of Object.keys(geometry.attributes)) {
-    const normalized = key.toUpperCase()
-    if (HIGHLIGHT_ATTRIBUTE_NAMES.has(normalized) || normalized.startsWith("_FEATURE_ID_")) {
-      return geometry.getAttribute(key)
-    }
-  }
-
-  return null
-}
-
-const hoverHighlight = new FeatureHighlightLayer(0x38bdf8, 0.42)
-const selectedHighlight = new FeatureHighlightLayer(0x7cff5b, 0.58)
-
 loadButton.addEventListener("click", loadTileset)
 clearButton.addEventListener("click", () => {
   clearHover()
@@ -406,8 +264,6 @@ window.addEventListener("beforeunload", () => {
   viewer.off("mousemove", handleMouseMove)
   viewer.off("click", handleClick)
   clearActiveLayer()
-  hoverHighlight.clear()
-  selectedHighlight.clear()
   locationReadout.destroy()
   viewer.destroy()
 })

@@ -1,3 +1,5 @@
+import type { ViewerHighlightOptions } from './highlight'
+
 /**
  * 大气光照模式。
  *
@@ -86,6 +88,8 @@ export interface ViewerSceneOptions {
   surface?: ViewerSurfaceOptions
   /** 后处理配置。Post-processing options. */
   postProcess?: ViewerPostProcessOptions
+  /** 高亮（描边 / 叠加）配置。Highlight (outline / overlay) options. */
+  highlight?: ViewerHighlightOptions
 }
 
 /**

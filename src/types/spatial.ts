@@ -14,6 +14,36 @@ export interface ScreenPosition {
 }
 
 /**
+ * 通用 Object3D 拾取选项。
+ *
+ * Options for generic Object3D picking.
+ */
+export interface PickObjectOptions {
+  /**
+   * 是否递归遍历子节点，默认 `true`。
+   *
+   * Whether to traverse children recursively. Defaults to `true`.
+   */
+  recursive?: boolean
+}
+
+/**
+ * 通用 Object3D 拾取结果。
+ *
+ * Result of a generic Object3D pick.
+ */
+export interface PickedObject {
+  /** 命中的 Three.js 对象。Picked Three.js object. */
+  readonly object: Object3D
+  /** 命中的世界坐标。Picked world position. */
+  readonly point: Vector3
+  /** 射线到命中点的距离。Distance from the ray origin to the picked point. */
+  readonly distance: number
+  /** 命中的三角面索引；不可用时为 `null`。Picked face index, or `null` when unavailable. */
+  readonly faceIndex: number | null
+}
+
+/**
  * 经纬高坐标，单位分别为度和米。
  *
  * Cartographic coordinates in degrees and meters.

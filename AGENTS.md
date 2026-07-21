@@ -61,6 +61,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 - 涉及体积云、云层建模、天气贴图、噪声纹理、程序化纹理、云影或云渲染性能时，先读 `notes/依赖能力备忘/takram-three-clouds能力备忘.md`。
 - 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/依赖能力备忘/takram-three-geospatial-effects能力备忘.md`。
 - 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/架构/examples文档与Sandcastle架构.md`。
+- 涉及 `viewer.highlight`、后处理描边 Outline、3D Tiles feature 叠加高亮时，先读 `notes/架构/highlight统一高亮方案.md`。
 - 涉及打包策略、`external` / `noExternal`、peerDependencies 取舍、three 单例或第三方依赖是否打入产物时，先读 `notes/依赖能力备忘/前置依赖打包策略备忘.md`。
 
 ## 公开 API 方向
@@ -120,7 +121,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 提交信息必须使用中文，并遵循 Conventional Commits 风格：
 
 ```text
-<type>: <简短中文描述>
+<type>: <中文描述>
 ```
 
 允许的 `type`：
@@ -132,9 +133,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 - `docs`：仅文档变更
 - `chore`：工具、依赖或配置变更
 
-提交应保持单一职责；正文可选，用于说明变更原因或重要背景。示例：`docs: 更新后处理渲染管线说明`。
 ## 强制规则
 
 + 除非用户指定了输出语言，否则默认用中文回答
 + 改动源码后检查是否需要更新文档和skill
-+ 提交信息使用中文

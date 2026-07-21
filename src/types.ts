@@ -1,4 +1,5 @@
 export * from './types/scene'
+export * from './types/highlight'
 export * from './types/widgets'
 export * from './types/viewer'
 export * from './types/imagery'

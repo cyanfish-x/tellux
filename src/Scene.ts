@@ -2,6 +2,7 @@
 import {
   AtmosphereSettings,
   CloudSettings,
+  HighlightSettings,
   PostProcessSettings,
   SurfaceSettings,
   type AtmosphereStateApplier,
@@ -49,6 +50,12 @@ export class Scene {
    * Post-processing stage runtime settings.
    */
   readonly postProcess: PostProcessSettings
+  /**
+   * 高亮（描边 / 叠加）运行时设置。
+   *
+   * Highlight (outline / overlay) runtime settings.
+   */
+  readonly highlight: HighlightSettings
 
   private readonly fallbackAmbientLightSource: THREE.AmbientLight
 
@@ -57,7 +64,8 @@ export class Scene {
     applyAtmosphereState: AtmosphereStateApplier,
     applyCloudsState: CloudStateApplier,
     onEffectsChange: () => void,
-    onSurfaceMaterialModeChange: () => void
+    onSurfaceMaterialModeChange: () => void,
+    onHighlightChange: () => void = () => {}
   ) {
     this.fallbackAmbientLightSource = new THREE.AmbientLight(0xffffff, 0)
     this.atmosphere = new AtmosphereSettings(
@@ -70,6 +78,7 @@ export class Scene {
     this.clouds = new CloudSettings(options.clouds, applyCloudsState, onEffectsChange)
     this.surface = new SurfaceSettings(options.surface, onSurfaceMaterialModeChange)
     this.postProcess = new PostProcessSettings(options.postProcess, onEffectsChange)
+    this.highlight = new HighlightSettings(options.highlight, onHighlightChange)
     this.threeScene.add(this.fallbackAmbientLightSource)
   }
 

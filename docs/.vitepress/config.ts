@@ -61,6 +61,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
           { text: 'Viewer 基础', link: '/guide/viewer' },
           { text: '相机控制', link: '/guide/camera' },
           { text: '交互与拾取', link: '/guide/interaction' },
+          { text: '高亮', link: '/guide/highlight' },
           { text: '地形与影像', link: '/guide/terrain-and-imagery' },
           { text: '3D Tiles', link: '/guide/3d-tiles' },
           { text: '实体绘制', link: '/guide/entities' },

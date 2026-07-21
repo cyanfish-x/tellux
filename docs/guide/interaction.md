@@ -125,6 +125,20 @@ entityHits.forEach((hit) => {
 })
 ```
 
+### `pickObject(position, root?, options?)`
+
+拾取屏幕位置对应的 **Three.js `Object3D`**。默认在整个 `viewer.scene.threeScene` 上求交；传入 `root` 可限定范围（例如只拾取某个 `model.root`）。会跳过 `userData.telluxPickingIgnore` 标记的对象。未命中返回 `null`。
+
+```ts
+const hit = viewer.pickObject(event.position, model.root)
+if (hit) {
+  viewer.highlight.set(model.root) // 整模型描边
+}
+```
+
+`pickObjects` 返回由近到远的全部命中列表。
+
+
 ## 高度采样
 
 高度采样回答的是相反方向的问题：**给定一个经纬度，地表有多高**。它不依赖鼠标位置，而是按经纬度查询。
@@ -213,5 +227,17 @@ results.forEach((result, i) => {
 | 点击 / 悬停查询单个实体 | `on('click' \| 'mousemove')` 事件的 `entities[0]`，或 `pickEntity` |
 | 点击 / 悬停查询多个实体 | `on('click' \| 'mousemove')` 事件的 `entities`，或 `pickEntities` |
 | 点击 HISM 实例（森林、岩石场等） | `pickHism` |
+| 点击任意 Three.js 对象 / 模型根节点 | `pickObject` / `pickObjects` |
 | 每帧让对象贴地（高频、当前视图内） | `sampleHeight` |
 | 批量预计算路径地表高度（可能跨视图） | `sampleHeightMostDetailed` |
+
+## 高亮
+
+拾取之后若需要视觉选中态，使用统一门面 `viewer.highlight`：整对象走后处理描边，3D Tiles feature 走叠加几何。详见「[高亮](./highlight)」。
+
+```ts
+viewer.on('click', (event) => {
+  if (event.tilesetFeature) viewer.highlight.set(event.tilesetFeature)
+  else viewer.highlight.clear()
+})
+```

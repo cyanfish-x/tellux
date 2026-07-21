@@ -15,6 +15,7 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 - `ViewerSurfaceOptions`
 - `ViewerSurfaceMaterialOptions`
 - `ViewerPostProcessOptions`
+- `ViewerHighlightOptions` / `ViewerHighlightOutlineOptions` / `ViewerHighlightOverlayOptions`
 - `AtmosphereLightingMode`
 - `CloudQualityPreset`
 - `EntityTransparencyMode`
@@ -294,7 +295,7 @@ const viewer = new tellux.Viewer(container, {
 
 几个值得注意的约定：
 
-- **领域边界**：scene 内部按 atmosphere / clouds / surface / postProcess 分组，而不是用前缀字段拍平。新增同领域能力时会扩展对应分组对象，而非新增顶层前缀字段。
+- **领域边界**：scene 内部按 atmosphere / clouds / surface / postProcess / highlight 分组，而不是用前缀字段拍平。新增同领域能力时会扩展对应分组对象，而非新增顶层前缀字段。
 - **单位**：对外 API 统一使用度和米——经纬度、heading / pitch / roll 用度，高度、裁剪面、云层高度用米；角半径（`sunAngularRadius` 等）是弧度。
 - **WebGPU 限制**：`clouds`、`sky.stars` 以及 `postProcess` 的 SMAA / 镜头光晕 / 抖动在 WebGPU 模式下不渲染，调整开关无视觉效果。
 - **Entity 透明**：`scene.entities.transparency.mode` 默认 `auto`；WebGL 后处理管线可用时使用 weighted blended OIT，WebGPU 或不支持时退回 `sorted`。`weighted-oit` 能减少 entity 之间随视角跳变的排序异常，但它是工程近似，不是逐片元严格排序；`sorted` 保留 Three.js 默认透明排序路径，便于兼容和排查。

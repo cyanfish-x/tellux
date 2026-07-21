@@ -14,6 +14,7 @@ import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
 import { LayerManager } from './LayerManager'
 import { HismManager } from './hism'
+import { HighlightManager } from './highlight'
 import { ModelManager } from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
@@ -32,6 +33,7 @@ import { CartographicPicker } from './sampling/CartographicPicker'
 import { EntityPicker } from './sampling/EntityPicker'
 import { HeightSampler } from './sampling/HeightSampler'
 import { TilesetFeaturePicker } from './sampling/TilesetFeaturePicker'
+import { ObjectPicker } from './sampling/ObjectPicker'
 import { Scene } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
@@ -60,6 +62,8 @@ import type {
   ModelLayer,
   PickEntityOptions,
   Picked3DTilesFeature,
+  PickObjectOptions,
+  PickedObject,
   PickedEntity,
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
@@ -94,6 +98,7 @@ export {
 export type { MsdfAtlas, MsdfAtlasData, MsdfGlyphMetrics } from './entities/MsdfAtlasLoader'
 export { loadMsdfAtlas, disposeMsdfAtlas } from './entities/MsdfAtlasLoader'
 export { EntityManager, type EntityManagerOptions } from './entities/EntityManager'
+export { HighlightManager } from './highlight'
 export { HismManager, type HismManagerOptions } from './hism'
 export {
   PositionPipeline,
@@ -193,7 +198,9 @@ export type {
   MVTFeatureStyle,
   MVTGetStyleCallback,
   Picked3DTilesFeature,
+  PickedObject,
   PickEntityOptions,
+  PickObjectOptions,
   PickedEntity,
   ScreenPosition,
   SampleHeightMostDetailedOptions,
@@ -234,6 +241,10 @@ export type {
   ViewerSurfaceOptions,
   ViewerWidgetOptions,
   ViewerOptions,
+  HighlightTarget,
+  ViewerHighlightOptions,
+  ViewerHighlightOutlineOptions,
+  ViewerHighlightOverlayOptions,
   WMSImagerySourceOptions,
   WMTSImagerySourceOptions,
   WMTSTileMatrix,
@@ -347,6 +358,15 @@ export class Viewer {
     return this.hismManager
   }
 
+  /**
+   * 统一高亮门面：整对象描边或 3D Tiles feature 叠加。
+   *
+   * Unified highlight facade for object outlines or 3D Tiles feature overlays.
+   */
+  get highlight() {
+    return this.highlightManager
+  }
+
   private readonly threeCamera: THREE.PerspectiveCamera
   private readonly rendererAdapter: TelluxRendererAdapter
   private readonly dracoLoader: DRACOLoader
@@ -355,6 +375,7 @@ export class Viewer {
   private readonly gltfLoader: GLTFLoader
   private readonly models: ModelManager
   private readonly hismManager: HismManager
+  private readonly highlightManager: HighlightManager
   private readonly entitiesManager: EntityManager
   private readonly entityRenderManager: EntityRenderManager
   private readonly symbolOcclusionPass: SymbolOcclusionPass | null
@@ -366,6 +387,7 @@ export class Viewer {
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
   private readonly entityPicker: EntityPicker
+  private readonly objectPicker: ObjectPicker
   private readonly heightSampler: HeightSampler
   private readonly targetFlights: TargetFlightController
   private readonly interactions: ViewerInteractionManager
@@ -428,6 +450,7 @@ export class Viewer {
     resolvedContainer.appendChild(this.renderer.domElement)
     this.transparentOverlayTexture = this.createTransparentOverlayTexture()
 
+    let highlightManager: HighlightManager | null = null
     this.scene = new Scene(
       sceneOptions,
       (state) => atmosphere?.applyAtmosphereState(state),
@@ -440,6 +463,10 @@ export class Viewer {
       },
       () => {
         if (tilesets) this.syncSurfaceMaterialMode()
+      },
+      () => {
+        highlightManager?.syncStyleFromSettings()
+        postProcessing?.applyEffects()
       }
     )
     this.atmosphere = this.createAtmosphereManager(() => postProcessing?.applyEffects())
@@ -495,6 +522,7 @@ export class Viewer {
       ? new SymbolOcclusionPass(this.entitiesManager.root, this.threeCamera)
       : null
     this.entityPicker = new EntityPicker(this.renderer.domElement, this.threeCamera, this.entitiesManager)
+    this.objectPicker = new ObjectPicker(this.renderer.domElement, this.threeCamera, this.scene.threeScene)
     this.targetFlights = new TargetFlightController({
       camera: this.camera,
       tilesets: this.tilesets
@@ -549,6 +577,14 @@ export class Viewer {
       pickEntities: (position, pickOptions) => this.pickEntities(position, pickOptions)
     })
 
+    this.highlightManager = new HighlightManager({
+      scene: this.scene.threeScene,
+      camera: this.threeCamera,
+      settings: this.scene.highlight,
+      webglOutlineAvailable: this.rendererAdapter.supportsWebGLEffects
+    })
+    highlightManager = this.highlightManager
+
     this.postProcessing = this.rendererAdapter.supportsWebGLEffects && this.atmosphere
       ? new PostProcessingManager(
           this.renderer as TelluxWebGLRenderer,
@@ -559,7 +595,8 @@ export class Viewer {
           () => this.camera.getCurrentHeight(),
           this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
           this.groundClampPass ?? undefined,
-          this.symbolOcclusionPass ?? undefined
+          this.symbolOcclusionPass ?? undefined,
+          this.highlightManager.outlineEffect
         )
       : null
     postProcessing = this.postProcessing
@@ -933,6 +970,43 @@ export class Viewer {
     return this.entityPicker.pickEntities(position, options)
   }
 
+
+  /**
+   * 拾取屏幕位置对应的 Three.js 对象。
+   *
+   * 传入的坐标相对于 canvas 左上角。默认在整个 `viewer.scene.threeScene` 上求交；
+   * 也可传入 `root` 限定拾取范围（例如 `model.root`）。会跳过带
+   * `userData.telluxPickingIgnore` 的对象（含高亮 overlay）。未命中返回 `null`。
+   *
+   * Picks a Three.js object at a screen position.
+   *
+   * The input position is relative to the canvas top-left. By default intersects
+   * the whole `viewer.scene.threeScene`; pass `root` to scope the search (e.g.
+   * `model.root`). Objects tagged with `userData.telluxPickingIgnore` (including
+   * highlight overlays) are skipped. Returns `null` when nothing is hit.
+   */
+  pickObject(
+    position: ScreenPosition,
+    root?: THREE.Object3D,
+    options: PickObjectOptions = {}
+  ): PickedObject | null {
+    return this.objectPicker.pick(position, root ?? this.scene.threeScene, options)
+  }
+
+  /**
+   * 拾取屏幕位置对应的 Three.js 对象列表（由近到远）。
+   *
+   * Picks Three.js objects at a screen position, nearest first.
+   */
+  pickObjects(
+    position: ScreenPosition,
+    root?: THREE.Object3D,
+    options: PickObjectOptions = {}
+  ): PickedObject[] {
+    return this.objectPicker.pickObjects(position, root ?? this.scene.threeScene, options)
+  }
+
+
   /**
    * 采样指定经纬度在当前已加载内容上的表面高度。
    *
@@ -1025,6 +1099,7 @@ export class Viewer {
     this.interactions.dispose()
     this.models.dispose()
     this.hismManager.dispose()
+    this.highlightManager.dispose()
     this.entityRenderManager.dispose()
     this.symbolOcclusionPass?.dispose()
     this.entitiesManager.dispose()

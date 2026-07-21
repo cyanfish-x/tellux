@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { EffectPass, NormalPass, SMAAEffect } from 'postprocessing'
+import { EffectPass, NormalPass, OutlineEffect, SMAAEffect } from 'postprocessing'
 import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effects'
 import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects } from '../effects'
 import type { Scene } from '../Scene'
@@ -15,6 +15,7 @@ export class PostProcessingManager {
   private readonly lensFlareAdapter: ThreeEffectPass
   private readonly smaaAdapter: ThreeEffectPass
   private readonly ditheringAdapter: ThreeEffectPass
+  private readonly outlineAdapter: ThreeEffectPass | null
   private currentEffectsKey = ''
   private activeEffects: ThreeEffectPass[] = []
 
@@ -27,7 +28,8 @@ export class PostProcessingManager {
     private readonly getCurrentHeight: () => number | null,
     private readonly entityRenderer?: ThreeEffectPass,
     private readonly groundClampPass?: ThreeEffectPass,
-    private readonly symbolOcclusionPass?: ThreeEffectPass
+    private readonly symbolOcclusionPass?: ThreeEffectPass,
+    outlineEffect?: OutlineEffect | null
   ) {
     const normalPass = new NormalPass(threeScene, this.camera)
     this.configureNormalPass(normalPass)
@@ -45,6 +47,9 @@ export class PostProcessingManager {
     this.lensFlareAdapter = new EffectPassAdapter(new EffectPass(this.camera, new LensFlareEffect()), () => this.camera)
     this.smaaAdapter = new EffectPassAdapter(new EffectPass(this.camera, new SMAAEffect()), () => this.camera)
     this.ditheringAdapter = new EffectPassAdapter(new EffectPass(this.camera, new DitheringEffect()), () => this.camera)
+    this.outlineAdapter = outlineEffect
+      ? new EffectPassAdapter(new EffectPass(this.camera, outlineEffect), () => this.camera)
+      : null
 
     this.effectAdapters.push(
       this.normalAdapter,
@@ -54,6 +59,9 @@ export class PostProcessingManager {
       this.smaaAdapter,
       this.ditheringAdapter
     )
+    if (this.outlineAdapter) {
+      this.effectAdapters.push(this.outlineAdapter)
+    }
   }
 
   applyEffects() {
@@ -77,12 +85,15 @@ export class PostProcessingManager {
       shouldRenderAtmosphere &&
       this.scene.clouds.show &&
       this.shouldRenderCloudsAtHeight(currentHeight)
+    const outlineEnabled =
+      Boolean(this.outlineAdapter) && this.scene.highlight.outline.enabled
     const effectsKey = [
       shouldRenderAtmosphere,
       shouldRenderClouds,
       this.scene.postProcess.lensFlare.enabled,
       this.scene.postProcess.smaa.enabled,
-      this.scene.postProcess.dithering.enabled
+      this.scene.postProcess.dithering.enabled,
+      outlineEnabled
     ].join(':')
 
     this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
@@ -119,6 +130,10 @@ export class PostProcessingManager {
     }
     if (this.scene.postProcess.lensFlare.enabled) {
       nextEffects.push(this.lensFlareAdapter)
+    }
+    if (outlineEnabled && this.outlineAdapter) {
+      // 描边在成图之后、SMAA 之前：轮廓再交给抗锯齿。
+      nextEffects.push(this.outlineAdapter)
     }
     if (this.scene.postProcess.smaa.enabled) {
       nextEffects.push(this.smaaAdapter)

@@ -1,5 +1,11 @@
 import type * as THREE from 'three'
-import type { AtmosphereLightingMode, CloudQualityPreset, EntityTransparencyMode, SurfaceMaterialMode } from '../types'
+import type {
+  AtmosphereLightingMode,
+  CloudQualityPreset,
+  ColorInput,
+  EntityTransparencyMode,
+  SurfaceMaterialMode
+} from '../types'
 import type { SurfaceMaterialOptions } from '../materials/materialMode'
 
 export interface ResolvedSceneOptions {
@@ -84,5 +90,21 @@ export interface ResolvedSceneOptions {
     smaa: boolean
     dithering: boolean
     toneMappingExposure: number
+  }
+  highlight: {
+    outline: {
+      enabled: boolean
+      color: ColorInput
+      hiddenColor: ColorInput
+      edgeStrength: number
+      xray: boolean
+    }
+    overlay: {
+      enabled: boolean
+      color: ColorInput
+      opacity: number
+      hoverColor: ColorInput
+      hoverOpacity: number
+    }
   }
 }

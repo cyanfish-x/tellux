@@ -57,6 +57,14 @@ const viewer = new tellux.Viewer(container, {
     clouds: {
       show: false
     },
+    highlight: {
+      outline: {
+        enabled: true,
+        color: "#7cff5b",
+        edgeStrength: 2,
+        xray: true
+      }
+    }
   },
   widgets:{
     timeline:true
@@ -155,6 +163,25 @@ async function loadModelOnSampledGround() {
 }
 
 loadModelOnSampledGround()
+
+viewer.on("click", (event) => {
+  if (!model) {
+    viewer.highlight.clear()
+    return
+  }
+
+  // 限定在 model.root 上拾取，避免地形 / 瓦片抢先命中
+  const hit = viewer.pickObject(event.position, model.root)
+  if (hit) {
+    viewer.highlight.set(model.root)
+    setStatus(
+      `已选中模型（命中 ${hit.object.name || hit.object.type}，距离 ${hit.distance.toFixed(1)} m）。再次点击空白处取消。`
+    )
+  } else {
+    viewer.highlight.clear()
+    setStatus("未命中模型，已清除高亮。")
+  }
+})
 
 flyToModelButton.addEventListener("click", () => {
   if (!model) return
