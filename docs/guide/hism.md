@@ -116,8 +116,12 @@ viewer.addHismLayer({
 ```ts
 viewer.on('click', (event) => {
   const hit = viewer.pickHism(event.position)
-  if (!hit) return
+  if (!hit) {
+    viewer.highlight.clear()
+    return
+  }
 
+  viewer.highlight.set(hit) // 后处理描边：整实例全部 parts
   console.log(hit.layerId)        // 图层 id
   console.log(hit.instanceId)     // InstancedMesh 实例索引
   console.log(hit.archetypeIndex) // 原型索引
@@ -126,9 +130,17 @@ viewer.on('click', (event) => {
 })
 ```
 
-默认会在命中点显示黄色标记（`HismPickMarker`），可通过 `viewer.hism` 管理器关闭。
+默认会在命中点显示黄色标记（`HismPickMarker`）。与 `viewer.highlight` 描边并用时建议关闭：
 
-拾取仅检测**当前可见**的 HISM mesh（已做视锥剔除后的簇），不会触发额外瓦片加载。
+```ts
+new tellux.Viewer(container, {
+  hism: { showPickMarker: false }
+})
+```
+
+拾取仅检测**当前可见**的 HISM mesh（已做视锥剔除后的簇），不会触发额外瓦片加载。描边解析则按 active LOD 取 parts，**不**依赖 frustum，避免选中对象稍出屏就丢轮廓。
+
+> 注意：描边贴合实例变换；PositionPipeline 风摆造成的顶点形变不会进入轮廓。
 
 ## 运行时统计
 

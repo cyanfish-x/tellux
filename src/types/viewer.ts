@@ -176,4 +176,17 @@ export interface ViewerOptions {
    * Defaults to `/draco/gltf/`.
    */
   dracoDecoderPath?: string
+  /**
+   * HISM 子系统选项。
+   *
+   * HISM subsystem options.
+   */
+  hism?: {
+    /**
+     * 拾取时是否显示黄色命中点标记，默认 `true`。
+     *
+     * Whether to show the yellow pick-point marker. Defaults to `true`.
+     */
+    showPickMarker?: boolean
+  }
 }

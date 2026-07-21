@@ -577,11 +577,32 @@ export class Viewer {
       pickEntities: (position, pickOptions) => this.pickEntities(position, pickOptions)
     })
 
+    const hismScaleMatrix = new THREE.Matrix4()
+    this.hismManager = new HismManager({
+      scene: this.scene.threeScene,
+      camera: this.threeCamera,
+      domElement: this.renderer.domElement,
+      showPickMarker: options.hism?.showPickMarker,
+      applyInstanceMatrix: (coordinates, frame, scale, target) => {
+        this.cartographicToMatrix4(coordinates, frame, target)
+        if (scale === undefined) return
+        if (typeof scale === 'number') {
+          hismScaleMatrix.makeScale(scale, scale, scale)
+        } else {
+          hismScaleMatrix.makeScale(scale[0], scale[1], scale[2])
+        }
+        target.multiply(hismScaleMatrix)
+      }
+    })
+
     this.highlightManager = new HighlightManager({
       scene: this.scene.threeScene,
       camera: this.threeCamera,
       settings: this.scene.highlight,
-      webglOutlineAvailable: this.rendererAdapter.supportsWebGLEffects
+      webglOutlineAvailable: this.rendererAdapter.supportsWebGLEffects,
+      resolveHismInstanceParts: (pick) =>
+        this.hismManager.resolveInstanceParts(pick),
+      hideHismPickMarker: () => this.hismManager.hidePickMarker()
     })
     highlightManager = this.highlightManager
 
@@ -613,22 +634,6 @@ export class Viewer {
       },
       setPostProcessMaterialLights: (enabled) => {
         this.atmosphere?.setPostProcessMaterialLights(enabled)
-      }
-    })
-    const hismScaleMatrix = new THREE.Matrix4()
-    this.hismManager = new HismManager({
-      scene: this.scene.threeScene,
-      camera: this.threeCamera,
-      domElement: this.renderer.domElement,
-      applyInstanceMatrix: (coordinates, frame, scale, target) => {
-        this.cartographicToMatrix4(coordinates, frame, target)
-        if (scale === undefined) return
-        if (typeof scale === 'number') {
-          hismScaleMatrix.makeScale(scale, scale, scale)
-        } else {
-          hismScaleMatrix.makeScale(scale[0], scale[1], scale[2])
-        }
-        target.multiply(hismScaleMatrix)
       }
     })
     this.widgets = new WidgetManager(this, options.widgets)
@@ -1137,6 +1142,7 @@ export class Viewer {
     this.atmosphere?.updateLightSources()
     this.models.update(deltaTime)
     this.hismManager.update(deltaTime)
+    this.highlightManager.update()
     this.entitiesManager.update(deltaTime)
     this.entityRenderManager.beginFrame()
     this.symbolOcclusionPass?.beginFrame()

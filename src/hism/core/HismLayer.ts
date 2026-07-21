@@ -4,7 +4,8 @@ import type {
   AddHismLayerOptions,
   HismApplyInstanceMatrix,
   HismLayer,
-  HismLayerRuntimeStats
+  HismLayerRuntimeStats,
+  HismPickResult
 } from '../../types/hism'
 import { HismCluster } from './HismCluster'
 import {
@@ -130,6 +131,22 @@ export class HismLayerImpl implements HismLayer {
   collectVisiblePickMeshes() {
     if (!this.isShown || this.isRemoved) return []
     return this.clusters.flatMap((cluster) => cluster.collectVisiblePickMeshes())
+  }
+
+  /**
+   * 按拾取结果解析当前 active LOD 下该实例的全部 parts。
+   *
+   * Resolves all parts for the picked instance at the active LOD.
+   */
+  resolveInstanceParts(
+    pick: HismPickResult
+  ): Array<{ mesh: THREE.InstancedMesh; instanceId: number }> | null {
+    if (!this.isShown || this.isRemoved) return null
+    const cluster = this.clusters.find(
+      (item) => item.cellKey === pick.clusterKey
+    )
+    if (!cluster) return null
+    return cluster.resolveInstanceParts(pick.archetypeIndex, pick.instanceId)
   }
 
   collectRuntimeStats(): HismLayerRuntimeStats {

@@ -190,6 +190,30 @@ export class HismCluster {
     return group?.meshes ?? []
   }
 
+  /**
+   * 解析指定原型实例在当前 active LOD 下的全部 mesh parts（不依赖 frustum）。
+   *
+   * Resolves all mesh parts for an archetype instance at the active LOD
+   * (independent of frustum visibility).
+   */
+  resolveInstanceParts(
+    archetypeIndex: number,
+    instanceId: number
+  ): Array<{ mesh: THREE.InstancedMesh; instanceId: number }> | null {
+    const group = this.lodGroups[this.activeLodIndex]
+    if (!group) return null
+
+    const parts = group.meshes.filter(
+      (mesh) => mesh.userData.hismArchetypeIndex === archetypeIndex
+    )
+    if (parts.length === 0) return null
+
+    const first = parts[0]
+    if (!first || instanceId < 0 || instanceId >= first.count) return null
+
+    return parts.map((mesh) => ({ mesh, instanceId }))
+  }
+
   collectRuntimeStats(): HismClusterRuntimeStats {
     const visible = this.frustumVisible
     const activeMeshes = visible ? this.collectVisiblePickMeshes() : []

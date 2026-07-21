@@ -1,12 +1,18 @@
 import type * as THREE from 'three'
-import type { HighlightTarget, Picked3DTilesFeature } from '../types'
+import type { HighlightTarget, HismPickResult, Picked3DTilesFeature } from '../types'
 import type { HighlightSettings } from '../scene/HighlightSettings'
 import { OutlineHighlighter } from './OutlineHighlighter'
 import { OverlayHighlighter } from './OverlayHighlighter'
+import {
+  HismInstanceHighlighter,
+  hismPickKey,
+  type ResolveHismInstanceParts
+} from './HismInstanceHighlighter'
 
 type ResolvedHighlightTarget =
   | { kind: 'object'; object: THREE.Object3D; raw: HighlightTarget }
   | { kind: 'tilesFeature'; feature: Picked3DTilesFeature; raw: HighlightTarget }
+  | { kind: 'hismInstance'; pick: HismPickResult; raw: HighlightTarget }
 
 function isObject3D(value: unknown): value is THREE.Object3D {
   return Boolean(value && typeof value === 'object' && (value as THREE.Object3D).isObject3D)
@@ -23,6 +29,20 @@ function isTilesFeature(value: unknown): value is Picked3DTilesFeature {
   )
 }
 
+function isHismPickResult(value: unknown): value is HismPickResult {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'layerId' in value &&
+      'clusterKey' in value &&
+      'archetypeIndex' in value &&
+      'instanceId' in value &&
+      'partIndex' in value &&
+      !('cartographic' in value) &&
+      !('object' in value)
+  )
+}
+
 export function resolveHighlightTarget(
   target: HighlightTarget
 ): ResolvedHighlightTarget | null {
@@ -32,12 +52,18 @@ export function resolveHighlightTarget(
   if (isTilesFeature(target)) {
     return { kind: 'tilesFeature', feature: target, raw: target }
   }
+  if (isHismPickResult(target)) {
+    return { kind: 'hismInstance', pick: target, raw: target }
+  }
   if (typeof target === 'object' && target !== null && 'type' in target) {
     if (target.type === 'object') {
       return { kind: 'object', object: target.object, raw: target }
     }
     if (target.type === 'tilesFeature') {
       return { kind: 'tilesFeature', feature: target.feature, raw: target }
+    }
+    if (target.type === 'hismInstance') {
+      return { kind: 'hismInstance', pick: target.pick, raw: target }
     }
   }
   return null
@@ -52,6 +78,8 @@ export interface HighlightManagerOptions {
   camera: THREE.Camera
   settings: HighlightSettings
   webglOutlineAvailable: boolean
+  resolveHismInstanceParts?: ResolveHismInstanceParts
+  hideHismPickMarker?: () => void
 }
 
 /**
@@ -63,6 +91,8 @@ export class HighlightManager {
   private readonly outline: OutlineHighlighter
   private readonly selectOverlay: OverlayHighlighter
   private readonly hoverOverlay: OverlayHighlighter
+  private readonly selectHism: HismInstanceHighlighter | null
+  private readonly hoverHism: HismInstanceHighlighter | null
   private selected: ResolvedHighlightTarget | null = null
   private hovered: ResolvedHighlightTarget | null = null
 
@@ -90,6 +120,19 @@ export class HighlightManager {
       settings.overlay.hoverColor,
       settings.overlay.hoverOpacity
     )
+    if (options.resolveHismInstanceParts) {
+      this.selectHism = new HismInstanceHighlighter(
+        options.scene,
+        options.resolveHismInstanceParts
+      )
+      this.hoverHism = new HismInstanceHighlighter(
+        options.scene,
+        options.resolveHismInstanceParts
+      )
+    } else {
+      this.selectHism = null
+      this.hoverHism = null
+    }
     this.syncStyleFromSettings()
   }
 
@@ -122,6 +165,13 @@ export class HighlightManager {
       this.hovered?.kind === 'object' &&
       resolved.kind === 'object' &&
       this.hovered.object === resolved.object
+    ) {
+      this.hovered = null
+      this.applyHover()
+    } else if (
+      this.hovered?.kind === 'hismInstance' &&
+      resolved.kind === 'hismInstance' &&
+      hismPickKey(this.hovered.pick) === hismPickKey(resolved.pick)
     ) {
       this.hovered = null
       this.applyHover()
@@ -162,6 +212,7 @@ export class HighlightManager {
     ) {
       this.hovered = resolved
       this.hoverOverlay.clear()
+      this.hoverHism?.clear()
       this.outline.clearHover()
       return
     }
@@ -172,6 +223,18 @@ export class HighlightManager {
     ) {
       this.hovered = resolved
       this.hoverOverlay.clear()
+      this.hoverHism?.clear()
+      this.outline.clearHover()
+      return
+    }
+    if (
+      this.selected?.kind === 'hismInstance' &&
+      resolved.kind === 'hismInstance' &&
+      hismPickKey(this.selected.pick) === hismPickKey(resolved.pick)
+    ) {
+      this.hovered = resolved
+      this.hoverOverlay.clear()
+      this.hoverHism?.clear()
       this.outline.clearHover()
       return
     }
@@ -227,6 +290,19 @@ export class HighlightManager {
     }
   }
 
+  /**
+   * 每帧同步 HISM proxy（LOD / 矩阵）；在 hismManager.update 之后调用。
+   *
+   * Per-frame HISM proxy sync (LOD / matrices); call after hismManager.update.
+   */
+  update() {
+    const selectChanged = this.selectHism?.update() ?? false
+    const hoverChanged = this.hoverHism?.update() ?? false
+    if (selectChanged || hoverChanged) {
+      this.syncOutlineFromHismProxies()
+    }
+  }
+
   dispose() {
     this.clear()
     this.hovered = null
@@ -234,15 +310,27 @@ export class HighlightManager {
     this.outline.dispose()
     this.selectOverlay.dispose()
     this.hoverOverlay.dispose()
+    this.selectHism?.dispose()
+    this.hoverHism?.dispose()
   }
 
   private applySelect() {
     this.outline.clearSelect()
     this.selectOverlay.clear()
+    this.selectHism?.clear()
     if (!this.selected) return
 
     if (this.selected.kind === 'object') {
       this.outline.setSelect(this.selected.object)
+      return
+    }
+    if (this.selected.kind === 'hismInstance') {
+      this.options.hideHismPickMarker?.()
+      if (!this.selectHism?.set(this.selected.pick)) {
+        this.selected = null
+        return
+      }
+      this.outline.setSelect(this.selectHism.getOutlineRoot())
       return
     }
     if (this.options.settings.overlay.enabled) {
@@ -253,6 +341,7 @@ export class HighlightManager {
   private applyHover() {
     this.outline.clearHover()
     this.hoverOverlay.clear()
+    this.hoverHism?.clear()
     if (!this.hovered) return
 
     if (
@@ -269,13 +358,47 @@ export class HighlightManager {
     ) {
       return
     }
+    if (
+      this.selected?.kind === 'hismInstance' &&
+      this.hovered.kind === 'hismInstance' &&
+      hismPickKey(this.selected.pick) === hismPickKey(this.hovered.pick)
+    ) {
+      return
+    }
 
     if (this.hovered.kind === 'object') {
       this.outline.setHover(this.hovered.object)
       return
     }
+    if (this.hovered.kind === 'hismInstance') {
+      if (!this.hoverHism?.set(this.hovered.pick)) {
+        this.hovered = null
+        return
+      }
+      this.outline.setHover(this.hoverHism.getOutlineRoot())
+      return
+    }
     if (this.options.settings.overlay.enabled) {
       this.hoverOverlay.show(this.hovered.feature)
+    }
+  }
+
+  private syncOutlineFromHismProxies() {
+    if (this.selected?.kind === 'hismInstance' && this.selectHism) {
+      if (this.selectHism.currentPick) {
+        this.outline.setSelect(this.selectHism.getOutlineRoot())
+      } else {
+        this.selected = null
+        this.outline.clearSelect()
+      }
+    }
+    if (this.hovered?.kind === 'hismInstance' && this.hoverHism) {
+      if (this.hoverHism.currentPick) {
+        this.outline.setHover(this.hoverHism.getOutlineRoot())
+      } else {
+        this.hovered = null
+        this.outline.clearHover()
+      }
     }
   }
 }

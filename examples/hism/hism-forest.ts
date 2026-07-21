@@ -66,7 +66,22 @@ const rockMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.02,
 })
 
-const viewer = new tellux.Viewer(container, createHismDemoViewerOptions())
+const baseViewerOptions = createHismDemoViewerOptions()
+const viewer = new tellux.Viewer(container, {
+  ...baseViewerOptions,
+  hism: { showPickMarker: false },
+  scene: {
+    ...baseViewerOptions.scene,
+    highlight: {
+      outline: {
+        enabled: true,
+        color: "#7cff5b",
+        edgeStrength: 2,
+        xray: true,
+      },
+    },
+  },
+})
 ;(window as any).viewer = viewer
 
 const locationReadout = mountLocationReadout(viewer, {
@@ -287,9 +302,11 @@ function updateHud() {
 viewer.on("click", (event) => {
   const pick = viewer.pickHism(event.position)
   if (!pick) {
+    viewer.highlight.clear()
     if (hudPick) hudPick.textContent = "未命中 HISM 实例"
     return
   }
+  viewer.highlight.set(pick)
   if (hudPick) {
     hudPick.textContent = `命中 ${pick.layerId} · cluster ${pick.clusterKey} · archetype ${pick.archetypeIndex} · LOD ${pick.lodIndex} · instance ${pick.instanceId}`
   }
@@ -301,6 +318,7 @@ flyToButton.addEventListener("click", () => {
 })
 
 regenerateButton.addEventListener("click", () => {
+  viewer.highlight.clear()
   void createScene(createTemplates())
 })
 

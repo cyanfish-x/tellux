@@ -149,7 +149,14 @@ flowchart TB
 
 ## 明确不在本版
 
-- HISM instance 高亮（P1：基于 `HismPickResult` 的 proxy overlay）
 - 多选 `add` / `list`
 - 强制 `technique` 逃逸参数
-- 把现有 `HismPickMarker` 并入 `scene.highlight.marker`（保持 HISM 内部默认行为，本版不动）
+- 把现有 `HismPickMarker` 并入 `scene.highlight.marker`（保持 HISM 内部默认行为；可用 `ViewerOptions.hism.showPickMarker` 关闭）
+- HISM 描边与 PositionPipeline 风摆顶点严格同步（P2）
+
+## P1 已落地：HISM 单实例描边
+
+- `HighlightTarget` 支持 `HismPickResult` / `{ type: 'hismInstance', pick }`
+- `HismInstanceHighlighter`：不可见 proxy（`colorWrite/depthWrite: false`）+ OutlineEffect
+- `resolveInstanceParts`：active LOD 全部 archetype parts，不依赖 frustum
+- 示例 `hism-forest`：关 Marker，`highlight.set(pick)`

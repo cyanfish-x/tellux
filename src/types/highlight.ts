@@ -1,4 +1,5 @@
 import type { ColorInput } from './entities'
+import type { HismPickResult } from './hism'
 import type { Picked3DTilesFeature } from './spatial'
 import type { Object3D } from 'three'
 
@@ -51,12 +52,15 @@ export interface ViewerHighlightOptions {
 }
 
 /**
- * 高亮目标：整对象走描边，3D Tiles feature 走叠加几何。
+ * 高亮目标：整对象 / HISM 实例走描边，3D Tiles feature 走叠加几何。
  *
- * Highlight target: whole objects use outline; 3D Tiles features use overlay.
+ * Highlight target: whole objects and HISM instances use outline; 3D Tiles
+ * features use overlay.
  */
 export type HighlightTarget =
   | Object3D
   | Picked3DTilesFeature
+  | HismPickResult
   | { type: 'object'; object: Object3D }
   | { type: 'tilesFeature'; feature: Picked3DTilesFeature }
+  | { type: 'hismInstance'; pick: HismPickResult }

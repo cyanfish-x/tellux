@@ -138,7 +138,9 @@ viewer.highlight.setHover(featureOrNull)
 viewer.highlight.clear()
 ```
 
-WebGPU 下描边不可用；Tiles overlay 仍可用。HISM 单实例高亮尚未纳入本门面。
+WebGPU 下描边不可用；Tiles overlay 仍可用。
+
+HISM 单实例：`viewer.highlight.set(pickHismResult)`，内部用不可见 proxy 描当前 LOD 全部 parts。建议 `hism: { showPickMarker: false }`。描边不跟随风摆顶点。
 
 ## 通用 Object3D 拾取
 

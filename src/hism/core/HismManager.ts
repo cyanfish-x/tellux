@@ -103,6 +103,24 @@ export class HismManager {
     return result
   }
 
+  /**
+   * 按拾取结果解析当前 active LOD 下该实例的全部 mesh parts。
+   *
+   * Resolves all mesh parts for the picked instance at the active LOD.
+   */
+  resolveInstanceParts(
+    pick: HismPickResult
+  ): Array<{ mesh: THREE.InstancedMesh; instanceId: number }> | null {
+    const layer = this.layers.get(pick.layerId)
+    if (!layer) return null
+    return layer.resolveInstanceParts(pick)
+  }
+
+  /** 隐藏拾取标记。Hides the pick marker. */
+  hidePickMarker() {
+    this.pickMarker?.hide()
+  }
+
   getRuntimeStats(): HismRuntimeStats {
     return collectHismRuntimeStats(this.layers.values())
   }

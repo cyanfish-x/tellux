@@ -4,3 +4,10 @@ export {
   OverlayHighlighter,
   createFeatureGeometry
 } from './OverlayHighlighter'
+export {
+  HismInstanceHighlighter,
+  hismPickKey,
+  type HismResolvedInstancePart,
+  type ResolveHismInstanceParts
+} from './HismInstanceHighlighter'
+

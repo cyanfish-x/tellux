@@ -71,6 +71,23 @@ describe('resolveHighlightTarget', () => {
       resolveHighlightTarget({ type: 'object', object: mesh })?.kind
     ).toBe('object')
   })
+
+  it('accepts HismPickResult shortcuts', () => {
+    const pick = {
+      layerId: 'forest',
+      clusterKey: '0:0',
+      archetypeIndex: 0,
+      lodIndex: 0,
+      partIndex: 1,
+      instanceId: 2,
+      point: new THREE.Vector3(),
+      distance: 10
+    }
+    expect(resolveHighlightTarget(pick)?.kind).toBe('hismInstance')
+    expect(
+      resolveHighlightTarget({ type: 'hismInstance', pick })?.kind
+    ).toBe('hismInstance')
+  })
 })
 
 describe('OverlayHighlighter', () => {
@@ -133,6 +150,76 @@ describe('HighlightManager routing', () => {
 
     manager.clear()
     expect(scene.children.length).toBe(0)
+    manager.dispose()
+  })
+
+  it('routes HismPickResult to outline via invisible proxy meshes', () => {
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera()
+    const settings = new HighlightSettings(createResolvedHighlight(), () => {})
+
+    const geometryA = new THREE.BoxGeometry(1, 2, 1)
+    const geometryB = new THREE.BoxGeometry(2, 1, 2)
+    const meshA = new THREE.InstancedMesh(
+      geometryA,
+      new THREE.MeshBasicMaterial(),
+      3
+    )
+    const meshB = new THREE.InstancedMesh(
+      geometryB,
+      new THREE.MeshBasicMaterial(),
+      3
+    )
+    const matrix = new THREE.Matrix4().setPosition(10, 20, 30)
+    meshA.setMatrixAt(1, matrix)
+    meshB.setMatrixAt(1, matrix)
+    meshA.instanceMatrix.needsUpdate = true
+    meshB.instanceMatrix.needsUpdate = true
+
+    const pick = {
+      layerId: 'forest',
+      clusterKey: '0:0',
+      archetypeIndex: 0,
+      lodIndex: 0,
+      partIndex: 0,
+      instanceId: 1,
+      point: new THREE.Vector3(),
+      distance: 1
+    }
+
+    let hideCount = 0
+    const manager = new HighlightManager({
+      scene,
+      camera,
+      settings,
+      webglOutlineAvailable: true,
+      resolveHismInstanceParts: (target) => {
+        if (target.instanceId !== 1) return null
+        return [
+          { mesh: meshA, instanceId: 1 },
+          { mesh: meshB, instanceId: 1 }
+        ]
+      },
+      hideHismPickMarker: () => {
+        hideCount += 1
+      }
+    })
+
+    manager.set(pick)
+    expect(hideCount).toBe(1)
+    expect(manager.outlineEffect?.selection.size).toBe(2)
+    expect(manager.get()).toEqual(pick)
+
+    const proxies = [...(manager.outlineEffect?.selection ?? [])]
+    expect(proxies).toHaveLength(2)
+    for (const proxy of proxies) {
+      expect((proxy as THREE.Mesh).isMesh).toBe(true)
+      expect(proxy.userData.telluxPickingIgnore).toBe(true)
+    }
+
+    manager.clear()
+    expect(manager.outlineEffect?.selection.size).toBe(0)
+    expect(manager.get()).toBeNull()
     manager.dispose()
   })
 })
