@@ -22,6 +22,11 @@ export default ({ command }: ConfigEnv) => defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   lang: 'zh-CN',
+  // docs 构建进 examples/public/docs；Markdown 里用 ../../xxx.html 跳到示例站根。
+  // 这些页面不在 VitePress 源树内，死链检查会误报，需显式忽略。
+  ignoreDeadLinks: [
+    (url: string) => /(?:^|\/)\.\.\/\.\.\//.test(url)
+  ],
   themeConfig: {
     logo: { text: 'T' },
     // logoLink / Sandcastle 指向示例主站（与文档站同源但属不同子站）。

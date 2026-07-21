@@ -21,8 +21,10 @@ description: Deploy tellux examples/docs sites via project scripts — self-host
 
 | 目标 | 命令 | 产物去向 | 典型 URL 形态 |
 |------|------|----------|----------------|
-| **自建站** | `pnpm deploy` | rclone 同步到服务器，可选腾讯云 CDN 刷新 | 自有域名，docs base=`/docs/` |
-| **GitHub Pages** | `pnpm deploy:ghpages` | 构建到 `examples/dist-ghpages/`，提交并 push `gh-pages` 分支 | `https://<org>.github.io/tellux/`，docs base=`/tellux/docs/` |
+| **自建站** | `pnpm run deploy` | rclone 同步到服务器，可选腾讯云 CDN 刷新 | 自有域名，docs base=`/docs/` |
+| **GitHub Pages** | `pnpm run deploy:ghpages` | 构建到 `examples/dist-ghpages/`，提交并 **force-with-lease** 推 `gh-pages` | `https://<org>.github.io/tellux/`，docs base=`/tellux/docs/` |
+
+> Windows / 本仓库请用 `pnpm run deploy`，不要写 `pnpm deploy`：后者是 pnpm 内置的 workspace deploy 子命令，会报 `ERR_PNPM_CANNOT_DEPLOY`。
 
 用户没说清时，**先确认目标再执行**。两条链路的 `base` 不同，不能混用脚本。
 
@@ -67,10 +69,10 @@ rclone listremotes
 Test-Path actions/.env   # PowerShell
 # 或: test -f actions/.env
 
-pnpm deploy
+pnpm run deploy
 ```
 
-`pnpm deploy` = `build:examples`（VitePress docs → `examples/public/docs`，再 Vite 构建 examples）→ `node actions/deploy.js`（`rclone mkdir` → `rclone sync` → 可选 CDN purge）。
+`pnpm run deploy` = `build:examples`（VitePress docs → `examples/public/docs`，再 Vite 构建 examples）→ `node actions/deploy.js`（`rclone mkdir` → `rclone sync` → 可选 CDN purge）。
 
 成功标志：日志出现 `🎉 部署全流程结束！`。若仅警告「跳过 CDN 刷新」，同步仍成功；若用户明确要刷 CDN，再补齐 `.env` 后单独：
 
@@ -81,7 +83,7 @@ node actions/refreshCDN.js
 ### 2B. GitHub Pages 部署
 
 ```bash
-pnpm deploy:ghpages
+pnpm run deploy:ghpages
 ```
 
 脚本内部：
@@ -89,7 +91,15 @@ pnpm deploy:ghpages
 1. `DEPLOY_TARGET=ghpages` 下构建 VitePress → `examples/dist-ghpages/docs`
 2. `vite build --mode ghpages` → `examples/dist-ghpages/`
 3. `gh-pages` 包提交到本地 `gh-pages` 分支
-4. **显式** `git push -u origin gh-pages`（包默认推送可能静默失败，脚本已兜底）
+4. `git fetch origin gh-pages` 后 **`git push --force-with-lease -u origin gh-pages`**
+
+**为何必须 force-with-lease（这是正确流程，不是事故）：**
+
+- `gh-pages` 是纯产物分支，每次部署用**当前构建整分支覆盖**远程。
+- `gh-pages` 包每次在本地重写/新提交，与远程历史很容易分叉；普通 fast-forward push 会 `non-fast-forward` 被拒。
+- 用 `--force-with-lease`（先 fetch）即可覆盖预期远程，又比裸 `--force` 更安全：若 fetch 后远程又有新推送则拒绝。
+- **不要**因此去问用户「要不要强制推送」——跑 `pnpm run deploy:ghpages` 即表示同意覆盖 `gh-pages`。
+- **不要**把这套逻辑用到 `main` / `dev` 等协作分支。
 
 成功标志：日志出现 `🎉 gh-pages 部署完成！`。
 
@@ -105,25 +115,29 @@ pnpm deploy:ghpages
 
 - **不要**把部署当成发版去跑 `actions/release.js` / `pnpm publish`。
 - **不要**为改 `base` 而设置带 `/` 的环境变量（如 `DOCS_BASE=/tellux/docs/`）。Windows + Git Bash 的 MSYS2 会把以 `/` 开头的值改写成盘符路径。区分目标只用脚本已有的 `DEPLOY_TARGET=ghpages`。
-- **不要**手写一套新的构建/同步流程；优先复用 `pnpm deploy` / `pnpm deploy:ghpages`。
+- **不要**手写一套新的构建/同步流程；优先复用 `pnpm run deploy` / `pnpm run deploy:ghpages`。
 - **不要**提交或打印 `actions/.env`、CDN 密钥、rclone 凭证。
 - **不要**在未确认目标时默认推 `gh-pages` 或默认同步生产机。
+- **不要**对 `main` / `dev` 等协作分支做 force push；仅 `gh-pages` 产物分支由部署脚本使用 `--force-with-lease`。
 
 ## 常见失败
 
 | 现象 | 处理 |
 |------|------|
+| `ERR_PNPM_CANNOT_DEPLOY` / `A deploy is only possible from inside a workspace` | 改用 `pnpm run deploy`，不要用 `pnpm deploy` |
 | `缺少必要环境变量: LOCAL_DIR, ...` | 按 `actions/config-template.env` 补全 `actions/.env` |
 | `未找到 rclone` | 安装 rclone 并加入 PATH |
 | `rclone remote 不存在` | `rclone config` 创建与 `RCLONE_REMOTE` 同名的 remote |
 | `本地同步目录不存在` | 先保证 `build:examples` 成功，且 `LOCAL_DIR` 指向实际输出目录 |
 | CDN 警告跳过 | 同步已完成；要刷缓存则补 `CDN_*` 后跑 `node actions/refreshCDN.js` |
-| gh-pages push 失败 | 检查 `origin` 权限与网络；确认本地能 `git push origin gh-pages` |
+| VitePress `dead link(s) found` | 文档链到示例站（`../../xxx.html`）需在 `docs/.vitepress/config.ts` 的 `ignoreDeadLinks` 中忽略跨站相对路径；或修正错误路径 |
+| gh-pages `non-fast-forward` / rejected | 正常应由脚本 `--force-with-lease` 处理；若仍失败，确认脚本未回退到普通 push，并检查网络 / `origin` 写权限 |
+| gh-pages `force-with-lease` 仍被拒 | fetch 与 push 之间远程又有新提交；重新跑 `pnpm run deploy:ghpages`，或查是否他人/CI 同时在推 |
 | 站点资源 404 / 路径错乱 | 确认没混用两条链路的 base；自建站勿用 `deploy:ghpages` 产物，反之亦然 |
 
 ## 与相关脚本对照
 
-- `actions/deploy.js`：只做 rclone 同步 + CDN；**不构建**。完整自建部署用 `pnpm deploy`。
-- `actions/deploy-ghpages.mjs`：构建 + 发布 gh-pages；入口即 `pnpm deploy:ghpages`。
+- `actions/deploy.js`：只做 rclone 同步 + CDN；**不构建**。完整自建部署用 `pnpm run deploy`。
+- `actions/deploy-ghpages.mjs`：构建 + 以 `--force-with-lease` 发布 gh-pages；入口即 `pnpm run deploy:ghpages`。
 - `actions/refreshCDN.js`：仅刷新 CDN（依赖同一份 `actions/.env`）。
 - `actions/config-template.env`：自建站环境变量模板。
