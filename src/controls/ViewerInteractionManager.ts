@@ -3,13 +3,12 @@ import type { Camera } from '../Camera'
 import type { Viewer } from '../Viewer'
 import type {
   AnyViewerEventListener,
-  PickEntityOptions,
-  Picked3DTilesFeature,
-  PickedEntity,
   ScreenPosition,
   ViewerEventListener,
   ViewerEventMap,
-  ViewerMouseEvent
+  ViewerMouseEvent,
+  ViewerPickOptions,
+  ViewerPickResult
 } from '../types'
 
 export interface ViewerInteractionManagerOptions {
@@ -18,8 +17,14 @@ export interface ViewerInteractionManagerOptions {
   controls: GlobeControls
   domElement: HTMLElement
   pickCartographic: (position: ScreenPosition) => ViewerMouseEvent['cartographic']
-  pick3DTilesFeature: (position: ScreenPosition) => Picked3DTilesFeature | null
-  pickEntities: (position: ScreenPosition, options?: PickEntityOptions) => PickedEntity[]
+  pickNearest: (
+    position: ScreenPosition,
+    options?: ViewerPickOptions
+  ) => ViewerPickResult | null
+  pickAll: (
+    position: ScreenPosition,
+    options?: ViewerPickOptions
+  ) => ViewerPickResult[]
 }
 
 const ENTITY_CLICK_PICK_TOLERANCE = 6
@@ -83,19 +88,29 @@ export class ViewerInteractionManager {
       x: originalEvent.clientX - rect.left,
       y: originalEvent.clientY - rect.top
     }
-    const tilesetFeature = this.options.pick3DTilesFeature(position)
-    const entities = this.options.pickEntities(position, {
-      tolerance: type === 'click' ? ENTITY_CLICK_PICK_TOLERANCE : ENTITY_MOUSEMOVE_PICK_TOLERANCE
-    })
+    const tolerance =
+      type === 'click' ? ENTITY_CLICK_PICK_TOLERANCE : ENTITY_MOUSEMOVE_PICK_TOLERANCE
+    const pickOptions: ViewerPickOptions = { tolerance }
+
+    const picks =
+      type === 'click'
+        ? this.options.pickAll(position, pickOptions)
+        : (() => {
+            const nearest = this.options.pickNearest(position, pickOptions)
+            return nearest ? [nearest] : []
+          })()
+    const pick = picks[0] ?? null
+    const cartographicFromPick =
+      pick?.type === 'tilesFeature' ? pick.feature.cartographic : null
 
     return {
       type,
       viewer: this.options.viewer,
       originalEvent,
       position,
-      cartographic: tilesetFeature?.cartographic ?? this.options.pickCartographic(position),
-      tilesetFeature,
-      entities
+      cartographic: cartographicFromPick ?? this.options.pickCartographic(position),
+      pick,
+      picks
     }
   }
 
@@ -120,7 +135,6 @@ export class ViewerInteractionManager {
   }
 
   private clearEventListeners() {
-    this.eventListeners.forEach((listeners) => listeners.clear())
     this.eventListeners.clear()
   }
 }

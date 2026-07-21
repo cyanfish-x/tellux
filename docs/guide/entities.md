@@ -332,15 +332,15 @@ const viewer = new tellux.Viewer(container, {
 
 实体参与 Tellux 的拾取体系（详见「[交互与拾取](./interaction)」）：
 
-- 鼠标事件 `event.entities` 返回命中实体列表，按距离从近到远排序。
-- `viewer.pickEntity(position, { tolerance })` 取最佳命中；`pickEntities` 取列表。
+- 鼠标事件 `event.pick` / `event.picks` 中 `type === 'entity'` 的项为实体命中；`click` 为完整列表，`mousemove` 仅为最近一条。
+- `viewer.pick(position, { layers: ['entity'], tolerance })` 取最佳命中；`pickAll` 取列表。
 - 点和线实体支持 `tolerance` 屏幕空间容差（CSS 像素），面实体和拉伸体走精确 raycaster。
 
 点击实体时，其 `properties` 会随拾取结果回传，可用于关联业务数据：
 
 ```ts
 viewer.on('click', (event) => {
-  const hit = event.entities[0]
+  const hit = event.pick?.type === 'entity' ? event.pick.entity : null
   if (hit) {
     console.log(hit.entity.id, hit.entity.properties)
   }

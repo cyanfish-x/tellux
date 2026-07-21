@@ -1,5 +1,10 @@
 import type * as THREE from 'three'
-import type { HighlightTarget, HismPickResult, Picked3DTilesFeature } from '../types'
+import type {
+  HighlightTarget,
+  HismPickResult,
+  Picked3DTilesFeature,
+  ViewerPickResult
+} from '../types'
 import type { HighlightSettings } from '../scene/HighlightSettings'
 import { OutlineHighlighter } from './OutlineHighlighter'
 import { OverlayHighlighter } from './OverlayHighlighter'
@@ -39,7 +44,18 @@ function isHismPickResult(value: unknown): value is HismPickResult {
       'instanceId' in value &&
       'partIndex' in value &&
       !('cartographic' in value) &&
-      !('object' in value)
+      !('object' in value) &&
+      !('type' in value)
+  )
+}
+
+function isViewerPickResult(value: unknown): value is ViewerPickResult {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'type' in value &&
+      'distance' in value &&
+      typeof (value as { distance: unknown }).distance === 'number'
   )
 }
 
@@ -54,6 +70,16 @@ export function resolveHighlightTarget(
   }
   if (isHismPickResult(target)) {
     return { kind: 'hismInstance', pick: target, raw: target }
+  }
+  if (isViewerPickResult(target)) {
+    if (target.type === 'entity') return null
+    if (target.type === 'tilesFeature') {
+      return { kind: 'tilesFeature', feature: target.feature, raw: target }
+    }
+    if (target.type === 'hismInstance') {
+      return { kind: 'hismInstance', pick: target.instance, raw: target }
+    }
+    return { kind: 'object', object: target.object.object, raw: target }
   }
   if (typeof target === 'object' && target !== null && 'type' in target) {
     if (target.type === 'object') {

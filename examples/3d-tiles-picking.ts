@@ -126,7 +126,8 @@ function loadTileset() {
 }
 
 function handleMouseMove(event: ViewerMouseMoveEvent) {
-  const feature = event.tilesetFeature
+  const feature =
+    event.pick?.type === "tilesFeature" ? event.pick.feature : null
   if (!feature) {
     clearHover()
     return
@@ -145,19 +146,20 @@ function handleMouseMove(event: ViewerMouseMoveEvent) {
 
   if (nextHoverKey !== hoverKey) {
     hoverKey = nextHoverKey
-    viewer.highlight.setHover(feature)
+    viewer.highlight.setHover(event.pick)
   }
 }
 
 function handleClick(event: ViewerClickEvent) {
-  const feature = event.tilesetFeature
+  const feature =
+    event.pick?.type === "tilesFeature" ? event.pick.feature : null
   if (!feature) {
     clearSelection()
     return
   }
 
   selectedKey = getFeatureKey(feature)
-  viewer.highlight.set(feature)
+  viewer.highlight.set(event.pick)
   if (hoverKey === selectedKey) {
     viewer.highlight.setHover(null)
   }

@@ -111,26 +111,27 @@ viewer.addHismLayer({
 
 ## 拾取
 
-`viewer.pickHism(position)` 接受**相对 canvas 左上角**的像素坐标（与 `viewer.on('click')` 事件中的 `event.position` 相同）：
+通过统一对象拾取命中 HISM 实例（详见「[交互与拾取](./interaction)」）：
 
 ```ts
 viewer.on('click', (event) => {
-  const hit = viewer.pickHism(event.position)
-  if (!hit) {
+  const hit = viewer.pick(event.position, { layers: ['hismInstance'] })
+  if (!hit || hit.type !== 'hismInstance') {
     viewer.highlight.clear()
     return
   }
 
   viewer.highlight.set(hit) // 后处理描边：整实例全部 parts
-  console.log(hit.layerId)        // 图层 id
-  console.log(hit.instanceId)     // InstancedMesh 实例索引
-  console.log(hit.archetypeIndex) // 原型索引
-  console.log(hit.lodIndex)       // 当前 LOD 级别
-  console.log(hit.point)          // 世界坐标命中点
+  const { instance } = hit
+  console.log(instance.layerId)
+  console.log(instance.instanceId)
+  console.log(instance.archetypeIndex)
+  console.log(instance.lodIndex)
+  console.log(instance.point)
 })
 ```
 
-默认会在命中点显示黄色标记（`HismPickMarker`）。与 `viewer.highlight` 描边并用时建议关闭：
+拾取是纯查询，**不会**自动显示黄色标记。与 `viewer.highlight` 描边并用时建议关闭标记对象创建：
 
 ```ts
 new tellux.Viewer(container, {
@@ -182,7 +183,7 @@ Tellux 内部 RTC 实例化已复用 HISM 的 `createRTCPositionPipeline()`，�
 | BVH 实例拾取 | ✅（依赖 `three-mesh-bvh`） |
 | 风摆 / Position Pipeline | ✅（叶片等自定义 stage） |
 | 动态增删单个实例 | ❌ 需重建图层或自行管理 InstancedMesh |
-| 与 Entity 系统混排 | 实例不在 Entity 树内，需用 `pickHism` 单独拾取 |
+| 与 Entity 系统混排 | 实例不在 Entity 树内，用 `pick(..., { layers: ['hismInstance'] })` 收窄 |
 | WebGPU | 未单独验证；建议 WebGL 下使用 |
 
 ## 相关示例

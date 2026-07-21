@@ -88,6 +88,60 @@ describe('resolveHighlightTarget', () => {
       resolveHighlightTarget({ type: 'hismInstance', pick })?.kind
     ).toBe('hismInstance')
   })
+
+  it('unwraps ViewerPickResult and ignores entity hits', () => {
+    const mesh = new THREE.Mesh()
+    const feature = createFeature(mesh, 1)
+    const instance = {
+      layerId: 'forest',
+      clusterKey: '0:0',
+      archetypeIndex: 0,
+      lodIndex: 0,
+      partIndex: 1,
+      instanceId: 2,
+      point: new THREE.Vector3(),
+      distance: 10
+    }
+    const pickedObject = {
+      object: mesh,
+      point: new THREE.Vector3(),
+      distance: 3,
+      faceIndex: 0
+    }
+
+    expect(
+      resolveHighlightTarget({
+        type: 'tilesFeature',
+        distance: 1,
+        feature
+      })?.kind
+    ).toBe('tilesFeature')
+    expect(
+      resolveHighlightTarget({
+        type: 'hismInstance',
+        distance: 2,
+        instance
+      })?.kind
+    ).toBe('hismInstance')
+    expect(
+      resolveHighlightTarget({
+        type: 'object',
+        distance: 3,
+        object: pickedObject
+      })
+    ).toMatchObject({ kind: 'object', object: mesh })
+    expect(
+      resolveHighlightTarget({
+        type: 'entity',
+        distance: 4,
+        entity: {
+          entity: { id: 'e' } as never,
+          point: new THREE.Vector3(),
+          distance: 4
+        }
+      })
+    ).toBeNull()
+  })
 })
 
 describe('OverlayHighlighter', () => {

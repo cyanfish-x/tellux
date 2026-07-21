@@ -1,6 +1,6 @@
 import type { Viewer } from '../Viewer'
-import type { CartographicCoordinates, Picked3DTilesFeature, ScreenPosition } from './spatial'
-import type { PickedEntity } from './entities'
+import type { CartographicCoordinates, ScreenPosition } from './spatial'
+import type { ViewerPickResult } from './pick'
 
 /**
  * Viewer 事件的基础信息。
@@ -34,26 +34,27 @@ export interface ViewerMouseEvent extends ViewerEvent {
    */
   cartographic: CartographicCoordinates | null
   /**
-   * 鼠标位置命中的 3D Tiles feature；未命中已加载 3D Tiles 时为 `null`。
+   * 最近的可选中对象命中；未命中时为 `null`。
    *
-   * 该值只包含当前场景中已经加载的瓦片内容，不会额外请求更高精度瓦片。
+   * `click` 来自完整 `pickAll`；`mousemove` 来自 nearest-only（`picks` 至多一项）。
    *
-   * 3D Tiles feature hit by the mouse position, or `null` when no loaded 3D
-   * Tiles feature is hit.
+   * Nearest selectable hit, or `null` when nothing is hit.
    *
-   * This only uses currently loaded tile content and does not request more
-   * detailed tiles.
+   * For `click` this comes from full `pickAll`; for `mousemove` it comes from
+   * nearest-only picking (`picks` has at most one entry).
    */
-  tilesetFeature: Picked3DTilesFeature | null
+  pick: ViewerPickResult | null
   /**
-   * 鼠标位置命中的实体列表，按距离从近到远排序。未命中任何实体时为空数组。
-   * 事件内的点和线实体拾取带默认屏幕空间容差，用于优化点击和悬停体验。
+   * 可选中对象命中列表，由近到远。
    *
-   * Picked entities at the mouse position, sorted nearest first. Empty when no
-   * entity is hit. Point and polyline entity picking in events uses a default
-   * screen-space tolerance to improve click and hover ergonomics.
+   * `click` 为完整 drill 结果；`mousemove` 默认仅含最近一项。
+   *
+   * Selectable hits nearest first.
+   *
+   * For `click` this is the full drill result; for `mousemove` it defaults to
+   * at most the nearest hit.
    */
-  entities: PickedEntity[]
+  picks: ViewerPickResult[]
 }
 
 /**

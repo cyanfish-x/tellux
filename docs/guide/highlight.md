@@ -5,8 +5,9 @@ Tellux 提供统一的 `viewer.highlight` 门面：按目标类型自动选择�
 | 目标 | 视觉 | 实现 |
 | --- | --- | --- |
 | `Object3D`（模型根节点、自定义 mesh 等） | 轮廓描边 | WebGL 后处理 `OutlineEffect` |
-| `HismPickResult`（单实例整原型） | 轮廓描边 | 不可见 proxy Mesh + `OutlineEffect` |
-| `Picked3DTilesFeature` | 半透明叠加几何 | 按 featureId 抽三角面或整 mesh 贴膜 |
+| `HismPickResult` / `ViewerPickResult`（`hismInstance`） | 轮廓描边 | 不可见 proxy Mesh + `OutlineEffect` |
+| `Picked3DTilesFeature` / `ViewerPickResult`（`tilesFeature`） | 半透明叠加几何 | 按 featureId 抽三角面或整 mesh 贴膜 |
+| `ViewerPickResult`（`entity`） | （无） | 当前忽略 |
 
 样式在 `scene.highlight`，与初始化配置同构。
 
@@ -14,23 +15,23 @@ Tellux 提供统一的 `viewer.highlight` 门面：按目标类型自动选择�
 
 ```ts
 viewer.on('click', (event) => {
-  if (event.tilesetFeature) {
-    viewer.highlight.set(event.tilesetFeature)
+  if (event.pick) {
+    viewer.highlight.set(event.pick)
     return
   }
   viewer.highlight.clear()
 })
 
 viewer.on('mousemove', (event) => {
-  viewer.highlight.setHover(event.tilesetFeature)
+  viewer.highlight.setHover(event.pick)
 })
 ```
 
-整对象描边（常与 `pickObject` 配合）：
+整对象描边（传入 `root` 时默认只测 object 层）：
 
 ```ts
-const hit = viewer.pickObject(event.position, model.root)
-if (hit) viewer.highlight.set(model.root)
+const hit = viewer.pick(event.position, { root: model.root })
+if (hit?.type === 'object') viewer.highlight.set(model.root)
 // 或显式：
 viewer.highlight.set({ type: 'object', object: mesh })
 ```
@@ -38,7 +39,7 @@ viewer.highlight.set({ type: 'object', object: mesh })
 HISM 单实例描边（描当前 LOD 下该实例的全部 parts）：
 
 ```ts
-const pick = viewer.pickHism(event.position)
+const pick = viewer.pick(event.position, { layers: ['hismInstance'] })
 if (pick) viewer.highlight.set(pick)
 else viewer.highlight.clear()
 ```

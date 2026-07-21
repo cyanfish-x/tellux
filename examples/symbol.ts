@@ -235,7 +235,7 @@ setStatus(
 
 // 拾取：点击 symbol 回传属性。Pick: clicking a symbol returns its properties.
 viewer.on("click", (event) => {
-  const picked = event.entities[0]
+  const picked = event.pick?.type === "entity" ? event.pick.entity : null
   if (!picked) {
     if (pickReadoutElement) pickReadoutElement.textContent = "未命中实体"
     return

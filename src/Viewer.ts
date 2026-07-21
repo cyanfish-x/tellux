@@ -34,6 +34,7 @@ import { EntityPicker } from './sampling/EntityPicker'
 import { HeightSampler } from './sampling/HeightSampler'
 import { TilesetFeaturePicker } from './sampling/TilesetFeaturePicker'
 import { ObjectPicker } from './sampling/ObjectPicker'
+import { ScenePicker } from './sampling/ScenePicker'
 import { Scene } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
@@ -57,14 +58,9 @@ import type {
   FlyToTargetTarget,
   Load3DTilesetOptions,
   HismLayer,
-  HismPickResult,
   HismRuntimeStats,
   ModelLayer,
-  PickEntityOptions,
   Picked3DTilesFeature,
-  PickObjectOptions,
-  PickedObject,
-  PickedEntity,
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
   SampleHeightOptions,
@@ -73,6 +69,8 @@ import type {
   ViewerEventListener,
   ViewerEventMap,
   ViewerOptions,
+  ViewerPickOptions,
+  ViewerPickResult,
   ViewerRendererType
 } from './types'
 import type { GlobeControls } from '3d-tiles-renderer'
@@ -223,6 +221,9 @@ export type {
   ViewerEventMap,
   ViewerMouseEvent,
   ViewerMouseMoveEvent,
+  ViewerPickLayer,
+  ViewerPickOptions,
+  ViewerPickResult,
   ViewerAtmosphereLightingOptions,
   ViewerAtmosphereNightOptions,
   ViewerAtmosphereOptions,
@@ -388,6 +389,7 @@ export class Viewer {
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
   private readonly entityPicker: EntityPicker
   private readonly objectPicker: ObjectPicker
+  private readonly scenePicker: ScenePicker
   private readonly heightSampler: HeightSampler
   private readonly targetFlights: TargetFlightController
   private readonly interactions: ViewerInteractionManager
@@ -567,15 +569,6 @@ export class Viewer {
     this.camera.onAllowUndergroundChange = (value) => {
       this.controls.adjustHeight = !value
     }
-    this.interactions = new ViewerInteractionManager({
-      viewer: this,
-      camera: this.camera,
-      controls: this.controls,
-      domElement: this.renderer.domElement,
-      pickCartographic: (position) => this.pickCartographic(position),
-      pick3DTilesFeature: (position) => this.pick3DTilesFeature(position),
-      pickEntities: (position, pickOptions) => this.pickEntities(position, pickOptions)
-    })
 
     const hismScaleMatrix = new THREE.Matrix4()
     this.hismManager = new HismManager({
@@ -593,6 +586,24 @@ export class Viewer {
         }
         target.multiply(hismScaleMatrix)
       }
+    })
+
+    this.scenePicker = new ScenePicker({
+      entityPicker: this.entityPicker,
+      tilesetFeaturePicker: this.tilesetFeaturePicker,
+      objectPicker: this.objectPicker,
+      hismManager: this.hismManager,
+      getObjectRoot: () => this.scene.threeScene
+    })
+
+    this.interactions = new ViewerInteractionManager({
+      viewer: this,
+      camera: this.camera,
+      controls: this.controls,
+      domElement: this.renderer.domElement,
+      pickCartographic: (position) => this.pickCartographic(position),
+      pickNearest: (position, pickOptions) => this.pick(position, pickOptions),
+      pickAll: (position, pickOptions) => this.pickAll(position, pickOptions)
     })
 
     this.highlightManager = new HighlightManager({
@@ -801,17 +812,50 @@ export class Viewer {
   }
 
   /**
-   * 拾取 HISM 实例。
+   * 拾取屏幕位置最近的可选中对象。
    *
-   * 传入屏幕像素坐标（相对 canvas 左上角）。未命中时返回 `null`。
+   * 默认图层为 entity / hismInstance / tilesFeature；传入 `root` 且未指定 `layers`
+   * 时仅拾取 object 层。无 HISM 图层时自动跳过 hismInstance。
    *
-   * Picks a HISM instance.
+   * Picks the nearest selectable object at a screen position.
    *
-   * Accepts screen pixel coordinates relative to the canvas top-left corner.
-   * Returns `null` when nothing is hit.
+   * Default layers are entity / hismInstance / tilesFeature. When `root` is set
+   * and `layers` is omitted, only the object layer is tested. The hismInstance
+   * layer is skipped when no HISM layers are registered.
    */
-  pickHism(screenPosition: ScreenPosition): HismPickResult | null {
-    return this.hismManager.pick(screenPosition)
+  pick(
+    position: ScreenPosition,
+    options: ViewerPickOptions = {}
+  ): ViewerPickResult | null {
+    return this.scenePicker.pick(position, options)
+  }
+
+  /**
+   * 拾取屏幕位置全部可选中对象，由近到远。
+   *
+   * Picks all selectable objects at a screen position, nearest first.
+   */
+  pickAll(
+    position: ScreenPosition,
+    options: ViewerPickOptions = {}
+  ): ViewerPickResult[] {
+    return this.scenePicker.pickAll(position, options)
+  }
+
+  /**
+   * 获取屏幕位置对应的经纬高坐标。
+   *
+   * 传入的坐标相对于 canvas 左上角。方法会优先命中已加载的 3D Tiles，
+   * 未命中时再回退到 WGS84 椭球表面；两者都未命中时返回 `null`。
+   *
+   * Gets the cartographic coordinates for a screen position.
+   *
+   * The input position is relative to the top-left corner of the canvas. The
+   * method hits loaded 3D Tiles first, then falls back to the WGS84 ellipsoid.
+   * It returns `null` when neither target is hit.
+   */
+  pickCartographic(position: ScreenPosition): CartographicCoordinates | null {
+    return this.cartographicPicker.pick(position)
   }
 
   /**
@@ -908,109 +952,6 @@ export class Viewer {
     this.cancelMostDetailedHeightSampling()
     return this.tilesets.remove3DTileset(id)
   }
-
-  /**
-   * 获取屏幕位置对应的经纬高坐标。
-   *
-   * 传入的坐标相对于 canvas 左上角。方法会优先命中已加载的 3D Tiles，
-   * 未命中时再回退到 WGS84 椭球表面；两者都未命中时返回 `null`。
-   *
-   * Gets the cartographic coordinates for a screen position.
-   *
-   * The input position is relative to the top-left corner of the canvas. The
-   * method hits loaded 3D Tiles first, then falls back to the WGS84 ellipsoid.
-   * It returns `null` when neither target is hit.
-   */
-  pickCartographic(position: ScreenPosition): CartographicCoordinates | null {
-    return this.cartographicPicker.pick(position)
-  }
-
-  /**
-   * 拾取屏幕位置对应的已加载 3D Tiles feature。
-   *
-   * 传入的坐标相对于 canvas 左上角。方法只检查当前已经加载到场景中的
-   * 3D Tiles 内容，不会额外请求更高精度瓦片；未命中时返回 `null`。
-   *
-   * Picks the loaded 3D Tiles feature at a screen position.
-   *
-   * The input position is relative to the top-left corner of the canvas. The
-   * method only checks 3D Tiles content currently loaded in the scene and does
-   * not request more detailed tiles; returns `null` when nothing is hit.
-   */
-  pick3DTilesFeature(position: ScreenPosition): Picked3DTilesFeature | null {
-    return this.tilesetFeaturePicker.pick(position)
-  }
-
-  /**
-   * 拾取屏幕位置对应的最佳实体。
-   *
-   * 传入的坐标相对于 canvas 左上角。`options.tolerance` 可扩大点和线实体的屏幕空间拾取范围，
-   * 单位为 CSS 像素。返回值等同于 {@link Viewer.pickEntities} 的第一个结果；未命中任何实体时返回 `null`。
-   *
-   * Picks the best entity at a screen position.
-   *
-   * The input position is relative to the top-left corner of the canvas.
-   * `options.tolerance` expands point and polyline screen-space picking in CSS
-   * pixels. The return value is equivalent to the first result from
-   * {@link Viewer.pickEntities}; returns `null` when no entity is hit.
-   */
-  pickEntity(position: ScreenPosition, options: PickEntityOptions = {}): PickedEntity | null {
-    return this.entityPicker.pick(position, options)
-  }
-
-  /**
-   * 拾取屏幕位置对应的实体列表。
-   *
-   * 传入的坐标相对于 canvas 左上角。`options.tolerance` 可扩大点和线实体的屏幕空间拾取范围，
-   * 单位为 CSS 像素。结果按距离从近到远排序，未命中任何实体时返回空数组。
-   *
-   * Picks entities at a screen position.
-   *
-   * The input position is relative to the top-left corner of the canvas.
-   * `options.tolerance` expands point and polyline screen-space picking in CSS
-   * pixels. Results are sorted nearest first; returns an empty array when no
-   * entity is hit.
-   */
-  pickEntities(position: ScreenPosition, options: PickEntityOptions = {}): PickedEntity[] {
-    return this.entityPicker.pickEntities(position, options)
-  }
-
-
-  /**
-   * 拾取屏幕位置对应的 Three.js 对象。
-   *
-   * 传入的坐标相对于 canvas 左上角。默认在整个 `viewer.scene.threeScene` 上求交；
-   * 也可传入 `root` 限定拾取范围（例如 `model.root`）。会跳过带
-   * `userData.telluxPickingIgnore` 的对象（含高亮 overlay）。未命中返回 `null`。
-   *
-   * Picks a Three.js object at a screen position.
-   *
-   * The input position is relative to the canvas top-left. By default intersects
-   * the whole `viewer.scene.threeScene`; pass `root` to scope the search (e.g.
-   * `model.root`). Objects tagged with `userData.telluxPickingIgnore` (including
-   * highlight overlays) are skipped. Returns `null` when nothing is hit.
-   */
-  pickObject(
-    position: ScreenPosition,
-    root?: THREE.Object3D,
-    options: PickObjectOptions = {}
-  ): PickedObject | null {
-    return this.objectPicker.pick(position, root ?? this.scene.threeScene, options)
-  }
-
-  /**
-   * 拾取屏幕位置对应的 Three.js 对象列表（由近到远）。
-   *
-   * Picks Three.js objects at a screen position, nearest first.
-   */
-  pickObjects(
-    position: ScreenPosition,
-    root?: THREE.Object3D,
-    options: PickObjectOptions = {}
-  ): PickedObject[] {
-    return this.objectPicker.pickObjects(position, root ?? this.scene.threeScene, options)
-  }
-
 
   /**
    * 采样指定经纬度在当前已加载内容上的表面高度。

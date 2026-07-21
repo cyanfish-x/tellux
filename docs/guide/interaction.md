@@ -2,6 +2,13 @@
 
 Tellux 提供了从鼠标事件、屏幕拾取到高度采样三层递进的空间查询能力，覆盖"点击看坐标"、"画路径前采样地表高度"等典型 GIS 工作流。
 
+## 两域拾取
+
+| 域 | API | 说明 |
+| --- | --- | --- |
+| 地表坐标 | `viewer.pickCartographic(position)` | 经纬高查询；不并入对象拾取。 |
+| 可选中对象 | `viewer.pick` / `viewer.pickAll` | 实体、HISM 实例、3D Tiles feature、Three.js 对象。 |
+
 ## 鼠标事件
 
 通过 `viewer.on(type, listener)` 监听 canvas 上的鼠标事件。目前支持 `click` 和 `mousemove`：
@@ -10,8 +17,8 @@ Tellux 提供了从鼠标事件、屏幕拾取到高度采样三层递进的空�
 const onClick = (event) => {
   console.log('像素坐标', event.position)
   console.log('经纬高', event.cartographic)
-  console.log('3D Tiles feature', event.tilesetFeature)
-  console.log('Entities', event.entities)
+  console.log('最近命中', event.pick)
+  console.log('全部命中', event.picks)
 }
 
 viewer.on('click', onClick)
@@ -28,19 +35,30 @@ viewer.off('click', onClick)
 | `originalEvent` | `MouseEvent` | 原始 DOM 鼠标事件。 |
 | `position` | `ScreenPosition` | 相对 canvas 左上角的像素坐标 `{ x, y }`。 |
 | `cartographic` | `CartographicCoordinates \| null` | 鼠标位置对应的经纬高。未命中 3D Tiles 或椭球时为 `null`。 |
-| `tilesetFeature` | `Picked3DTilesFeature \| null` | 鼠标命中的 3D Tiles feature，只使用当前已加载瓦片，不额外请求高精度瓦片。 |
-| `entities` | `PickedEntity[]` | 鼠标命中的实体列表，按距离从近到远排序。未命中时为空数组。 |
+| `pick` | `ViewerPickResult \| null` | 最近命中的可选中对象。 |
+| `picks` | `ViewerPickResult[]` | 命中列表。`click` 为完整 drill（近→远）；`mousemove` 仅为最近一条（与 `pick` 同构的单元素或空）。 |
 
 事件中的实体拾取会对点和线使用默认屏幕空间容差：`click` 为 6 CSS 像素，`mousemove` 为 4 CSS 像素。3D Tiles、面实体和体实体仍使用原有精确拾取逻辑。
-如果只需要最佳命中实体，可使用 `event.entities[0] ?? null`。
+
+按类型读取命中：
+
+```ts
+viewer.on('click', (event) => {
+  if (event.pick?.type === 'tilesFeature') {
+    console.log(event.pick.feature.properties)
+  } else if (event.pick?.type === 'entity') {
+    console.log(event.pick.entity.entity.id)
+  } else if (event.pick?.type === 'hismInstance') {
+    console.log(event.pick.instance.instanceId)
+  }
+})
+```
 
 关于如何创建可被拾取的点、线、面实体，见「[实体绘制](./entities)」。
 
-`mousemove` 事件触发频率较高，监听回调里应避免重计算或同步 DOM 操作。
+`mousemove` 事件触发频率较高：事件内只做 **nearest-only** 拾取（每层最近再比全局最近），避免每帧完整 drill。若业务需要完整叠层列表，可自行调用 `viewer.pickAll(event.position)`（建议节流）。
 
 ## 屏幕拾取
-
-如果不通过事件，而是想用任意屏幕坐标做拾取，可以直接调用：
 
 ### `pickCartographic(position)`
 
@@ -55,89 +73,52 @@ if (cartographic) {
 
 适用于"点击空白处取坐标"这类需求。
 
-### `pick3DTilesFeature(position)`
+### `pick(position, options?)` / `pickAll(position, options?)`
 
-拾取屏幕位置对应的 **3D Tiles feature**。与 `pickCartographic` 不同，它**只检查已加载的 3D Tiles 内容**，不会回退到椭球表面，也不会额外请求更精细瓦片。未命中返回 `null`。
+统一对象拾取。返回判别联合 `ViewerPickResult`：
 
 ```ts
-const feature = viewer.pick3DTilesFeature({ x: 400, y: 300 })
-if (feature) {
-  console.log('图层', feature.layerId)
-  console.log('feature id', feature.featureId)
-  console.log('属性', feature.properties)
-  console.log('命中点经纬高', feature.cartographic)
-}
+type ViewerPickResult =
+  | { type: 'entity'; distance: number; entity: PickedEntity }
+  | { type: 'tilesFeature'; distance: number; feature: Picked3DTilesFeature }
+  | { type: 'hismInstance'; distance: number; instance: HismPickResult }
+  | { type: 'object'; distance: number; object: PickedObject }
 ```
 
-`Picked3DTilesFeature` 主要字段：
+- `pick`：每层只取最近命中，再取全局最近。
+- `pickAll`：合并各层全部命中，由近到远。
+
+```ts
+const hit = viewer.pick({ x: 400, y: 300 })
+if (hit?.type === 'tilesFeature') {
+  console.log(hit.feature.properties)
+}
+
+const hits = viewer.pickAll({ x: 400, y: 300 })
+```
+
+`ViewerPickOptions`：
 
 | 字段 | 说明 |
 | --- | --- |
-| `layerId` | 命中的 3D Tiles 图层 id。 |
-| `tileset` | 命中的底层 `TilesRenderer`。 |
-| `object` / `point` | 命中的 Three.js 对象与世界坐标。 |
-| `faceIndex` | 命中三角面索引，不可用时为 `null`。 |
-| `featureId` | feature id，数据未提供时为 `null`。 |
-| `properties` | feature 属性键值表。 |
-| `cartographic` | 命中点经纬高。 |
+| `layers` | 参与拾取的层：`'entity'` \| `'hismInstance'` \| `'tilesFeature'` \| `'object'`。 |
+| `root` | object 层根节点；传入且未指定 `layers` 时，默认只测 `['object']`。 |
+| `recursive` | object 层是否递归子节点。 |
+| `tolerance` | 点 / 线实体屏幕容差（CSS 像素）。 |
 
-> 拾取类方法都只针对**当前已加载到场景中的内容**。视角外或尚未加载的瓦片不会被请求，远处或未加载区域可能返回椭球表面坐标或 `null`。
+**默认 `layers`**：`['entity', 'hismInstance', 'tilesFeature']`。未注册 HISM 图层时会自动跳过 `hismInstance`。无 `root` 时默认**不含** `object`，避免整 scene 拾取打到地形瓦片 mesh。
 
-### `pickEntity(position, options?)`
-
-拾取屏幕位置对应的最佳实体。点和线实体可以通过 `tolerance` 扩大屏幕空间命中范围，单位为 CSS 像素；不传时为 `0`，只按图形自身可视宽度命中。未命中时返回 `null`。
+收窄层（例如只要 HISM，或悬停只要 Tiles）：
 
 ```ts
-const entityHit = viewer.pickEntity({ x: 400, y: 300 }, { tolerance: 6 })
-if (entityHit) {
-  console.log('实体 id', entityHit.entity.id)
-  console.log('命中点世界坐标', entityHit.point)
-}
+viewer.pick(pos, { layers: ['hismInstance'] })
+viewer.pick(pos, { layers: ['tilesFeature'] })
+viewer.pick(pos, { root: model.root }) // 默认仅 object 层
 ```
 
-`tolerance` 只影响点、线实体；面实体和体实体仍走原有 Three.js raycaster 拾取路径。
+`Picked3DTilesFeature` 主要字段：`layerId`、`tileset`、`object` / `point`、`faceIndex`、`featureId`、`properties`、`cartographic`。
 
-### `pickHism(position)`
-
-拾取 HISM 实例化图层中的具体实例。坐标为**相对 canvas 左上角**的像素位置，与鼠标事件中的 `event.position` 一致。未命中返回 `null`。
-
-```ts
-viewer.on('click', (event) => {
-  const hit = viewer.pickHism(event.position)
-  if (hit) {
-    console.log('图层', hit.layerId)
-    console.log('实例', hit.instanceId, 'LOD', hit.lodIndex)
-    console.log('命中点', hit.point)
-  }
-})
-```
-
-HISM 实例不在 Entity 树内，需单独调用此方法。详见 [HISM 大规模实例化](./hism.md)。
-
-### `pickEntities(position, options?)`
-
-拾取屏幕位置对应的实体列表。结果按距离从近到远排序；同一个实体如果有多个图形同时命中，只返回该实体距离最近的命中结果。未命中时返回空数组。
-
-```ts
-const entityHits = viewer.pickEntities({ x: 400, y: 300 }, { tolerance: 6 })
-entityHits.forEach((hit) => {
-  console.log('实体 id', hit.entity.id)
-})
-```
-
-### `pickObject(position, root?, options?)`
-
-拾取屏幕位置对应的 **Three.js `Object3D`**。默认在整个 `viewer.scene.threeScene` 上求交；传入 `root` 可限定范围（例如只拾取某个 `model.root`）。会跳过 `userData.telluxPickingIgnore` 标记的对象。未命中返回 `null`。
-
-```ts
-const hit = viewer.pickObject(event.position, model.root)
-if (hit) {
-  viewer.highlight.set(model.root) // 整模型描边
-}
-```
-
-`pickObjects` 返回由近到远的全部命中列表。
-
+> 拾取类方法都只针对**当前已加载到场景中的内容**。视角外或尚未加载的瓦片不会被请求。
 
 ## 高度采样
 
@@ -223,21 +204,20 @@ results.forEach((result, i) => {
 | 需求 | 推荐方法 |
 | --- | --- |
 | 点击 / 悬停取坐标 | `on('click' \| 'mousemove')` 事件，或 `pickCartographic` |
-| 点击查询 3D Tiles 属性 | `pick3DTilesFeature` |
-| 点击 / 悬停查询单个实体 | `on('click' \| 'mousemove')` 事件的 `entities[0]`，或 `pickEntity` |
-| 点击 / 悬停查询多个实体 | `on('click' \| 'mousemove')` 事件的 `entities`，或 `pickEntities` |
-| 点击 HISM 实例（森林、岩石场等） | `pickHism` |
-| 点击任意 Three.js 对象 / 模型根节点 | `pickObject` / `pickObjects` |
+| 点击查询可选中对象 | `event.pick` / `event.picks`，或 `viewer.pick` / `pickAll` |
+| 只要某一类对象 | `pick(..., { layers: [...] })` |
+| 点击模型根节点 | `pick(pos, { root: model.root })` |
+| 完整叠层列表（含 mousemove） | `viewer.pickAll(event.position)`（建议节流） |
 | 每帧让对象贴地（高频、当前视图内） | `sampleHeight` |
 | 批量预计算路径地表高度（可能跨视图） | `sampleHeightMostDetailed` |
 
 ## 高亮
 
-拾取之后若需要视觉选中态，使用统一门面 `viewer.highlight`：整对象走后处理描边，3D Tiles feature 走叠加几何。详见「[高亮](./highlight)」。
+拾取之后若需要视觉选中态，使用统一门面 `viewer.highlight`：整对象走后处理描边，3D Tiles feature 走叠加几何，HISM 实例走 proxy 描边。`viewer.highlight.set(viewer.pick(pos))` 可直接传入 `ViewerPickResult`（`entity` 类型当前无高亮，会被忽略）。详见「[高亮](./highlight)」。
 
 ```ts
 viewer.on('click', (event) => {
-  if (event.tilesetFeature) viewer.highlight.set(event.tilesetFeature)
+  if (event.pick) viewer.highlight.set(event.pick)
   else viewer.highlight.clear()
 })
 ```

@@ -94,12 +94,6 @@ export class HismManager {
       raycaster: this.raycaster
     })
 
-    if (result) {
-      this.pickMarker?.show(result.point)
-    } else {
-      this.pickMarker?.hide()
-    }
-
     return result
   }
 

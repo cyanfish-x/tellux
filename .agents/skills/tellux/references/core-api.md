@@ -352,8 +352,11 @@ const layer = viewer.addHismLayer({
 
 // 拾取（坐标相对 canvas 左上角）
 viewer.on('click', (e) => {
-  const hit = viewer.pickHism(e.position)
-  if (hit) console.log(hit.layerId, hit.instanceId)
+  const hit = viewer.pick(e.position, { layers: ['hismInstance'] })
+  if (hit?.type === 'hismInstance') {
+    console.log(hit.instance.layerId, hit.instance.instanceId)
+    viewer.highlight.set(hit)
+  }
 })
 
 layer.remove()

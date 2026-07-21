@@ -61,17 +61,17 @@ viewer.highlight.get(): HighlightTarget | null
 viewer.highlight.getHover(): HighlightTarget | null
 ```
 
-便利：直接传入 `event.tilesetFeature` 或任意 `Object3D`（含 Entity/Model 的 root，由调用方取出）。
+便利：直接传入 `event.pick`（`ViewerPickResult`）或任意 `Object3D`（含 Entity/Model 的 root，由调用方取出）。`entity` 类型当前无高亮，会被忽略。
 
 ### 用法
 
 ```ts
 viewer.on('click', (e) => {
-  if (e.tilesetFeature) viewer.highlight.set(e.tilesetFeature)
+  if (e.pick) viewer.highlight.set(e.pick)
   else viewer.highlight.clear()
 })
 viewer.on('mousemove', (e) => {
-  viewer.highlight.setHover(e.tilesetFeature)
+  viewer.highlight.setHover(e.pick)
 })
 ```
 

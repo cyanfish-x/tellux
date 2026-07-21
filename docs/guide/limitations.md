@@ -46,8 +46,8 @@ WebGPU 是实验能力，以下能力在 WebGPU 模式下**不渲染或不支持
 
 ### 拾取
 
-- 拾取类方法（`pickCartographic`、`pick3DTilesFeature`、`pickEntity`、`pickEntities`、事件的 `cartographic` / `tilesetFeature` / `entities`）**只使用当前已加载到场景中的内容**，不会为视角外的区域额外请求瓦片。
-- `pickCartographic` 在未命中 3D Tiles 时回退到 WGS84 椭球表面；`pick3DTilesFeature` 不回退椭球，只查已加载 3D Tiles；`pickEntity` / `pickEntities` 只查当前 Viewer 中已添加且可见的实体。
+- 拾取类方法（`pickCartographic`、`pick` / `pickAll`、事件的 `cartographic` / `pick` / `picks`）**只使用当前已加载到场景中的内容**，不会为视角外的区域额外请求瓦片。
+- `pickCartographic` 在未命中 3D Tiles 时回退到 WGS84 椭球表面；对象拾取中的 `tilesFeature` 不回退椭球，只查已加载 3D Tiles；`entity` 层只查当前 Viewer 中已添加且可见的实体。
 
 ### 高度采样
 

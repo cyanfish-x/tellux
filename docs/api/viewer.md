@@ -162,40 +162,23 @@ viewer.on('click', (event) => {
 const coord = viewer.pickCartographic({ x: 400, y: 300 })
 ```
 
-### `pick3DTilesFeature(position)`
+### `pick(position, options?)` / `pickAll(position, options?)`
 
-拾取屏幕位置对应的已加载 3D Tiles feature。只检查当前已加载的 3D Tiles 内容，不回退椭球表面，也不额外请求更精细瓦片；未命中返回 `null`。返回的 `Picked3DTilesFeature` 包含 `layerId`、`tileset`、`object`、`point`、`faceIndex`、`featureId`、`properties` 和 `cartographic` 字段。
-
-```ts
-const feature = viewer.pick3DTilesFeature({ x: 400, y: 300 })
-if (feature) {
-  console.log(feature.properties)
-}
-```
-
-### `pickEntity(position, options?)`
-
-拾取屏幕位置对应的最佳实体。点和线实体支持 `options.tolerance` 屏幕空间容差，单位为 CSS 像素；默认 `0`。面实体和体实体仍使用精确 raycaster 拾取。未命中时返回 `null`。
+统一对象拾取。`pick` 返回全局最近的 `ViewerPickResult`；`pickAll` 返回由近到远的全部命中。默认 `layers` 为 `['entity', 'hismInstance', 'tilesFeature']`；传入 `root` 且未指定 `layers` 时只测 `object` 层。无 HISM 图层时自动跳过 `hismInstance`。
 
 ```ts
-const entityHit = viewer.pickEntity({ x: 400, y: 300 }, { tolerance: 6 })
+const hit = viewer.pick({ x: 400, y: 300 })
+if (hit?.type === 'tilesFeature') console.log(hit.feature.properties)
+
+const modelHit = viewer.pick(pos, { root: model.root })
+const hismHit = viewer.pick(pos, { layers: ['hismInstance'] })
 ```
 
-### `pickEntities(position, options?)`
-
-拾取屏幕位置对应的实体列表，按距离从近到远排序。点和线实体支持 `options.tolerance` 屏幕空间容差；同一个实体如果多个图形同时命中，只返回该实体的最佳命中结果。未命中时返回空数组。
-
-```ts
-const entityHits = viewer.pickEntities({ x: 400, y: 300 }, { tolerance: 6 })
-```
+`options` 支持 `layers`、`root`、`recursive`、`tolerance`（点/线实体屏幕容差，CSS 像素）。
 
 ### `addHismLayer(options)`
 
 添加 HISM 实例化图层，用于大规模静态 mesh（森林、岩石场等）。返回 `HismLayer` 句柄，支持 `show` 与 `remove()`。配置见 [HISM 指南](../guide/hism.md)。
-
-### `pickHism(position)`
-
-拾取 HISM 实例。`position` 为相对 canvas 左上角的像素坐标（与 `ViewerMouseEvent.position` 一致）。未命中返回 `null`；命中返回 `HismPickResult`（含 `layerId`、`instanceId`、`archetypeIndex`、`lodIndex`、`point` 等）。
 
 ### `getHismLayer(id)` / `removeHismLayer(id)` / `getHismRuntimeStats()`
 

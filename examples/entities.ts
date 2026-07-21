@@ -156,7 +156,8 @@ setStatus(
 
 // 拾取：点击实体回传属性 / Pick: clicking an entity returns its properties.
 viewer.on("click", (event) => {
-  const pickedEntity = event.entity
+  const pickedEntity =
+    event.pick?.type === "entity" ? event.pick.entity : null
   if (!pickedEntity) {
     if (pickReadoutElement) {
       pickReadoutElement.textContent = "未命中实体"

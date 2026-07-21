@@ -300,15 +300,16 @@ function updateHud() {
 }
 
 viewer.on("click", (event) => {
-  const pick = viewer.pickHism(event.position)
-  if (!pick) {
+  const pick = viewer.pick(event.position, { layers: ["hismInstance"] })
+  if (!pick || pick.type !== "hismInstance") {
     viewer.highlight.clear()
     if (hudPick) hudPick.textContent = "未命中 HISM 实例"
     return
   }
   viewer.highlight.set(pick)
+  const { instance } = pick
   if (hudPick) {
-    hudPick.textContent = `命中 ${pick.layerId} · cluster ${pick.clusterKey} · archetype ${pick.archetypeIndex} · LOD ${pick.lodIndex} · instance ${pick.instanceId}`
+    hudPick.textContent = `命中 ${instance.layerId} · cluster ${instance.clusterKey} · archetype ${instance.archetypeIndex} · LOD ${instance.lodIndex} · instance ${instance.instanceId}`
   }
 })
 

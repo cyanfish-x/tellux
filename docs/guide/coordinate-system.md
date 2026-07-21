@@ -115,6 +115,6 @@ viewer.scene.threeScene.add(marker)
 反向查询（把一个世界坐标点转回经纬高）通常通过拾取接口完成：
 
 - 屏幕点 → 经纬高：`viewer.pickCartographic(position)`
-- 屏幕点 → 3D Tiles feature（含经纬高）：`viewer.pick3DTilesFeature(position)`
+- 屏幕点 → 3D Tiles feature（含经纬高）：`viewer.pick(position, { layers: ['tilesFeature'] })`，再读 `feature.cartographic`
 
-这两者返回的 `cartographic` 字段就是经纬高，详见「交互与拾取」。
+详见「交互与拾取」。

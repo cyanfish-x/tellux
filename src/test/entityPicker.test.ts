@@ -108,33 +108,40 @@ describe('EntityPicker', () => {
   })
 })
 
-describe('ViewerInteractionManager entity picking tolerance', () => {
-  it('uses default click and mousemove tolerances for entity picking', () => {
+describe('ViewerInteractionManager pick injection', () => {
+  it('uses pickAll on click and pickNearest on mousemove with entity tolerances', () => {
     const domElement = createFakeDomElement()
-    const pickedEntity = { entity: { id: 'entity-1' }, point: new THREE.Vector3(), distance: 1 } as never
-    const pickEntities = vi.fn(() => [pickedEntity])
-    const events: Array<{ entities: unknown[] }> = []
+    const pickedEntity = {
+      type: 'entity' as const,
+      distance: 1,
+      entity: { entity: { id: 'entity-1' }, point: new THREE.Vector3(), distance: 1 }
+    } as const
+    const pickNearest = vi.fn(() => pickedEntity as never)
+    const pickAll = vi.fn(() => [pickedEntity] as never[])
+    const events: Array<{ pick: unknown; picks: unknown[] }> = []
     const manager = new ViewerInteractionManager({
       viewer: {} as never,
       camera: { cancelFlight: vi.fn() } as never,
       controls: { adjustHeight: false } as never,
       domElement: domElement as never,
       pickCartographic: () => null,
-      pick3DTilesFeature: () => null,
-      pickEntities
+      pickNearest,
+      pickAll
     })
 
-    manager.on('click', (event) => events.push({ entities: event.entities }))
-    manager.on('mousemove', (event) => events.push({ entities: event.entities }))
+    manager.on('click', (event) => events.push({ pick: event.pick, picks: event.picks }))
+    manager.on('mousemove', (event) => events.push({ pick: event.pick, picks: event.picks }))
 
     domElement.dispatch('click', { clientX: 12, clientY: 14 })
     domElement.dispatch('mousemove', { clientX: 20, clientY: 22 })
 
-    expect(pickEntities).toHaveBeenNthCalledWith(1, { x: 12, y: 14 }, { tolerance: 6 })
-    expect(pickEntities).toHaveBeenNthCalledWith(2, { x: 20, y: 22 }, { tolerance: 4 })
+    expect(pickAll).toHaveBeenCalledTimes(1)
+    expect(pickAll).toHaveBeenCalledWith({ x: 12, y: 14 }, { tolerance: 6 })
+    expect(pickNearest).toHaveBeenCalledTimes(1)
+    expect(pickNearest).toHaveBeenCalledWith({ x: 20, y: 22 }, { tolerance: 4 })
     expect(events).toEqual([
-      { entities: [pickedEntity] },
-      { entities: [pickedEntity] }
+      { pick: pickedEntity, picks: [pickedEntity] },
+      { pick: pickedEntity, picks: [pickedEntity] }
     ])
 
     manager.dispose()

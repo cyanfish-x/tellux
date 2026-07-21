@@ -82,4 +82,4 @@ viewer.scene.threeScene.add(marker)   // 加到这里参与 Tellux 渲染
 通常通过拾取接口完成（见 interaction.md）：
 
 - 屏幕点 → 经纬高：`viewer.pickCartographic({ x, y })`
-- 屏幕点 → feature（含经纬高）：`viewer.pick3DTilesFeature({ x, y })`
+- 屏幕点 → feature（含经纬高）：`viewer.pick({ x, y }, { layers: ['tilesFeature'] })`
