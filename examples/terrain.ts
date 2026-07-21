@@ -94,7 +94,13 @@ tiandituTokenField.placeholder = defaultTiandituToken
 if (tiandituTerrainHint) {
   tiandituTerrainHint.textContent = `服务模板：${tiandituTerrainServiceTemplate}`
 }
-terrainSourceField.value = defaultTiandituToken ? "tianditu" : "cesium-ion"
+// 本地开发优先 Cesium Ion：天地图浏览器端 key 的域名白名单通常不含
+// localhost，swdx 会以 HTTP 200 空 body 失败；影像 DataServer 仍可能正常。
+// Prefer Cesium Ion in local dev: browser-side Tianditu keys rarely whitelist
+// localhost, and swdx often fails with HTTP 200 empty bodies while imagery still works.
+const preferIonInDev = import.meta.env.DEV && Boolean(DEFAULT_ION_TOKEN)
+terrainSourceField.value =
+  preferIonInDev || !defaultTiandituToken ? "cesium-ion" : "tianditu"
 ionTerrainAssetIdField.value = DEFAULT_ION_TERRAIN_ASSET_ID
 ionTerrainTokenField.value = ""
 ionTerrainTokenField.placeholder = DEFAULT_ION_TOKEN
@@ -244,7 +250,13 @@ ionTerrainTokenField.addEventListener("keydown", (event) => {
 
 syncTerrainSourceFields()
 
-if (defaultTiandituToken) {
+if (preferIonInDev) {
+  terrainEnabledControl.checked = true
+  enableSelectedTerrain()
+  setStatus(
+    "本地开发已默认加载 Cesium Ion 地形。可手动切换到天地图 swdx（需 key 开通三维地形且域名白名单含当前页面来源）。"
+  )
+} else if (defaultTiandituToken) {
   terrainEnabledControl.checked = true
   enableSelectedTerrain()
   setStatus(

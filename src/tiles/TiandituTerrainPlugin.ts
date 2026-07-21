@@ -282,6 +282,16 @@ export class TiandituTerrainPlugin {
     }
 
     if (buffer.byteLength < MIN_TERRAIN_TILE_BYTES) {
+      // 天地图常对未授权 / 域名未备案 / 服务不可用返回 HTTP 200 + 空 body，
+      // 而不是 403 JSON；影像 DataServer 仍可能正常。
+      // Tianditu often returns HTTP 200 with an empty body (instead of a 403
+      // JSON error) when the key lacks elevation access, the Referer domain is
+      // not whitelisted, or swdx is unavailable — while imagery may still work.
+      this.reportServiceError(
+        `elv_c tile response is too small (${buffer.byteLength} bytes). ` +
+          'Check that the tk has 三维地形 (swdx) access, the page origin is in the ' +
+          'key domain whitelist, or switch to Cesium Ion / URL terrain.'
+      )
       throw new Error(
         `TiandituTerrainPlugin: elv_c tile response is too small (${buffer.byteLength} bytes).`
       )

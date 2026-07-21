@@ -71,26 +71,27 @@ VITE_GAUSSIAN_SPLAT_3D_TILESET_URL=https://example.com/3dgs/tileset.json
 
 ## 天地图地形示例
 
-`terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.setTerrain(...)`。默认使用天地图 swdx
-`elv_c` 高程地形，也支持切换到 Cesium Ion terrain asset。
+`terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.setTerrain(...)`，可在天地图
+swdx `elv_c` 与 Cesium Ion terrain 之间切换。
 
-请在项目根目录 `.env` 中配置天地图 `tk` 密钥：
+本地 `pnpm dev` 时，若已配置 `VITE_CESIUM_ION_TOKEN`，示例会默认走 Cesium Ion：
+天地图浏览器端 key 的域名白名单通常不含 `localhost`，`swdx` 常以 HTTP 200 空
+body 失败（影像 `DataServer` 仍可能正常）。生产域名且 key 已开通三维地形时，可
+手动切回天地图。
+
+请在项目根目录 `.env` 中配置：
 
 ```txt
 VITE_TIANDITU_TOKEN=your_tianditu_token
-```
-
-如需对比 Cesium Ion 地形，可额外配置：
-
-```txt
 VITE_CESIUM_ION_TERRAIN_ASSET_ID=1
 VITE_CESIUM_ION_TOKEN=your_token
 ```
 
 ## Cesium 地形示例（Ion / URL）
 
-Tellux 也支持 Cesium quantized-mesh URL 与 Cesium Ion 地形。未配置天地图 token 时，
-`terrain.html` 会回退到 Cesium Ion 默认配置；也可以手动切换到 URL quantized-mesh：
+Tellux 也支持 Cesium quantized-mesh URL 与 Cesium Ion 地形。未配置天地图 token、
+或本地开发已配置 Ion token 时，`terrain.html` 会优先使用 Cesium Ion；也可以手动
+切换到 URL quantized-mesh：
 
 ```txt
 VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/

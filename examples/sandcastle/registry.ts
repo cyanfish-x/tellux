@@ -150,6 +150,7 @@ function getTitle(id: string, html: string) {
   return (
     titleById[id] ||
     document.querySelector("h1")?.textContent?.trim() ||
+    document.querySelector(".example-panel__title")?.textContent?.trim() ||
     document.querySelector("title")?.textContent?.replace(/^Tellux\s*/i, "").trim() ||
     id
   )

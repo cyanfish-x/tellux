@@ -6,7 +6,6 @@ setupExamplePanels()
 
 const container = document.querySelector('#viewer')
 const dujiangyanButton = document.querySelector<HTMLButtonElement>('#dujiangyan')
-const pacificButton = document.querySelector<HTMLButtonElement>('#pacific')
 const himalayaButton = document.querySelector<HTMLButtonElement>('#himalaya')
 
 const initialDaytimeHourUTC = 5
@@ -17,14 +16,33 @@ const dujiangyanView = {
   height: 2003.9716012054323,
   heading: -122.64353116544416,
   pitch: -14.837941851547878,
-  roll: 0.00004662245553609294
+  roll: 0.00004662245553609294,
+  clouds: {
+    layerAltitude: 2500,
+    layerHeight: 650
+  }
+}
+
+// 近地视角，高度与紫坪铺水库同量级；略抬高以避开珠峰附近地形。
+// Near-surface view at Zipingpu-like altitude; slightly raised for Everest terrain.
+const himalayaView = {
+  latitude: 27.98,
+  longitude: 86.92,
+  height: 6500,
+  heading: -40,
+  pitch: -16,
+  roll: 0,
+  clouds: {
+    layerAltitude: 8500,
+    layerHeight: 200
+  }
 }
 
 if (!(container instanceof HTMLElement)) {
   throw new Error('Viewer container not found.')
 }
 
-if (!dujiangyanButton || !pacificButton || !himalayaButton) {
+if (!dujiangyanButton || !himalayaButton) {
   throw new Error('Atmosphere controls not found.')
 }
 
@@ -56,51 +74,33 @@ const viewer = new tellux.Viewer(container, {
 })
 
 viewer.clock.setHourUTC(initialDaytimeHourUTC)
-viewer.scene.clouds.layerAltitude = 2500
-viewer.scene.clouds.layerHeight = 650
+viewer.scene.clouds.layerAltitude = dujiangyanView.clouds.layerAltitude
+viewer.scene.clouds.layerHeight = dujiangyanView.clouds.layerHeight
 ;(window as any).viewer = viewer
 
-dujiangyanButton.addEventListener('click', () => {
+function applyLocationView(view: typeof dujiangyanView | typeof himalayaView) {
+  viewer.scene.clouds.layerAltitude = view.clouds.layerAltitude
+  viewer.scene.clouds.layerHeight = view.clouds.layerHeight
   viewer.camera.flyTo({
     destination: {
-      latitude: dujiangyanView.latitude,
-      longitude: dujiangyanView.longitude,
-      height: dujiangyanView.height
+      latitude: view.latitude,
+      longitude: view.longitude,
+      height: view.height
     },
     orientation: {
-      heading: dujiangyanView.heading,
-      pitch: dujiangyanView.pitch,
-      roll: dujiangyanView.roll
+      heading: view.heading,
+      pitch: view.pitch,
+      roll: view.roll
     }
   })
-})
+}
 
-pacificButton.addEventListener('click', () => {
-  viewer.camera.flyTo({
-    destination: {
-      latitude: 22.8,
-      longitude: 151.4,
-      height: 760000
-    },
-    orientation: {
-      heading: -55,
-      pitch: -38
-    }
-  })
+dujiangyanButton.addEventListener('click', () => {
+  applyLocationView(dujiangyanView)
 })
 
 himalayaButton.addEventListener('click', () => {
-  viewer.camera.flyTo({
-    destination: {
-      latitude: 28.1,
-      longitude: 86.9,
-      height: 340000
-    },
-    orientation: {
-      heading: -95,
-      pitch: -32
-    }
-  })
+  applyLocationView(himalayaView)
 })
 
 window.addEventListener('beforeunload', () => {

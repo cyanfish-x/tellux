@@ -10,6 +10,7 @@ import {
   createTiandituWmtsPreprocessURL,
   createTiandituXYZImagery,
   defaultTiandituToken,
+  defaultTiandituTokens,
 } from "./shared"
 import { setupExamplePanels } from "./example-panel"
 
@@ -18,9 +19,6 @@ setupExamplePanels()
 const container = document.querySelector("#viewer")
 const overlayList = document.querySelector<HTMLElement>("#overlay-list")
 const layerStatus = document.querySelector<HTMLElement>("#layer-status")
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
-const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 /**
  * 天地图 WMTS 注记（cia_w）URL 预处理：按瓦片坐标确定性轮换子域和 token，
@@ -348,7 +346,12 @@ async function main() {
   let chengduAdminGeoJSON: GeoJSONFeatureCollection | null = null
   let adminLoadIssue: string | null = null
 
-  const adminLoadResult = await loadChengduAdminGeoJSON(defaultTiandituToken)
+  const adminLoadResult = await loadChengduAdminGeoJSON(
+    // v2/administrative 只接受单个 tk；多 key 逗号串会导致 400「请求参数非法长度或不合规」。
+    // The administrative API accepts a single tk; a comma-joined multi-key string
+    // returns HTTP 400 ("illegal parameter length or non-compliant").
+    defaultTiandituTokens[0] ?? ""
+  )
   chengduAdminGeoJSON = adminLoadResult.geojson
   adminLoadIssue = adminLoadResult.issue
 
@@ -408,16 +411,6 @@ async function main() {
 
 const viewer = new tellux.Viewer(container, {
   dracoDecoderPath: "/draco/gltf/",
-  terrain: DEFAULT_ION_TOKEN
-    ? {
-        type: "cesium-ion",
-        assetId: DEFAULT_ION_TERRAIN_ASSET_ID,
-        apiToken: DEFAULT_ION_TOKEN,
-        tileLoading: {
-          enableTileSplitting: true,
-        },
-      }
-    : undefined,
   layers: initialLayers,
   camera: {
     latitude: 30.5728,
