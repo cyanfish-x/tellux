@@ -3,6 +3,14 @@ import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker"
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker"
 import packageJson from "../../package.json"
 import {
+  applyTranslations,
+  mountLanguageToggle,
+  onLocaleChange,
+  pickLocalized,
+  resolveLocale,
+  t,
+} from "../i18n"
+import {
   defaultSandcastleExample,
   getSandcastleExample,
   sandcastleExamples,
@@ -60,64 +68,65 @@ function queryRequired<T extends Element>(
 root.innerHTML = `
   <main class="sandcastle">
     <header class="sandcastle-topbar">
-      <a class="portal-brand" href="./index.html" aria-label="Tellux 首页">
+      <a class="portal-brand" href="./index.html" data-i18n-attr="aria-label:sandcastle.brand.homeAria" aria-label="Tellux 首页">
         <span class="portal-brand__mark" aria-hidden="true">T</span>
         <span>Tellux</span>
       </a>
       <div class="sandcastle-title">
         <strong>${telluxVersion}</strong>
       </div>
-      <div class="sandcastle-actions" aria-label="示例操作">
+      <div class="sandcastle-actions" data-i18n-attr="aria-label:sandcastle.actions.aria" aria-label="示例操作">
+        <div data-lang-toggle></div>
         <a class="sandcastle-button" data-action="standalone" href="./sandcastle/runner.html" target="_blank" rel="noreferrer">Standalone</a>
       </div>
     </header>
-    <nav class="sandcastle-rail" aria-label="Sandcastle views">
-      <button class="sandcastle-rail__button" data-view="examples" type="button" aria-label="案例">
+    <nav class="sandcastle-rail" data-i18n-attr="aria-label:sandcastle.rail.aria" aria-label="Sandcastle views">
+      <button class="sandcastle-rail__button" data-view="examples" type="button" data-i18n-attr="aria-label:sandcastle.rail.examples" aria-label="案例">
         <span aria-hidden="true">▧</span>
       </button>
-      <button class="sandcastle-rail__button" data-view="code" type="button" aria-label="代码">
+      <button class="sandcastle-rail__button" data-view="code" type="button" data-i18n-attr="aria-label:sandcastle.rail.code" aria-label="代码">
         <span aria-hidden="true">&lt;/&gt;</span>
       </button>
-      <a class="sandcastle-rail__button sandcastle-rail__link" data-action="open-docs" href="./docs/" target="_blank" rel="noreferrer" aria-label="文档" title="文档">
+      <a class="sandcastle-rail__button sandcastle-rail__link" data-action="open-docs" href="./docs/" target="_blank" rel="noreferrer" data-i18n-attr="aria-label:sandcastle.rail.docs,title:sandcastle.rail.docs" aria-label="文档" title="文档">
         <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z" />
         </svg>
       </a>
     </nav>
-    <aside class="sandcastle-sidebar" data-panel="examples" aria-label="示例列表">
+    <aside class="sandcastle-sidebar" data-panel="examples" data-i18n-attr="aria-label:sandcastle.sidebar.aria" aria-label="示例列表">
       <div class="sandcastle-sidebar__search">
         <label class="sandcastle-search-field">
           <svg class="sandcastle-search-field__icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
             <circle cx="11" cy="11" r="7" />
             <path d="m16 16 4 4" />
           </svg>
-          <input class="sandcastle-search" type="search" placeholder="搜索示例或标签" aria-label="搜索示例或标签" />
+          <input class="sandcastle-search" type="search" data-i18n-attr="placeholder:sandcastle.search.placeholder,aria-label:sandcastle.search.placeholder" placeholder="搜索示例或标签" aria-label="搜索示例或标签" />
         </label>
-        <button class="sandcastle-side-toggle" data-action="toggle-side-panel" type="button" aria-expanded="true" aria-label="收起侧边栏" title="收起侧边栏"></button>
+        <button class="sandcastle-side-toggle" data-action="toggle-side-panel" type="button" aria-expanded="true" data-i18n-attr="aria-label:sandcastle.side.collapse,title:sandcastle.side.collapse" aria-label="收起侧边栏" title="收起侧边栏"></button>
       </div>
       <div class="sandcastle-gallery__list"></div>
     </aside>
-    <section class="sandcastle-editor-panel" data-panel="code" aria-label="代码编辑">
-      <div class="sandcastle-editor-tabs" role="tablist" aria-label="代码类型">
+    <section class="sandcastle-editor-panel" data-panel="code" data-i18n-attr="aria-label:sandcastle.editor.aria" aria-label="代码编辑">
+      <div class="sandcastle-editor-tabs" role="tablist" data-i18n-attr="aria-label:sandcastle.editor.tabsAria" aria-label="代码类型">
         <button class="sandcastle-editor-tab" data-pane="javascript" type="button" role="tab">Javascript</button>
         <button class="sandcastle-editor-tab" data-pane="html" type="button" role="tab">HTML/CSS</button>
-        <div class="sandcastle-editor-actions" aria-label="代码操作">
+        <div class="sandcastle-editor-actions" data-i18n-attr="aria-label:sandcastle.editor.actionsAria" aria-label="代码操作">
           <button class="sandcastle-button sandcastle-button--primary" data-action="run" type="button">Run</button>
         </div>
-        <button class="sandcastle-side-toggle" data-action="toggle-side-panel" type="button" aria-expanded="true" aria-label="收起侧边栏" title="收起侧边栏"></button>
+        <button class="sandcastle-side-toggle" data-action="toggle-side-panel" type="button" aria-expanded="true" data-i18n-attr="aria-label:sandcastle.side.collapse,title:sandcastle.side.collapse" aria-label="收起侧边栏" title="收起侧边栏"></button>
       </div>
       <div class="sandcastle-editor" id="sandcastle-editor"></div>
     </section>
-    <div class="sandcastle-splitter" role="separator" aria-orientation="vertical" aria-label="调整代码与预览区域宽度" tabindex="0"></div>
-    <section class="sandcastle-stage" aria-label="预览与控制台">
+    <div class="sandcastle-splitter" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label:sandcastle.splitter.aria" aria-label="调整代码与预览区域宽度" tabindex="0"></div>
+    <section class="sandcastle-stage" data-i18n-attr="aria-label:sandcastle.stage.aria" aria-label="预览与控制台">
       <div class="sandcastle-preview-panel">
-        <iframe class="sandcastle-preview" title="Tellux Sandcastle preview" sandbox="allow-scripts allow-same-origin"></iframe>
+        <iframe class="sandcastle-preview" data-i18n-attr="title:sandcastle.preview.iframeTitle" title="Tellux Sandcastle preview" sandbox="allow-scripts allow-same-origin"></iframe>
         <div class="sandcastle-preview-loading" role="status" aria-live="polite" aria-hidden="true">
           <span class="sandcastle-preview-loading__ring" aria-hidden="true"></span>
-          <span>Loading example...</span>
+          <span data-i18n="sandcastle.preview.loading">Loading example...</span>
         </div>
-        <button class="sandcastle-preview-fullscreen" data-action="toggle-preview-fullscreen" type="button" aria-label="全屏预览" title="全屏预览">
+        <button class="sandcastle-preview-fullscreen" data-action="toggle-preview-fullscreen" type="button" data-i18n-attr="aria-label:sandcastle.preview.fullscreen,title:sandcastle.preview.fullscreen" aria-label="全屏预览" title="全屏预览">
           <svg class="sandcastle-preview-fullscreen__enter" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
             <path d="M8 3H3v5" />
             <path d="M3 3l7 7" />
@@ -140,11 +149,11 @@ root.innerHTML = `
           </svg>
         </button>
       </div>
-      <section class="sandcastle-console" aria-label="Console">
-        <div class="sandcastle-console-resizer" role="separator" aria-orientation="horizontal" aria-label="调整 Console 高度" tabindex="0"></div>
+      <section class="sandcastle-console" data-i18n-attr="aria-label:sandcastle.console.aria" aria-label="Console">
+        <div class="sandcastle-console-resizer" role="separator" aria-orientation="horizontal" data-i18n-attr="aria-label:sandcastle.console.resizeAria" aria-label="调整 Console 高度" tabindex="0"></div>
         <header>
           <div class="sandcastle-console__title">
-            <button class="sandcastle-console__toggle" data-action="toggle-console" type="button" aria-expanded="true" aria-label="折叠 Console" title="折叠 Console"></button>
+            <button class="sandcastle-console__toggle" data-action="toggle-console" type="button" aria-expanded="true" data-i18n-attr="aria-label:sandcastle.console.collapse,title:sandcastle.console.collapse" aria-label="折叠 Console" title="折叠 Console"></button>
             <span>Console</span>
           </div>
           <div class="sandcastle-console__actions">
@@ -165,6 +174,23 @@ root.innerHTML = `
     </section>
   </main>
 `
+
+resolveLocale()
+applyTranslations(sandcastleRoot)
+mountLanguageToggle({
+  mount: sandcastleRoot.querySelector("[data-lang-toggle]"),
+  applyDocument: false,
+  onChange: () => {
+    applyTranslations(sandcastleRoot)
+    setConsoleCollapsed(isConsoleCollapsed)
+    updatePreviewFullscreenState()
+    setSidePanelCollapsed(isSidePanelCollapsed)
+    filterExamples(searchInput.value)
+  },
+})
+onLocaleChange(() => {
+  applyTranslations(sandcastleRoot)
+})
 
 const railButtons = Array.from(
   sandcastleRoot.querySelectorAll<HTMLButtonElement>(".sandcastle-rail__button")
@@ -462,13 +488,11 @@ function setConsoleCollapsed(isCollapsed: boolean) {
     isConsoleCollapsed ? "36px" : `${consoleHeight}px`
   )
   toggleConsoleButton.setAttribute("aria-expanded", String(!isConsoleCollapsed))
-  toggleConsoleButton.setAttribute(
-    "aria-label",
-    isConsoleCollapsed ? "展开 Console" : "折叠 Console"
-  )
-  toggleConsoleButton.title = isConsoleCollapsed
-    ? "展开 Console"
-    : "折叠 Console"
+  const label = isConsoleCollapsed
+    ? t("sandcastle.console.expand")
+    : t("sandcastle.console.collapse")
+  toggleConsoleButton.setAttribute("aria-label", label)
+  toggleConsoleButton.title = label
 }
 
 function updatePreviewFullscreenState() {
@@ -478,13 +502,11 @@ function updatePreviewFullscreenState() {
     "aria-pressed",
     String(isFullscreen)
   )
-  togglePreviewFullscreenButton.setAttribute(
-    "aria-label",
-    isFullscreen ? "退出全屏预览" : "全屏预览"
-  )
-  togglePreviewFullscreenButton.title = isFullscreen
-    ? "退出全屏预览"
-    : "全屏预览"
+  const label = isFullscreen
+    ? t("sandcastle.preview.exitFullscreen")
+    : t("sandcastle.preview.fullscreen")
+  togglePreviewFullscreenButton.setAttribute("aria-label", label)
+  togglePreviewFullscreenButton.title = label
 }
 
 async function togglePreviewFullscreen() {
@@ -510,8 +532,9 @@ function setSidePanelCollapsed(isCollapsed: boolean) {
   layoutElement.toggleAttribute("data-side-collapsed", isSidePanelCollapsed)
   toggleSidePanelButtons.forEach((button) => {
     button.setAttribute("aria-expanded", String(!isSidePanelCollapsed))
-    button.setAttribute("aria-label", "收起侧边栏")
-    button.title = "收起侧边栏"
+    const label = t("sandcastle.side.collapse")
+    button.setAttribute("aria-label", label)
+    button.title = label
   })
   if (isSidePanelCollapsed) {
     layoutElement.toggleAttribute("data-resizing", false)
@@ -668,6 +691,8 @@ function updateDescriptionTitle(description: HTMLElement, fullText: string) {
 function renderGallery(examples: SandcastleExample[]) {
   galleryList.innerHTML = ""
   for (const example of examples) {
+    const title = pickLocalized(example.title)
+    const description = pickLocalized(example.description)
     const button = document.createElement("button")
     button.className = "sandcastle-card"
     button.type = "button"
@@ -677,19 +702,19 @@ function renderGallery(examples: SandcastleExample[]) {
       <span class="sandcastle-card__thumb" aria-hidden="true"></span>
       <span class="sandcastle-card__body">
         <span class="sandcastle-card__category">${example.category}</span>
-        <strong>${example.title}</strong>
-        <span class="sandcastle-card__description">${example.description}</span>
+        <strong>${title}</strong>
+        <span class="sandcastle-card__description">${description}</span>
         <span class="sandcastle-card__tags">${example.tags
           .map((tag) => `<em>${tag}</em>`)
           .join("")}</span>
       </span>
     `
-    const description = button.querySelector<HTMLElement>(
+    const descriptionEl = button.querySelector<HTMLElement>(
       ".sandcastle-card__description"
     )
-    if (description) {
-      description.addEventListener("pointerenter", () => {
-        updateDescriptionTitle(description, example.description)
+    if (descriptionEl) {
+      descriptionEl.addEventListener("pointerenter", () => {
+        updateDescriptionTitle(descriptionEl, description)
       })
     }
     if (example.thumbnail) {
@@ -700,8 +725,8 @@ function renderGallery(examples: SandcastleExample[]) {
     }
     button.addEventListener("click", () => selectExample(example))
     galleryList.appendChild(button)
-    if (description) {
-      updateDescriptionTitle(description, example.description)
+    if (descriptionEl) {
+      updateDescriptionTitle(descriptionEl, description)
     }
   }
 }
@@ -722,9 +747,11 @@ function filterExamples(query: string) {
   displayedExamples = text
     ? sandcastleExamples.filter((example) => {
         const haystack = [
-          example.title,
+          example.title.zh,
+          example.title.en,
           example.category,
-          example.description,
+          example.description.zh,
+          example.description.en,
           example.sourceHtmlPath,
           example.sourceScriptPath,
           ...example.tags,

@@ -1,3 +1,5 @@
+import { messages } from "../i18n/messages"
+import type { LocalizedText } from "../i18n"
 import type { SandcastleExample } from "./types"
 
 const htmlModules = {
@@ -45,14 +47,6 @@ const categoryById: Record<string, string> = {
   "hism-forest": "HISM",
   "hism-compare": "HISM",
   "webgpu-basic": "Rendering",
-}
-
-const titleById: Record<string, string> = {
-  "gaussian-splat-3d-tiles": "高斯泼溅 3D Tiles",
-}
-
-const descriptionById: Record<string, string> = {
-  "gaussian-splat-3d-tiles": "示例侧集成 3d-tiles-rendererjs-3dgs-plugin，在 Tellux 地球场景中加载高斯泼溅 3D Tiles。",
 }
 
 const tagByTerm: Array<[string, string]> = [
@@ -145,23 +139,53 @@ function getScriptSource(scriptPath: string | null) {
   return scriptPath ? scriptModules[scriptPath] : undefined
 }
 
-function getTitle(id: string, html: string) {
+function getHtmlFallbackTitle(html: string) {
   const document = parseHtmlDocument(html)
   return (
-    titleById[id] ||
     document.querySelector("h1")?.textContent?.trim() ||
     document.querySelector(".example-panel__title")?.textContent?.trim() ||
-    document.querySelector("title")?.textContent?.replace(/^Tellux\s*/i, "").trim() ||
-    id
+    document
+      .querySelector("title")
+      ?.textContent?.replace(/^Tellux\s*/i, "")
+      .trim() ||
+    ""
   )
 }
 
-function getDescription(id: string, html: string) {
+function getHtmlFallbackDescription(html: string) {
   const document = parseHtmlDocument(html)
   return (
-    descriptionById[id] ||
-    document.querySelector(".toolbar p, .layer-manager__status, .status")?.textContent?.trim() ||
+    document
+      .querySelector(".toolbar p, .layer-manager__status, .status")
+      ?.textContent?.trim() || ""
+  )
+}
+
+function localizedFromKey(
+  key: string,
+  fallbackZh: string,
+  fallbackEn = fallbackZh
+): LocalizedText {
+  return {
+    zh: messages.zh[key] ?? fallbackZh,
+    en: messages.en[key] ?? fallbackEn,
+  }
+}
+
+function getTitle(id: string, html: string): LocalizedText {
+  const fallback = getHtmlFallbackTitle(html) || id
+  return localizedFromKey(`example.${id}.registry.title`, fallback)
+}
+
+function getDescription(id: string, html: string): LocalizedText {
+  const fallback =
+    getHtmlFallbackDescription(html) ||
+    messages.zh["sandcastle.registry.defaultDescription"] ||
     "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。"
+  return localizedFromKey(
+    `example.${id}.registry.description`,
+    fallback,
+    messages.en["sandcastle.registry.defaultDescription"] ?? fallback
   )
 }
 
@@ -215,7 +239,9 @@ function createExample(path: string, html: string): SandcastleExample | null {
     ...(thumbnail === undefined ? {} : { thumbnail }),
     category: categoryById[id] ?? "Example",
     description,
-    tags: getTags(`${title} ${description} ${javascript}`),
+    tags: getTags(
+      `${title.zh} ${title.en} ${description.zh} ${description.en} ${javascript}`
+    ),
     html: normalizeHtmlForEditor(html),
     javascript,
     sourceHtmlPath: path,
@@ -230,7 +256,7 @@ const allSandcastleExamples: SandcastleExample[] = Object.entries(htmlModules)
     (a, b) =>
       (a.order ?? Number.MAX_SAFE_INTEGER) -
         (b.order ?? Number.MAX_SAFE_INTEGER) ||
-      a.title.localeCompare(b.title, "zh-CN")
+      a.title.zh.localeCompare(b.title.zh, "zh-CN")
   )
 
 export const defaultSandcastleExample =

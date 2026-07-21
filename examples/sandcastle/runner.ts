@@ -17,6 +17,8 @@ import {
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
 import { setupExamplePanels } from "../example-panel"
+import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
+import type { BootExampleI18nOptions } from "../i18n"
 import {
   HISM_DEMO_CENTER,
   HISM_DEMO_VIEW_POSE,
@@ -141,6 +143,11 @@ function transformExampleScript(code: string) {
   )
 }
 
+/** Sandcastle iframe 内不挂语言切换器（父页已有）；示例里仍可调用 bootExampleI18n。 */
+function bootExampleI18nInRunner(options: BootExampleI18nOptions = {}) {
+  bootExampleI18n({ ...options, toggle: false })
+}
+
 function executeExampleScript(source: string) {
   const sandcastleImportMeta = {
     env: { ...import.meta.env },
@@ -176,6 +183,8 @@ function executeExampleScript(source: string) {
     "createHismDemoViewerOptions",
     "generateFastPlacements",
     "generatePoissonPlacements",
+    "t",
+    "bootExampleI18n",
     "__sandcastleImportMeta",
     `"use strict";\n${transformExampleScript(source)}\n//# sourceURL=tellux-sandcastle-example.js`
   )
@@ -209,6 +218,8 @@ function executeExampleScript(source: string) {
     createHismDemoViewerOptions,
     generateFastPlacements,
     generatePoissonPlacements,
+    t,
+    bootExampleI18nInRunner,
     sandcastleImportMeta
   )
 }
@@ -217,6 +228,8 @@ async function runExample(payload: SandcastleRunPayload) {
   applyHtml(payload.html)
   installConsoleBridge(payload.runId)
   removeOriginalModuleScripts()
+  resolveLocale()
+  applyTranslations(document)
   executeExampleScript(payload.compiledJavascript)
 }
 

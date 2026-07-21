@@ -1,8 +1,10 @@
 ﻿import type { TilesetLayer } from "../src"
 import tellux from "../src"
+import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 type TilesetSource = "url" | "cesium-ion"
@@ -96,8 +98,8 @@ tilesetUrlField.value = DEFAULT_TILESET_URL
 ionAssetIdField.value = DEFAULT_ION_ASSET_ID
 ionTokenField.value = ""
 ionTokenField.placeholder = DEFAULT_ION_TOKEN
-  ? "留空使用默认 token"
-  : "输入 Cesium Ion token"
+  ? t("example.3d-tiles.ph.tokenDefault")
+  : t("example.3d-tiles.ph.tokenInput")
 
 let activeLayer: TilesetLayer | null = null
 
@@ -139,15 +141,13 @@ function activateLayer(layer: TilesetLayer, description: string) {
       pitch: -30,
     })
   }
-  setStatus(`${description} 已加入场景。图层 id：${layer.id}`)
+  setStatus(t("example.3d-tiles.status.loaded", { description, id: layer.id }))
 }
 
 function loadUrlTileset() {
   const url = tilesetUrlField.value.trim()
   if (!url) {
-    setStatus(
-      "请先输入 tileset.json URL，或在 .env 中配置 VITE_3D_TILESET_URL。"
-    )
+    setStatus(t("example.3d-tiles.status.needUrl"))
     return
   }
 
@@ -170,7 +170,7 @@ function loadIonTileset() {
   const apiToken = ionTokenField.value.trim() || DEFAULT_ION_TOKEN
 
   if (!assetId || !apiToken) {
-    setStatus("请先输入 Cesium Ion asset id 和 token，或在 .env 中配置默认值。")
+    setStatus(t("example.3d-tiles.status.needIon"))
     return
   }
 
@@ -200,8 +200,8 @@ tilesetSourceField.addEventListener("change", () => {
   syncTilesetSourceFields()
   setStatus(
     getSelectedTilesetSource() === "url"
-      ? "已切换到 URL 加载；填写 tileset.json 地址后点击“加载”。"
-      : "已切换到 Cesium Ion 加载；填写 asset id 和 token 后点击“加载”。"
+      ? t("example.3d-tiles.status.switchedUrl")
+      : t("example.3d-tiles.status.switchedIon")
   )
 })
 
@@ -211,14 +211,18 @@ tilesetVisibleToggle.addEventListener("change", () => {
   syncLayerVisibility()
   setStatus(
     activeLayer
-      ? `3D Tiles 已${tilesetVisibleToggle.checked ? "显示" : "隐藏"}。`
-      : "还没有加载 3D Tiles。"
+      ? t("example.3d-tiles.status.visibility", {
+          state: tilesetVisibleToggle.checked
+            ? t("common.shown")
+            : t("common.hidden"),
+        })
+      : t("example.3d-tiles.status.none")
   )
 })
 
 removeControl.addEventListener("click", () => {
   clearActiveLayer()
-  setStatus("3D Tiles 已移除。")
+  setStatus(t("example.3d-tiles.status.removed"))
 })
 
 if (DEFAULT_TILESET_URL) {
@@ -231,18 +235,18 @@ syncTilesetSourceFields()
 
 if (DEFAULT_TILESET_URL && getSelectedTilesetSource() === "url") {
   loadUrlTileset()
-  setStatus("已自动加载默认 3D Tiles；也可以替换 URL 后重新加载。")
+  setStatus(t("example.3d-tiles.status.autoLoaded"))
 } else if (
   DEFAULT_ION_ASSET_ID &&
   DEFAULT_ION_TOKEN &&
   getSelectedTilesetSource() === "cesium-ion"
 ) {
-  setStatus("已读取 Cesium Ion 默认配置，可点击“加载”。")
+  setStatus(t("example.3d-tiles.status.ionReady"))
 } else {
   setStatus(
     getSelectedTilesetSource() === "url"
-      ? "输入 tileset.json URL 后点击“加载”。"
-      : "输入 Cesium Ion asset id 和 token 后点击“加载”。"
+      ? t("example.3d-tiles.status.promptUrl")
+      : t("example.3d-tiles.status.promptIon")
   )
 }
 

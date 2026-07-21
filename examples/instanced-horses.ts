@@ -1,10 +1,12 @@
-﻿import * as THREE from "three"
+import * as THREE from "three"
+import { bootExampleI18n, t } from "./i18n"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
@@ -119,8 +121,8 @@ function setAnimationStatus(message: string) {
 
 function updateAnimationButton() {
   toggleAnimationButton.textContent = isAnimationPlaying
-    ? "暂停动画"
-    : "播放动画"
+    ? t("example.instanced-horses.btn.pause")
+    : t("example.instanced-horses.btn.play")
 }
 
 async function createHorseHerd() {
@@ -130,7 +132,7 @@ async function createHorseHerd() {
   regenerateButton.disabled = true
   horseCountElement && (horseCountElement.textContent = "-")
   setAnimationStatus("-")
-  setStatus("正在生成带间距约束的若尔盖草原随机点...")
+  setStatus(t("example.instanced-horses.status.genPoints"))
 
   herd?.dispose()
   herd = null
@@ -144,7 +146,7 @@ async function createHorseHerd() {
     seed: 20260607 + token,
   })
 
-  setStatus(`已生成 ${placements.length} 个候选点，正在离屏采样地形高度...`)
+  setStatus(t("example.instanced-horses.status.sampling", { n: placements.length }))
 
   let sampledPositions: Awaited<
     ReturnType<typeof viewer.sampleHeightMostDetailed>
@@ -165,7 +167,7 @@ async function createHorseHerd() {
       "Failed to sample terrain height for instanced horses.",
       error
     )
-    setStatus("地形高度采样失败，请检查地形数据源是否可用。")
+    setStatus(t("example.instanced-horses.status.sampleFail"))
     regenerateButton.disabled = false
     return
   } finally {
@@ -184,20 +186,20 @@ async function createHorseHerd() {
     )
 
   if (sampledPlacements.length === 0) {
-    setStatus("地形高度没有命中，未加载奔马实例。")
+    setStatus(t("example.instanced-horses.status.noHit"))
     regenerateButton.disabled = false
     return
   }
 
   setStatus(
-    `采样命中 ${sampledPlacements.length} 个点，正在加载 Three.js Horse.glb...`
+    t("example.instanced-horses.status.loadingModel", { n: sampledPlacements.length })
   )
 
   try {
     herd = await buildHorseHerd(sampledPlacements)
   } catch (error) {
     console.error("Failed to load instanced horse model.", error)
-    setStatus("奔马模型加载失败，请检查 three.js 示例资源是否可访问。")
+    setStatus(t("example.instanced-horses.status.modelFail"))
     regenerateButton.disabled = false
     return
   }
@@ -216,7 +218,7 @@ async function createHorseHerd() {
     (horseCountElement.textContent = `${sampledPlacements.length} / ${HORSE_COUNT}`)
   setAnimationStatus("Morph targets instancing")
   setStatus(
-    `已在若尔盖大草原附近放置 ${sampledPlacements.length} 匹实例化奔马。`
+    t("example.instanced-horses.status.ready", { n: sampledPlacements.length })
   )
   viewer.flyToTarget(herd.group, {
     heading: -130,

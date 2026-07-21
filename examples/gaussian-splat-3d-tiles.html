@@ -12,7 +12,7 @@
     <main class="viewer-shell">
       <div id="viewer"></div>
 
-      <aside class="example-panel" id="splat-panel" aria-label="高斯泼溅 3D Tiles 控件">
+      <aside class="example-panel" id="splat-panel" data-i18n-attr="aria-label:example.gaussian-splat-3d-tiles.panel.aria" aria-label="高斯泼溅 3D Tiles 控件">
         <header class="example-panel__chrome">
           <button
             type="button"
@@ -22,18 +22,19 @@
             aria-controls="splat-panel-body"
             title="收起面板"
             aria-label="收起面板"
+            data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
           ></button>
-          <span class="example-panel__title">高斯泼溅 3D Tiles</span>
+          <span class="example-panel__title" data-i18n="example.gaussian-splat-3d-tiles.panel.title">高斯泼溅 3D Tiles</span>
         </header>
 
         <div class="example-panel__collapse" id="splat-panel-body">
           <div class="example-panel__content">
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">数据源</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.gaussian-splat-3d-tiles.folder.source">数据源</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
                   <div class="example-panel__field">
-                    <label class="example-panel__label" for="splat-tileset-url">3DGS tileset.json URL</label>
+                    <label class="example-panel__label" for="splat-tileset-url" data-i18n="example.3d-tiles.label.url">3DGS tileset.json URL</label>
                     <input id="splat-tileset-url" class="example-panel__input" type="url" autocomplete="off" spellcheck="false" />
                   </div>
                 </div>
@@ -41,11 +42,11 @@
             </details>
 
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">选项</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.gaussian-splat-3d-tiles.folder.options">选项</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
                   <label class="example-panel__row">
-                    <span class="example-panel__label">显示高斯泼溅</span>
+                    <span class="example-panel__label" data-i18n="example.gaussian-splat-3d-tiles.label.visible">显示高斯泼溅</span>
                     <input id="splat-visible" class="example-panel__checkbox" type="checkbox" checked />
                   </label>
                 </div>
@@ -53,18 +54,18 @@
             </details>
 
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">操作</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.gaussian-splat-3d-tiles.folder.actions">操作</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
-                  <button class="example-panel__button" id="load-splat-tileset" type="button">加载</button>
-                  <button class="example-panel__button" id="fly-to-splat" type="button">飞行到目标</button>
-                  <button class="example-panel__button example-panel__button--ghost" id="remove-splat-tileset" type="button">移除</button>
+                  <button class="example-panel__button" id="load-splat-tileset" type="button" data-i18n="example.gaussian-splat-3d-tiles.btn.load">加载</button>
+                  <button class="example-panel__button" id="fly-to-splat" type="button" data-i18n="example.gaussian-splat-3d-tiles.btn.flyTo">飞行到目标</button>
+                  <button class="example-panel__button example-panel__button--ghost" id="remove-splat-tileset" type="button" data-i18n="example.gaussian-splat-3d-tiles.btn.remove">移除</button>
                 </div>
               </div>
             </details>
 
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">状态</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.gaussian-splat-3d-tiles.folder.status">状态</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
                   <p id="splat-status" class="example-panel__status" aria-live="polite"></p>

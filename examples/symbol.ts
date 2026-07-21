@@ -1,8 +1,10 @@
-﻿import tellux from "../src"
+import tellux from "../src"
+import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 
@@ -112,9 +114,9 @@ const barIcon = iconUrl('酒吧')
 // ----- 1) POI：图标 + 文字标签（icon + text 共锚点，anchor bottom）。-----
 // ----- 1) POIs: icon + text sharing an anchor (anchor bottom). -----
 const poiList: Array<[number, number, string, string]> = [
-  [FOCUS_LONGITUDE - 0.006, FOCUS_LATITUDE + 0.004, "陆家嘴", pinIcon],
-  [FOCUS_LONGITUDE + 0.005, FOCUS_LATITUDE + 0.005, "东方明珠", starIcon],
-  [FOCUS_LONGITUDE + 0.008, FOCUS_LATITUDE - 0.004, "上海中心", pinIcon],
+  [FOCUS_LONGITUDE - 0.006, FOCUS_LATITUDE + 0.004, t("example.symbol.place.lujiazui"), pinIcon],
+  [FOCUS_LONGITUDE + 0.005, FOCUS_LATITUDE + 0.005, t("example.symbol.place.orientalPearl"), starIcon],
+  [FOCUS_LONGITUDE + 0.008, FOCUS_LATITUDE - 0.004, t("example.symbol.place.shanghaiTower"), pinIcon],
 ]
 const poiIds: string[] = []
 poiList.forEach(([lon, lat, label, icon], index) => {
@@ -145,9 +147,9 @@ poiList.forEach(([lon, lat, label, icon], index) => {
 // ----- 2) 纯文字标签（带 halo），用于地名标注。-----
 // ----- 2) Text-only labels with halo, for place names. -----
 const labelList: Array<[number, number, string]> = [
-  [FOCUS_LONGITUDE - 0.01, FOCUS_LATITUDE - 0.006, "黄浦江"],
-  [FOCUS_LONGITUDE + 0.011, FOCUS_LATITUDE + 0.001, "浦东新区"],
-  [FOCUS_LONGITUDE - 0.003, FOCUS_LATITUDE + 0.009, "外滩"],
+  [FOCUS_LONGITUDE - 0.01, FOCUS_LATITUDE - 0.006, t("example.symbol.place.huangpu")],
+  [FOCUS_LONGITUDE + 0.011, FOCUS_LATITUDE + 0.001, t("example.symbol.place.pudong")],
+  [FOCUS_LONGITUDE - 0.003, FOCUS_LATITUDE + 0.009, t("example.symbol.place.bund")],
 ]
 const labelIds: string[] = []
 labelList.forEach(([lon, lat, label], index) => {
@@ -228,7 +230,7 @@ viewer.entities.add({
   point: { pixelSize: 10, color: "#34d399", outlineColor: "#0f172a", outlineWidth: 2 },
   symbol: {
     text: {
-      text: "圆点 + 标签",
+      text: t("example.symbol.icon.label"),
       font: "SimHei",
       fontSize: 13,
       fillColor: "#ffffff",
@@ -238,25 +240,25 @@ viewer.entities.add({
     anchor: "right",
     pixelOffset: [-8, 0],
   },
-  properties: { kind: "coexist", label: "圆点 + 标签" },
+  properties: { kind: "coexist", label: t("example.symbol.icon.label") },
 })
 
 setStatus(
-  `已绘制 ${poiList.length} 个 POI + ${labelList.length} 个文字标签 + ${iconList.length} 个图标 + 多行/背景 + 圆点共存。`
+  t("example.symbol.status.drawn", { poi: poiList.length, labels: labelList.length, icons: iconList.length })
 )
 
 // 拾取：点击 symbol 回传属性。Pick: clicking a symbol returns its properties.
 viewer.on("click", (event) => {
   const picked = event.pick?.type === "entity" ? event.pick.entity : null
   if (!picked) {
-    if (pickReadoutElement) pickReadoutElement.textContent = "未命中实体"
+    if (pickReadoutElement) pickReadoutElement.textContent = t("example.symbol.pick.miss")
     return
   }
   const { entity } = picked
   const label = (entity.properties.label as string) ?? entity.id
   const kind = (entity.properties.kind as string) ?? "unknown"
   if (pickReadoutElement) {
-    pickReadoutElement.textContent = `命中：${label}（类型：${kind}，id：${entity.id}）`
+    pickReadoutElement.textContent = t("example.symbol.pick.hit", { label, kind, id: entity.id })
   }
 })
 
@@ -271,22 +273,22 @@ function setGroupVisible(ids: string[], visible: boolean) {
 togglePoiInput.addEventListener("change", () => {
   const visible = togglePoiInput.checked
   setGroupVisible(poiIds, visible)
-  setStatus(`POI 已${visible ? "显示" : "隐藏"}。`)
+  setStatus(t("example.symbol.status.togglePoi", { state: visible ? t("common.shown") : t("common.hidden") }))
 })
 toggleLabelsInput.addEventListener("change", () => {
   const visible = toggleLabelsInput.checked
   setGroupVisible(labelIds, visible)
-  setStatus(`文字标签已${visible ? "显示" : "隐藏"}。`)
+  setStatus(t("example.symbol.status.toggleLabels", { state: visible ? t("common.shown") : t("common.hidden") }))
 })
 toggleIconsInput.addEventListener("change", () => {
   const visible = toggleIconsInput.checked
   setGroupVisible(iconIds, visible)
-  setStatus(`图标已${visible ? "显示" : "隐藏"}。`)
+  setStatus(t("example.symbol.status.toggleIcons", { state: visible ? t("common.shown") : t("common.hidden") }))
 })
 toggleMultilineInput.addEventListener("change", () => {
   const visible = toggleMultilineInput.checked
   setGroupVisible([multilineId, "coexist"], visible)
-  setStatus(`多行/背景已${visible ? "显示" : "隐藏"}。`)
+  setStatus(t("example.symbol.status.toggleMultiline", { state: visible ? t("common.shown") : t("common.hidden") }))
 })
 
 // 运行时改色：改文字填充色不重建 SDF 纹理（即时生效）。
@@ -299,13 +301,13 @@ recolorButton.addEventListener("click", () => {
   if (!text) return
   recolorIndex = (recolorIndex + 1) % recolorPalette.length
   text.fillColor = recolorPalette[recolorIndex]
-  setStatus(`"黄浦江" 标签填充色已改为 ${recolorPalette[recolorIndex]}（未重建纹理）。`)
+  setStatus(t("example.symbol.status.recolored", { color: recolorPalette[recolorIndex] }))
 })
 
 clearButton.addEventListener("click", () => {
   viewer.entities.removeAll()
   stressIds.length = 0
-  setStatus("已清空所有实体。")
+  setStatus(t("example.symbol.status.cleared"))
 })
 
 // ----- 大规模 Symbol 压测：输入数量，网格散布 icon+text。-----
@@ -313,12 +315,12 @@ const STRESS_MAX = 20_000
 const STRESS_CHUNK = 250
 const STRESS_HALF_SPAN_DEG = 0.035
 const STRESS_LABELS = [
-  "陆家嘴",
-  "东方明珠",
-  "上海中心",
-  "外滩",
-  "黄浦江",
-  "浦东",
+  t("example.symbol.place.lujiazui"),
+  t("example.symbol.place.orientalPearl"),
+  t("example.symbol.place.shanghaiTower"),
+  t("example.symbol.place.bund"),
+  t("example.symbol.place.huangpu"),
+  t("example.symbol.place.pudong"),
   "金融城",
   "观景台",
 ]
@@ -328,7 +330,7 @@ let stressGenerating = false
 
 clearStressButton.addEventListener("click", () => {
   clearStressSymbols()
-  setStatus("已清空压测 Symbol。")
+  setStatus(t("example.symbol.status.stressCleared"))
 })
 
 generateStressButton.addEventListener("click", () => {
@@ -347,7 +349,7 @@ async function generateStressSymbols() {
 
   const requested = Math.floor(Number(stressCountInput.value))
   if (!Number.isFinite(requested) || requested < 1) {
-    setStatus("请输入有效的压测数量（≥ 1）。")
+    setStatus(t("example.symbol.status.invalidCount"))
     return
   }
   const count = Math.min(requested, STRESS_MAX)
@@ -363,7 +365,7 @@ async function generateStressSymbols() {
   const rows = Math.ceil(count / cols)
   const startedAt = performance.now()
 
-  setStatus(`正在生成 ${count} 个压测 Symbol…`)
+  setStatus(t("example.symbol.status.generating", { count }))
 
   try {
     for (let start = 0; start < count; start += STRESS_CHUNK) {
@@ -410,16 +412,18 @@ async function generateStressSymbols() {
           properties: { kind: "stress", label, index: i },
         })
       }
-      setStatus(`正在生成压测 Symbol… ${end} / ${count}`)
+      setStatus(t("example.symbol.status.progress", { end, count }))
       await yieldToBrowser()
     }
 
     const elapsedMs = performance.now() - startedAt
     setStatus(
-      `压测完成：${count} 个 Symbol，耗时 ${elapsedMs.toFixed(0)} ms（约 ${(
-        count /
-        (elapsedMs / 1000)
-      ).toFixed(0)} 个/秒）。当前实体总数 ${viewer.entities.values.length}。`
+      t("example.symbol.status.done", {
+        count,
+        ms: elapsedMs.toFixed(0),
+        rate: (count / (elapsedMs / 1000)).toFixed(0),
+        total: viewer.entities.values.length,
+      })
     )
   } finally {
     stressGenerating = false

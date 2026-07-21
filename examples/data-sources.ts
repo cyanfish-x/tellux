@@ -6,6 +6,7 @@ import tellux, {
   type ImageryLayer,
   type ImageryLayerOptions,
 } from "../src"
+import { bootExampleI18n, t } from "./i18n"
 import {
   createTiandituWmtsPreprocessURL,
   createTiandituXYZImagery,
@@ -14,6 +15,7 @@ import {
 } from "./shared"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 const container = document.querySelector("#viewer")
@@ -219,7 +221,7 @@ async function loadChengduAdminGeoJSON(
   if (!token) {
     return {
       geojson: null,
-      issue: "未配置 VITE_TIANDITU_TOKEN。",
+      issue: t("example.data-sources.issue.noToken"),
     }
   }
 
@@ -314,29 +316,29 @@ const chengduAdminStyle: ImageryLayerOptions["style"] = {
 const overlayLayers: OverlayLayerExample[] = [
   {
     key: "tianditu-imagery-xyz",
-    label: "天地图影像 XYZ",
+    label: t("example.data-sources.layer.xyz.label"),
     description: "DataServer img_w / Web Mercator",
     type: "xyz",
     initialVisible: Boolean(defaultTiandituToken),
   },
   {
     key: "nsmc-geos-wms",
-    label: "风云卫星 GEOS 红外云图 WMS",
-    description: "NSMC GEOS_IRX / 全球拼图 / 粗粒度 WMS",
+    label: t("example.data-sources.layer.wms.label"),
+    description: t("example.data-sources.layer.wms.desc"),
     type: "wms",
     initialVisible: true,
   },
   {
     key: "tianditu-imagery-wmts",
-    label: "天地图影像注记 WMTS",
+    label: t("example.data-sources.layer.wmts.label"),
     description: "cia_w / Web Mercator",
     type: "wmts",
     initialVisible: Boolean(defaultTiandituToken),
   },
   {
     key: "chengdu-admin-geojson",
-    label: "成都市行政区划",
-    description: "天地图 v2/administrative / 156510100",
+    label: t("example.data-sources.layer.geojson.label"),
+    description: t("example.data-sources.layer.geojson.desc"),
     type: "geojson",
     initialVisible: Boolean(defaultTiandituToken),
   },
@@ -375,13 +377,13 @@ async function main() {
   const initialLayers: ImageryLayerOptions[] = [
   {
     id: "tianditu-imagery-xyz",
-    name: "天地图影像 XYZ",
+    name: t("example.data-sources.layer.xyz.label"),
     source: tiandituImageryXYZLayer,
     visible: Boolean(defaultTiandituToken),
   },
   {
     id: "nsmc-geos-wms",
-    name: "风云卫星 GEOS 红外云图 WMS",
+    name: t("example.data-sources.layer.wms.label"),
     source: nsmcGeosWMSOverlay,
     visible: true,
     style: {
@@ -390,7 +392,7 @@ async function main() {
   },
   {
     id: "tianditu-imagery-wmts",
-    name: "天地图影像注记 WMTS",
+    name: t("example.data-sources.layer.wmts.label"),
     source: tiandituImageryWMTSOverlay,
     visible: Boolean(defaultTiandituToken),
     style: {
@@ -399,7 +401,7 @@ async function main() {
   },
   {
     id: "chengdu-admin-geojson",
-    name: "成都市行政区划",
+    name: t("example.data-sources.layer.geojson.label"),
     source: chengduAdminOverlay,
     visible: adminLayerReady,
     style: {
@@ -457,8 +459,8 @@ function renderLayerManager() {
     dragHandle.type = "button"
     dragHandle.className = "layer-manager__drag-handle"
     dragHandle.draggable = true
-    dragHandle.setAttribute("aria-label", `拖动 ${layer.label} 调整顺序`)
-    dragHandle.title = "拖动调整顺序"
+    dragHandle.setAttribute("aria-label", t("example.data-sources.drag.aria", { label: layer.label }))
+    dragHandle.title = t("example.data-sources.drag.title")
     dragHandle.textContent = "≡"
     dragHandle.addEventListener("dragstart", (event) => {
       draggedLayerKey = layer.key
@@ -482,7 +484,7 @@ function renderLayerManager() {
     input.className = "layer-manager__toggle"
     input.checked = layer.layer?.isVisible() ?? layer.initialVisible
     input.dataset.layer = layer.key
-    input.setAttribute("aria-label", `${layer.label} 显隐`)
+    input.setAttribute("aria-label", t("example.data-sources.visibility.aria", { label: layer.label }))
     input.addEventListener("change", () => {
       layer.layer?.setVisible(input.checked)
       updateLayerStatus()
@@ -507,7 +509,7 @@ function renderLayerManager() {
 
     const opacityLabel = document.createElement("span")
     opacityLabel.className = "layer-manager__opacity-label"
-    opacityLabel.textContent = "透明度"
+    opacityLabel.textContent = t("example.data-sources.opacity.label")
 
     const opacityInput = document.createElement("input")
     opacityInput.type = "range"
@@ -516,7 +518,7 @@ function renderLayerManager() {
     opacityInput.max = "1"
     opacityInput.step = "0.01"
     opacityInput.value = String(opacity)
-    opacityInput.setAttribute("aria-label", `${layer.label} 透明度`)
+    opacityInput.setAttribute("aria-label", t("example.data-sources.opacity.aria", { label: layer.label }))
 
     const opacityValue = document.createElement("output")
     opacityValue.className = "layer-manager__opacity-value"
@@ -687,12 +689,12 @@ function updateLayerStatus() {
   )
   const statusParts = [
     activeCount === 0
-      ? "当前未显示叠加图层。"
-      : `当前显示 ${activeCount} 个叠加图层。`,
+      ? t("example.data-sources.status.none")
+      : t("example.data-sources.status.count", { n: activeCount }),
   ]
 
   if (tiandituVisible && !defaultTiandituToken) {
-    statusParts.push("天地图图层需要配置 VITE_TIANDITU_TOKEN。")
+    statusParts.push(t("example.data-sources.status.needToken"))
   }
 
   const adminLayer = overlayLayers.find(
@@ -701,7 +703,7 @@ function updateLayerStatus() {
   if (adminLayer?.layer?.isVisible() && !adminLayerReady) {
     statusParts.push(
       adminLoadIssue ??
-        "成都市 GeoJSON 未加载成功。请检查 tk 是否开通 v2/administrative。"
+        t("example.data-sources.status.geojsonFail")
     )
   } else if (adminLoadIssue && adminLayerReady) {
     statusParts.push(adminLoadIssue)

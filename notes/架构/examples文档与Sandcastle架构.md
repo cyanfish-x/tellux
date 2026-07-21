@@ -129,7 +129,19 @@ Sandcastle 是一个可编辑、可运行示例的交互页面，设计上分成
 - 用 `new Function(...)` 注入 Tellux、Three.js、GLTFLoader 和共享示例工具后执行示例代码。
 - 劫持 console，将日志通过 `postMessage` 发回主应用。
 
-runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`、`exampleMapServiceConfig`、HISM demo helpers 等。新增被示例 `import` 的本地模块时，必须同步在 `runner.ts` 的 `new Function` 参数列表中注入，否则 Sandcastle 剥离 import 后会报 `ReferenceError`。
+runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`、`exampleMapServiceConfig`、`t` / `bootExampleI18n`、HISM demo helpers 等。新增被示例 `import` 的本地模块时，必须同步在 `runner.ts` 的 `new Function` 参数列表中注入，否则 Sandcastle 剥离 import 后会报 `ReferenceError`。
+
+### 中英文切换（i18n）
+
+示例站（主页 / Sandcastle / 独立示例）使用自研轻量 i18n，模块在 `examples/i18n/`：
+
+- 语言：`zh` | `en`
+- 解析优先级：`?lang=` → `localStorage['tellux.locale']` → `navigator.language` → 回落 `en`
+- HTML：`data-i18n` / `data-i18n-html` / `data-i18n-attr`
+- TS 动态文案：`t(key, params?)`
+- 词典源：`examples/i18n/_messages.json`，用 `examples/i18n/_gen-messages.mjs` 生成 `messages/zh.ts` 与 `messages/en.ts`
+- Sandcastle 切语言只刷新壳 UI 与 gallery；Monaco 源码不改写；重新 Run 后 runner 对 iframe DOM 再 `applyTranslations`
+- VitePress 文档站本期不做双语；日后可复用同一 `tellux.locale` key
 
 ### 示例控件面板
 

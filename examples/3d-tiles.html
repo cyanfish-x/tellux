@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="sandcastle-order" content="2" />
     <meta name="sandcastle-thumbnail" content="./images/3dtiles.png" />
-    <title>Tellux 3D Tiles</title>
+    <title data-i18n="example.3d-tiles.docTitle">Tellux 3D Tiles</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="viewer-shell">
       <div id="viewer"></div>
 
-      <aside class="example-panel" id="tileset-panel" aria-label="3D Tiles 加载控件">
+      <aside class="example-panel" id="tileset-panel" data-i18n-attr="aria-label:example.3d-tiles.panel.aria" aria-label="3D Tiles 加载控件">
         <header class="example-panel__chrome">
           <button
             type="button"
@@ -22,36 +22,37 @@
             aria-controls="tileset-panel-body"
             title="收起面板"
             aria-label="收起面板"
+            data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
           ></button>
-          <span class="example-panel__title">3D Tiles 加载</span>
+          <span class="example-panel__title" data-i18n="example.3d-tiles.panel.title">3D Tiles 加载</span>
         </header>
 
         <div class="example-panel__collapse" id="tileset-panel-body">
           <div class="example-panel__content">
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">数据源</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.3d-tiles.folder.source">数据源</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
                   <div class="example-panel__field">
-                    <label class="example-panel__label" for="tileset-source">加载方式</label>
+                    <label class="example-panel__label" for="tileset-source" data-i18n="example.3d-tiles.label.loadMode">加载方式</label>
                     <select id="tileset-source" class="example-panel__select">
-                      <option value="url">tileset.json URL</option>
+                      <option value="url" data-i18n="example.3d-tiles.label.url">tileset.json URL</option>
                       <option value="cesium-ion">Cesium Ion</option>
                     </select>
                   </div>
                   <div id="url-tileset-fields">
                     <div class="example-panel__field">
-                      <label class="example-panel__label" for="tileset-url">tileset.json URL</label>
+                      <label class="example-panel__label" for="tileset-url" data-i18n="example.3d-tiles.label.url">tileset.json URL</label>
                       <input id="tileset-url" class="example-panel__input" type="url" autocomplete="off" spellcheck="false" />
                     </div>
                   </div>
                   <div id="ion-tileset-fields" hidden>
                     <div class="example-panel__field">
-                      <label class="example-panel__label" for="ion-asset-id">Cesium Ion asset id</label>
+                      <label class="example-panel__label" for="ion-asset-id" data-i18n="example.3d-tiles.label.assetId">Cesium Ion asset id</label>
                       <input id="ion-asset-id" class="example-panel__input" type="text" autocomplete="off" spellcheck="false" />
                     </div>
                     <div class="example-panel__field">
-                      <label class="example-panel__label" for="ion-token">Cesium Ion token</label>
+                      <label class="example-panel__label" for="ion-token" data-i18n="example.3d-tiles.label.token">Cesium Ion token</label>
                       <input id="ion-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
                     </div>
                   </div>
@@ -60,15 +61,15 @@
             </details>
 
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">选项</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.3d-tiles.folder.options">选项</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
                   <label class="example-panel__row">
-                    <span class="example-panel__label">显示 3D Tiles</span>
+                    <span class="example-panel__label" data-i18n="example.3d-tiles.label.visible">显示 3D Tiles</span>
                     <input id="tileset-visible" class="example-panel__checkbox" type="checkbox" checked />
                   </label>
                   <label class="example-panel__row">
-                    <span class="example-panel__label">加载后飞行到 3D Tiles</span>
+                    <span class="example-panel__label" data-i18n="example.3d-tiles.label.flyTo">加载后飞行到 3D Tiles</span>
                     <input id="tileset-fly-to" class="example-panel__checkbox" type="checkbox" checked />
                   </label>
                 </div>
@@ -76,17 +77,17 @@
             </details>
 
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">操作</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.3d-tiles.folder.actions">操作</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
-                  <button class="example-panel__button" id="load-tileset" type="button">加载</button>
-                  <button class="example-panel__button example-panel__button--ghost" id="remove-tileset" type="button">移除</button>
+                  <button class="example-panel__button" id="load-tileset" type="button" data-i18n="example.3d-tiles.btn.load">加载</button>
+                  <button class="example-panel__button example-panel__button--ghost" id="remove-tileset" type="button" data-i18n="example.3d-tiles.btn.remove">移除</button>
                 </div>
               </div>
             </details>
 
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">状态</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.3d-tiles.folder.status">状态</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
                   <p id="tileset-status" class="example-panel__status" aria-live="polite"></p>

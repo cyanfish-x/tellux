@@ -10,7 +10,7 @@
   <body>
     <main class="viewer-shell">
       <div id="viewer"></div>
-      <aside class="example-panel" aria-label="相机飞行控件">
+      <aside class="example-panel" data-i18n-attr="aria-label:example.fly-to.panel.aria" aria-label="相机飞行控件">
         <header class="example-panel__chrome">
           <button
             type="button"
@@ -18,27 +18,28 @@
             aria-expanded="true"
             title="收起面板"
             aria-label="收起面板"
+            data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
           ></button>
-          <span class="example-panel__title">相机飞行</span>
+          <span class="example-panel__title" data-i18n="example.fly-to.panel.title">相机飞行</span>
         </header>
 
         <div class="example-panel__collapse">
           <div class="example-panel__content">
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">目的地</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.fly-to.folder.dest">目的地</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
-                  <p class="example-panel__hint">使用 <code>viewer.camera.flyTo</code> 触发 Cesium 风格的相机飞行动画。</p>
+                  <p class="example-panel__hint" data-i18n-html="example.fly-to.hint">使用 <code>viewer.camera.flyTo</code> 触发 Cesium 风格的相机飞行动画。</p>
                   <div id="destination-row"></div>
                 </div>
               </div>
             </details>
 
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">操作</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.fly-to.folder.actions">操作</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
-                  <button class="example-panel__button example-panel__button--ghost" id="cancel-flight" type="button">
+                  <button class="example-panel__button example-panel__button--ghost" id="cancel-flight" type="button" data-i18n="example.fly-to.btn.cancel">
                     取消飞行
                   </button>
                 </div>
@@ -46,11 +47,11 @@
             </details>
 
             <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary">状态</summary>
+              <summary class="example-panel__folder-summary" data-i18n="example.fly-to.folder.status">状态</summary>
               <div class="example-panel__folder-collapse">
                 <div class="example-panel__folder-body">
                   <p id="token-status" class="example-panel__status" aria-live="polite"></p>
-                  <p id="flight-status" class="example-panel__status" aria-live="polite">选择一个目的地开始飞行。</p>
+                  <p id="flight-status" class="example-panel__status" aria-live="polite" data-i18n="example.fly-to.status.initial">选择一个目的地开始飞行。</p>
                 </div>
               </div>
             </details>

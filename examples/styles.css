@@ -146,10 +146,55 @@ a {
 .portal-nav__links {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 4px;
   color: #a8b3bf;
   font-size: 14px;
+}
+
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(215, 224, 233, 0.16);
+  border-radius: 6px;
+  background: rgba(215, 224, 233, 0.04);
+}
+
+.lang-toggle__button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  color: #a8b3bf;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.lang-toggle__button:hover,
+.lang-toggle__button:focus-visible {
+  color: #f8fafc;
+  outline: none;
+}
+
+.lang-toggle__button.is-active,
+.lang-toggle__button[aria-pressed="true"] {
+  color: var(--tellux-accent-ink);
+  background: var(--tellux-accent);
+}
+
+.lang-toggle--example {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 40;
+  backdrop-filter: blur(12px);
+  background: rgba(7, 9, 13, 0.82);
 }
 
 .portal-nav__links a {
@@ -257,15 +302,15 @@ a {
 }
 
 .portal-button--primary {
-  border-color: #c7d0c8;
-  color: #080a0e;
-  background: #c7d0c8;
+  border-color: var(--tellux-accent-border);
+  color: var(--tellux-accent-ink);
+  background: var(--tellux-accent);
 }
 
 .portal-button--primary:hover,
 .portal-button--primary:focus-visible {
-  color: #080a0e;
-  background: #d8dfd9;
+  color: var(--tellux-accent-ink);
+  background: var(--tellux-accent-hover);
 }
 
 .portal-visual {

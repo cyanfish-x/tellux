@@ -13,7 +13,7 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <aside class="example-panel" id="vegetation-panel" aria-label="程序化植被森林控件">
+    <aside class="example-panel" id="vegetation-panel" data-i18n-attr="aria-label:example.vegetation.panel.aria" aria-label="程序化植被森林控件">
       <header class="example-panel__chrome">
         <button
           type="button"
@@ -23,18 +23,19 @@
           aria-controls="vegetation-panel-body"
           title="收起面板"
           aria-label="收起面板"
+          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
         ></button>
-        <span class="example-panel__title">程序化植被森林</span>
+        <span class="example-panel__title" data-i18n="example.vegetation.panel.title">程序化植被森林</span>
       </header>
 
       <div class="example-panel__collapse" id="vegetation-panel-body">
         <div class="example-panel__content">
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">操作</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.vegetation.folder.actions">操作</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
-                <button class="example-panel__button" id="fly-to-forest" type="button">飞到森林</button>
-                <button class="example-panel__button example-panel__button--ghost" id="regenerate-vegetation" type="button">
+                <button class="example-panel__button" id="fly-to-forest" type="button" data-i18n="example.vegetation.btn.fly">飞到森林</button>
+                <button class="example-panel__button example-panel__button--ghost" id="regenerate-vegetation" type="button" data-i18n="example.vegetation.btn.regen">
                   重新生成
                 </button>
               </div>
@@ -42,10 +43,10 @@
           </details>
 
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">状态</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.vegetation.folder.status">状态</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
-                <p id="vegetation-status" class="example-panel__status" aria-live="polite">正在准备植被场景...</p>
+                <p id="vegetation-status" class="example-panel__status" aria-live="polite" data-i18n="example.vegetation.status.initial">正在准备植被场景...</p>
                 <dl class="example-panel__readout">
                   <dt>Center</dt>
                   <dd>103.551329, 31.025122</dd>

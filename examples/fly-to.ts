@@ -1,8 +1,10 @@
 ﻿import tellux from "../src"
+import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig, showTokenNotice } from "./shared"
 import type { CameraFlyToOptions } from "../src"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 
@@ -47,7 +49,7 @@ function beijingTime(
 
 const DESTINATIONS: FlightDestination[] = [
   {
-    label: "成都都江堰",
+    label: t("example.fly-to.dest.dujiangyan"),
     destination: {
       latitude: 31.033741870740627,
       longitude: 103.60506004084334,
@@ -65,7 +67,7 @@ const DESTINATIONS: FlightDestination[] = [
     focalLength: 15,
   },
   {
-    label: "桂林-千里江山图",
+    label: t("example.fly-to.dest.guilin"),
     destination: {
       latitude: 25.015593451980674,
       longitude: 110.25909678096521,
@@ -83,7 +85,7 @@ const DESTINATIONS: FlightDestination[] = [
     focalLength: 40,
   },
   {
-    label: "西藏南迦巴瓦峰",
+    label: t("example.fly-to.dest.namcha"),
     destination: {
       latitude: 29.488841833702445,
       longitude: 94.80333750399797,
@@ -278,7 +280,7 @@ function tweenFocalLengthTo(
 function flyToDestination(destination: FlightDestination) {
   const flightId = ++activeFlightId
   const { label, datetime, focalLength, duration, ...flyOptions } = destination
-  setStatus(`正在飞往${label}...`)
+  setStatus(t("example.fly-to.status.flying", { label }))
 
   if (datetime) {
     if (duration && duration > 0) {
@@ -311,13 +313,13 @@ function flyToDestination(destination: FlightDestination) {
       stopFocalTween()
       if (datetime) viewer.clock.setCurrentTime(datetime)
       if (focalLength) setFocalLength(focalLength)
-      setStatus(`已抵达${label}。`)
+      setStatus(t("example.fly-to.status.arrived", { label }))
     },
     cancel: () => {
       if (flightId !== activeFlightId) return
       stopTimeTween()
       stopFocalTween()
-      setStatus("飞行已取消。")
+      setStatus(t("example.fly-to.status.cancelled"))
     },
   })
 }

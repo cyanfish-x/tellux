@@ -6,8 +6,10 @@ import {
   defaultTiandituTokens,
   tiandituTerrainServiceTemplate,
 } from "./shared"
+import { bootExampleI18n, t } from "./i18n"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 type TerrainSource = "tianditu" | "cesium-ion"
@@ -89,10 +91,12 @@ viewer.clock.hourUTC = 11
 
 tiandituTokenField.value = ""
 tiandituTokenField.placeholder = defaultTiandituToken
-  ? "留空使用 VITE_TIANDITU_TOKEN"
-  : "输入天地图 tk"
+  ? t("example.terrain.ph.tkDefault")
+  : t("example.terrain.ph.tkInput")
 if (tiandituTerrainHint) {
-  tiandituTerrainHint.textContent = `服务模板：${tiandituTerrainServiceTemplate}`
+  tiandituTerrainHint.textContent = t("example.terrain.hint.template", {
+    url: tiandituTerrainServiceTemplate,
+  })
 }
 // 本地开发优先 Cesium Ion：天地图浏览器端 key 的域名白名单通常不含
 // localhost，swdx 会以 HTTP 200 空 body 失败；影像 DataServer 仍可能正常。
@@ -104,8 +108,8 @@ terrainSourceField.value =
 ionTerrainAssetIdField.value = DEFAULT_ION_TERRAIN_ASSET_ID
 ionTerrainTokenField.value = ""
 ionTerrainTokenField.placeholder = DEFAULT_ION_TOKEN
-  ? "留空使用 VITE_CESIUM_ION_TOKEN"
-  : "输入 Cesium Ion token"
+  ? t("example.terrain.ph.ionDefault")
+  : t("example.terrain.ph.ionInput")
 
 function setStatus(message: string) {
   if (terrainStatus) terrainStatus.textContent = message
@@ -129,7 +133,7 @@ function createTiandituTerrainOptions(): TerrainOptions | null {
   const urls = firstToken ? getTiandituTerrainUrls(firstToken) : []
 
   if (!firstToken || urls.length === 0) {
-    setStatus("请先输入天地图 tk，或在 .env 中配置 VITE_TIANDITU_TOKEN。")
+    setStatus(t("example.terrain.status.needTk"))
     return null
   }
 
@@ -148,9 +152,7 @@ function createIonTerrainOptions(): TerrainOptions | null {
   const apiToken = ionTerrainTokenField.value.trim() || DEFAULT_ION_TOKEN
 
   if (!assetId || !apiToken) {
-    setStatus(
-      "请先输入 Cesium Ion terrain asset id 和 token，或在 .env 中配置默认值。"
-    )
+    setStatus(t("example.terrain.status.needIon"))
     return null
   }
 
@@ -194,14 +196,14 @@ function enableSelectedTerrain() {
   viewer.setTerrain(terrain)
   setStatus(
     getSelectedTerrainSource() === "tianditu"
-      ? "天地图 swdx 地形已通过 viewer.setTerrain 加载。"
-      : "Cesium Ion 地形已通过 viewer.setTerrain 加载。"
+      ? t("example.terrain.status.loadedTianditu")
+      : t("example.terrain.status.loadedIon")
   )
 }
 
 function disableTerrain() {
   viewer.setTerrain(null)
-  setStatus("地形已关闭，Viewer 已切回无地形模式。")
+  setStatus(t("example.terrain.status.disabled"))
 }
 
 function syncTerrainEnabledState() {
@@ -219,8 +221,8 @@ terrainSourceField.addEventListener("change", () => {
   } else {
     setStatus(
       getSelectedTerrainSource() === "tianditu"
-        ? "已选择天地图 swdx 地形，勾选后加载 elv_c 高程瓦片。"
-        : "已选择 Cesium Ion 地形来源，勾选后加载 terrain asset。"
+        ? t("example.terrain.status.selectTianditu")
+        : t("example.terrain.status.selectIon")
     )
   }
 })
@@ -253,27 +255,19 @@ syncTerrainSourceFields()
 if (preferIonInDev) {
   terrainEnabledControl.checked = true
   enableSelectedTerrain()
-  setStatus(
-    "本地开发已默认加载 Cesium Ion 地形。可手动切换到天地图 swdx（需 key 开通三维地形且域名白名单含当前页面来源）。"
-  )
+  setStatus(t("example.terrain.status.devDefaultIon"))
 } else if (defaultTiandituToken) {
   terrainEnabledControl.checked = true
   enableSelectedTerrain()
-  setStatus(
-    "已从天地图 swdx 默认配置自动加载地形；也可以切换到 Cesium Ion 地形。"
-  )
+  setStatus(t("example.terrain.status.autoTianditu"))
 } else if (DEFAULT_ION_TOKEN) {
   terrainSourceField.value = "cesium-ion"
   syncTerrainSourceFields()
   terrainEnabledControl.checked = true
   enableSelectedTerrain()
-  setStatus(
-    "未检测到 VITE_TIANDITU_TOKEN，已从 Cesium Ion 默认配置自动加载地形。"
-  )
+  setStatus(t("example.terrain.status.fallbackIon"))
 } else {
-  setStatus(
-    "请配置 VITE_TIANDITU_TOKEN，或输入天地图 tk / Cesium Ion 凭据后加载。"
-  )
+  setStatus(t("example.terrain.status.needAny"))
 }
 
 window.addEventListener("beforeunload", () => {

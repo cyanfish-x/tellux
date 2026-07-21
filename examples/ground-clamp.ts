@@ -1,8 +1,10 @@
-﻿import tellux from "../src"
+import tellux from "../src"
+import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 
@@ -80,7 +82,7 @@ viewer.entities.add({
     width: 60,
     color: "#22d3ee",
   },
-  properties: { kind: "clamp", label: "贴地折线" },
+  properties: { kind: "clamp", label: t("example.ground-clamp.props.clamp") },
 })
 
 // 对比折线：同经纬、固定绝对高、普通像素宽 Line2。会以弦段悬空穿越峡谷。
@@ -93,15 +95,15 @@ viewer.entities.add({
     width: 3,
     color: "#facc15",
   },
-  properties: { kind: "reference", label: "固定高折线" },
+  properties: { kind: "reference", label: t("example.ground-clamp.props.reference") },
 })
 
 if (!exampleMapServiceConfig.createTerrainOptions()) {
   setStatus(
-    "未配置默认地形服务，无地形数据，贴地效果不可见。"
+    t("example.ground-clamp.status.noTerrain")
   )
 } else {
-  setStatus("青色线贴合地形起伏；黄色线固定高，悬空穿越峡谷。")
+  setStatus(t("example.ground-clamp.status.ready"))
 }
 
 toggleClampInput.addEventListener("change", () => {

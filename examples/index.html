@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
+      data-i18n-attr="content:portal.meta.description"
       content="Tellux 是一个基于 Three.js 的开源 3D Earth Engine，用于构建数字地球、数字孪生、三维地图以及各类 3D Earth 应用。"
     />
     <title>Tellux - Three.js 3D Earth Engine</title>
@@ -14,35 +15,65 @@
   <body class="portal-page">
     <main class="portal">
       <header class="portal-hero">
-        <nav class="portal-nav" aria-label="Tellux 网站导航">
-          <a class="portal-brand" href="./index.html" aria-label="Tellux 首页">
+        <nav
+          class="portal-nav"
+          data-i18n-attr="aria-label:portal.nav.aria"
+          aria-label="Tellux 网站导航"
+        >
+          <a
+            class="portal-brand"
+            href="./index.html"
+            data-i18n-attr="aria-label:portal.nav.homeAria"
+            aria-label="Tellux 首页"
+          >
             <span class="portal-brand__mark" aria-hidden="true">T</span>
             <span>Tellux</span>
           </a>
           <div class="portal-nav__links">
-            <a href="#capabilities">能力</a>
-            <a href="#workflow">工作流</a>
-            <a data-docs-link href="./docs/">文档</a>
-            <a href="./sandcastle.html">示例</a>
+            <a href="#capabilities" data-i18n="portal.nav.capabilities">能力</a>
+            <a href="#workflow" data-i18n="portal.nav.workflow">工作流</a>
+            <a data-docs-link href="./docs/" data-i18n="portal.nav.docs">文档</a>
+            <a href="./sandcastle.html" data-i18n="portal.nav.examples">示例</a>
             <a href="https://github.com/cyanfish-x/tellux">GitHub</a>
+            <div data-lang-toggle></div>
           </div>
         </nav>
 
         <div class="portal-hero__layout">
           <section class="portal-hero__content" aria-labelledby="portal-title">
             <p class="portal-eyebrow">Three.js 3D Earth Engine</p>
-            <h1 id="portal-title">用 Three.js<br />组织可扩展的<br />3D Earth 应用</h1>
-            <p>
+            <h1 id="portal-title" data-i18n-html="portal.hero.title">
+              用 Three.js<br />组织可扩展的<br />3D Earth 应用
+            </h1>
+            <p data-i18n="portal.hero.body">
               Tellux 将 3D Tiles、Cesium 地形、影像图层、地球相机、大气、体积云和后处理能力封装成更贴近
               Cesium / mapboxgl 使用习惯的 TypeScript API。
             </p>
-            <div class="portal-actions" aria-label="主要操作">
-              <a class="portal-button portal-button--primary" href="./sandcastle.html">进入 Sandcastle</a>
-              <a class="portal-button" href="https://github.com/cyanfish-x/tellux/blob/main/README.md#使用">快速开始</a>
+            <div
+              class="portal-actions"
+              data-i18n-attr="aria-label:portal.hero.actionsAria"
+              aria-label="主要操作"
+            >
+              <a
+                class="portal-button portal-button--primary"
+                href="./sandcastle.html"
+                data-i18n="portal.hero.ctaSandcastle"
+                >进入 Sandcastle</a
+              >
+              <a
+                class="portal-button"
+                href="https://github.com/cyanfish-x/tellux/blob/main/README.md#使用"
+                data-i18n="portal.hero.ctaQuickstart"
+                >快速开始</a
+              >
             </div>
           </section>
 
-          <aside class="portal-visual" aria-label="可交互三维地球预览">
+          <aside
+            class="portal-visual"
+            data-i18n-attr="aria-label:portal.hero.visualAria"
+            aria-label="可交互三维地球预览"
+          >
             <div class="portal-visual__frame">
               <div id="portal-globe-viewer" class="portal-visual__viewer">
                 <span class="portal-visual__fallback">Initializing Tellux Viewer</span>
@@ -51,7 +82,11 @@
           </aside>
         </div>
 
-        <div class="portal-metrics" aria-label="Tellux 基础信息">
+        <div
+          class="portal-metrics"
+          data-i18n-attr="aria-label:portal.metrics.aria"
+          aria-label="Tellux 基础信息"
+        >
           <div>
             <span>Package</span>
             <strong>tellux</strong>
@@ -74,41 +109,55 @@
       <section id="capabilities" class="portal-section portal-section--split">
         <div class="portal-section__header">
           <p class="portal-eyebrow">Capabilities</p>
-          <h2>把底层渲染能力收束成 GIS 开发者熟悉的入口</h2>
-          <p>
+          <h2 data-i18n="portal.capabilities.title">
+            把底层渲染能力收束成 GIS 开发者熟悉的入口
+          </h2>
+          <p data-i18n="portal.capabilities.body">
             Tellux 不替代 Three.js，而是在 Three.js、3d-tiles-renderer 与 Takram geospatial 生态之上提供应用侧封装。
           </p>
         </div>
         <div class="portal-feature-grid">
           <article class="portal-feature">
             <span>01</span>
-            <h3>地球与相机</h3>
-            <p>内置 WGS84 地球控制器，经纬高视角、heading / pitch / roll、飞行定位和鼠标地理读数。</p>
+            <h3 data-i18n="portal.capabilities.f01.title">地球与相机</h3>
+            <p data-i18n="portal.capabilities.f01.body">
+              内置 WGS84 地球控制器，经纬高视角、heading / pitch / roll、飞行定位和鼠标地理读数。
+            </p>
           </article>
           <article class="portal-feature">
             <span>02</span>
-            <h3>多源影像图层</h3>
-            <p>通过统一的 <code>viewer.layers</code> 管理 XYZ、Cesium Ion imagery、WMS 和 MVT，支持透明度、显隐和顺序。</p>
+            <h3 data-i18n="portal.capabilities.f02.title">多源影像图层</h3>
+            <p data-i18n-html="portal.capabilities.f02.body">
+              通过统一的 <code>viewer.layers</code> 管理 XYZ、Cesium Ion imagery、WMS 和 MVT，支持透明度、显隐和顺序。
+            </p>
           </article>
           <article class="portal-feature">
             <span>03</span>
-            <h3>3D Tiles 场景</h3>
-            <p>加载 tileset.json 或 Cesium Ion 资源，接入 b3dm、i3dm、pnts、cmpt 与 glTF / GLB 内容。</p>
+            <h3 data-i18n="portal.capabilities.f03.title">3D Tiles 场景</h3>
+            <p data-i18n="portal.capabilities.f03.body">
+              加载 tileset.json 或 Cesium Ion 资源，接入 b3dm、i3dm、pnts、cmpt 与 glTF / GLB 内容。
+            </p>
           </article>
           <article class="portal-feature">
             <span>04</span>
-            <h3>Cesium 地形</h3>
-            <p>支持 quantized-mesh terrain，从地形根目录或 layer.json 加载，并可在运行时热切换。</p>
+            <h3 data-i18n="portal.capabilities.f04.title">Cesium 地形</h3>
+            <p data-i18n="portal.capabilities.f04.body">
+              支持 quantized-mesh terrain，从地形根目录或 layer.json 加载，并可在运行时热切换。
+            </p>
           </article>
           <article class="portal-feature">
             <span>05</span>
-            <h3>大气、云与光照</h3>
-            <p>集成 sky atmosphere、体积云、太阳光、天空光探针，并提供 light-source / post-process 光照模式。</p>
+            <h3 data-i18n="portal.capabilities.f05.title">大气、云与光照</h3>
+            <p data-i18n="portal.capabilities.f05.body">
+              集成 sky atmosphere、体积云、太阳光、天空光探针，并提供 light-source / post-process 光照模式。
+            </p>
           </article>
           <article class="portal-feature">
             <span>06</span>
-            <h3>工程友好的默认值</h3>
-            <p>内置 LOD fade、按需更新、SMAA、镜头光晕、曝光控制和 Draco 解码器路径配置。</p>
+            <h3 data-i18n="portal.capabilities.f06.title">工程友好的默认值</h3>
+            <p data-i18n="portal.capabilities.f06.body">
+              内置 LOD fade、按需更新、SMAA、镜头光晕、曝光控制和 Draco 解码器路径配置。
+            </p>
           </article>
         </div>
       </section>
@@ -116,17 +165,24 @@
       <section id="workflow" class="portal-section portal-workflow">
         <div class="portal-section__header">
           <p class="portal-eyebrow">Workflow</p>
-          <h2>从一个容器开始，逐步叠加真实地理数据</h2>
+          <h2 data-i18n="portal.workflow.title">从一个容器开始，逐步叠加真实地理数据</h2>
         </div>
         <div class="portal-code-layout">
           <div class="portal-code-copy">
-            <p>
-              首页文案对应库中已经实现的 API：Viewer 初始化、地形、影像图层、相机定位、运行时图层管理和 3D Tiles 加载。
+            <p data-i18n="portal.workflow.body">
+              首页文案对应库中已经实现的 API：Viewer 初始化、地形、影像图层、相机定位、运行时图层管理和 3D Tiles
+              加载。
             </p>
             <ul class="portal-checklist">
-              <li>TypeScript 类型入口：<code>dist/index.d.ts</code></li>
-              <li>发布入口：<code>dist/index.js</code></li>
-              <li>开发示例从 <code>src</code> 直接引入，方便验证源码行为</li>
+              <li data-i18n-html="portal.workflow.li1">
+                TypeScript 类型入口：<code>dist/index.d.ts</code>
+              </li>
+              <li data-i18n-html="portal.workflow.li2">
+                发布入口：<code>dist/index.js</code>
+              </li>
+              <li data-i18n-html="portal.workflow.li3">
+                开发示例从 <code>src</code> 直接引入，方便验证源码行为
+              </li>
             </ul>
           </div>
           <div class="portal-code-window">
@@ -166,29 +222,45 @@ viewer.<span class="code-token code-token--property">layers</span>.<span class="
         </div>
       </section>
 
-      <section class="portal-section portal-showcase" aria-label="真实地形、大气与体积云效果展示">
+      <section
+        class="portal-section portal-showcase"
+        data-i18n-attr="aria-label:portal.showcase.sectionAria"
+        aria-label="真实地形、大气与体积云效果展示"
+      >
         <div class="portal-showcase__inner">
-          <article class="portal-band" aria-label="真实地形与大气效果展示">
+          <article
+            class="portal-band"
+            data-i18n-attr="aria-label:portal.showcase.terrain.aria"
+            aria-label="真实地形与大气效果展示"
+          >
             <div class="portal-band__image">
               <img
                 src="https://picture.cyanfish.site/localhost_5173_terrain.html%20(1).png"
+                data-i18n-attr="alt:portal.showcase.terrain.alt"
                 alt="Tellux 渲染的雪山地形、低角度太阳和预计算大气散射效果"
               />
             </div>
             <div class="portal-band__content">
               <p class="portal-eyebrow">Terrain & Atmosphere</p>
-              <h2>真实地形和预计算大气一起进入工程视图</h2>
-              <p>
+              <h2 data-i18n="portal.showcase.terrain.title">
+                真实地形和预计算大气一起进入工程视图
+              </h2>
+              <p data-i18n="portal.showcase.terrain.body">
                 Tellux 可以在 Cesium quantized-mesh 地形上叠加影像纹理，并结合预计算大气 LUT、太阳光和天空光探针，
                 让远山雾化、低空暖光和雪线明暗关系保持稳定。它不是展示页滤镜，而是面向三维 GIS 场景的实时渲染基础。
               </p>
             </div>
           </article>
 
-          <article class="portal-band portal-band--reverse" aria-label="体积云渲染效果展示">
+          <article
+            class="portal-band portal-band--reverse"
+            data-i18n-attr="aria-label:portal.showcase.clouds.aria"
+            aria-label="体积云渲染效果展示"
+          >
             <div class="portal-band__image">
               <video
                 src="https://picture.cyanfish.site/a1965e781b03b7ca46c7055c3c8322ed.mp4"
+                data-i18n-attr="aria-label:portal.showcase.clouds.videoAria"
                 aria-label="Tellux 渲染的体积云随视角推进和光照变化的效果"
                 autoplay
                 muted
@@ -199,8 +271,8 @@ viewer.<span class="code-token code-token--property">layers</span>.<span class="
             </div>
             <div class="portal-band__content">
               <p class="portal-eyebrow">Volumetric Clouds</p>
-              <h2>把云层作为真实空间体积参与场景表达</h2>
-              <p>
+              <h2 data-i18n="portal.showcase.clouds.title">把云层作为真实空间体积参与场景表达</h2>
+              <p data-i18n="portal.showcase.clouds.body">
                 Tellux 的体积云沿用物理光照和大气合成流程，云体会随相机高度、太阳方向和曝光设置呈现连续的层次变化。
                 从近地平线的厚重云墙到高空俯视的柔和云海，它都能和地形、天空、后处理保持统一的空间关系。
               </p>
@@ -208,7 +280,6 @@ viewer.<span class="code-token code-token--property">layers</span>.<span class="
           </article>
         </div>
       </section>
-
     </main>
   </body>
 </html>

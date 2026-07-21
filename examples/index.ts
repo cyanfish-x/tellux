@@ -1,6 +1,17 @@
 ﻿import tellux from "../src"
+import {
+  applyTranslations,
+  mountLanguageToggle,
+  resolveLocale,
+} from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 
+resolveLocale()
+applyTranslations(document)
+mountLanguageToggle({
+  mount: document.querySelector("[data-lang-toggle]"),
+  applyDocument: true,
+})
 
 // Hero 地球自转角速度（度/秒），约 120 秒一圈。
 // Auto-rotation angular speed (degrees/second), roughly one revolution per 120 s.
