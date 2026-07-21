@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { acceleratedRaycast } from 'three-mesh-bvh'
+import { getRtcInstanceMatrixAt } from '../../rendering/applyRTCInstancing'
 import type { HismPickResult } from '../../types/hism'
 import type { HismLayerImpl } from '../core/HismLayer'
 import { ensureGeometryBvh } from './geometryBvhCache'
@@ -15,6 +16,87 @@ export function ensureAcceleratedRaycast(): void {
 export interface PickHismLayersOptions {
   layers: Iterable<HismLayerImpl>
   raycaster: THREE.Raycaster
+}
+
+const instanceLocalMatrix = new THREE.Matrix4()
+const instanceWorldMatrix = new THREE.Matrix4()
+const instanceSphere = new THREE.Sphere()
+const meshSphere = new THREE.Sphere()
+const proxyMesh = new THREE.Mesh()
+const instanceIntersects: THREE.Intersection[] = []
+
+/**
+ * 对 RTC InstancedMesh 做射线拾取：用 `positionHigh/Low` 还原 ECEF 平移后再求交。
+ *
+ * Raycasts an RTC InstancedMesh by reconstructing ECEF translation from
+ * `positionHigh/Low` before testing each instance.
+ */
+export function intersectRtcInstancedMesh(
+  raycaster: THREE.Raycaster,
+  mesh: THREE.InstancedMesh
+): THREE.Intersection | null {
+  ensureAcceleratedRaycast()
+  ensureGeometryBvh(mesh.geometry)
+
+  mesh.updateWorldMatrix(true, false)
+  const matrixWorld = mesh.matrixWorld
+
+  if (mesh.boundingSphere === null) {
+    mesh.computeBoundingSphere()
+  }
+  if (mesh.boundingSphere) {
+    meshSphere.copy(mesh.boundingSphere).applyMatrix4(matrixWorld)
+    if (!raycaster.ray.intersectsSphere(meshSphere)) {
+      return null
+    }
+  }
+
+  if (mesh.geometry.boundingSphere === null) {
+    mesh.geometry.computeBoundingSphere()
+  }
+
+  proxyMesh.geometry = mesh.geometry
+  proxyMesh.material = mesh.material
+
+  const previousFirstHitOnly = raycaster.firstHitOnly
+  raycaster.firstHitOnly = true
+
+  let closest: THREE.Intersection | null = null
+
+  try {
+    for (let instanceId = 0; instanceId < mesh.count; instanceId += 1) {
+      getRtcInstanceMatrixAt(mesh, instanceId, instanceLocalMatrix)
+      instanceWorldMatrix.multiplyMatrices(matrixWorld, instanceLocalMatrix)
+
+      if (mesh.geometry.boundingSphere) {
+        instanceSphere
+          .copy(mesh.geometry.boundingSphere)
+          .applyMatrix4(instanceWorldMatrix)
+        if (!raycaster.ray.intersectsSphere(instanceSphere)) {
+          continue
+        }
+      }
+
+      proxyMesh.matrixWorld = instanceWorldMatrix
+      proxyMesh.raycast(raycaster, instanceIntersects)
+
+      for (let i = 0; i < instanceIntersects.length; i += 1) {
+        const hit = instanceIntersects[i]!
+        hit.instanceId = instanceId
+        hit.object = mesh
+        if (!closest || hit.distance < closest.distance) {
+          closest = hit
+        }
+      }
+      instanceIntersects.length = 0
+    }
+  } finally {
+    raycaster.firstHitOnly = previousFirstHitOnly
+    proxyMesh.geometry = undefined as unknown as THREE.BufferGeometry
+    proxyMesh.material = undefined as unknown as THREE.Material
+  }
+
+  return closest
 }
 
 /**
@@ -35,9 +117,7 @@ export function pickHismLayers(
     if (!layer.show) continue
 
     for (const mesh of layer.collectVisiblePickMeshes()) {
-      ensureGeometryBvh(mesh.geometry)
-      const hits = options.raycaster.intersectObject(mesh, false)
-      const hit = hits[0]
+      const hit = intersectRtcInstancedMesh(options.raycaster, mesh)
       if (!hit) continue
       if (!closestHit || hit.distance < closestHit.distance) {
         closestHit = hit

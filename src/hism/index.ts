@@ -51,6 +51,7 @@ export {
 } from './picking/geometryBvhCache'
 export {
   pickHismLayers,
+  intersectRtcInstancedMesh,
   ensureAcceleratedRaycast,
   type PickHismLayersOptions
 } from './picking/HismPicker'

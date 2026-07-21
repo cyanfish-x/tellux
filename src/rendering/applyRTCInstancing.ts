@@ -183,6 +183,8 @@ function installRTCBounds(mesh: THREE.InstancedMesh): RTCBoundsState {
 
 const scratchOrigin = new THREE.Vector3()
 const scratchEncoded = createEncodedCartesian3()
+const scratchHigh = new THREE.Vector3()
+const scratchLow = new THREE.Vector3()
 
 /**
  * 写入第 `index` 个实例的姿态：`fullEcefMatrix` 包含 ECEF 平移（绝对坐标）+
@@ -227,4 +229,31 @@ export function setRTCMatrixAt(
   inst[base + 14] = 0
   inst[base + 15] = 1
   mesh.instanceMatrix.needsUpdate = true
+}
+
+/**
+ * 读取第 `index` 个 RTC 实例的完整 ECEF 矩阵（旋转+缩放来自 `instanceMatrix`，
+ * 平移来自 `positionHigh/Low` 的 float64 合成）。
+ *
+ * Reads the full ECEF matrix for RTC instance `index` (rotation/scale from
+ * `instanceMatrix`, translation reconstructed from `positionHigh/Low`).
+ */
+export function getRtcInstanceMatrixAt(
+  mesh: THREE.InstancedMesh,
+  index: number,
+  target: THREE.Matrix4
+): THREE.Matrix4 {
+  mesh.getMatrixAt(index, target)
+
+  const positionHigh = mesh.geometry.getAttribute('positionHigh')
+  const positionLow = mesh.geometry.getAttribute('positionLow')
+  if (!positionHigh || !positionLow) {
+    return target
+  }
+
+  scratchHigh.fromBufferAttribute(positionHigh, index)
+  scratchLow.fromBufferAttribute(positionLow, index)
+  scratchOrigin.copy(scratchHigh).add(scratchLow)
+  target.setPosition(scratchOrigin)
+  return target
 }
