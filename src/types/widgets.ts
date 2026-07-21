@@ -130,11 +130,14 @@ export interface ViewerWidgetOptions {
   /**
    * 是否挂载内置时间条，默认 `false`。
    *
-   * 传入对象时会作为时间条初始配置。
+   * 传入对象时会作为时间条初始配置。挂载后会按播放态将
+   * `clock.multiplier` 联动到 `scene.clouds.speed`（云速倍率上限 `60`）。
    *
    * Whether to mount the built-in timeline. Defaults to `false`.
    *
-   * Pass an object to provide initial timeline options.
+   * Pass an object to provide initial timeline options. While mounted, play
+   * state links `clock.multiplier` to `scene.clouds.speed` (cloud speed
+   * multiplier capped at `60`).
    */
   timeline?: boolean | TimelineOptions
 }

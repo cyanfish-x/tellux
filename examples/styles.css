@@ -59,6 +59,11 @@ a {
   html.portal-page {
     scroll-behavior: auto;
   }
+
+  .portal-crescent,
+  .portal-crescent__svg {
+    animation: none !important;
+  }
 }
 
 .portal {
@@ -314,14 +319,64 @@ a {
   grid-area: 1 / 1;
   width: 100%;
   height: 100%;
+  /* canvas 在 loading 之下；loading 淡出后露出地球 */
+  z-index: 0;
 }
 
 .portal-visual__fallback {
   grid-area: 1 / 1;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  gap: 22px;
+  justify-items: center;
+  pointer-events: none;
+  transition: opacity 420ms ease, visibility 420ms ease;
+}
+
+.portal-visual__fallback[data-hidden="true"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.portal-visual__fallback-label {
   color: #7f8b96;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 720;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.portal-crescent {
+  width: clamp(72px, 11vw, 108px);
+  height: clamp(72px, 11vw, 108px);
+  animation: portal-crescent-yaw 4s linear infinite;
+}
+
+.portal-crescent__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  animation: portal-crescent-breathe 5.2s ease-in-out infinite;
+}
+
+@keyframes portal-crescent-yaw {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes portal-crescent-breathe {
+  0%,
+  100% {
+    opacity: 0.82;
+    filter: brightness(0.92);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.08);
+  }
 }
 
 .portal-visual__placeholder {
@@ -640,7 +695,7 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.55fr);
   gap: clamp(28px, 5vw, 64px);
-  align-items: center;
+  align-items: start;
 }
 
 .portal-band--reverse {

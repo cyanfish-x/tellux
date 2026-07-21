@@ -64,6 +64,22 @@ document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((link) => {
 })
 
 if (globeContainer instanceof HTMLElement) {
+  const globeLoader = document.querySelector("#portal-globe-loader")
+
+  const hideGlobeLoader = () => {
+    if (!(globeLoader instanceof HTMLElement) || globeLoader.dataset.hidden === "true") {
+      return
+    }
+
+    globeLoader.dataset.hidden = "true"
+    const settle = () => {
+      globeLoader.remove()
+    }
+    globeLoader.addEventListener("transitionend", settle, { once: true })
+    // transitionend 在部分环境下可能不触发（例如元素已被遮罩），超时兜底移除。
+    window.setTimeout(settle, 600)
+  }
+
   const viewer = new tellux.Viewer(globeContainer, {
     dracoDecoderPath: "/draco/gltf/",
     terrain: exampleMapServiceConfig.createTerrainOptions(),
@@ -99,6 +115,12 @@ if (globeContainer instanceof HTMLElement) {
   viewer.clock.animate = false
   ;(window as any).viewer = viewer
   ;(window as any).portalViewer = viewer
+
+  // Viewer 构造后双 rAF：等首帧把 canvas 画上再淡出新月 loading。
+  // Double rAF after Viewer construction: fade out the crescent loader once the first canvas frame has been painted.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(hideGlobeLoader)
+  })
 
   // Hero 地球自转：相机经度持续推进，陆地依次滚过视场。
   // 触发规则：用户开始操作相机（拖拽 / 缩放，含滚轮）时立即停转，松手 AUTO_ROTATE_RESUME_DELAY 毫秒后恢复；
