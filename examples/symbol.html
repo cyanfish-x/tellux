@@ -14,67 +14,67 @@
   <main class="viewer-shell">
     <div id="viewer"></div>
 
-    <aside class="leva-panel" id="symbol-panel" aria-label="图标与文字标签控件">
-      <header class="leva-panel__chrome">
+    <aside class="example-panel" id="symbol-panel" aria-label="图标与文字标签控件">
+      <header class="example-panel__chrome">
         <button
           type="button"
-          class="leva-panel__fold"
+          class="example-panel__fold"
           id="symbol-panel-fold"
           aria-expanded="true"
           aria-controls="symbol-panel-body"
           title="收起面板"
           aria-label="收起面板"
         ></button>
-        <span class="leva-panel__title">图标与文字标签</span>
+        <span class="example-panel__title">图标与文字标签</span>
       </header>
 
-      <div class="leva-panel__collapse" id="symbol-panel-body">
-        <div class="leva-panel__content">
-          <details class="leva-folder" open>
-            <summary class="leva-folder__summary">显示</summary>
-            <div class="leva-folder__collapse">
-              <div class="leva-folder__body">
-                <label class="leva-row">
-                  <span class="leva-row__label">POI（图标+文字）</span>
-                  <input class="leva-checkbox" type="checkbox" id="toggle-poi" checked />
+      <div class="example-panel__collapse" id="symbol-panel-body">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">显示</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row">
+                  <span class="example-panel__label">POI（图标+文字）</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-poi" checked />
                 </label>
-                <label class="leva-row">
-                  <span class="leva-row__label">纯文字标签</span>
-                  <input class="leva-checkbox" type="checkbox" id="toggle-labels" checked />
+                <label class="example-panel__row">
+                  <span class="example-panel__label">纯文字标签</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-labels" checked />
                 </label>
-                <label class="leva-row">
-                  <span class="leva-row__label">纯图标</span>
-                  <input class="leva-checkbox" type="checkbox" id="toggle-icons" checked />
+                <label class="example-panel__row">
+                  <span class="example-panel__label">纯图标</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-icons" checked />
                 </label>
-                <label class="leva-row">
-                  <span class="leva-row__label">多行/背景</span>
-                  <input class="leva-checkbox" type="checkbox" id="toggle-multiline" checked />
+                <label class="example-panel__row">
+                  <span class="example-panel__label">多行/背景</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-multiline" checked />
                 </label>
               </div>
             </div>
           </details>
 
-          <details class="leva-folder" open>
-            <summary class="leva-folder__summary">操作</summary>
-            <div class="leva-folder__collapse">
-              <div class="leva-folder__body">
-                <button class="leva-button" id="recolor-label" type="button">改色（不重建）</button>
-                <button class="leva-button leva-button--ghost" id="clear-symbols" type="button">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">操作</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <button class="example-panel__button" id="recolor-label" type="button">改色（不重建）</button>
+                <button class="example-panel__button example-panel__button--ghost" id="clear-symbols" type="button">
                   清空实体
                 </button>
               </div>
             </div>
           </details>
 
-          <details class="leva-folder" open>
-            <summary class="leva-folder__summary">压测</summary>
-            <div class="leva-folder__collapse">
-              <div class="leva-folder__body">
-                <label class="leva-row leva-row--input">
-                  <span class="leva-row__label">数量（1–20000）</span>
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">压测</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label">数量（1–20000）</span>
                   <input
                     id="stress-count"
-                    class="leva-input"
+                    class="example-panel__input"
                     type="number"
                     min="1"
                     max="20000"
@@ -82,25 +82,25 @@
                     value="2000"
                   />
                 </label>
-                <button class="leva-button" id="generate-stress" type="button">生成压测 Symbol</button>
-                <button class="leva-button leva-button--ghost" id="clear-stress" type="button">
+                <button class="example-panel__button" id="generate-stress" type="button">生成压测 Symbol</button>
+                <button class="example-panel__button example-panel__button--ghost" id="clear-stress" type="button">
                   清空压测
                 </button>
-                <p class="leva-hint" id="stress-hint">
+                <p class="example-panel__hint" id="stress-hint">
                   在演示区网格散布 icon+text；文字从固定词表轮换以复用 SDF/atlas。
                 </p>
               </div>
             </div>
           </details>
 
-          <details class="leva-folder" open>
-            <summary class="leva-folder__summary">状态</summary>
-            <div class="leva-folder__collapse">
-              <div class="leva-folder__body">
-                <p id="symbol-status" class="leva-status" aria-live="polite">加载中…</p>
-                <div class="leva-pick">
-                  <span class="leva-pick__key">拾取</span>
-                  <span id="symbol-pick-readout" class="leva-pick__value">点击任意标签查看属性</span>
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="symbol-status" class="example-panel__status" aria-live="polite">加载中…</p>
+                <div class="example-panel__pick">
+                  <span class="example-panel__pick-key">拾取</span>
+                  <span id="symbol-pick-readout" class="example-panel__pick-value">点击任意标签查看属性</span>
                 </div>
               </div>
             </div>

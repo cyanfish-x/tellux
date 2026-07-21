@@ -65,37 +65,6 @@
       color: #8fb4ff;
     }
 
-    .compare-form label {
-      display: block;
-      margin-top: 10px;
-      font-size: 13px;
-    }
-
-    .compare-form input[type="number"],
-    .compare-form select {
-      width: 100%;
-      margin-top: 4px;
-    }
-
-    .compare-form .hint {
-      margin-top: 6px;
-      font-size: 12px;
-      color: #6b7280;
-    }
-
-    .compare-form .mode-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 6px;
-    }
-
-    .compare-form .mode-row label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 0;
-    }
-
     progress {
       width: 100%;
       margin-top: 8px;
@@ -137,40 +106,87 @@
         </tbody>
       </table>
     </aside>
-    <section class="toolbar toolbar--wide" aria-label="HISM compare controls">
-      <header class="toolbar__header">
-        <h1>Legacy vs HISM 性能对比</h1>
-        <a class="icon-button icon-button--back" href="../index.html" aria-label="返回目录" title="返回目录"></a>
+    <aside class="example-panel" id="compare-panel" aria-label="Legacy vs HISM 性能对比控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          id="compare-panel-fold"
+          aria-expanded="true"
+          aria-controls="compare-panel-body"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">Legacy vs HISM 性能对比</span>
       </header>
-      <p>
-        在相同散布点下对比传统 <code>InstancedMesh</code>（Legacy）与 Tellux
-        <code>HISM</code> 工具包。实例上限 <strong>1000 万</strong>；大规模场景会自动切换快速散布并跳过地形采样。
-      </p>
-      <form class="compare-form" id="compare-form">
-        <label>
-          实例数量（1 – 10,000,000）
-          <input id="compare-count" type="number" min="1" max="10000000" step="1" value="10000" />
-        </label>
-        <div class="mode-row">
-          <label><input type="radio" name="compare-mode" value="legacy" /> Legacy InstancedMesh</label>
-          <label><input type="radio" name="compare-mode" value="hism" checked /> HISM</label>
+
+      <div class="example-panel__collapse" id="compare-panel-body">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">参数</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label">实例数量（1 – 10,000,000）</span>
+                  <input
+                    id="compare-count"
+                    class="example-panel__input"
+                    type="number"
+                    min="1"
+                    max="10000000"
+                    step="1"
+                    value="10000"
+                  />
+                </label>
+                <div class="example-panel__field">
+                  <span class="example-panel__label">渲染模式</span>
+                  <label class="example-panel__row">
+                    <span class="example-panel__label">Legacy InstancedMesh</span>
+                    <input class="example-panel__checkbox" type="radio" name="compare-mode" value="legacy" />
+                  </label>
+                  <label class="example-panel__row">
+                    <span class="example-panel__label">HISM</span>
+                    <input class="example-panel__checkbox" type="radio" name="compare-mode" value="hism" checked />
+                  </label>
+                </div>
+                <label class="example-panel__row">
+                  <span class="example-panel__label">地形采样（≤ 5000 实例时可用）</span>
+                  <input id="compare-sample-terrain" class="example-panel__checkbox" type="checkbox" checked />
+                </label>
+                <p class="example-panel__hint" id="compare-hint">
+                  超过 5000 实例将使用快速随机散布 + 椭球高度 0，以保证百万级规模可生成。
+                </p>
+                <progress id="compare-progress" max="100" value="0" hidden></progress>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">操作</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <button class="example-panel__button" id="compare-generate" type="button">生成并测速</button>
+                <button class="example-panel__button example-panel__button--ghost" id="compare-flyto" type="button" disabled>
+                  飞到场景
+                </button>
+                <button class="example-panel__button example-panel__button--ghost" id="compare-clear" type="button">
+                  清空场景
+                </button>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="compare-status" class="example-panel__status" aria-live="polite">正在初始化模板...</p>
+              </div>
+            </div>
+          </details>
         </div>
-        <label>
-          <input id="compare-sample-terrain" type="checkbox" checked />
-          地形采样（≤ 5000 实例时可用）
-        </label>
-        <p class="hint" id="compare-hint">
-          超过 5000 实例将使用快速随机散布 + 椭球高度 0，以保证百万级规模可生成。
-        </p>
-        <progress id="compare-progress" max="100" value="0" hidden></progress>
-      </form>
-      <p id="compare-status" class="status" aria-live="polite">正在初始化模板...</p>
-      <div class="toolbar__row">
-        <button class="button" id="compare-generate" type="button">生成并测速</button>
-        <button class="button" id="compare-flyto" type="button" disabled>飞到场景</button>
-        <button class="button" id="compare-clear" type="button">清空场景</button>
       </div>
-    </section>
+    </aside>
   </main>
   <script type="module" src="./hism-compare.ts"></script>
 </body>

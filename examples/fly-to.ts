@@ -1,6 +1,9 @@
 ﻿import tellux from "../src"
 import { exampleMapServiceConfig, showTokenNotice } from "./shared"
 import type { CameraFlyToOptions } from "../src"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 
 /**
@@ -325,10 +328,10 @@ DESTINATIONS.forEach((destination) => {
   if (!destinationRow) return
   const button = document.createElement("button")
   button.type = "button"
-  button.className = "button"
+  button.className = "example-panel__button"
   button.textContent = destination.label
   button.addEventListener("click", () => flyToDestination(destination))
-  destinationRow.insertBefore(button, cancelButton)
+  destinationRow.appendChild(button)
 })
 
 cancelButton?.addEventListener("click", () => {

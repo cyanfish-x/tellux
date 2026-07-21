@@ -12,29 +12,55 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <section class="toolbar toolbar--wide" aria-label="Three.js interop controls">
-      <header class="toolbar__header">
-        <h1>Three.js 原生互操作</h1>
-        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+    <aside class="example-panel" aria-label="Three.js 互操作控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          aria-expanded="true"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">Three.js 原生互操作</span>
       </header>
-      <p>
-        加载 Three.js 官方 keyframes 示例模型，将 glTF 动画对象作为原生 <code>Object3D</code>
-        放到 <span id="model-coordinates-text">模型锚点</span> 的地表位置。
-      </p>
-      <p id="model-status" class="status" aria-live="polite">正在加载 Littlest Tokyo...</p>
-      <dl class="click-readout">
-        <dt>API</dt>
-        <dd>viewer.addModel</dd>
-        <dt>Coordinates</dt>
-        <dd id="model-coordinates">-</dd>
-        <dt>Animation</dt>
-        <dd id="model-ready-status">-</dd>
-      </dl>
-      <div class="toolbar__row">
-        <button class="button" id="fly-to-model" type="button">飞到模型</button>
-        <button class="button" id="toggle-animation" type="button">暂停动画</button>
+
+      <div class="example-panel__collapse">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">操作</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p class="example-panel__hint">
+                  加载 Three.js 官方 keyframes 模型，作为原生 <code>Object3D</code> 放到
+                  <span id="model-coordinates-text">模型锚点</span> 的地表位置。
+                </p>
+                <button class="example-panel__button" id="fly-to-model" type="button">飞到模型</button>
+                <button class="example-panel__button example-panel__button--ghost" id="toggle-animation" type="button">
+                  暂停动画
+                </button>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="model-status" class="example-panel__status" aria-live="polite">正在加载 Littlest Tokyo...</p>
+                <dl class="example-panel__readout">
+                  <dt>API</dt>
+                  <dd>viewer.addModel</dd>
+                  <dt>坐标</dt>
+                  <dd id="model-coordinates">-</dd>
+                  <dt>动画</dt>
+                  <dd id="model-ready-status">-</dd>
+                </dl>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
-    </section>
+    </aside>
   </main>
   <script type="module" src="./threejs-interop.ts"></script>
 </body>

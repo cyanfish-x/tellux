@@ -2,6 +2,9 @@ import type { TilesetLayer } from "../src"
 import tellux from "../src"
 import * as THREE from "three"
 import { exampleMapServiceConfig } from "./shared"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 const container = document.querySelector("#viewer")
 const tokenInput = document.querySelector<HTMLInputElement>("#ion-token")

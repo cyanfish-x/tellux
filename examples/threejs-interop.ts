@@ -1,6 +1,9 @@
 ﻿import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 const MODEL_LONGITUDE = 113.9958  
 const MODEL_LATITUDE = 30.0072

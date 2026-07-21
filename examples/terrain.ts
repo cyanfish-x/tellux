@@ -6,6 +6,9 @@ import {
   defaultTiandituTokens,
   tiandituTerrainServiceTemplate,
 } from "./shared"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 type TerrainSource = "tianditu" | "cesium-ion"
 

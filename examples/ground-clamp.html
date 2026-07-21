@@ -13,27 +13,50 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <section class="toolbar" aria-label="Ground clamp controls">
-      <header class="toolbar__header">
-        <h1>贴地折线</h1>
-        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+    <aside class="example-panel" aria-label="贴地折线控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          aria-expanded="true"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">贴地折线</span>
       </header>
-      <p>
-        <code>polyline.clamp: true</code> 通过 GPU 深度分类把折线贴合到地形/3D Tiles 表面，
-        随相机与 LOD 变化稳定贴地。青色为贴地折线，黄色为同经纬、固定绝对高的对比折线。
-      </p>
-      <p id="clamp-status" class="status" aria-live="polite">加载中…</p>
-      <div class="toolbar__row toolbar__row--checks">
-        <label class="check">
-          <input type="checkbox" id="toggle-clamp" checked />
-          <span>贴地折线</span>
-        </label>
-        <label class="check">
-          <input type="checkbox" id="toggle-reference" checked />
-          <span>固定高折线</span>
-        </label>
+
+      <div class="example-panel__collapse">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">显示</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p class="example-panel__hint">
+                  <code>polyline.clamp: true</code> 依赖 GPU 深度分类贴地；青色为贴地折线，黄色为固定高对比折线。
+                </p>
+                <label class="example-panel__row">
+                  <span class="example-panel__label">贴地折线</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-clamp" checked />
+                </label>
+                <label class="example-panel__row">
+                  <span class="example-panel__label">固定高折线</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-reference" checked />
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="clamp-status" class="example-panel__status" aria-live="polite">加载中…</p>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
-    </section>
+    </aside>
   </main>
   <script type="module" src="./ground-clamp.ts"></script>
 </body>

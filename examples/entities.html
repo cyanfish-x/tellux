@@ -13,36 +13,61 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <section class="toolbar toolbar--wide" aria-label="Entities drawing controls">
-      <header class="toolbar__header">
-        <h1>实体绘制</h1>
-        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+    <aside class="example-panel" aria-label="实体绘制控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          aria-expanded="true"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">实体绘制</span>
       </header>
-      <p>
-        通过 <code>viewer.entities.add()</code> 在地表绘制点、折线、多边形和拉伸体块；
-        点击实体可在状态栏看到拾取结果。
-      </p>
-      <p id="entity-status" class="status" aria-live="polite">已加载示例实体。</p>
-      <dl class="click-readout">
-        <dt>Pick</dt>
-        <dd id="entity-pick-readout">点击任意实体查看属性</dd>
-      </dl>
-      <div class="toolbar__row toolbar__row--checks">
-        <label class="check">
-          <input type="checkbox" id="toggle-points" checked />
-          <span>点位</span>
-        </label>
-        <label class="check">
-          <input type="checkbox" id="toggle-polyline" checked />
-          <span>折线</span>
-        </label>
-        <label class="check">
-          <input type="checkbox" id="toggle-polygon" checked />
-          <span>面块</span>
-        </label>
-        <button class="button" id="clear-entities" type="button">清空实体</button>
+
+      <div class="example-panel__collapse">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">显示</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p class="example-panel__hint">
+                  通过 <code>viewer.entities.add()</code> 绘制点、折线、多边形和拉伸体块。
+                </p>
+                <label class="example-panel__row">
+                  <span class="example-panel__label">点位</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-points" checked />
+                </label>
+                <label class="example-panel__row">
+                  <span class="example-panel__label">折线</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-polyline" checked />
+                </label>
+                <label class="example-panel__row">
+                  <span class="example-panel__label">面块</span>
+                  <input class="example-panel__checkbox" type="checkbox" id="toggle-polygon" checked />
+                </label>
+                <button class="example-panel__button example-panel__button--ghost" id="clear-entities" type="button">
+                  清空实体
+                </button>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="entity-status" class="example-panel__status" aria-live="polite">已加载示例实体。</p>
+                <div class="example-panel__pick">
+                  <span class="example-panel__pick-key">拾取</span>
+                  <span id="entity-pick-readout" class="example-panel__pick-value">点击任意实体查看属性</span>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
-    </section>
+    </aside>
   </main>
   <script type="module" src="./entities.ts"></script>
 </body>

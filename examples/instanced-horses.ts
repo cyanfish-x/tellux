@@ -3,6 +3,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
 const ZOIGE_GRASSLAND_LATITUDE = 33.5314

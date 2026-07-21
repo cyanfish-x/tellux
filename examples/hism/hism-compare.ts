@@ -1,5 +1,6 @@
 import * as THREE from "three"
 import tellux, { type HismLayer } from "../../src"
+import { setupExamplePanels } from "../example-panel"
 import {
   HISM_DEMO_CENTER,
   HISM_DEMO_VIEW_POSE,
@@ -13,6 +14,8 @@ import {
   type HismDemoPlacement,
   type HismDemoPresetTemplate,
 } from "./shared"
+
+setupExamplePanels()
 
 const MAX_INSTANCE_COUNT = 10_000_000
 const SAMPLING_MAX_COUNT = 5000

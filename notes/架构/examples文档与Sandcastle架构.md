@@ -129,6 +129,17 @@ Sandcastle 是一个可编辑、可运行示例的交互页面，设计上分成
 - 用 `new Function(...)` 注入 Tellux、Three.js、GLTFLoader 和共享示例工具后执行示例代码。
 - 劫持 console，将日志通过 `postMessage` 发回主应用。
 
+runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`、`exampleMapServiceConfig`、HISM demo helpers 等。新增被示例 `import` 的本地模块时，必须同步在 `runner.ts` 的 `new Function` 参数列表中注入，否则 Sandcastle 剥离 import 后会报 `ReferenceError`。
+
+### 示例控件面板
+
+有控件的示例页统一使用 `.example-panel`（`examples/example-panel.ts` + `styles.css`）：
+
+- HTML 声明式结构：标题栏折叠按钮 + 可折叠 `details.example-panel__folder` 分组。
+- 示例脚本入口调用 `setupExamplePanels()` 绑定折叠动画。
+- 主题色走 `:root` 的 `--tellux-accent*` 变量；面板主按钮与 Sandcastle Run 按钮共用。
+- 不要再使用旧的 `.toolbar` / `.layer-manager` 外壳（图层列表内部仍可复用 `layer-manager__*` 条目样式）。
+
 runner 的 iframe 使用 `sandbox="allow-scripts allow-same-origin"`。它隔离了示例对 document 的重写，同时允许脚本运行和同源 localStorage 读取。
 
 ## 维护约定

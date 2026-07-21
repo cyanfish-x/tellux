@@ -14,10 +14,7 @@ import {
   exampleMapServiceConfig,
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
-import {
-  setupLevaFolderTransitions,
-  setupLevaPanelCollapse
-} from "../leva-folders"
+import { setupExamplePanels } from "../example-panel"
 import {
   HISM_DEMO_CENTER,
   HISM_DEMO_VIEW_POSE,
@@ -162,8 +159,7 @@ function executeExampleScript(source: string) {
     "showTokenNotice",
     "mountLocationReadout",
     "formatHeight",
-    "setupLevaFolderTransitions",
-    "setupLevaPanelCollapse",
+    "setupExamplePanels",
     "createWindSwayLeavesMaterial",
     "exampleMapServiceConfig",
     "HISM_DEMO_CENTER",
@@ -194,8 +190,7 @@ function executeExampleScript(source: string) {
     showTokenNotice,
     mountLocationReadout,
     formatHeight,
-    setupLevaFolderTransitions,
-    setupLevaPanelCollapse,
+    setupExamplePanels,
     createWindSwayLeavesMaterial,
     exampleMapServiceConfig,
     HISM_DEMO_CENTER,

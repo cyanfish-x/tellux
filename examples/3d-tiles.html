@@ -11,49 +11,91 @@
   <body>
     <main class="viewer-shell">
       <div id="viewer"></div>
-      <section class="toolbar toolbar--wide" aria-label="3D Tiles controls">
-        <header class="toolbar__header">
-          <h1>3D Tiles 加载</h1>
-          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+
+      <aside class="example-panel" id="tileset-panel" aria-label="3D Tiles 加载控件">
+        <header class="example-panel__chrome">
+          <button
+            type="button"
+            class="example-panel__fold"
+            id="tileset-panel-fold"
+            aria-expanded="true"
+            aria-controls="tileset-panel-body"
+            title="收起面板"
+            aria-label="收起面板"
+          ></button>
+          <span class="example-panel__title">3D Tiles 加载</span>
         </header>
-        <p>通过 <code>viewer.load3DTileset</code> 加载独立场景 3D Tiles，默认加载 <code>data.cyanfish.site</code> 的香港 3D Tiles，也可以替换为自定义 URL 或 Cesium Ion 资源。</p>
-        <label class="field">
-          <span>加载方式</span>
-          <select id="tileset-source" class="field__input">
-            <option value="url">tileset.json URL</option>
-            <option value="cesium-ion">Cesium Ion</option>
-          </select>
-        </label>
-        <div id="url-tileset-fields">
-          <label class="field">
-            <span>tileset.json URL</span>
-            <input id="tileset-url" class="field__input" type="url" autocomplete="off" spellcheck="false" />
-          </label>
+
+        <div class="example-panel__collapse" id="tileset-panel-body">
+          <div class="example-panel__content">
+            <details class="example-panel__folder" open>
+              <summary class="example-panel__folder-summary">数据源</summary>
+              <div class="example-panel__folder-collapse">
+                <div class="example-panel__folder-body">
+                  <div class="example-panel__field">
+                    <label class="example-panel__label" for="tileset-source">加载方式</label>
+                    <select id="tileset-source" class="example-panel__select">
+                      <option value="url">tileset.json URL</option>
+                      <option value="cesium-ion">Cesium Ion</option>
+                    </select>
+                  </div>
+                  <div id="url-tileset-fields">
+                    <div class="example-panel__field">
+                      <label class="example-panel__label" for="tileset-url">tileset.json URL</label>
+                      <input id="tileset-url" class="example-panel__input" type="url" autocomplete="off" spellcheck="false" />
+                    </div>
+                  </div>
+                  <div id="ion-tileset-fields" hidden>
+                    <div class="example-panel__field">
+                      <label class="example-panel__label" for="ion-asset-id">Cesium Ion asset id</label>
+                      <input id="ion-asset-id" class="example-panel__input" type="text" autocomplete="off" spellcheck="false" />
+                    </div>
+                    <div class="example-panel__field">
+                      <label class="example-panel__label" for="ion-token">Cesium Ion token</label>
+                      <input id="ion-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="example-panel__folder" open>
+              <summary class="example-panel__folder-summary">选项</summary>
+              <div class="example-panel__folder-collapse">
+                <div class="example-panel__folder-body">
+                  <label class="example-panel__row">
+                    <span class="example-panel__label">显示 3D Tiles</span>
+                    <input id="tileset-visible" class="example-panel__checkbox" type="checkbox" checked />
+                  </label>
+                  <label class="example-panel__row">
+                    <span class="example-panel__label">加载后飞行到 3D Tiles</span>
+                    <input id="tileset-fly-to" class="example-panel__checkbox" type="checkbox" checked />
+                  </label>
+                </div>
+              </div>
+            </details>
+
+            <details class="example-panel__folder" open>
+              <summary class="example-panel__folder-summary">操作</summary>
+              <div class="example-panel__folder-collapse">
+                <div class="example-panel__folder-body">
+                  <button class="example-panel__button" id="load-tileset" type="button">加载</button>
+                  <button class="example-panel__button example-panel__button--ghost" id="remove-tileset" type="button">移除</button>
+                </div>
+              </div>
+            </details>
+
+            <details class="example-panel__folder" open>
+              <summary class="example-panel__folder-summary">状态</summary>
+              <div class="example-panel__folder-collapse">
+                <div class="example-panel__folder-body">
+                  <p id="tileset-status" class="example-panel__status" aria-live="polite"></p>
+                </div>
+              </div>
+            </details>
+          </div>
         </div>
-        <div id="ion-tileset-fields" class="toolbar__row" hidden>
-          <label class="field">
-            <span>Cesium Ion asset id</span>
-            <input id="ion-asset-id" class="field__input" type="text" autocomplete="off" spellcheck="false" />
-          </label>
-          <label class="field">
-            <span>Cesium Ion token</span>
-            <input id="ion-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
-          </label>
-        </div>
-        <label class="switch">
-          <input id="tileset-visible" type="checkbox" checked />
-          <span>显示 3D Tiles</span>
-        </label>
-        <label class="switch">
-          <input id="tileset-fly-to" type="checkbox" checked />
-          <span>加载后飞行到 3D Tiles</span>
-        </label>
-        <p id="tileset-status" class="status" aria-live="polite"></p>
-        <div class="toolbar__row">
-          <button class="button" id="load-tileset" type="button">加载</button>
-          <button class="button" id="remove-tileset" type="button">移除</button>
-        </div>
-      </section>
+      </aside>
     </main>
     <script type="module" src="./3d-tiles.ts"></script>
   </body>

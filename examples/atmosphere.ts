@@ -1,5 +1,8 @@
 ﻿import tellux from '../src'
 import { exampleMapServiceConfig } from './shared'
+import { setupExamplePanels } from './example-panel'
+
+setupExamplePanels()
 
 const container = document.querySelector('#viewer')
 const dujiangyanButton = document.querySelector<HTMLButtonElement>('#dujiangyan')

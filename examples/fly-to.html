@@ -10,18 +10,53 @@
   <body>
     <main class="viewer-shell">
       <div id="viewer"></div>
-      <section class="toolbar" aria-label="Camera flyTo controls">
-        <header class="toolbar__header">
-          <h1>相机飞行</h1>
-          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      <aside class="example-panel" aria-label="相机飞行控件">
+        <header class="example-panel__chrome">
+          <button
+            type="button"
+            class="example-panel__fold"
+            aria-expanded="true"
+            title="收起面板"
+            aria-label="收起面板"
+          ></button>
+          <span class="example-panel__title">相机飞行</span>
         </header>
-        <p>使用 <code>viewer.camera.flyTo</code> 触发 Cesium 风格的相机飞行动画。</p>
-        <p id="token-status" class="status" aria-live="polite"></p>
-        <p id="flight-status" class="status" aria-live="polite">选择一个目的地开始飞行。</p>
-        <div class="toolbar__row" id="destination-row">
-          <button class="button" id="cancel-flight" type="button">取消飞行</button>
+
+        <div class="example-panel__collapse">
+          <div class="example-panel__content">
+            <details class="example-panel__folder" open>
+              <summary class="example-panel__folder-summary">目的地</summary>
+              <div class="example-panel__folder-collapse">
+                <div class="example-panel__folder-body">
+                  <p class="example-panel__hint">使用 <code>viewer.camera.flyTo</code> 触发 Cesium 风格的相机飞行动画。</p>
+                  <div id="destination-row"></div>
+                </div>
+              </div>
+            </details>
+
+            <details class="example-panel__folder" open>
+              <summary class="example-panel__folder-summary">操作</summary>
+              <div class="example-panel__folder-collapse">
+                <div class="example-panel__folder-body">
+                  <button class="example-panel__button example-panel__button--ghost" id="cancel-flight" type="button">
+                    取消飞行
+                  </button>
+                </div>
+              </div>
+            </details>
+
+            <details class="example-panel__folder" open>
+              <summary class="example-panel__folder-summary">状态</summary>
+              <div class="example-panel__folder-collapse">
+                <div class="example-panel__folder-body">
+                  <p id="token-status" class="example-panel__status" aria-live="polite"></p>
+                  <p id="flight-status" class="example-panel__status" aria-live="polite">选择一个目的地开始飞行。</p>
+                </div>
+              </div>
+            </details>
+          </div>
         </div>
-      </section>
+      </aside>
     </main>
     <script type="module" src="./fly-to.ts"></script>
   </body>

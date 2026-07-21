@@ -2,6 +2,9 @@
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
 import { exampleMapServiceConfig } from "./shared"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 const container = document.querySelector("#viewer")
 const tilesetUrlInput = document.querySelector<HTMLInputElement>("#splat-tileset-url")

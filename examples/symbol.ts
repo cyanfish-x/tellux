@@ -1,18 +1,9 @@
 ﻿import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
-import {
-  setupLevaFolderTransitions,
-  setupLevaPanelCollapse
-} from "./leva-folders"
+import { setupExamplePanels } from "./example-panel"
 
-const symbolPanel = document.querySelector<HTMLElement>("#symbol-panel")
-const symbolPanelFold =
-  document.querySelector<HTMLButtonElement>("#symbol-panel-fold")
-if (symbolPanel && symbolPanelFold) {
-  setupLevaPanelCollapse(symbolPanel, symbolPanelFold)
-}
-setupLevaFolderTransitions()
+setupExamplePanels()
 
 
 const container = document.querySelector("#viewer")

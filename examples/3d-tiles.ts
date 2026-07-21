@@ -1,6 +1,9 @@
 ﻿import type { TilesetLayer } from "../src"
 import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 type TilesetSource = "url" | "cesium-ion"
 

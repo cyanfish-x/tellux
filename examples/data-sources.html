@@ -12,14 +12,31 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <section class="layer-manager" aria-label="图层管理器">
-      <header class="layer-manager__header">
-        <h1>图层管理器</h1>
-        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+    <aside class="example-panel example-panel--wide" aria-label="图层管理器">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          aria-expanded="true"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">图层管理器</span>
       </header>
-      <div id="overlay-list" class="layer-manager__list"></div>
-      <p id="layer-status" class="layer-manager__status" aria-live="polite"></p>
-    </section>
+      <div class="example-panel__collapse">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">图层</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <div id="overlay-list" class="layer-manager__list"></div>
+                <p id="layer-status" class="example-panel__status" aria-live="polite"></p>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </aside>
   </main>
   <script type="module" src="./data-sources.ts"></script>
 </body>

@@ -11,18 +11,34 @@
   <body>
     <main class="viewer-shell">
       <div id="viewer"></div>
-      <section class="toolbar" aria-label="Atmosphere and clouds controls">
-        <header class="toolbar__header">
-          <h1>体积云与大气</h1>
-          <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+      <aside class="example-panel" aria-label="大气与云控件">
+        <header class="example-panel__chrome">
+          <button
+            type="button"
+            class="example-panel__fold"
+            aria-expanded="true"
+            title="收起面板"
+            aria-label="收起面板"
+          ></button>
+          <span class="example-panel__title">体积云与大气</span>
         </header>
-        <p>使用右上角公共设置面板调整大气、体积云、日期、光照和曝光。</p>
-        <div class="toolbar__row">
-          <button class="button" id="dujiangyan" type="button">紫坪铺水库</button>
-          <button class="button" id="pacific" type="button">太平洋</button>
-          <button class="button" id="himalaya" type="button">喜马拉雅</button>
+
+        <div class="example-panel__collapse">
+          <div class="example-panel__content">
+            <details class="example-panel__folder" open>
+              <summary class="example-panel__folder-summary">地点</summary>
+              <div class="example-panel__folder-collapse">
+                <div class="example-panel__folder-body">
+                  <p class="example-panel__hint">使用右上角公共设置面板调整大气、体积云、日期、光照和曝光。</p>
+                  <button class="example-panel__button" id="dujiangyan" type="button">紫坪铺水库</button>
+                  <button class="example-panel__button" id="pacific" type="button">太平洋</button>
+                  <button class="example-panel__button" id="himalaya" type="button">喜马拉雅</button>
+                </div>
+              </div>
+            </details>
+          </div>
         </div>
-      </section>
+      </aside>
     </main>
     <script type="module" src="./atmosphere.ts"></script>
   </body>

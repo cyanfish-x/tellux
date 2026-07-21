@@ -1,6 +1,9 @@
 ﻿import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 
 const container = document.querySelector("#viewer")

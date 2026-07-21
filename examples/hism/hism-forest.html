@@ -79,29 +79,53 @@
       </dl>
       <p id="hism-pick" class="hism-pick">点击场景拾取 HISM 实例</p>
     </aside>
-    <section class="toolbar toolbar--wide" aria-label="HISM forest controls">
-      <header class="toolbar__header">
-        <h1>HISM 森林基准</h1>
-        <a class="icon-button icon-button--back" href="../index.html" aria-label="返回目录" title="返回目录"></a>
+    <aside class="example-panel" id="hism-forest-panel" aria-label="HISM 森林基准控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          id="hism-forest-panel-fold"
+          aria-expanded="true"
+          aria-controls="hism-forest-panel-body"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">HISM 森林基准</span>
       </header>
-      <p>
-        基于 Tellux HISM 管线的大规模实例化森林：空间簇划分、视锥剔除、LOD bucketing、
-        RTC 精度、PositionPipeline 风摆，以及 three-mesh-bvh 拾取与后处理描边高亮。附带岩石散布层验证通用 API。
-      </p>
-      <p id="hism-status" class="status" aria-live="polite">正在准备 HISM 场景...</p>
-      <dl class="click-readout">
-        <dt>Trees</dt>
-        <dd id="hism-tree-count">-</dd>
-        <dt>Rocks</dt>
-        <dd id="hism-rock-count">-</dd>
-        <dt>Sampling</dt>
-        <dd id="hism-sampling-status">-</dd>
-      </dl>
-      <div class="toolbar__row">
-        <button class="button" id="fly-to-hism-forest" type="button">飞到场景</button>
-        <button class="button" id="regenerate-hism-forest" type="button">重新生成</button>
+
+      <div class="example-panel__collapse" id="hism-forest-panel-body">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">操作</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <button class="example-panel__button" id="fly-to-hism-forest" type="button">飞到场景</button>
+                <button class="example-panel__button example-panel__button--ghost" id="regenerate-hism-forest" type="button">
+                  重新生成
+                </button>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="hism-status" class="example-panel__status" aria-live="polite">正在准备 HISM 场景...</p>
+                <dl class="example-panel__readout">
+                  <dt>Trees</dt>
+                  <dd id="hism-tree-count">-</dd>
+                  <dt>Rocks</dt>
+                  <dd id="hism-rock-count">-</dd>
+                  <dt>Sampling</dt>
+                  <dd id="hism-sampling-status">-</dd>
+                </dl>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
-    </section>
+    </aside>
   </main>
   <script type="module" src="./hism-forest.ts"></script>
 </body>

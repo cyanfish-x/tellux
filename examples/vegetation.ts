@@ -3,6 +3,9 @@ import { Tree } from "@dgreenheck/ez-tree"
 import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 const CENTER_LONGITUDE = 103.561611
 const CENTER_LATITUDE = 31.016963

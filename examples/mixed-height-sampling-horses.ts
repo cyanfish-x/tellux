@@ -4,6 +4,9 @@ import type { TilesetLayer } from "../src"
 import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 const MIXED_TILESET_URL =
   "https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json"

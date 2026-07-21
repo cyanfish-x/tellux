@@ -11,6 +11,9 @@ import {
   createTiandituXYZImagery,
   defaultTiandituToken,
 } from "./shared"
+import { setupExamplePanels } from "./example-panel"
+
+setupExamplePanels()
 
 const container = document.querySelector("#viewer")
 const overlayList = document.querySelector<HTMLElement>("#overlay-list")

@@ -12,32 +12,58 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <section class="toolbar toolbar--wide" aria-label="Instanced horse controls">
-      <header class="toolbar__header">
-        <h1>若尔盖草原奔马实例化</h1>
-        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+    <aside class="example-panel" id="horse-panel" aria-label="若尔盖草原奔马实例化控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          id="horse-panel-fold"
+          aria-expanded="true"
+          aria-controls="horse-panel-body"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">若尔盖草原奔马实例化</span>
       </header>
-      <p>
-        在若尔盖大草原附近生成 1000 个带最小间距的随机经纬度点，使用
-        <code>sampleHeightMostDetailed</code> 采样地形高度后加载 Three.js morph target 奔马实例。
-      </p>
-      <p id="horse-status" class="status" aria-live="polite">正在准备若尔盖草原点位...</p>
-      <dl class="click-readout">
-        <dt>Center</dt>
-        <dd>102.434637, 33.568156</dd>
-        <dt>Instances</dt>
-        <dd id="horse-count">-</dd>
-        <dt>Spacing</dt>
-        <dd>最小 34 米</dd>
-        <dt>Animation</dt>
-        <dd id="horse-animation-status">-</dd>
-      </dl>
-      <div class="toolbar__row">
-        <button class="button" id="fly-to-horses" type="button">飞到马群</button>
-        <button class="button" id="toggle-horses" type="button">暂停动画</button>
-        <button class="button" id="regenerate-horses" type="button">重新生成</button>
+
+      <div class="example-panel__collapse" id="horse-panel-body">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">操作</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <button class="example-panel__button" id="fly-to-horses" type="button">飞到马群</button>
+                <button class="example-panel__button example-panel__button--ghost" id="toggle-horses" type="button">
+                  暂停动画
+                </button>
+                <button class="example-panel__button example-panel__button--ghost" id="regenerate-horses" type="button">
+                  重新生成
+                </button>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="horse-status" class="example-panel__status" aria-live="polite">正在准备若尔盖草原点位...</p>
+                <dl class="example-panel__readout">
+                  <dt>Center</dt>
+                  <dd>102.434637, 33.568156</dd>
+                  <dt>Instances</dt>
+                  <dd id="horse-count">-</dd>
+                  <dt>Spacing</dt>
+                  <dd>最小 34 米</dd>
+                  <dt>Animation</dt>
+                  <dd id="horse-animation-status">-</dd>
+                </dl>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
-    </section>
+    </aside>
   </main>
   <script type="module" src="./instanced-horses.ts"></script>
 </body>

@@ -13,43 +13,78 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <section class="toolbar toolbar--wide" aria-label="Terrain controls">
-      <header class="toolbar__header">
-        <h1>天地图地形热切换</h1>
-        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+
+    <aside class="example-panel" id="terrain-panel" aria-label="地形热切换控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          id="terrain-panel-fold"
+          aria-expanded="true"
+          aria-controls="terrain-panel-body"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">地形热切换</span>
       </header>
-      <p>选择地形来源后勾选“启用地形”，通过 <code>viewer.setTerrain</code> 在天地图 swdx elv_c 和 Cesium Ion 地形之间切换。</p>
-      <label class="field">
-        <span>地形来源</span>
-        <select id="terrain-source" class="field__input">
-          <option value="tianditu">天地图 swdx</option>
-          <option value="cesium-ion">Cesium Ion terrain</option>
-        </select>
-      </label>
-      <div id="tianditu-terrain-fields" class="toolbar__row">
-        <label class="field">
-          <span>天地图 tk</span>
-          <input id="tianditu-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
-        </label>
+
+      <div class="example-panel__collapse" id="terrain-panel-body">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">数据源</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <div class="example-panel__field">
+                  <label class="example-panel__label" for="terrain-source">地形来源</label>
+                  <select id="terrain-source" class="example-panel__select">
+                    <option value="tianditu">天地图 swdx</option>
+                    <option value="cesium-ion">Cesium Ion terrain</option>
+                  </select>
+                </div>
+                <div id="tianditu-terrain-fields">
+                  <div class="example-panel__field">
+                    <label class="example-panel__label" for="tianditu-token">天地图 tk</label>
+                    <input id="tianditu-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <p id="tianditu-terrain-hint" class="example-panel__hint"></p>
+                </div>
+                <div id="ion-terrain-fields">
+                  <div class="example-panel__field">
+                    <label class="example-panel__label" for="ion-terrain-asset-id">Cesium Ion terrain asset id</label>
+                    <input id="ion-terrain-asset-id" class="example-panel__input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <div class="example-panel__field">
+                    <label class="example-panel__label" for="ion-terrain-token">Cesium Ion token</label>
+                    <input id="ion-terrain-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">开关</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row">
+                  <span class="example-panel__label">启用地形</span>
+                  <input id="terrain-enabled" class="example-panel__checkbox" type="checkbox" />
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="terrain-status" class="example-panel__status" aria-live="polite"></p>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
-      <p id="tianditu-terrain-hint" class="status"></p>
-      <div id="ion-terrain-fields" class="toolbar__row">
-        <label class="field">
-          <span>Cesium Ion terrain asset id</span>
-          <input id="ion-terrain-asset-id" class="field__input" type="text" inputmode="numeric" autocomplete="off"
-            spellcheck="false" />
-        </label>
-        <label class="field">
-          <span>Cesium Ion token</span>
-          <input id="ion-terrain-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
-        </label>
-      </div>
-      <label class="switch">
-        <input id="terrain-enabled" type="checkbox" />
-        <span>启用地形</span>
-      </label>
-      <p id="terrain-status" class="status" aria-live="polite"></p>
-    </section>
+    </aside>
   </main>
   <script type="module" src="./terrain.ts"></script>
 </body>

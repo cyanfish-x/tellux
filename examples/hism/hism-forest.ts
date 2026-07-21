@@ -1,5 +1,6 @@
 import * as THREE from "three"
 import tellux, { type HismLayer } from "../../src"
+import { setupExamplePanels } from "../example-panel"
 import { mountLocationReadout } from "../location-readout"
 import {
   HISM_DEMO_CENTER,
@@ -11,6 +12,8 @@ import {
   generatePoissonPlacements,
   type HismDemoPresetTemplate,
 } from "./shared"
+
+setupExamplePanels()
 
 const TREE_COUNT = 12000
 const ROCK_COUNT = 4000

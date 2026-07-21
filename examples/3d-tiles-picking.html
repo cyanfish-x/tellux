@@ -13,28 +13,54 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <section class="toolbar toolbar--wide" aria-label="3D Tiles picking controls">
-      <header class="toolbar__header">
-        <h1>拾取与高亮</h1>
-        <a class="icon-button icon-button--back" href="./index.html" aria-label="返回目录" title="返回目录"></a>
+
+    <aside class="example-panel" id="pick-panel" aria-label="拾取与高亮控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          id="pick-panel-fold"
+          aria-expanded="true"
+          aria-controls="pick-panel-body"
+          title="收起面板"
+          aria-label="收起面板"
+        ></button>
+        <span class="example-panel__title">拾取与高亮</span>
       </header>
-      <p>移动鼠标高亮已加载的 3D Tiles feature；点击后锁定选择并展示属性。</p>
-      <div class="toolbar__row">
-        <label class="field">
-          <span>Cesium Ion asset id</span>
-          <input id="ion-asset-id" class="field__input" type="text" autocomplete="off" spellcheck="false" />
-        </label>
-        <label class="field">
-          <span>Cesium Ion token</span>
-          <input id="ion-token" class="field__input" type="password" autocomplete="off" spellcheck="false" />
-        </label>
+
+      <div class="example-panel__collapse" id="pick-panel-body">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">加载</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <div class="example-panel__field">
+                  <label class="example-panel__label" for="ion-asset-id">Cesium Ion asset id</label>
+                  <input id="ion-asset-id" class="example-panel__input" type="text" autocomplete="off" spellcheck="false" />
+                </div>
+                <div class="example-panel__field">
+                  <label class="example-panel__label" for="ion-token">Cesium Ion token</label>
+                  <input id="ion-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
+                </div>
+                <button class="example-panel__button" id="load-tileset" type="button">加载</button>
+                <button class="example-panel__button example-panel__button--ghost" id="clear-selection" type="button">清除选择</button>
+                <p class="example-panel__hint">移动鼠标高亮 feature，点击后锁定选择并展示属性。</p>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="pick-status" class="example-panel__status" aria-live="polite"></p>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
-      <p id="pick-status" class="status" aria-live="polite"></p>
-      <div class="toolbar__row">
-        <button class="button" id="load-tileset" type="button">加载</button>
-        <button class="button" id="clear-selection" type="button">清除选择</button>
-      </div>
-    </section>
+    </aside>
+
     <div id="feature-hover" class="feature-hover" hidden></div>
     <aside id="feature-popup" class="feature-popup" hidden aria-live="polite"></aside>
   </main>
