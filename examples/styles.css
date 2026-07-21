@@ -2,6 +2,20 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* Tellux 示例站点主题色：Sandcastle / leva 面板等共用，改色只动这里。 */
+  --tellux-accent: #20d6aa;
+  --tellux-accent-hover: #42f0c5;
+  --tellux-accent-bright: #2df5c3;
+  --tellux-accent-ink: #03110d;
+  --tellux-accent-rgb: 45, 245, 195;
+  --tellux-accent-border: rgba(var(--tellux-accent-rgb), 0.82);
+  --tellux-accent-glow: rgba(var(--tellux-accent-rgb), 0.16);
+  --tellux-accent-soft: rgba(var(--tellux-accent-rgb), 0.08);
+  --tellux-accent-mid: rgba(var(--tellux-accent-rgb), 0.45);
+  --tellux-accent-mid-strong: rgba(var(--tellux-accent-rgb), 0.62);
+}
+
 html,
 body {
   width: 100%;
@@ -1209,6 +1223,308 @@ select.field__input {
   font-variant-numeric: tabular-nums;
 }
 
+/* ----- leva / tweakpane 风格浮动面板（示例控件） ----- */
+.leva-panel {
+  --leva-bg: #181c20;
+  --leva-bg-elevated: #22262b;
+  --leva-border: #2a2f36;
+  --leva-text: #d8dde3;
+  --leva-muted: #8b949e;
+  --leva-accent: var(--tellux-accent);
+  --leva-accent-hover: var(--tellux-accent-hover);
+  --leva-accent-ink: var(--tellux-accent-ink);
+  --leva-accent-bright: var(--tellux-accent-bright);
+  --leva-input: #2c3138;
+  --leva-guide: #3a414b;
+  --leva-font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  width: min(300px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  border: 1px solid var(--leva-border);
+  border-radius: 8px;
+  background: var(--leva-bg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  color: var(--leva-text);
+  font-family: var(--leva-font);
+  font-size: 11px;
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+}
+
+.leva-panel__chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--leva-border);
+  background: var(--leva-bg-elevated);
+}
+
+.leva-panel--collapsed > .leva-panel__chrome {
+  border-bottom: 0;
+}
+
+.leva-panel__fold {
+  position: relative;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.leva-panel__fold::before {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  content: "";
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 6px 4px 0 4px;
+  border-color: var(--leva-muted) transparent transparent transparent;
+  transform: translate(-50%, -40%) rotate(0deg);
+  transition: transform 0.22s ease;
+}
+
+.leva-panel--collapsed > .leva-panel__chrome > .leva-panel__fold::before {
+  transform: translate(-50%, -40%) rotate(-90deg);
+}
+
+.leva-panel__fold:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.leva-panel__fold:hover::before {
+  border-top-color: var(--leva-accent-bright);
+}
+
+.leva-panel__title {
+  flex: 1;
+  min-width: 0;
+  color: var(--leva-text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leva-panel__collapse {
+  overflow: hidden;
+}
+
+.leva-panel__content {
+  min-height: 0;
+}
+
+.leva-folder {
+  border-bottom: 1px solid var(--leva-border);
+}
+
+.leva-folder:last-child {
+  border-bottom: 0;
+}
+
+.leva-folder__summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 26px;
+  list-style: none;
+  color: var(--leva-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.leva-folder__summary::-webkit-details-marker {
+  display: none;
+}
+
+.leva-folder__summary::before {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  content: "";
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 4px 0 4px 6px;
+  border-color: transparent transparent transparent var(--leva-muted);
+  transform: translateY(-50%) rotate(0deg);
+  transition: transform 0.22s ease;
+}
+
+.leva-folder[open] > .leva-folder__summary::before {
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.leva-folder__summary:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.leva-folder__collapse {
+  overflow: hidden;
+}
+
+.leva-folder__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  margin: 0 0 8px;
+  padding: 2px 10px 8px 18px;
+}
+
+.leva-folder__body::before {
+  position: absolute;
+  top: 0;
+  bottom: 4px;
+  left: 12px;
+  content: "";
+  width: 1px;
+  background: var(--leva-guide);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leva-panel__fold::before,
+  .leva-folder__summary::before {
+    transition: none;
+  }
+}
+
+.leva-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  cursor: pointer;
+}
+
+.leva-row--input {
+  cursor: default;
+}
+
+.leva-row__label {
+  color: var(--leva-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leva-checkbox {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--leva-accent);
+  cursor: pointer;
+}
+
+.leva-input {
+  box-sizing: border-box;
+  width: 72px;
+  min-height: 22px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--leva-text);
+  background: var(--leva-input);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.leva-input:focus {
+  border-color: var(--leva-accent);
+  outline: none;
+}
+
+.leva-input::-webkit-outer-spin-button,
+.leva-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.leva-input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.leva-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--leva-accent-ink);
+  background: var(--leva-accent);
+  font: inherit;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+.leva-button:hover:not(:disabled) {
+  background: var(--leva-accent-hover);
+}
+
+.leva-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.leva-button--ghost {
+  color: var(--leva-text);
+  background: var(--leva-input);
+}
+
+.leva-button--ghost:hover:not(:disabled) {
+  background: #353b44;
+}
+
+.leva-hint,
+.leva-status {
+  margin: 0;
+  color: var(--leva-muted);
+  font-size: 10px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.leva-status {
+  color: #e8c56a;
+}
+
+.leva-pick {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.leva-pick__key {
+  color: var(--leva-accent-bright);
+}
+
+.leva-pick__value {
+  color: var(--leva-text);
+  word-break: break-word;
+}
+
 .location-panel {
   position: absolute;
   right: 16px;
@@ -1335,7 +1651,7 @@ body.sandcastle-page {
 }
 
 .sandcastle-title strong {
-  color: #2df5c3;
+  color: var(--tellux-accent-bright);
   font-size: 15px;
   line-height: 1.2;
 }
@@ -1379,15 +1695,15 @@ body.sandcastle-page {
 }
 
 .sandcastle-button--primary {
-  border-color: rgba(45, 245, 195, 0.82);
-  color: #03110d;
-  background: #20d6aa;
+  border-color: var(--tellux-accent-border);
+  color: var(--tellux-accent-ink);
+  background: var(--tellux-accent);
 }
 
 .sandcastle-button--primary:hover,
 .sandcastle-button--primary:focus-visible {
-  color: #03110d;
-  background: #42f0c5;
+  color: var(--tellux-accent-ink);
+  background: var(--tellux-accent-hover);
 }
 
 .sandcastle-rail {
@@ -1435,7 +1751,7 @@ body.sandcastle-page {
 .sandcastle-rail__button:hover,
 .sandcastle-rail__button:focus-visible,
 .sandcastle-rail__button[data-active] {
-  border-color: rgba(45, 245, 195, 0.45);
+  border-color: color-mix(in srgb, var(--tellux-accent-bright) 45%, transparent);
   color: #f8fafc;
   background: rgba(32, 214, 170, 0.82);
   outline: none;
@@ -1653,8 +1969,8 @@ body.sandcastle-page {
 .sandcastle-splitter:hover::before,
 .sandcastle-splitter:focus-visible::before,
 .sandcastle[data-resizing] .sandcastle-splitter::before {
-  background: #2df5c3;
-  box-shadow: 0 0 0 4px rgba(45, 245, 195, 0.16);
+  background: var(--tellux-accent-bright);
+  box-shadow: 0 0 0 4px var(--tellux-accent-glow);
 }
 
 .sandcastle[data-side-collapsed] .sandcastle-splitter::before {
@@ -1702,7 +2018,7 @@ body.sandcastle-page {
 
 .sandcastle-side-toggle:hover,
 .sandcastle-side-toggle:focus-visible {
-  border-color: rgba(45, 245, 195, 0.5);
+  border-color: color-mix(in srgb, var(--tellux-accent-bright) 50%, transparent);
   color: #ffffff;
   background: rgba(32, 214, 170, 0.24);
   outline: none;
@@ -1754,8 +2070,8 @@ body.sandcastle-page {
 .sandcastle-editor-tab:hover,
 .sandcastle-editor-tab:focus-visible,
 .sandcastle-editor-tab[data-active] {
-  color: #2df5c3;
-  background: rgba(45, 245, 195, 0.08);
+  color: var(--tellux-accent-bright);
+  background: var(--tellux-accent-soft);
   outline: none;
 }
 
@@ -1809,7 +2125,7 @@ body.sandcastle-page {
   font-weight: 600;
   letter-spacing: 0;
   background:
-    radial-gradient(circle at center, rgba(45, 245, 195, 0.14), transparent 32%),
+    radial-gradient(circle at center, color-mix(in srgb, var(--tellux-accent-bright) 14%, transparent), transparent 32%),
     rgba(3, 6, 11, 0.82);
   opacity: 0;
   pointer-events: none;
@@ -1824,7 +2140,7 @@ body.sandcastle-page {
   width: 34px;
   height: 34px;
   border: 2px solid rgba(215, 224, 233, 0.24);
-  border-top-color: #2df5c3;
+  border-top-color: var(--tellux-accent-bright);
   border-radius: 50%;
   animation: sandcastle-preview-loading-spin 780ms linear infinite;
 }
@@ -1866,7 +2182,7 @@ body.sandcastle-page {
 
 .sandcastle-preview-fullscreen:hover,
 .sandcastle-preview-fullscreen:focus-visible {
-  border-color: rgba(45, 245, 195, 0.62);
+  border-color: color-mix(in srgb, var(--tellux-accent-bright) 62%, transparent);
   color: #ffffff;
   background: rgba(32, 214, 170, 0.24);
   outline: none;
@@ -1931,8 +2247,8 @@ body.sandcastle-page {
 .sandcastle-console-resizer:hover::before,
 .sandcastle-console-resizer:focus-visible::before,
 .sandcastle-stage[data-console-resizing] .sandcastle-console-resizer::before {
-  background: #2df5c3;
-  box-shadow: 0 0 0 4px rgba(45, 245, 195, 0.16);
+  background: var(--tellux-accent-bright);
+  box-shadow: 0 0 0 4px var(--tellux-accent-glow);
 }
 
 .sandcastle-console-resizer:focus-visible {
@@ -2330,6 +2646,14 @@ body.sandcastle-page {
     top: 12px;
     left: 12px;
     max-width: calc(100vw - 24px);
+  }
+
+  .leva-panel {
+    top: 12px;
+    left: 12px;
+    right: auto;
+    width: calc(100vw - 24px);
+    max-width: 320px;
   }
 
   .layer-manager {

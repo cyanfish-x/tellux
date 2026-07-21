@@ -1,6 +1,18 @@
 ﻿import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
+import {
+  setupLevaFolderTransitions,
+  setupLevaPanelCollapse
+} from "./leva-folders"
+
+const symbolPanel = document.querySelector<HTMLElement>("#symbol-panel")
+const symbolPanelFold =
+  document.querySelector<HTMLButtonElement>("#symbol-panel-fold")
+if (symbolPanel && symbolPanelFold) {
+  setupLevaPanelCollapse(symbolPanel, symbolPanelFold)
+}
+setupLevaFolderTransitions()
 
 
 const container = document.querySelector("#viewer")
@@ -19,6 +31,12 @@ const recolorButton =
   document.querySelector<HTMLButtonElement>("#recolor-label")
 const clearButton =
   document.querySelector<HTMLButtonElement>("#clear-symbols")
+const stressCountInput =
+  document.querySelector<HTMLInputElement>("#stress-count")
+const generateStressButton =
+  document.querySelector<HTMLButtonElement>("#generate-stress")
+const clearStressButton =
+  document.querySelector<HTMLButtonElement>("#clear-stress")
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
@@ -29,7 +47,10 @@ if (
   !toggleIconsInput ||
   !toggleMultilineInput ||
   !recolorButton ||
-  !clearButton
+  !clearButton ||
+  !stressCountInput ||
+  !generateStressButton ||
+  !clearStressButton
 ) {
   throw new Error("Symbol controls not found.")
 }
@@ -292,8 +313,134 @@ recolorButton.addEventListener("click", () => {
 
 clearButton.addEventListener("click", () => {
   viewer.entities.removeAll()
+  stressIds.length = 0
   setStatus("已清空所有实体。")
 })
+
+// ----- 大规模 Symbol 压测：输入数量，网格散布 icon+text。-----
+const STRESS_MAX = 20_000
+const STRESS_CHUNK = 250
+const STRESS_HALF_SPAN_DEG = 0.035
+const STRESS_LABELS = [
+  "陆家嘴",
+  "东方明珠",
+  "上海中心",
+  "外滩",
+  "黄浦江",
+  "浦东",
+  "金融城",
+  "观景台",
+]
+const STRESS_ICONS = [pinIcon, starIcon, restaurantIcon, barIcon]
+const stressIds: string[] = []
+let stressGenerating = false
+
+clearStressButton.addEventListener("click", () => {
+  clearStressSymbols()
+  setStatus("已清空压测 Symbol。")
+})
+
+generateStressButton.addEventListener("click", () => {
+  void generateStressSymbols()
+})
+
+function clearStressSymbols() {
+  for (const id of stressIds) {
+    viewer.entities.remove(id)
+  }
+  stressIds.length = 0
+}
+
+async function generateStressSymbols() {
+  if (stressGenerating) return
+
+  const requested = Math.floor(Number(stressCountInput.value))
+  if (!Number.isFinite(requested) || requested < 1) {
+    setStatus("请输入有效的压测数量（≥ 1）。")
+    return
+  }
+  const count = Math.min(requested, STRESS_MAX)
+  if (count !== requested) {
+    stressCountInput.value = String(count)
+  }
+
+  stressGenerating = true
+  generateStressButton.disabled = true
+  clearStressSymbols()
+
+  const cols = Math.ceil(Math.sqrt(count))
+  const rows = Math.ceil(count / cols)
+  const startedAt = performance.now()
+
+  setStatus(`正在生成 ${count} 个压测 Symbol…`)
+
+  try {
+    for (let start = 0; start < count; start += STRESS_CHUNK) {
+      const end = Math.min(start + STRESS_CHUNK, count)
+      for (let i = start; i < end; i++) {
+        const col = i % cols
+        const row = Math.floor(i / cols)
+        const u = cols === 1 ? 0.5 : col / (cols - 1)
+        const v = rows === 1 ? 0.5 : row / (rows - 1)
+        // 轻微抖动，避免完全重叠。
+        const jitterLon = (Math.random() - 0.5) * (STRESS_HALF_SPAN_DEG / cols)
+        const jitterLat = (Math.random() - 0.5) * (STRESS_HALF_SPAN_DEG / rows)
+        const lon =
+          FOCUS_LONGITUDE -
+          STRESS_HALF_SPAN_DEG +
+          u * STRESS_HALF_SPAN_DEG * 2 +
+          jitterLon
+        const lat =
+          FOCUS_LATITUDE -
+          STRESS_HALF_SPAN_DEG +
+          v * STRESS_HALF_SPAN_DEG * 2 +
+          jitterLat
+        const label = STRESS_LABELS[i % STRESS_LABELS.length]
+        const icon = STRESS_ICONS[i % STRESS_ICONS.length]
+        const id = `stress-${i}`
+        stressIds.push(id)
+        viewer.entities.add({
+          id,
+          position: [lon, lat, SURFACE_OFFSET],
+          symbol: {
+            icon: { image: icon, scale: 0.85 },
+            text: {
+              text: label,
+              font: "SimHei",
+              fontSize: 12,
+              fillColor: "#ffffff",
+              outlineColor: "#0f172a",
+              outlineWidth: 1,
+            },
+            anchor: "bottom",
+            textRelative: "right",
+            textIconSpacing: 3,
+          },
+          properties: { kind: "stress", label, index: i },
+        })
+      }
+      setStatus(`正在生成压测 Symbol… ${end} / ${count}`)
+      await yieldToBrowser()
+    }
+
+    const elapsedMs = performance.now() - startedAt
+    setStatus(
+      `压测完成：${count} 个 Symbol，耗时 ${elapsedMs.toFixed(0)} ms（约 ${(
+        count /
+        (elapsedMs / 1000)
+      ).toFixed(0)} 个/秒）。当前实体总数 ${viewer.entities.values.length}。`
+    )
+  } finally {
+    stressGenerating = false
+    generateStressButton.disabled = false
+  }
+}
+
+function yieldToBrowser() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve())
+  })
+}
 
 function setStatus(message: string) {
   if (statusElement) statusElement.textContent = message

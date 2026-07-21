@@ -1,4 +1,31 @@
 # Tellux 待办事项
+
+## 已完成（近期，归档对照）
+
+以下能力已合入主干，此处仅作进度对照，细节见对应文档。
+
+- [X] 统一高亮 `viewer.highlight` / `scene.highlight`
+
+  - Object3D 后处理描边、3D Tiles feature 叠加几何、HISM 单实例 proxy 描边。
+  - 见 [docs/guide/highlight.md](./docs/guide/highlight.md)。
+- [X] 统一对象拾取 `viewer.pick` / `viewer.pickAll`
+
+  - 判别联合 `ViewerPickResult`；事件字段 `pick` / `picks`；保留独立的 `pickCartographic`。
+  - 默认 layers：`entity` / `hismInstance` / `tilesFeature`；传入 `root` 时默认仅 `object`。
+  - 见 [docs/guide/interaction.md](./docs/guide/interaction.md)。
+- [X] HISM C1–C6（PositionPipeline、簇剔除、LOD、BVH 拾取）与演示
+
+  - 公开 `viewer.addHismLayer`；演示见 `examples/hism/hism-forest`、`hism-compare`。
+  - 见 [docs/guide/hism.md](./docs/guide/hism.md)。
+- [X] Symbol 实体 S0–S3（AnchorQuad + Icon/Text SDF、案例）
+
+  - 文字走 per-symbol / GlyphAtlas SDF（非原计划 canvas 覆盖 v1）；案例见 `examples/symbol.ts`。
+  - 见 [docs/guide/entities.md](./docs/guide/entities.md)、[docs/design/symbol-entity.md](./docs/design/symbol-entity.md)。
+- [X] 折线 / 多边形真·贴地（`clamp: true`，`offset: 0`，WebGL）
+
+  - API 为统一 `clamp` 字段（非 Cesium 式 `heightReference` 枚举）。
+  - 见 [docs/guide/entities.md](./docs/guide/entities.md)、[docs/design/ground-clamp.md](./docs/design/ground-clamp.md)。
+
 ## 社区优秀案例作品展示页
 
 目标：建设面向社区的优秀案例作品展示页，集中分享基于 Tellux 构建的数字地球、数字孪生、三维地图及行业应用，促进案例传播、用户交流和生态共建。
@@ -11,104 +38,75 @@
 
 ## 实体贴地（Ground Clamp）
 
-完整设计见 [docs/design/ground-clamp.md](./docs/design/ground-clamp.md)。
+完整设计见 [docs/design/ground-clamp.md](./docs/design/ground-clamp.md)。使用说明见 [docs/guide/entities.md](./docs/guide/entities.md)「贴地」。
 
-- 背景：当前实体位置是绝对椭球高，无任何地形跟随；点 / 线 / 面需要真·贴地。
-- 方案：GPU 阴影体 + 深度纹理逐片元分类（对标 Cesium `GroundPrimitive` / `GroundPolylinePrimitive`），**否决** CPU 采样重建的妥协路线。
-- 渲染器：WebGL 优先全量实现；WebGPU 暂不处理（`onBeforeCompile` 在 WebGPU 失效，后续单独立项）。
+- 背景：折线 / 多边形已支持 GPU 真·贴地；点 / Symbol 仍为绝对椭球高。
+- 方案：线 / 面用 GPU 阴影体 + 深度纹理逐片元分类（对标 Cesium `GroundPrimitive` / `GroundPolylinePrimitive`）；点 / Symbol 走 CPU `sampleHeightMostDetailed` 采样（Cesium 正解，非妥协）。
+- 公开 API：统一 `clamp: boolean | { source, offset }`（`true` ≡ `{ source: 'all', offset: 0 }`）。
+- 渲染器：WebGL 优先；WebGPU 暂不处理（`onBeforeCompile` 失效，后续单独立项）。
 
 - [X] P0 深度分类管线 + 贴地线
 
-  - 新增 `GroundClampPass`（effects pass，同 `EntityRenderManager` 形态），复用 `readBuffer.depthTexture` 作地表深度源。
-  - port Cesium `createGroundPolylineGeometry`：沿椭球细分 + 墙体积几何（8 顶点 / 36 索引）。
-  - port `PolylineShadowVolumeFS/VS`：片元读深度还原地表点 → 右 / 起 / 终平面 + 半宽判定。
-  - 落实工程细节 1：`EncodedCartesian3` 高 / 低双精度拆分（抗地球尺度抖动）。
-  - 落实工程细节 2：法向 `±EPSILON5` 微偏移治 z-fighting（不抬高度）。
-  - API：`PolylineOptions.heightReference: 'CLAMP_TO_GROUND'`。
+  - `GroundClampPass` + `GroundPolylineGraphic`；`EncodedCartesian3`、法向微偏移治 z-fighting。
+  - API：`PolylineOptions.clamp`。
 - [X] P1 贴地面
 
-  - `GroundPolygonGraphic` 阴影体几何（port `PolygonGeometry` + `createShadowVolume`）。
-  - 模板两遍材质（stencil-depth + color，port `ShadowVolumeAppearanceFS`）。
-  - `PolygonOptions.heightReference: 'CLAMP_TO_GROUND'`。
-- [ ] P2 点 heightReference
+  - `GroundPolygonGraphic` 阴影体 + 模板两遍材质。
+  - API：`PolygonOptions.clamp`。
+- [ ] P2 点 clamp
 
-  - 接入 `HeightSampler`：add 即摆椭球高，`sampleHeightMostDetailed` resolve 后 snap。
+  - 接入 HeightSampler：add 即摆椭球高，`sampleHeightMostDetailed` resolve 后 snap。
   - LOD 变化去抖重采样（点仅 1 顶点）。
-  - `PointOptions.heightReference: 'CLAMP_TO_GROUND'`。
-- [ ] P3 terrain / 3D Tiles 深度分离
+  - `PointOptions.clamp`（当前会降级绝对高并告警）。
+- [ ] P3 terrain / 3D Tiles 深度分离（`source`）
 
-  - 主渲染插入 terrain-only 深度快照 → `CLAMP_TO_TERRAIN` / `CLAMP_TO_TILESET`。
-- [ ] P4 RELATIVE_TO_GROUND + 打磨
+  - 主渲染插入 terrain-only / tileset-only 深度快照 → `source: 'terrain' | 'tileset'`。
+  - 当前贴地深度为地形与 3D Tiles 并集（`source: 'all'`）。
+- [ ] P4 `offset > 0`（相对地表抬高）+ 打磨
 
-  - `RELATIVE_TO_GROUND`（地表高 + height 偏移）；性能（scissor / 包络）、与 OIT 交互、拾取语义厘清。
+  - 地表高 + `offset` 米；性能（scissor / 包络）、与 OIT 交互、拾取语义厘清。
+  - 当前 `offset > 0` 会降级为绝对高并告警。
 
 ## Symbol 实体（Icon + 文字标签）
 
 完整设计见 [docs/design/symbol-entity.md](./docs/design/symbol-entity.md)。
 
-- 背景：实体目前无图标 / 文字标注；点图形用 `THREE.Points` 圆形纹理，无法承载任意图片或文字。
-- 方案：对标 Mapbox `symbol` layer——一个 symbol = icon + text 共享同一锚点 / 排布 / 着色器，内部共用屏幕空间四边形原语 `AnchorQuadGraphic`。文字 v1 用 canvas 覆盖纹理 + shader tint（WYSIWYG，走 `resolveColor`）；SDF / instanced collection 为量级驱动的后续升级，接口预留。
-- 不做（非目标）：沿线标签、地图级碰撞检测（地球引擎少量标注用不上）。
+- 背景：点图形无法承载任意图片或文字；已落地 icon + text 共享锚点的 Symbol。
+- 实现要点：`AnchorQuadGraphic` + `SymbolGraphic`；文字 / 图标走 SDF（含 GlyphAtlas / TinySDF、可选 MSDF）；锚点遮挡 pass；拾取按 UV 采样 SDF alpha。
+- 不做（非目标 v1）：沿线标签、地图级碰撞检测。
 
-- [ ] S0 AnchorQuadGraphic 原语
+- [X] S0 AnchorQuadGraphic 原语
+- [X] S1 SymbolGraphic + Icon（含 Entity 集成、拾取）
+- [X] S2 Text（per-symbol SDF；原计划 canvas 覆盖已跳过）
+- [X] S3 打磨 + 案例（多行 / 背景 / 与 point 共存；`examples/symbol.ts`）
+- [ ] S4 贴地 clamp（单点 HeightSampler，同点语义）
+- [ ] S5 距离衰减（`scaleByDistance` / `translucencyByDistance` / `disableDepthTestDistance`）与 `sizeInMeters`
+- [ ] S6 量级升级（可选）：完整字形图集 / instanced collection（接口不暴露纹理来源，便于整体替换）
 
-  - 自写 ShaderMaterial：camera-facing、像素 / 世界大小、anchor、pixelOffset、rotation、tint、opacity；FS main 末尾显式 `gl_FragColor` 以命中 [EntityRenderManager](./src/entities/EntityRenderManager.ts) OIT 注入 fallback 分支。
-  - 验证：单 quad 贴图渲染 + 缩放 / 旋转 / 偏移 / tint 正确；半透明经 OIT 无黑边。
-- [ ] S1 SymbolGraphic + Icon
+## 实例化渲染（HISM）
 
-  - `IconOptions`、image 异步加载 + 共享缓存 + dispose、`SymbolGraphics` / `IconGraphics` 句柄、Entity 集成（position / show / dispose / `get symbol`）。
-  - 验证：icon 跟随 position，raycast 命中（零拾取改动，Mesh 走现有 raycast 路径），颜色 WYSIWYG。
-- [ ] S2 Text（canvas 纹理）
+目标：引擎级通用高性能实例化——层级空间结构驱动的逐实例视锥剔除 + 逐实例 LOD + 按 LOD 分桶的实例化批次。vegetation / 森林是第一个客户，后续覆盖草地、岩石、建筑等。
 
-  - `TextOptions`、canvas coverage 构建（白色字形 / 描边，色作 uniform）、fill / outline / bg 经 `resolveColor`、布局（textRelative / anchor / spacing）、`TextGraphics` 句柄。
-  - 验证：文字锐利、halo 正确、改色不重建 canvas、改文字重建、icon+text 组合排布正确。
-- [ ] S3 打磨 + 案例
+架构见 [docs/design/engine-ownership-and-dependency-strategy.md](./docs/design/engine-ownership-and-dependency-strategy.md)；使用见 [docs/guide/hism.md](./docs/guide/hism.md)。
 
-  - 多行 / maxWidth 换行、行高、背景框、与 point 共存、sandcastle 案例（[examples/entities.ts](./examples/entities.ts) 模式）。
-- [ ] S4 贴地 clamp（单点 HeightSampler 采样，同点语义）
-- [ ] S5 距离衰减（scaleByDistance / translucencyByDistance / disableDepthTestDistance）
+- 现状：`src/hism/` 已落地 PositionPipeline、RTC stage、风摆 stage、簇网格、视锥剔除、LOD bucketing、BVH 拾取、`viewer.addHismLayer` / `viewer.pick(..., { layers: ['hismInstance'] })` / `viewer.highlight.set(hismPick)`。
+- 演示：`examples/hism/hism-forest`（功能 + 描边高亮）、`examples/hism/hism-compare`（legacy InstancedMesh vs HISM 性能对照）；旧 `examples/vegetation.ts` 仍可作对照基线。
+- **明确不做**：HZB 遮挡剔除；Nanite 级 GPU-driven meshlet（另立项）。
 
-## 实例化渲染（对标 UE5 HISM）
-
-目标：实现引擎级通用高性能实例化渲染系统，以 UE5 的 **HISM（Hierarchical Instanced Static Mesh）** 为标杆——层级空间结构驱动的逐实例视锥剔除 + 逐实例 LOD 选择 + 按 LOD 分桶的实例化批次。vegetation 是第一个客户，后续覆盖草地、岩石、建筑、鸟群、车流等。
-
-完整架构与依赖策略见 [docs/design/engine-ownership-and-dependency-strategy.md](./docs/design/engine-ownership-and-dependency-strategy.md)（§1 PositionPipeline、§2 通用实例化系统、C1-C7 交付路线）。
-
-- 背景：现状实例化只有 vegetation 内的 [src/rendering/applyRTCInstancing.ts](./src/rendering/applyRTCInstancing.ts)（RTC 高/低精度平移 + 手工包围盒），无 shader 组合层、无剔除、无 LOD、无拾取，且 shader 注入是 ez-tree 风摆与 RTC 两方字符串 patch 的脆弱状态（见 [notes/坑点记录/ez-tree风摆与RTC争抢project_vertex坑点.md](./notes/坑点记录/ez-tree风摆与RTC争抢project_vertex坑点.md)）。
-- 对标范围：HISM 的「层级剔除 + 逐实例 LOD」是核心目标；**明确不做** HZB 遮挡剔除（WebGL2 下 ROI 低）与 UE5 Nanite 级 GPU-driven meshlet（需 WebGPU + compute，另立项）。
-- 前置约束：必须先建 PositionPipeline 再迁 ez-tree，不得先 vendor ez-tree（会用 vendor 替代架构思考）。每个 chunk 必须可独立验证（画面等价或可量化指标），避免大爆炸式集成。
-- 验证 demo：[examples/vegetation.ts](./examples/vegetation.ts)（第一个客户，C1-C6 的画面等价基准）。
-
-- [ ] C1 PositionPipeline 协议 + 单元测试
-
-  - 建 position 管线组合协议：所有位置贡献者（RTC / 风摆 / 剔除 / LOD）通过 stage 注册，引擎独占 `<project_vertex>` 最终输出，单一 `onBeforeCompile` 按 order 拼接。
-  - 协议字段按 TSL PositionNode 形态设计（预留未来 A→B 迁移）；拍板是否预留 `vertexPosition`(pre-project) / `clipPosition`(post-project) 钩子（决定能否做 GPU 实例剔除）。
-  - 验证：给 fake stage 组合后 GLSL 正确（单元测试 + 输出快照 hash），不接业务。
-- [ ] C2 RTC 注入迁到 PositionPipeline
-
-  - 把 `applyRTCInstancing.ts` 的高/低精度 RTE 数学重写为 PositionPipeline stage，消除对 `#include <project_vertex>` 的正则 patch。
-  - 验证：vegetation 视觉等价。
-- [ ] C3 ez-tree 风摆迁到 PositionPipeline stage
-
-  - 按「提取重写」策略：保留 ez-tree geometry 生成，丢弃其 `createLeavesGeometry` 里的 `MeshPhongMaterial + onBeforeCompile`，风摆改为 Tellux 自有 stage。
-  - 验证：风摆视觉等价；ez-tree 与 RTC 不再争抢 `<project_vertex>`。
-- [ ] C4 InstancedSceneObject 通用类 + 簇划分 + 逐实例视锥剔除（HISM 核心）
-
-  - 通用实例化容器类，实例变换建层级空间结构（BVH / 网格簇，集成 [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-bvh)），对标 HISM 的 cluster tree。
-  - 逐簇 + 逐实例视锥剔除，动态回填可见实例到 `instanceMatrix`（含 positionHigh/Low 通道）。
-  - 验证：draw call / 提交实例数随视锥下降，画面等价。
-- [ ] C5 LOD bucketing + 简化几何管线（HISM 核心）
-
-  - 距离驱动逐实例 LOD 选择，按 LOD 层级分桶为独立实例化批次；含 LOD 切换去抖 / 过渡。
-  - 验证：远距离帧率提升，近距离画面等价。
-- [ ] C6 拾取（集成 three-mesh-bvh）
-
-  - 实例化射线拾取，复用 C4 的空间结构。
-  - 验证：鼠标点树 / 实例能正确选中。
+- [X] C1 PositionPipeline 协议 + 单元测试
+- [X] C2 RTC 注入迁到 PositionPipeline
+- [X] C3 ez-tree 风摆迁到 PositionPipeline stage
+- [X] C4 HismLayer / 簇划分 + 逐实例视锥剔除
+- [X] C5 LOD bucketing
+- [X] C6 BVH 拾取 + 统一 `pick` / 高亮解包
 - [ ] C7 第二个客户接入验证 API 通用性
 
-  - 用非 vegetation 场景（如岩石 / 建筑）接入，验证系统不是 vegetation-specific。
+  - 用非 vegetation 场景（岩石 / 建筑等）接入，确认不是 vegetation-specific。
   - 验证：新客户 < 200 行接入。
+- [ ] C8 可选后续
+
+  - 跨 Picker 共享 Raycaster / `ray.far` 递进裁剪（拾取性能）。
+  - HISM 描边跟随 PositionPipeline 风摆顶点（当前描边贴合实例变换，不含顶点形变）。
 
 ## WebGPU 渲染模式
 
