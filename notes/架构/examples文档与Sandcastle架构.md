@@ -8,7 +8,7 @@
 - 项目文档页：`docs/` 通过 VitePress 构建到 `examples/public/docs/`
 - 项目 Sandcastle：`examples/sandcastle.html` 和 `examples/sandcastle/`
 
-这三部分在开发时可以通过根目录 `pnpm dev` 同时启动：示例站点运行在 `http://127.0.0.1:5173/`，文档站点运行在 `http://127.0.0.1:5174/`。发布示例时，`pnpm build:examples` 会先构建 VitePress 文档，再构建 `examples` Vite 多页应用。
+这三部分在开发时可以通过根目录 `pnpm dev`（`scripts/dev.mjs`）同时启动：优先使用 `http://127.0.0.1:5173/`（examples）与 `http://127.0.0.1:5174/`（docs）；若端口被占用则自动向后寻找空闲端口，并通过 `TELLUX_EXAMPLES_ORIGIN` / `VITE_TELLUX_DOCS_ORIGIN` 同步两侧交叉链接。发布示例时，`pnpm build:examples` 会先构建 VitePress 文档，再构建 `examples` Vite 多页应用。
 
 ## 整体构建关系
 
@@ -61,7 +61,7 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 - `base: '/docs/'`
 - `outDir: '../examples/public/docs'`
 - 导航包含指南、API、能力参考和 Sandcastle。
-- `command === 'serve'` 时，Sandcastle 链接指向开发服务器 `http://127.0.0.1:5173/sandcastle.html`。
+- `command === 'serve'` 时，Sandcastle 链接指向开发服务器 `${TELLUX_EXAMPLES_ORIGIN || 'http://127.0.0.1:5173'}/sandcastle.html`。
 - 构建后，Sandcastle 链接使用相对路径 `../../sandcastle.html`，从静态文档页跳回示例站点中的 Sandcastle。
 
 `docs/` 应只保留面向用户的文档内容，例如：
