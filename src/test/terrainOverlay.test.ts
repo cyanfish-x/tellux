@@ -230,6 +230,67 @@ describe('terrain imagery overlays', () => {
     expect(material.map).toBe(texture)
   })
 
+  it('disables flipY for ImageBitmap overlay textures on WebGPU materials', () => {
+    const OriginalImageBitmap = globalThis.ImageBitmap
+    class FakeImageBitmap {}
+    ;(globalThis as unknown as { ImageBitmap: typeof FakeImageBitmap }).ImageBitmap = FakeImageBitmap
+
+    try {
+      const imageBitmap = new FakeImageBitmap()
+      const texture = new THREE.Texture(imageBitmap as unknown as THREE.Texture['image'])
+      texture.flipY = true
+      const material = new THREE.MeshStandardMaterial()
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), material)
+      const overlay = { opacity: 1 }
+      const tile = {}
+
+      const plugin = new WebGPUTerrainOverlayPlugin([overlay as never], 512)
+      const splittingPlugin = (plugin as unknown as {
+        splittingPlugin: {
+          overlays: unknown[]
+          overlayInfo: Map<unknown, {
+            tileInfo: Map<unknown, {
+              target: unknown
+              meshInfo: Map<THREE.Mesh, { attribute: THREE.BufferAttribute }>
+            }>
+          }>
+          _updateLayers: (tile: unknown) => void
+        }
+      }).splittingPlugin
+      splittingPlugin.overlays = [overlay]
+      splittingPlugin.overlayInfo = new Map([
+        [overlay, {
+          tileInfo: new Map([
+            [tile, {
+              target: texture,
+              meshInfo: new Map([
+                [mesh, {
+                  attribute: new THREE.BufferAttribute(new Float32Array([
+                    0, 0, 1,
+                    1, 0, 1,
+                    1, 1, 1,
+                    0, 1, 1
+                  ]), 3)
+                }]
+              ])
+            }]
+          ])
+        }]
+      ])
+
+      splittingPlugin._updateLayers(tile)
+
+      expect(material.map).toBe(texture)
+      expect(texture.flipY).toBe(false)
+    } finally {
+      if (OriginalImageBitmap) {
+        globalThis.ImageBitmap = OriginalImageBitmap
+      } else {
+        delete (globalThis as { ImageBitmap?: unknown }).ImageBitmap
+      }
+    }
+  })
+
   it('uses overlay-projected UVs for WebGPU terrain direct textures', () => {
     const overlay = { opacity: 1 }
     const tile = {}

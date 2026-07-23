@@ -160,6 +160,19 @@ class WebGPUTerrainOverlaySplittingPlugin extends ImageOverlayPlugin {
   private applyTextureToMaterial(material: THREE.Material, texture: THREE.Texture | null) {
     if (!('map' in material)) return
 
+    // 3d-tiles-renderer 的 TiledImageSource 用 createImageBitmap({ imageOrientation: 'flipY' })
+    // 预翻转影像，但 Texture.flipY 仍默认为 true。
+    // WebGL 对 ImageBitmap 忽略 UNPACK_FLIP_Y；WebGPU 会在 copyExternalImageToTexture
+    // 时再翻一次，导致单瓦片快路径贴图上下颠倒、邻接瓦片错缝。
+    // TiledImageSource pre-flips imagery via createImageBitmap({ imageOrientation: 'flipY' })
+    // but leaves Texture.flipY at its default true. WebGL ignores UNPACK_FLIP_Y for
+    // ImageBitmap; WebGPU flips again in copyExternalImageToTexture, so the single-tile
+    // fast path appears upside-down and adjacent tiles misalign.
+    if (texture && typeof ImageBitmap !== 'undefined' && texture.image instanceof ImageBitmap) {
+      texture.flipY = false
+      texture.needsUpdate = true
+    }
+
     ;(material as THREE.MeshBasicMaterial | THREE.MeshStandardMaterial).map = texture
     material.needsUpdate = true
   }
