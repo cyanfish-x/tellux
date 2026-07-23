@@ -4,6 +4,7 @@ import { installTimelineStyles } from "./styles"
 import type { TimelineOptions } from "./types"
 
 const DEFAULT_SPEEDS = [1, 60, 600, 3600, 21600, 86400] as const
+const CLOUD_SPEED_MULTIPLIER_CAP = 60
 const MILLISECONDS_PER_DAY = 86400000
 const DEFAULT_SPRING_OPTIONS = {
   stiffness: 80,
@@ -19,7 +20,14 @@ interface TimelineHandle {
 /**
  * Viewer 时间条控件。
  *
+ * 挂载后会按播放态将 `clock.multiplier` 联动到 `scene.clouds.speed`：
+ * 播放时为挂载时快照的基准云速 × 倍率（倍率上限 `60`），暂停时为 `0`。
+ *
  * Timeline widget for a Viewer.
+ *
+ * While mounted, links `clock.multiplier` to `scene.clouds.speed` in play state:
+ * base cloud speed captured at mount × multiplier (capped at `60`) while
+ * playing, otherwise `0`.
  */
 export class Timeline {
   private readonly handle: TimelineHandle
@@ -49,6 +57,13 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   }
   if (options.multiplier !== undefined) {
     viewer.clock.multiplier = options.multiplier
+  }
+
+  const baseCloudSpeed = viewer.scene.clouds.speed
+  const syncCloudSpeed = () => {
+    viewer.scene.clouds.speed = viewer.clock.animate
+      ? baseCloudSpeed * Math.min(viewer.clock.multiplier, CLOUD_SPEED_MULTIPLIER_CAP)
+      : 0
   }
 
   const dynamicDayRange = options.startTime === undefined && options.endTime === undefined
@@ -167,6 +182,7 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     playButton.dataset.playing = String(viewer.clock.animate)
     playButton.setAttribute("aria-label", viewer.clock.animate ? "暂停时间" : "播放时间")
     syncSpeedOption(speedSelect, viewer.clock.multiplier)
+    syncCloudSpeed()
   }
 
   const setCurrentTime = (date: Date) => {
@@ -183,9 +199,20 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     isSpringDrivingClock = true
   }
 
+  const pauseClock = () => {
+    if (!viewer.clock.animate) return
+
+    viewer.clock.animate = false
+    if (timeSpring) {
+      isSpringDrivingClock = false
+      timeSpring.reset(dateToUnixSeconds(viewer.clock.currentTime))
+    }
+  }
+
   const setCurrentTimeFromInput = (keepSeeking = true) => {
     const seconds = Number(input.value)
     isSeeking = keepSeeking
+    pauseClock()
     setCurrentTime(new Date(rangeStart.getTime() + seconds * 1000))
     syncDisplay()
   }
@@ -227,6 +254,8 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   })
   input.addEventListener("pointerdown", (event) => {
     isSeeking = true
+    pauseClock()
+    syncDisplay()
     try {
       input.setPointerCapture?.(event.pointerId)
     } catch {
@@ -253,6 +282,7 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     dispose() {
       window.removeEventListener("pointerup", stopSeeking)
       window.removeEventListener("blur", stopSeeking)
+      viewer.scene.clouds.speed = baseCloudSpeed
       root.remove()
     },
   }

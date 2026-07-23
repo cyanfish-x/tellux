@@ -109,4 +109,4 @@ viewer.scene.highlight.overlay.opacity = 0.4
 - HISM 描边贴合实例变换矩阵，**不**同步 PositionPipeline 风摆顶点形变。
 - 3D Tiles 叠加依赖瓦片几何上的 `_BATCHID` / `_FEATURE_ID_*` 等属性；没有 feature id 时退化为整 mesh 贴膜或包围盒。
 
-完整交互示例见 [`examples/3d-tiles-picking.html`](../../examples/3d-tiles-picking.html)、[`examples/hism/hism-forest.html`](../../examples/hism/hism-forest.html)。
+完整交互示例见 [`3d-tiles-picking.html`](../../3d-tiles-picking.html)、[`hism/hism-forest.html`](../../hism/hism-forest.html)。

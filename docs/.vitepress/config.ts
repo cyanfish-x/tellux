@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitepress'
 import type { ConfigEnv } from 'vite'
 
+// pnpm dev 会通过 scripts/dev.mjs 注入实际 examples origin；单独 docs:dev 时回落到 5173。
+const examplesOrigin = (process.env.TELLUX_EXAMPLES_ORIGIN || 'http://127.0.0.1:5173').replace(/\/$/, '')
+
 export default ({ command }: ConfigEnv) => defineConfig({
   title: 'Tellux',
   description: 'An open-source 3D Earth Engine built on Three.js for digital globes, digital twins, 3D maps, and modern web applications.',
@@ -22,6 +25,11 @@ export default ({ command }: ConfigEnv) => defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   lang: 'zh-CN',
+  // docs 构建进 examples/public/docs；Markdown 里用 ../../xxx.html 跳到示例站根。
+  // 这些页面不在 VitePress 源树内，死链检查会误报，需显式忽略。
+  ignoreDeadLinks: [
+    (url: string) => /(?:^|\/)\.\.\/\.\.\//.test(url)
+  ],
   themeConfig: {
     logo: { text: 'T' },
     // logoLink / Sandcastle 指向示例主站（与文档站同源但属不同子站）。
@@ -32,7 +40,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
     // 反而在文档页显示 404」。target="_self" 仍为当前页跳转，符合预期。
     logoLink:
       command === 'serve'
-        ? 'http://127.0.0.1:5173/'
+        ? `${examplesOrigin}/`
         : { link: '../../index.html', target: '_self', rel: 'noopener' },
     siteTitle: 'Tellux',
     nav: [
@@ -43,7 +51,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
         text: 'Sandcastle',
         link:
           command === 'serve'
-            ? 'http://127.0.0.1:5173/sandcastle.html'
+            ? `${examplesOrigin}/sandcastle.html`
             : '../../sandcastle.html',
         // nav 项的 target/rel 与 link 平级（link 始终是 string）。
         // 不能像 logoLink 那样把 link 写成对象 —— NavItemWithLink.link 类型

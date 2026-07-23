@@ -340,16 +340,18 @@ let consoleHeight = 150
 let activeRunId: string | null = null
 
 function getDocsUrl() {
-  const isLocalExamplesServer =
-    window.location.port === "5173" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1" ||
-      window.location.hostname === "::1")
+  const isLocalHost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "::1"
 
-  if (isLocalExamplesServer) {
-    // 开发时文档站由 docs:dev 独立跑在 5174 根路径（vitepress dev docs，无 base），
-    // 不带 /docs 前缀；生产构建后文档部署到 ./docs/ 子路径。
-    return "http://127.0.0.1:5174/"
+  // 开发时文档站由 docs:dev / pnpm dev 独立跑在根路径（vitepress，无 /docs base）；
+  // 端口可能因占用回退，由 VITE_TELLUX_DOCS_ORIGIN 注入实际地址。
+  if (isLocalHost && import.meta.env.DEV) {
+    const origin = (
+      import.meta.env.VITE_TELLUX_DOCS_ORIGIN || "http://127.0.0.1:5174"
+    ).replace(/\/$/, "")
+    return `${origin}/`
   }
 
   return new URL("./docs/", window.location.href).toString()

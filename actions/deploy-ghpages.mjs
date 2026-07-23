@@ -8,7 +8,10 @@
  *   1. 构建 docs + examples → examples/dist-ghpages/
  *      base 由各 config 内部按 command/mode 判断（不通过环境变量传，见下注释）
  *   2. gh-pages 包将 dist-ghpages 提交到本地 gh-pages 分支
- *   3. 显式 push 到 origin/gh-pages（gh-pages 包默认推送可能静默失败）
+ *   3. fetch 后以 --force-with-lease 推送到 origin/gh-pages
+ *      （gh-pages 是纯产物分支，每次部署用当前构建覆盖远程是正确流程；
+ *       普通 fast-forward push 会在历史分叉时失败。force-with-lease
+ *       比 --force 更安全：若 fetch 后远程又有新提交则拒绝覆盖。）
  *
  * 注意：不要用 DOCS_BASE / VITE_BASE 之类的环境变量传 base，
  *   Windows + Git Bash 的 MSYS2 会把 "/tellux/docs/" 改写成绝对路径。
@@ -61,9 +64,11 @@ async function main() {
   })
 
   console.log(`🚀 [4/4] 推送到 origin/${BRANCH}...`)
-  // gh-pages 包默认可能不推送（取决于 push.default / 远程跟踪配置），
-  // 这里显式 push，确保远程分支更新。
-  run(`git push -u origin ${BRANCH}`)
+  // gh-pages 是纯静态产物分支：每次部署应用当前构建整分支覆盖远程。
+  // 先 fetch 再 --force-with-lease，避免与远程分叉时被拒，同时保留
+  // 「远程在 fetch 后又被他人推送」时的保护。
+  run(`git fetch origin ${BRANCH}`)
+  run(`git push --force-with-lease -u origin ${BRANCH}`)
 
   console.log("\n🎉 gh-pages 部署完成！")
 }

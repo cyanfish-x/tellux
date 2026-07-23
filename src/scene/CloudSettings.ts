@@ -4,7 +4,7 @@ import type { CloudStateApplier } from './SceneStateAppliers'
 import type { ResolvedSceneOptions } from './SceneOptions'
 import { SceneToggle } from './SceneToggle'
 
-const DEFAULT_CLOUD_SPEED = 0.001
+const DEFAULT_CLOUD_SPEED = 0.0005
 
 export class CloudSettings {
   private readonly visibility: SceneToggle

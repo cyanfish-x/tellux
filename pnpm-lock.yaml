@@ -17,9 +17,6 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
-      tencentcloud-sdk-nodejs-cdn:
-        specifier: ^4.1.200
-        version: 4.1.250
       three-mesh-bvh:
         specifier: 0.9.0
         version: 0.9.0(three@0.184.0)
@@ -87,6 +84,9 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.1.3
+      tencentcloud-sdk-nodejs-cdn:
+        specifier: ^4.1.200
+        version: 4.1.250
       three:
         specifier: ^0.184.0
         version: 0.184.0
