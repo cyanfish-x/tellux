@@ -173,11 +173,11 @@ export function showTokenNotice(element: HTMLElement | null) {
   if (!element) return
 
   if (import.meta.env.DEV) {
-    element.textContent = t("common.imagery.arcgis")
+    element.textContent = t({ zh: "当前示例使用 ArcGIS World Imagery XYZ 瓦片。", en: "This example uses ArcGIS World Imagery XYZ tiles." })
     return
   }
 
   element.textContent = defaultTiandituToken
-    ? t("common.imagery.tianditu")
-    : t("common.imagery.tiandituNeedToken")
+    ? t({ zh: "当前示例使用天地图卫星影像 XYZ 瓦片。", en: "This example uses Tianditu satellite imagery XYZ tiles." })
+    : t({ zh: "当前示例使用天地图卫星影像 XYZ 瓦片，请配置 VITE_TIANDITU_TOKEN。", en: "This example uses Tianditu satellite imagery XYZ tiles; please set VITE_TIANDITU_TOKEN." })
 }

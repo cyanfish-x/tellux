@@ -1,0 +1,22 @@
+# Tellux Cursor Rules
+
+## Commit messages（Generate Commit Message）
+
+## Git 提交规范
+
+提交信息必须使用中文，并遵循 Conventional Commits 风格：
+
+<type>: <中文描述>
+
+允许的 `type`：
+
+- `feat`：新增功能
+- `fix`：修复问题
+- `refactor`：重构且不改变功能
+- `test`：新增或修改测试
+- `docs`：仅文档变更
+- `chore`：工具、依赖或配置变更
+
+提交应保持单一职责；正文可选，用于说明变更原因或重要背景。
+
+禁止在提交信息中加入任何签名或 trailer

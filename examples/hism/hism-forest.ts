@@ -123,7 +123,7 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
   if (treeCountElement) treeCountElement.textContent = "-"
   if (rockCountElement) rockCountElement.textContent = "-"
   setSamplingStatus("-")
-  setStatus(t("example.hism-forest.status.genPoints"))
+  setStatus(t({ zh: "正在生成散布点...", en: "Generating placements..." }))
 
   sceneState?.forestLayer.remove()
   sceneState?.rockLayer?.remove()
@@ -149,7 +149,7 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
     presetCount: 1,
   })
 
-  setStatus(t("example.hism-forest.status.sampling"))
+  setStatus(t({ zh: "正在采样地表高度...", en: "Sampling surface heights..." }))
   const [treeHeights, rockHeights] = await Promise.all([
     viewer.sampleHeightMostDetailed(
       treePlacements.map((point) => [point.longitude, point.latitude]),
@@ -198,7 +198,7 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
     .filter((item): item is NonNullable<typeof item> => item !== null)
 
   if (treeInstances.length === 0) {
-    setStatus(t("example.hism-forest.status.treeSampleFail"))
+    setStatus(t({ zh: "树实例高度采样失败。", en: "Tree instance height sampling failed." }))
     regenerateButton.disabled = false
     return
   }
@@ -253,7 +253,7 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
     `${Math.min(...treeInstances.map((item) => item.coordinates[2])).toFixed(1)}m - ${Math.max(...treeInstances.map((item) => item.coordinates[2])).toFixed(1)}m`
   )
   setStatus(
-    t("example.hism-forest.status.ready", {
+    t({ zh: "HISM 场景就绪：{trees} 棵树 + {rocks} 块岩石。", en: "HISM ready: {trees} trees + {rocks} rocks." }, {
       trees: treeInstances.length,
       rocks: rockInstances.length,
     })
@@ -311,13 +311,13 @@ viewer.on("click", (event) => {
   const pick = viewer.pick(event.position, { layers: ["hismInstance"] })
   if (!pick || pick.type !== "hismInstance") {
     viewer.highlight.clear()
-    if (hudPick) hudPick.textContent = t("example.hism-forest.pick.miss")
+    if (hudPick) hudPick.textContent = t({ zh: "未命中 HISM 实例", en: "No HISM instance hit" })
     return
   }
   viewer.highlight.set(pick)
   const { instance } = pick
   if (hudPick) {
-    hudPick.textContent = t("example.hism-forest.pick.hit", {
+    hudPick.textContent = t({ zh: "命中 {layerId} · cluster {clusterKey} · archetype {archetypeIndex} · LOD {lodIndex} · instance {instanceId}", en: "Hit {layerId} · cluster {clusterKey} · archetype {archetypeIndex} · LOD {lodIndex} · instance {instanceId}" }, {
       layerId: instance.layerId,
       clusterKey: instance.clusterKey,
       archetypeIndex: instance.archetypeIndex,

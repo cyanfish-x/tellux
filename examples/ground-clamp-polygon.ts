@@ -84,7 +84,7 @@ viewer.entities.add({
     clamp: true,
     color: "rgba(34, 211, 238, 0.5)",
   },
-  properties: { kind: "clamp", label: t("example.ground-clamp-polygon.props.clamp") },
+  properties: { kind: "clamp", label: t({ zh: "贴地面", en: "Clamped polygon" }) },
 })
 
 // 对比面：同形状东移、固定绝对高的普通平面多边形，凹谷处悬空。
@@ -99,16 +99,16 @@ viewer.entities.add({
     outline: true,
     outlineColor: "#fde047",
   },
-  properties: { kind: "reference", label: t("example.ground-clamp-polygon.props.reference") },
+  properties: { kind: "reference", label: t({ zh: "固定高平面", en: "Fixed-height plane" }) },
 })
 
 if (!exampleMapServiceConfig.createTerrainOptions()) {
   setStatus(
-    t("example.ground-clamp-polygon.status.noTerrain")
+    t({ zh: "未配置默认地形服务，无地形数据，贴地效果不可见。", en: "No default terrain; clamp effect not visible." })
   )
 } else {
   setStatus(
-    t("example.ground-clamp-polygon.status.ready")
+    t({ zh: "青色凹多边形贴合峡谷地形（缺口镂空）；黄色同形面固定高度，悬空于峡谷之上。", en: "Cyan concave polygon follows canyon (with hole); yellow same shape at fixed height." })
   )
 }
 

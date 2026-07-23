@@ -81,10 +81,10 @@ const locationReadout = mountLocationReadout(viewer, {
 
 // 1) 点位标记：若干兴趣点 / Point markers for points of interest.
 const pointPositions: Array<[number, number, string]> = [
-  [FOCUS_LONGITUDE - 0.008, FOCUS_LATITUDE + 0.004, t("example.entities.data.nodeA")],
-  [FOCUS_LONGITUDE + 0.006, FOCUS_LATITUDE + 0.006, t("example.entities.data.nodeB")],
-  [FOCUS_LONGITUDE + 0.01, FOCUS_LATITUDE - 0.003, t("example.entities.data.nodeC")],
-  [FOCUS_LONGITUDE - 0.004, FOCUS_LATITUDE - 0.007, t("example.entities.data.nodeD")],
+  [FOCUS_LONGITUDE - 0.008, FOCUS_LATITUDE + 0.004, t({ zh: "节点 A", en: "Node A" })],
+  [FOCUS_LONGITUDE + 0.006, FOCUS_LATITUDE + 0.006, t({ zh: "节点 B", en: "Node B" })],
+  [FOCUS_LONGITUDE + 0.01, FOCUS_LATITUDE - 0.003, t({ zh: "节点 C", en: "Node C" })],
+  [FOCUS_LONGITUDE - 0.004, FOCUS_LATITUDE - 0.007, t({ zh: "节点 D", en: "Node D" })],
 ]
 
 pointPositions.forEach(([longitude, latitude, label], index) => {
@@ -113,7 +113,7 @@ viewer.entities.add({
     width: 3,
     color: "#f472b6",
   },
-  properties: { kind: "polyline", label: t("example.entities.data.polyline") },
+  properties: { kind: "polyline", label: t({ zh: "游览路径", en: "Tour route" }) },
 })
 
 // 3) 多边形：在兴趣点群外围画一块填充面 / Polygon fill over the cluster footprint.
@@ -132,7 +132,7 @@ viewer.entities.add({
     outline: true,
     outlineColor: "#5eead4",
   },
-  properties: { kind: "polygon", label: t("example.entities.data.polygon") },
+  properties: { kind: "polygon", label: t({ zh: "规划区块", en: "Planning zone" }) },
 })
 
 // 4) 拉伸体块：演示 extrudeHeight / Extruded block to demo extrudeHeight.
@@ -152,11 +152,11 @@ viewer.entities.add({
     outline: true,
     outlineColor: "#f9a8d4",
   },
-  properties: { kind: "extruded", label: t("example.entities.data.extruded") },
+  properties: { kind: "extruded", label: t({ zh: "拉伸体块", en: "Extruded block" }) },
 })
 
 setStatus(
-  t("example.entities.status.drawn", { n: pointPositions.length })
+  t({ zh: "已绘制 {n} 个点位 + 1 条折线 + 2 个多边形（含 1 个拉伸体块）。", en: "Drew {n} points + 1 polyline + 2 polygons (including 1 extruded block)." }, { n: pointPositions.length })
 )
 
 // 拾取：点击实体回传属性 / Pick: clicking an entity returns its properties.
@@ -165,7 +165,7 @@ viewer.on("click", (event) => {
     event.pick?.type === "entity" ? event.pick.entity : null
   if (!pickedEntity) {
     if (pickReadoutElement) {
-      pickReadoutElement.textContent = t("example.entities.pick.miss")
+      pickReadoutElement.textContent = t({ zh: "未命中实体", en: "No entity hit" })
     }
     return
   }
@@ -174,7 +174,7 @@ viewer.on("click", (event) => {
   const label = (entity.properties.label as string) ?? entity.id
   const kind = (entity.properties.kind as string) ?? "unknown"
   if (pickReadoutElement) {
-    pickReadoutElement.textContent = t("example.entities.pick.hit", { label, kind, id: entity.id })
+    pickReadoutElement.textContent = t({ zh: "命中：{label}（类型：{kind}，id：{id}）", en: "Hit: {label} (type: {kind}, id: {id})" }, { label, kind, id: entity.id })
   }
 })
 
@@ -185,14 +185,14 @@ togglePointsInput.addEventListener("change", () => {
     const entity = viewer.entities.getById(`point-${index}`)
     if (entity) entity.show = visible
   })
-  setStatus(t("example.entities.status.togglePoints", { state: visible ? t("common.shown") : t("common.hidden") }))
+  setStatus(t({ zh: "点位已{state}。", en: "Points are {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
 })
 
 togglePolylineInput.addEventListener("change", () => {
   const visible = togglePolylineInput.checked
   const route = viewer.entities.getById("route-polyline")
   if (route) route.show = visible
-  setStatus(t("example.entities.status.togglePolyline", { state: visible ? t("common.shown") : t("common.hidden") }))
+  setStatus(t({ zh: "折线已{state}。", en: "Polyline is {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
 })
 
 togglePolygonInput.addEventListener("change", () => {
@@ -201,12 +201,12 @@ togglePolygonInput.addEventListener("change", () => {
   const block = viewer.entities.getById("block-extruded")
   if (zone) zone.show = visible
   if (block) block.show = visible
-  setStatus(t("example.entities.status.togglePolygon", { state: visible ? t("common.shown") : t("common.hidden") }))
+  setStatus(t({ zh: "面块已{state}。", en: "Polygons are {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
 })
 
 clearEntitiesButton.addEventListener("click", () => {
   viewer.entities.removeAll()
-  setStatus(t("example.entities.status.cleared"))
+  setStatus(t({ zh: "已清空所有实体。", en: "All entities cleared." }))
 })
 
 function setStatus(message: string) {

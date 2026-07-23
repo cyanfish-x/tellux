@@ -137,9 +137,9 @@ runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`
 
 - 语言：`zh` | `en`
 - 解析优先级：`?lang=` → `localStorage['tellux.locale']` → `navigator.language` → 回落 `en`
-- HTML：`data-i18n` / `data-i18n-html` / `data-i18n-attr`
-- TS 动态文案：`t(key, params?)`
-- 词典源：`examples/i18n/_messages.json`，用 `examples/i18n/_gen-messages.mjs` 生成 `messages/zh.ts` 与 `messages/en.ts`
+- **壳 / HTML**：catalog key + `data-i18n*`（主页、Sandcastle UI、示例面板静态文案）
+- **示例 TS**：优先内联双语 `t({ zh: "…", en: "…" })`，避免抽象 key 损害教程可读性；`t(key)` 仍可用于壳层
+- 词典源：`examples/i18n/_messages.json`，用 `examples/i18n/_gen-messages.mjs` 生成 `messages/zh.ts` 与 `messages/en.ts`（服务 HTML / 壳 / registry）
 - Sandcastle 切语言只刷新壳 UI 与 gallery；Monaco 源码不改写；重新 Run 后 runner 对 iframe DOM 再 `applyTranslations`
 - VitePress 文档站本期不做双语；日后可复用同一 `tellux.locale` key
 

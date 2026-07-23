@@ -120,7 +120,7 @@ function createGaussianSplatTileset(url: string) {
 function loadGaussianSplatTileset() {
   const url = tilesetUrlField.value.trim()
   if (!url) {
-    setStatus(t("example.gaussian-splat-3d-tiles.status.needUrl"))
+    setStatus(t({ zh: "请先输入 3DGS tileset.json URL，或配置 VITE_GAUSSIAN_SPLAT_3D_TILESET_URL。", en: "Enter a 3DGS tileset.json URL, or set VITE_GAUSSIAN_SPLAT_3D_TILESET_URL." }))
     return
   }
 
@@ -129,7 +129,7 @@ function loadGaussianSplatTileset() {
   syncSplatVisibility()
   viewer.scene.threeScene.add(activeTileset.group)
   flyToSample()
-  setStatus(t("example.gaussian-splat-3d-tiles.status.loaded"))
+  setStatus(t({ zh: "已加载高斯泼溅 3D Tiles。等待瓦片细化中...", en: "Gaussian splat 3D Tiles loaded. Waiting for tile refinement..." }))
 }
 
 function flyToSample() {
@@ -167,10 +167,10 @@ function updateSplatStatus() {
   previousLoadedTileCount = loadedTileCount
   setStatus(
     loadedTileCount > 0
-      ? t("example.gaussian-splat-3d-tiles.status.visibleCount", {
+      ? t({ zh: "高斯泼溅瓦片可见：{n}。", en: "Visible Gaussian splat tiles: {n}." }, {
           n: loadedTileCount,
         })
-      : t("example.gaussian-splat-3d-tiles.status.waiting")
+      : t({ zh: "高斯泼溅 tileset 已加入场景，移动相机可触发加载。", en: "Tileset added; move the camera to trigger loading." })
   )
 }
 
@@ -189,18 +189,18 @@ loadControl.addEventListener("click", loadGaussianSplatTileset)
 flyToControl.addEventListener("click", flyToSample)
 removeControl.addEventListener("click", () => {
   clearActiveTileset()
-  setStatus(t("example.gaussian-splat-3d-tiles.status.removed"))
+  setStatus(t({ zh: "高斯泼溅 3D Tiles 已移除。", en: "Gaussian splat 3D Tiles removed." }))
 })
 splatVisibleToggle.addEventListener("change", () => {
   syncSplatVisibility()
   setStatus(
     activeTileset
-      ? t("example.gaussian-splat-3d-tiles.status.visibility", {
+      ? t({ zh: "高斯泼溅已{state}。", en: "Gaussian splats are {state}." }, {
           state: splatVisibleToggle.checked
-            ? t("common.shown")
-            : t("common.hidden"),
+            ? t({ zh: "显示", en: "shown" })
+            : t({ zh: "隐藏", en: "hidden" }),
         })
-      : t("example.gaussian-splat-3d-tiles.status.none")
+      : t({ zh: "还没有加载高斯泼溅。", en: "No Gaussian splats loaded yet." })
   )
 })
 

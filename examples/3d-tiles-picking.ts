@@ -75,8 +75,8 @@ viewer.clock.hourUTC = 16
 assetIdInput.value = DEFAULT_ASSET_ID
 tokenInput.value = ""
 tokenInput.placeholder = DEFAULT_TOKEN
-  ? t("example.3d-tiles-picking.ph.tokenDefault")
-  : t("example.3d-tiles-picking.ph.tokenInput")
+  ? t({ zh: "留空使用默认 token", en: "Leave empty to use default token" })
+  : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
 
 let activeLayer: TilesetLayer | null = null
 let selectedKey: string | null = null
@@ -118,7 +118,7 @@ function loadTileset() {
   const apiToken = tokenInput.value.trim() || DEFAULT_TOKEN
 
   if (!assetId || !apiToken) {
-    setStatus(t("example.3d-tiles-picking.status.needCreds"))
+    setStatus(t({ zh: "请先输入 Cesium Ion asset id 和 token，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。", en: "Enter asset id and token, or set VITE_CESIUM_ION_TOKEN." }))
     return
   }
 
@@ -129,7 +129,7 @@ function loadTileset() {
     assetId,
     apiToken,
   })
-  setStatus(t("example.3d-tiles-picking.status.loaded"))
+  setStatus(t({ zh: "3D Tiles 已加入场景。等待瓦片加载后移动鼠标拾取 feature。", en: "3D Tiles added. After tiles load, move the mouse to pick features." }))
 }
 
 function handleMouseMove(event: ViewerMouseMoveEvent) {
@@ -181,7 +181,7 @@ function renderFeaturePopup(feature: Picked3DTilesFeature) {
   popupElement.appendChild(title)
 
   const meta = document.createElement("p")
-  meta.textContent = t("example.3d-tiles-picking.popup.meta", {
+  meta.textContent = t({ zh: "图层 {layerId} · feature {featureId}", en: "Layer {layerId} · feature {featureId}" }, {
     layerId: feature.layerId,
     featureId: feature.featureId ?? "-",
   })
@@ -197,7 +197,7 @@ function renderFeaturePopup(feature: Picked3DTilesFeature) {
   if (rows.length === 0) {
     const empty = document.createElement("p")
     empty.className = "feature-empty"
-    empty.textContent = t("example.3d-tiles-picking.popup.empty")
+    empty.textContent = t({ zh: "当前命中对象没有可读取的 feature 属性。", en: "No readable feature properties on this hit." })
     popupElement.appendChild(empty)
   } else {
     const table = document.createElement("table")
@@ -269,7 +269,7 @@ viewer.on("click", handleClick)
 if (DEFAULT_TOKEN) {
   loadTileset()
 } else {
-  setStatus(t("example.3d-tiles-picking.status.prompt"))
+  setStatus(t({ zh: "输入 Cesium Ion token 后点击加载；默认 asset id 对应 Cesium NYC buildings 示例。", en: "Enter token then Load; default asset id is Cesium NYC buildings." }))
 }
 
 window.addEventListener("beforeunload", () => {

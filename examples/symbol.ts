@@ -114,9 +114,9 @@ const barIcon = iconUrl('酒吧')
 // ----- 1) POI：图标 + 文字标签（icon + text 共锚点，anchor bottom）。-----
 // ----- 1) POIs: icon + text sharing an anchor (anchor bottom). -----
 const poiList: Array<[number, number, string, string]> = [
-  [FOCUS_LONGITUDE - 0.006, FOCUS_LATITUDE + 0.004, t("example.symbol.place.lujiazui"), pinIcon],
-  [FOCUS_LONGITUDE + 0.005, FOCUS_LATITUDE + 0.005, t("example.symbol.place.orientalPearl"), starIcon],
-  [FOCUS_LONGITUDE + 0.008, FOCUS_LATITUDE - 0.004, t("example.symbol.place.shanghaiTower"), pinIcon],
+  [FOCUS_LONGITUDE - 0.006, FOCUS_LATITUDE + 0.004, t({ zh: "陆家嘴", en: "Lujiazui" }), pinIcon],
+  [FOCUS_LONGITUDE + 0.005, FOCUS_LATITUDE + 0.005, t({ zh: "东方明珠", en: "Oriental Pearl Tower" }), starIcon],
+  [FOCUS_LONGITUDE + 0.008, FOCUS_LATITUDE - 0.004, t({ zh: "上海中心", en: "Shanghai Tower" }), pinIcon],
 ]
 const poiIds: string[] = []
 poiList.forEach(([lon, lat, label, icon], index) => {
@@ -147,9 +147,9 @@ poiList.forEach(([lon, lat, label, icon], index) => {
 // ----- 2) 纯文字标签（带 halo），用于地名标注。-----
 // ----- 2) Text-only labels with halo, for place names. -----
 const labelList: Array<[number, number, string]> = [
-  [FOCUS_LONGITUDE - 0.01, FOCUS_LATITUDE - 0.006, t("example.symbol.place.huangpu")],
-  [FOCUS_LONGITUDE + 0.011, FOCUS_LATITUDE + 0.001, t("example.symbol.place.pudong")],
-  [FOCUS_LONGITUDE - 0.003, FOCUS_LATITUDE + 0.009, t("example.symbol.place.bund")],
+  [FOCUS_LONGITUDE - 0.01, FOCUS_LATITUDE - 0.006, t({ zh: "黄浦江", en: "Huangpu River" })],
+  [FOCUS_LONGITUDE + 0.011, FOCUS_LATITUDE + 0.001, t({ zh: "浦东新区", en: "Pudong New Area" })],
+  [FOCUS_LONGITUDE - 0.003, FOCUS_LATITUDE + 0.009, t({ zh: "外滩", en: "The Bund" })],
 ]
 const labelIds: string[] = []
 labelList.forEach(([lon, lat, label], index) => {
@@ -230,7 +230,7 @@ viewer.entities.add({
   point: { pixelSize: 10, color: "#34d399", outlineColor: "#0f172a", outlineWidth: 2 },
   symbol: {
     text: {
-      text: t("example.symbol.icon.label"),
+      text: t({ zh: "圆点 + 标签", en: "Dot + label" }),
       font: "SimHei",
       fontSize: 13,
       fillColor: "#ffffff",
@@ -240,25 +240,25 @@ viewer.entities.add({
     anchor: "right",
     pixelOffset: [-8, 0],
   },
-  properties: { kind: "coexist", label: t("example.symbol.icon.label") },
+  properties: { kind: "coexist", label: t({ zh: "圆点 + 标签", en: "Dot + label" }) },
 })
 
 setStatus(
-  t("example.symbol.status.drawn", { poi: poiList.length, labels: labelList.length, icons: iconList.length })
+  t({ zh: "已绘制 {poi} 个 POI + {labels} 个文字标签 + {icons} 个图标 + 多行/背景 + 圆点共存。", en: "Drew {poi} POIs + {labels} text labels + {icons} icons + multiline/background + dot coexistence." }, { poi: poiList.length, labels: labelList.length, icons: iconList.length })
 )
 
 // 拾取：点击 symbol 回传属性。Pick: clicking a symbol returns its properties.
 viewer.on("click", (event) => {
   const picked = event.pick?.type === "entity" ? event.pick.entity : null
   if (!picked) {
-    if (pickReadoutElement) pickReadoutElement.textContent = t("example.symbol.pick.miss")
+    if (pickReadoutElement) pickReadoutElement.textContent = t({ zh: "未命中实体", en: "No entity hit" })
     return
   }
   const { entity } = picked
   const label = (entity.properties.label as string) ?? entity.id
   const kind = (entity.properties.kind as string) ?? "unknown"
   if (pickReadoutElement) {
-    pickReadoutElement.textContent = t("example.symbol.pick.hit", { label, kind, id: entity.id })
+    pickReadoutElement.textContent = t({ zh: "命中：{label}（类型：{kind}，id：{id}）", en: "Hit: {label} (type: {kind}, id: {id})" }, { label, kind, id: entity.id })
   }
 })
 
@@ -273,22 +273,22 @@ function setGroupVisible(ids: string[], visible: boolean) {
 togglePoiInput.addEventListener("change", () => {
   const visible = togglePoiInput.checked
   setGroupVisible(poiIds, visible)
-  setStatus(t("example.symbol.status.togglePoi", { state: visible ? t("common.shown") : t("common.hidden") }))
+  setStatus(t({ zh: "POI 已{state}。", en: "POIs are {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
 })
 toggleLabelsInput.addEventListener("change", () => {
   const visible = toggleLabelsInput.checked
   setGroupVisible(labelIds, visible)
-  setStatus(t("example.symbol.status.toggleLabels", { state: visible ? t("common.shown") : t("common.hidden") }))
+  setStatus(t({ zh: "文字标签已{state}。", en: "Text labels are {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
 })
 toggleIconsInput.addEventListener("change", () => {
   const visible = toggleIconsInput.checked
   setGroupVisible(iconIds, visible)
-  setStatus(t("example.symbol.status.toggleIcons", { state: visible ? t("common.shown") : t("common.hidden") }))
+  setStatus(t({ zh: "图标已{state}。", en: "Icons are {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
 })
 toggleMultilineInput.addEventListener("change", () => {
   const visible = toggleMultilineInput.checked
   setGroupVisible([multilineId, "coexist"], visible)
-  setStatus(t("example.symbol.status.toggleMultiline", { state: visible ? t("common.shown") : t("common.hidden") }))
+  setStatus(t({ zh: "多行/背景已{state}。", en: "Multiline/background is {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
 })
 
 // 运行时改色：改文字填充色不重建 SDF 纹理（即时生效）。
@@ -301,13 +301,13 @@ recolorButton.addEventListener("click", () => {
   if (!text) return
   recolorIndex = (recolorIndex + 1) % recolorPalette.length
   text.fillColor = recolorPalette[recolorIndex]
-  setStatus(t("example.symbol.status.recolored", { color: recolorPalette[recolorIndex] }))
+  setStatus(t({ zh: "\"黄浦江\" 标签填充色已改为 {color}（未重建纹理）。", en: "\"Huangpu River\" label fill changed to {color} (texture not rebuilt)." }, { color: recolorPalette[recolorIndex] }))
 })
 
 clearButton.addEventListener("click", () => {
   viewer.entities.removeAll()
   stressIds.length = 0
-  setStatus(t("example.symbol.status.cleared"))
+  setStatus(t({ zh: "已清空所有实体。", en: "All entities cleared." }))
 })
 
 // ----- 大规模 Symbol 压测：输入数量，网格散布 icon+text。-----
@@ -315,12 +315,12 @@ const STRESS_MAX = 20_000
 const STRESS_CHUNK = 250
 const STRESS_HALF_SPAN_DEG = 0.035
 const STRESS_LABELS = [
-  t("example.symbol.place.lujiazui"),
-  t("example.symbol.place.orientalPearl"),
-  t("example.symbol.place.shanghaiTower"),
-  t("example.symbol.place.bund"),
-  t("example.symbol.place.huangpu"),
-  t("example.symbol.place.pudong"),
+  t({ zh: "陆家嘴", en: "Lujiazui" }),
+  t({ zh: "东方明珠", en: "Oriental Pearl Tower" }),
+  t({ zh: "上海中心", en: "Shanghai Tower" }),
+  t({ zh: "外滩", en: "The Bund" }),
+  t({ zh: "黄浦江", en: "Huangpu River" }),
+  t({ zh: "浦东新区", en: "Pudong New Area" }),
   "金融城",
   "观景台",
 ]
@@ -330,7 +330,7 @@ let stressGenerating = false
 
 clearStressButton.addEventListener("click", () => {
   clearStressSymbols()
-  setStatus(t("example.symbol.status.stressCleared"))
+  setStatus(t({ zh: "已清空压测 Symbol。", en: "Stress symbols cleared." }))
 })
 
 generateStressButton.addEventListener("click", () => {
@@ -349,7 +349,7 @@ async function generateStressSymbols() {
 
   const requested = Math.floor(Number(stressCountInput.value))
   if (!Number.isFinite(requested) || requested < 1) {
-    setStatus(t("example.symbol.status.invalidCount"))
+    setStatus(t({ zh: "请输入有效的压测数量（≥ 1）。", en: "Enter a valid stress count (≥ 1)." }))
     return
   }
   const count = Math.min(requested, STRESS_MAX)
@@ -365,7 +365,7 @@ async function generateStressSymbols() {
   const rows = Math.ceil(count / cols)
   const startedAt = performance.now()
 
-  setStatus(t("example.symbol.status.generating", { count }))
+  setStatus(t({ zh: "正在生成 {count} 个压测 Symbol…", en: "Generating {count} stress symbols…" }, { count }))
 
   try {
     for (let start = 0; start < count; start += STRESS_CHUNK) {
@@ -412,13 +412,13 @@ async function generateStressSymbols() {
           properties: { kind: "stress", label, index: i },
         })
       }
-      setStatus(t("example.symbol.status.progress", { end, count }))
+      setStatus(t({ zh: "正在生成压测 Symbol… {end} / {count}", en: "Generating stress symbols… {end} / {count}" }, { end, count }))
       await yieldToBrowser()
     }
 
     const elapsedMs = performance.now() - startedAt
     setStatus(
-      t("example.symbol.status.done", {
+      t({ zh: "压测完成：{count} 个 Symbol，耗时 {ms} ms（约 {rate} 个/秒）。当前实体总数 {total}。", en: "Stress test done: {count} symbols in {ms} ms (~{rate}/s). Total entities: {total}." }, {
         count,
         ms: elapsedMs.toFixed(0),
         rate: (count / (elapsedMs / 1000)).toFixed(0),

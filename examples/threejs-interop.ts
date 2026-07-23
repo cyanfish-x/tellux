@@ -87,7 +87,7 @@ const locationReadout = mountLocationReadout(viewer, {
 flyToModelButton.disabled = true
 toggleAnimationButton.disabled = true
 
-const modelCoordinatesText = t("example.threejs-interop.coords.text", {
+const modelCoordinatesText = t({ zh: "经度 {lon}、纬度 {lat}", en: "Longitude {lon}, latitude {lat}" }, {
   lon: MODEL_LONGITUDE.toFixed(6),
   lat: MODEL_LATITUDE.toFixed(6),
 })
@@ -102,14 +102,14 @@ function setStatus(message: string) {
 
 function updateAnimationButton() {
   toggleAnimationButton.textContent = isAnimationPlaying
-    ? t("example.threejs-interop.btn.pause")
-    : t("example.threejs-interop.btn.play")
+    ? t({ zh: "暂停动画", en: "Pause animation" })
+    : t({ zh: "播放动画", en: "Play animation" })
 }
 
 async function loadModelOnSampledGround() {
-  setStatus(t("example.threejs-interop.status.sampling"))
+  setStatus(t({ zh: "正在离屏采样模型位置的地形高度...", en: "Offscreen sampling terrain height at model position..." }))
   if (modelStatusElement) {
-    modelStatusElement.textContent = t("example.threejs-interop.readout.sampling")
+    modelStatusElement.textContent = t({ zh: "采样地形高度中", en: "Sampling terrain height" })
   }
 
   let modelHeight = MODEL_HEIGHT
@@ -122,18 +122,18 @@ async function loadModelOnSampledGround() {
     )
     const sampledPosition = sampledPositions[0]
     if (!sampledPosition) {
-      setStatus(t("example.threejs-interop.status.noHit"))
+      setStatus(t({ zh: "离屏采样地形高度未命中，已取消模型加载。", en: "Offscreen terrain sample missed; model load cancelled." }))
       if (modelStatusElement) {
-        modelStatusElement.textContent = t("example.threejs-interop.readout.noHit")
+        modelStatusElement.textContent = t({ zh: "地形高度未命中", en: "Terrain height missed" })
       }
       return
     }
     modelHeight = sampledPosition[2]
   } catch (error) {
     console.warn("Failed to sample terrain height before loading model.", error)
-    setStatus(t("example.threejs-interop.status.sampleFail"))
+    setStatus(t({ zh: "离屏采样地形高度失败，已取消模型加载。", en: "Offscreen terrain sample failed; model load cancelled." }))
     if (modelStatusElement) {
-      modelStatusElement.textContent = t("example.threejs-interop.readout.sampleFail")
+      modelStatusElement.textContent = t({ zh: "地形高度采样失败", en: "Terrain height sampling failed" })
     }
     return
   }
@@ -152,7 +152,7 @@ async function loadModelOnSampledGround() {
   try {
     const layer = await model.ready
     if (modelStatusElement) {
-      modelStatusElement.textContent = t("example.threejs-interop.readout.anims", { n: layer.animations.length })
+      modelStatusElement.textContent = t({ zh: "{n} 个动画通道", en: "{n} animation clip(s)" }, { n: layer.animations.length })
     }
     flyToModelButton.disabled = false
     toggleAnimationButton.disabled = false
@@ -162,11 +162,11 @@ async function loadModelOnSampledGround() {
       distance: 500,
     })
     setStatus(
-      t("example.threejs-interop.status.ready", { h: modelHeight.toFixed(2) })
+      t({ zh: "Littlest Tokyo 已在采样高度 {h} 米处加入场景，并自动播放第 0 个动画通道。", en: "Littlest Tokyo added at sampled height {h} m; playing animation channel 0." }, { h: modelHeight.toFixed(2) })
     )
   } catch (error) {
     console.error(error)
-    setStatus(t("example.threejs-interop.status.modelFail"))
+    setStatus(t({ zh: "模型加载失败，请检查网络或 three.js 示例资源是否可访问。", en: "Model load failed; check network or Three.js example assets." }))
   }
 }
 
@@ -183,14 +183,14 @@ viewer.on("click", (event) => {
   if (hit?.type === "object") {
     viewer.highlight.set(model.root)
     setStatus(
-      t("example.threejs-interop.status.picked", {
+      t({ zh: "已选中模型（命中 {name}，距离 {d} m）。再次点击空白处取消。", en: "Model selected (hit {name}, distance {d} m). Click empty space to clear." }, {
         name: hit.object.object.name || hit.object.object.type,
         d: hit.distance.toFixed(1),
       })
     )
   } else {
     viewer.highlight.clear()
-    setStatus(t("example.threejs-interop.status.clearPick"))
+    setStatus(t({ zh: "未命中模型，已清除高亮。", en: "No model hit; highlight cleared." }))
   }
 })
 

@@ -171,18 +171,18 @@ function updateHint(count: number) {
   if (!hintElement) return
   const parts = []
   if (count > POISSON_MAX_COUNT) {
-    parts.push(t("example.hism-compare.hint.fastScatter"))
+    parts.push(t({ zh: "已启用快速随机散布", en: "Fast random scatter enabled" }))
   }
   if (count > SAMPLING_MAX_COUNT) {
-    parts.push(t("example.hism-compare.hint.skipTerrain"))
+    parts.push(t({ zh: "已跳过地形采样（高度=0）", en: "Terrain sampling skipped (height=0)" }))
   }
   if (count > SINGLE_PRESET_THRESHOLD) {
-    parts.push(t("example.hism-compare.hint.singleSpecies"))
+    parts.push(t({ zh: "已切换为单树种模板以缩短构建时间", en: "Switched to single-species templates to speed build" }))
   }
   hintElement.textContent =
     parts.length > 0
       ? parts.join("；") + "。"
-      : t("example.hism-compare.hint.small")
+      : t({ zh: "≤ 5000 实例时可启用地形采样与泊松散布。", en: "≤ 5000: terrain sampling + Poisson scatter available." })
   sampleTerrainCheckbox.disabled = count > SAMPLING_MAX_COUNT
   if (count > SAMPLING_MAX_COUNT) {
     sampleTerrainCheckbox.checked = false
@@ -191,7 +191,7 @@ function updateHint(count: number) {
 
 async function initializeTemplates(mode: RenderMode, count: number) {
   const presetDefs = resolvePresetDefs(count)
-  setStatus(t("example.hism-compare.status.initTemplates", { n: presetDefs.length }))
+  setStatus(t({ zh: "正在初始化 {n} 个 ez-tree 模板...", en: "Initializing {n} ez-tree templates..." }, { n: presetDefs.length }))
   templates = presetDefs.map((preset) =>
     mode === "hism"
       ? buildHismTreeTemplate(preset.name, preset.baseScale, viewer.hism.rtcUniforms)
@@ -511,7 +511,7 @@ async function runGeneration() {
   const radiusMeters = resolvePlacementRadius(requestedCount)
   const clusterCellSizeMeters = resolveClusterCellSize(requestedCount, radiusMeters)
 
-  setStatus(t("example.hism-compare.status.scattering", { n: requestedCount.toLocaleString() }))
+  setStatus(t({ zh: "正在散布 {n} 个实例...", en: "Scattering {n} instances..." }, { n: requestedCount.toLocaleString() }))
   const placementStartedAt = performance.now()
   const placements = await generatePlacements(
     requestedCount,
@@ -523,8 +523,8 @@ async function runGeneration() {
 
   setStatus(
     shouldSampleTerrain(placements.length)
-      ? t("example.hism-compare.status.sampling")
-      : t("example.hism-compare.status.skipSample")
+      ? t({ zh: "正在采样地形...", en: "Sampling terrain..." })
+      : t({ zh: "跳过地形采样...", en: "Skipping terrain sampling..." })
   )
   const samplingStartedAt = performance.now()
   const sampledPlacements = await sampleHeights(placements, (ratio) => {
@@ -534,14 +534,14 @@ async function runGeneration() {
   if (token !== generationToken) return
 
   if (sampledPlacements.length === 0) {
-    setStatus(t("example.hism-compare.status.empty"))
+    setStatus(t({ zh: "未生成任何实例。", en: "No instances generated." }))
     setProgress(null)
     generateButton.disabled = false
     return
   }
 
   setStatus(
-    t("example.hism-compare.status.building", {
+    t({ zh: "正在构建 {mode} 场景（{n}）...", en: "Building {mode} scene ({n})..." }, {
       mode: mode === "hism" ? "HISM" : "Legacy",
       n: sampledPlacements.length.toLocaleString(),
     })
@@ -566,7 +566,7 @@ async function runGeneration() {
   if (token !== generationToken) return
 
   setProgress(100)
-  setStatus(t("example.hism-compare.status.flying"))
+  setStatus(t({ zh: "相机飞行中，即将开始测速...", en: "Camera flying; benchmark starting..." }))
   flyToScene(async () => {
     if (token !== generationToken) return
     await new Promise<void>((resolve) => setTimeout(resolve, 3000))
@@ -597,7 +597,7 @@ async function runGeneration() {
     document.body.dataset.compareReady = "true"
     window.__hismCompareSnapshot = lastRunMetrics
     setStatus(
-      t("example.hism-compare.status.done", {
+      t({ zh: "{mode} 完成：{n} 实例 · FPS {fps} · Draw {draw} · Visible {visible}%", en: "{mode} done: {n} instances · FPS {fps} · Draw {draw} · Visible {visible}%" }, {
         mode: mode === "hism" ? "HISM" : "Legacy",
         n: sampledPlacements.length.toLocaleString(),
         fps: fpsAvg.toFixed(1),
@@ -621,7 +621,7 @@ clearButton.addEventListener("click", () => {
   disposeActiveScene()
   setProgress(null)
   lastRunMetrics = null
-  setStatus(t("example.hism-compare.status.cleared"))
+  setStatus(t({ zh: "场景已清空。可切换模式后重新生成对比。", en: "Scene cleared. Switch mode and regenerate." }))
 })
 
 countInput.addEventListener("input", () => {
@@ -639,7 +639,7 @@ updateHint(clampCount(Number(countInput.value)))
 updateHud()
 void initializeTemplates(getSelectedMode(), clampCount(Number(countInput.value))).then(
   () => {
-    setStatus(t("example.hism-compare.status.ready"))
+    setStatus(t({ zh: "模板就绪。选择模式与数量后点击「生成并测速」。", en: "Templates ready. Choose mode/count then Generate & benchmark." }))
     const params = new URLSearchParams(location.search)
     if (params.get("autorun") !== "1") return
     const trees = params.get("trees")

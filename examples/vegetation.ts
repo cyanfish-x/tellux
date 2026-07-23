@@ -147,7 +147,7 @@ function waitForBrowserPaint() {
 }
 
 async function initializeVegetationScene() {
-  setStatus(t("example.vegetation.status.initPreset"))
+  setStatus(t({ zh: "正在初始化 ez-tree 预设...", en: "Initializing ez-tree presets..." }))
   const templates = PRESETS.map((preset) =>
     buildPresetTemplate(preset.name, preset.baseScale)
   )
@@ -183,7 +183,7 @@ async function createForest(templates: PresetTemplate[]) {
   regenerateButton.disabled = true
   countElement && (countElement.textContent = "-")
   setSamplingStatus("-")
-  setStatus(t("example.vegetation.status.genPoints"))
+  setStatus(t({ zh: "正在生成森林散布点（泊松分布）...", en: "Generating forest placements (Poisson)..." }))
 
   forest?.dispose()
   forest = null
@@ -199,7 +199,7 @@ async function createForest(templates: PresetTemplate[]) {
   })
 
   setStatus(
-    t("example.vegetation.status.sampling", { n: placements.length })
+    t({ zh: "已生成 {n} 个候选点，正在通过 sampleHeightMostDetailed 采样地表高度...", en: "Generated {n} candidates; sampling surface height via sampleHeightMostDetailed..." }, { n: placements.length })
   )
 
   let sampledPositions: Awaited<
@@ -218,7 +218,7 @@ async function createForest(templates: PresetTemplate[]) {
     )
   } catch (error) {
     console.error("Failed to sample terrain height for vegetation.", error)
-    setStatus(t("example.vegetation.status.sampleFail"))
+    setStatus(t({ zh: "地表高度采样失败，请检查地形数据源是否可访问。", en: "Surface height sampling failed." }))
     regenerateButton.disabled = false
     return
   } finally {
@@ -237,7 +237,7 @@ async function createForest(templates: PresetTemplate[]) {
     )
 
   if (sampledPlacements.length === 0) {
-    setStatus(t("example.vegetation.status.noHit"))
+    setStatus(t({ zh: "地表高度未命中，未加载植被。", en: "No surface hits; vegetation not loaded." }))
     regenerateButton.disabled = false
     return
   }
@@ -260,7 +260,7 @@ async function createForest(templates: PresetTemplate[]) {
   countElement &&
     (countElement.textContent = `${sampledPlacements.length} / ${TREE_COUNT}`)
   setStatus(
-    t("example.vegetation.status.ready", {
+    t({ zh: "已在 ({lon}, {lat}) 周边 {r}m 范围内放置 {n} 棵程序化植被。", en: "Placed {n} procedural trees within {r}m of ({lon}, {lat})." }, {
       lon: CENTER_LONGITUDE.toFixed(6),
       lat: CENTER_LATITUDE.toFixed(6),
       r: PLACEMENT_RADIUS_METERS,

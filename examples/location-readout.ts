@@ -28,14 +28,14 @@ export function mountLocationReadout(
   )
 
   const title = document.createElement("h2")
-  title.textContent = options.title ?? t("common.location.title")
+  title.textContent = options.title ?? t({ zh: "鼠标位置", en: "Mouse position" })
 
   const readout = document.createElement("dl")
   readout.className = "location-readout"
 
-  const longitude = createReadoutItem(readout, t("common.location.longitude"))
-  const latitude = createReadoutItem(readout, t("common.location.latitude"))
-  const height = createReadoutItem(readout, t("common.location.height"))
+  const longitude = createReadoutItem(readout, t({ zh: "经度", en: "Longitude" }))
+  const latitude = createReadoutItem(readout, t({ zh: "纬度", en: "Latitude" }))
+  const height = createReadoutItem(readout, t({ zh: "高程", en: "Elevation" }))
 
   panel.append(title, readout)
   options.parent.append(panel)

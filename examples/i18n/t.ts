@@ -1,6 +1,6 @@
 import { getLocale } from "./locale"
 import { messages } from "./messages"
-import type { TranslateParams } from "./types"
+import type { LocalizedText, TranslateParams } from "./types"
 
 const warnedKeys = new Set<string>()
 
@@ -12,12 +12,35 @@ function formatMessage(template: string, params?: TranslateParams) {
   })
 }
 
+function isLocalizedText(value: string | LocalizedText): value is LocalizedText {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof value.zh === "string" &&
+    typeof value.en === "string"
+  )
+}
+
 /**
- * 按当前语言翻译 key；缺 key 时开发态告警并回退到 key 本身。
- * Translate by key for the active locale; warn in DEV and fall back to the key.
+ * 翻译文案。
+ * - 壳 / HTML：`t("portal.nav.docs")` 查词典
+ * - 示例 TS：`t({ zh: "加载", en: "Load" })` 内联双语，阅读友好
+ *
+ * Translate copy.
+ * - Shell / HTML: lookup by catalog key
+ * - Example TS: prefer inline `{ zh, en }` for readability
  */
-export function t(key: string, params?: TranslateParams): string {
+export function t(
+  message: string | LocalizedText,
+  params?: TranslateParams
+): string {
   const locale = getLocale()
+
+  if (isLocalizedText(message)) {
+    return formatMessage(message[locale] || message.zh || message.en, params)
+  }
+
+  const key = message
   const table = messages[locale]
   const fallback = messages.zh[key] ?? messages.en[key]
   const template = table[key] ?? fallback

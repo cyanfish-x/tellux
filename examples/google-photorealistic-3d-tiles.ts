@@ -71,8 +71,8 @@ viewer.tileset.group.visible = false
 
 tokenInput.value = ""
 tokenInput.placeholder = DEFAULT_ION_TOKEN
-  ? t("example.google-photorealistic-3d-tiles.ph.tokenDefault")
-  : t("example.google-photorealistic-3d-tiles.ph.tokenInput")
+  ? t({ zh: "留空使用 VITE_CESIUM_ION_TOKEN", en: "Leave empty to use VITE_CESIUM_ION_TOKEN" })
+  : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
 
 let activeLayer: TilesetLayer | null = null
 let attributionFrame = 0
@@ -197,7 +197,7 @@ function loadGooglePhotorealisticTiles() {
   const apiToken = tokenInput.value.trim() || DEFAULT_ION_TOKEN
 
   if (!apiToken) {
-    setStatus(t("example.google-photorealistic-3d-tiles.status.needToken"))
+    setStatus(t({ zh: "请先输入 Cesium Ion token，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。", en: "Enter token or set VITE_CESIUM_ION_TOKEN." }))
     return
   }
 
@@ -217,7 +217,7 @@ function loadGooglePhotorealisticTiles() {
     logTileMaterialDebug
   )
   flyToTokyo()
-  setStatus(t("example.google-photorealistic-3d-tiles.status.loaded"))
+  setStatus(t({ zh: "已通过 viewer.load3DTileset 加载城市级海量 3D Tiles 模型。", en: "City-scale 3D Tiles loaded via viewer.load3DTileset." }))
 }
 
 loadButton.addEventListener("click", loadGooglePhotorealisticTiles)
@@ -226,7 +226,7 @@ flyToCityButton.addEventListener("click", flyToTokyo)
 if (DEFAULT_ION_TOKEN) {
   loadGooglePhotorealisticTiles()
 } else {
-  setStatus(t("example.google-photorealistic-3d-tiles.status.prompt"))
+  setStatus(t({ zh: "输入 Cesium Ion token 后加载城市级海量 3D Tiles 模型。", en: "Enter Cesium Ion token to load city-scale 3D Tiles." }))
 }
 
 scheduleAttributionUpdate()

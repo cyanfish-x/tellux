@@ -221,7 +221,7 @@ async function loadChengduAdminGeoJSON(
   if (!token) {
     return {
       geojson: null,
-      issue: t("example.data-sources.issue.noToken"),
+      issue: t({ zh: "未配置 VITE_TIANDITU_TOKEN。", en: "VITE_TIANDITU_TOKEN is not set." }),
     }
   }
 
@@ -316,29 +316,29 @@ const chengduAdminStyle: ImageryLayerOptions["style"] = {
 const overlayLayers: OverlayLayerExample[] = [
   {
     key: "tianditu-imagery-xyz",
-    label: t("example.data-sources.layer.xyz.label"),
+    label: t({ zh: "天地图影像 XYZ", en: "Tianditu imagery XYZ" }),
     description: "DataServer img_w / Web Mercator",
     type: "xyz",
     initialVisible: Boolean(defaultTiandituToken),
   },
   {
     key: "nsmc-geos-wms",
-    label: t("example.data-sources.layer.wms.label"),
-    description: t("example.data-sources.layer.wms.desc"),
+    label: t({ zh: "风云卫星 GEOS 红外云图 WMS", en: "FY GEOS IR cloud WMS" }),
+    description: t({ zh: "NSMC GEOS_IRX / 全球拼图 / 粗粒度 WMS", en: "NSMC GEOS_IRX / global mosaic / coarse WMS" }),
     type: "wms",
     initialVisible: true,
   },
   {
     key: "tianditu-imagery-wmts",
-    label: t("example.data-sources.layer.wmts.label"),
+    label: t({ zh: "天地图影像注记 WMTS", en: "Tianditu imagery annotation WMTS" }),
     description: "cia_w / Web Mercator",
     type: "wmts",
     initialVisible: Boolean(defaultTiandituToken),
   },
   {
     key: "chengdu-admin-geojson",
-    label: t("example.data-sources.layer.geojson.label"),
-    description: t("example.data-sources.layer.geojson.desc"),
+    label: t({ zh: "成都市行政区划", en: "Chengdu administrative boundaries" }),
+    description: t({ zh: "天地图 v2/administrative / 156510100", en: "Tianditu v2/administrative / 156510100" }),
     type: "geojson",
     initialVisible: Boolean(defaultTiandituToken),
   },
@@ -377,13 +377,13 @@ async function main() {
   const initialLayers: ImageryLayerOptions[] = [
   {
     id: "tianditu-imagery-xyz",
-    name: t("example.data-sources.layer.xyz.label"),
+    name: t({ zh: "天地图影像 XYZ", en: "Tianditu imagery XYZ" }),
     source: tiandituImageryXYZLayer,
     visible: Boolean(defaultTiandituToken),
   },
   {
     id: "nsmc-geos-wms",
-    name: t("example.data-sources.layer.wms.label"),
+    name: t({ zh: "风云卫星 GEOS 红外云图 WMS", en: "FY GEOS IR cloud WMS" }),
     source: nsmcGeosWMSOverlay,
     visible: true,
     style: {
@@ -392,7 +392,7 @@ async function main() {
   },
   {
     id: "tianditu-imagery-wmts",
-    name: t("example.data-sources.layer.wmts.label"),
+    name: t({ zh: "天地图影像注记 WMTS", en: "Tianditu imagery annotation WMTS" }),
     source: tiandituImageryWMTSOverlay,
     visible: Boolean(defaultTiandituToken),
     style: {
@@ -401,7 +401,7 @@ async function main() {
   },
   {
     id: "chengdu-admin-geojson",
-    name: t("example.data-sources.layer.geojson.label"),
+    name: t({ zh: "成都市行政区划", en: "Chengdu administrative boundaries" }),
     source: chengduAdminOverlay,
     visible: adminLayerReady,
     style: {
@@ -459,8 +459,8 @@ function renderLayerManager() {
     dragHandle.type = "button"
     dragHandle.className = "layer-manager__drag-handle"
     dragHandle.draggable = true
-    dragHandle.setAttribute("aria-label", t("example.data-sources.drag.aria", { label: layer.label }))
-    dragHandle.title = t("example.data-sources.drag.title")
+    dragHandle.setAttribute("aria-label", t({ zh: "拖动 {label} 调整顺序", en: "Drag {label} to reorder" }, { label: layer.label }))
+    dragHandle.title = t({ zh: "拖动调整顺序", en: "Drag to reorder" })
     dragHandle.textContent = "≡"
     dragHandle.addEventListener("dragstart", (event) => {
       draggedLayerKey = layer.key
@@ -484,7 +484,7 @@ function renderLayerManager() {
     input.className = "layer-manager__toggle"
     input.checked = layer.layer?.isVisible() ?? layer.initialVisible
     input.dataset.layer = layer.key
-    input.setAttribute("aria-label", t("example.data-sources.visibility.aria", { label: layer.label }))
+    input.setAttribute("aria-label", t({ zh: "{label} 显隐", en: "{label} visibility" }, { label: layer.label }))
     input.addEventListener("change", () => {
       layer.layer?.setVisible(input.checked)
       updateLayerStatus()
@@ -509,7 +509,7 @@ function renderLayerManager() {
 
     const opacityLabel = document.createElement("span")
     opacityLabel.className = "layer-manager__opacity-label"
-    opacityLabel.textContent = t("example.data-sources.opacity.label")
+    opacityLabel.textContent = t({ zh: "透明度", en: "Opacity" })
 
     const opacityInput = document.createElement("input")
     opacityInput.type = "range"
@@ -518,7 +518,7 @@ function renderLayerManager() {
     opacityInput.max = "1"
     opacityInput.step = "0.01"
     opacityInput.value = String(opacity)
-    opacityInput.setAttribute("aria-label", t("example.data-sources.opacity.aria", { label: layer.label }))
+    opacityInput.setAttribute("aria-label", t({ zh: "{label} 透明度", en: "{label} opacity" }, { label: layer.label }))
 
     const opacityValue = document.createElement("output")
     opacityValue.className = "layer-manager__opacity-value"
@@ -689,12 +689,12 @@ function updateLayerStatus() {
   )
   const statusParts = [
     activeCount === 0
-      ? t("example.data-sources.status.none")
-      : t("example.data-sources.status.count", { n: activeCount }),
+      ? t({ zh: "当前未显示叠加图层。", en: "No overlay layers visible." })
+      : t({ zh: "当前显示 {n} 个叠加图层。", en: "{n} overlay layer(s) visible." }, { n: activeCount }),
   ]
 
   if (tiandituVisible && !defaultTiandituToken) {
-    statusParts.push(t("example.data-sources.status.needToken"))
+    statusParts.push(t({ zh: "天地图图层需要配置 VITE_TIANDITU_TOKEN。", en: "Tianditu layers require VITE_TIANDITU_TOKEN." }))
   }
 
   const adminLayer = overlayLayers.find(
@@ -703,7 +703,7 @@ function updateLayerStatus() {
   if (adminLayer?.layer?.isVisible() && !adminLayerReady) {
     statusParts.push(
       adminLoadIssue ??
-        t("example.data-sources.status.geojsonFail")
+        t({ zh: "成都市 GeoJSON 未加载成功。请检查 tk 是否开通 v2/administrative。", en: "Chengdu GeoJSON failed. Check tk access to v2/administrative." })
     )
   } else if (adminLoadIssue && adminLayerReady) {
     statusParts.push(adminLoadIssue)
