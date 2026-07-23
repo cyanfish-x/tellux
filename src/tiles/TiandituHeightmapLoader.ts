@@ -10,6 +10,9 @@ import { Ellipsoid } from '3d-tiles-renderer/three'
 
 const GZIP_ID1 = 0x1f
 const GZIP_ID2 = 0x8b
+/** zlib/deflate 常见头（天地图 swdx 实测返回 `78 9c`）。Common zlib/deflate header. */
+const ZLIB_CMF = 0x78
+
 export const TIANDITU_HEIGHTMAP_SIZE = 64
 const SOURCE_GRID_SIZE = 150
 const SOURCE_SAMPLE_COUNT = SOURCE_GRID_SIZE * SOURCE_GRID_SIZE
@@ -28,17 +31,40 @@ export type TiandituHeightmapLoaderOptions = {
 
 const _position = new Vector3()
 
-export async function decompressGzipBuffer(buffer: ArrayBuffer) {
-  if (!isGzip(buffer)) return buffer
+/**
+ * 解压天地图 elv_c 地形字节。服务可能返回 gzip（`1f 8b`）或 zlib/deflate（`78 9c`），
+ * 与 Cesium `GeoTerrainProvider` 行为对齐；未压缩则原样返回。
+ *
+ * Decompresses Tianditu `elv_c` terrain bytes. The service may return gzip
+ * (`1f 8b`) or zlib/deflate (`78 9c`), matching Cesium `GeoTerrainProvider`.
+ * Uncompressed payloads are returned as-is.
+ */
+export async function decompressTiandituTerrainBuffer(buffer: ArrayBuffer) {
+  const format = detectTiandituCompression(buffer)
+  if (!format) return buffer
 
   if (typeof DecompressionStream === 'undefined') {
     throw new Error(
-      'Tellux Tianditu terrain: received gzip-compressed elv_c bytes, but this browser does not support DecompressionStream.'
+      `Tellux Tianditu terrain: received ${format}-compressed elv_c bytes, but this browser does not support DecompressionStream.`
     )
   }
 
-  const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))
+  const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream(format))
   return new Response(stream).arrayBuffer()
+}
+
+/** @deprecated 请改用 {@link decompressTiandituTerrainBuffer}。 */
+export async function decompressGzipBuffer(buffer: ArrayBuffer) {
+  return decompressTiandituTerrainBuffer(buffer)
+}
+
+function detectTiandituCompression(buffer: ArrayBuffer): 'gzip' | 'deflate' | null {
+  if (buffer.byteLength < 2) return null
+  const bytes = new Uint8Array(buffer, 0, 2)
+  if (bytes[0] === GZIP_ID1 && bytes[1] === GZIP_ID2) return 'gzip'
+  // zlib wrapper: CMF=0x78，FLG 常见 0x01/0x9c/0xda 等
+  if (bytes[0] === ZLIB_CMF) return 'deflate'
+  return null
 }
 
 export function decodeTiandituElvC(buffer: ArrayBuffer): Float32Array {
@@ -243,11 +269,4 @@ function getRegionCenter(
     center
   )
   return center
-}
-
-function isGzip(buffer: ArrayBuffer) {
-  if (buffer.byteLength < 2) return false
-
-  const bytes = new Uint8Array(buffer, 0, 2)
-  return bytes[0] === GZIP_ID1 && bytes[1] === GZIP_ID2
 }

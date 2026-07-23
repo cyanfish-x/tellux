@@ -3,11 +3,11 @@ import { TilingScheme } from '3d-tiles-renderer/src/three/plugins/images/utils/T
 import { ProjectionScheme } from '3d-tiles-renderer/src/three/plugins/images/utils/ProjectionScheme.js'
 import {
   createFlatTiandituHeights,
-  decompressGzipBuffer,
+  decompressTiandituTerrainBuffer,
   decodeTiandituElvC,
   TiandituHeightmapLoader
 } from './TiandituHeightmapLoader'
-import { lonLatToTiandituTileXY, parseTiandituServiceError } from './TiandituSlippyTile'
+import { parseTiandituServiceError } from './TiandituSlippyTile'
 
 const TILE_X = Symbol('TILE_X')
 const TILE_Y = Symbol('TILE_Y')
@@ -120,7 +120,11 @@ export class TiandituTerrainPlugin {
   } | null = null
 
   private readonly tiling = new TilingScheme()
-  private readonly projection = new ProjectionScheme('EPSG:3857')
+  // 与 Cesium GeoTerrainProvider / GeographicTilingScheme 一致：EPSG:4326，
+  // level0 为 2×1；swdx 的 x/y 是地理瓦片坐标，不是 Web Mercator slippy。
+  // Matches Cesium GeoTerrainProvider / GeographicTilingScheme: EPSG:4326 with a
+  // 2×1 level-0 grid. swdx x/y are geographic tile indices, not Web Mercator.
+  private readonly projection = new ProjectionScheme('EPSG:4326')
 
   constructor(options: TiandituTerrainPluginOptions) {
     const tokens = resolveTiandituTokens(options.token)
@@ -156,15 +160,22 @@ export class TiandituTerrainPlugin {
     }
 
     const { tiling, projection } = this
-    projection.setScheme('EPSG:3857')
+    projection.setScheme('EPSG:4326')
+    // 天地图官方 / Cesium GeographicTilingScheme：y=0 在北极。
+    // 3d-tiles-renderer 默认 flipY=false 时 y=0 在南极，直接拿去请求 swdx 会得到空包。
+    // Official Tianditu / Cesium GeographicTilingScheme: y=0 at the north pole.
+    // With the default flipY=false, y=0 is at the south pole — those swdx requests return empty bodies.
+    tiling.flipY = true
     tiling.setProjection(projection)
     tiling.generateLevels(this.bottomLevel, projection.tileCountX, projection.tileCountY)
 
     const children = []
     for (let x = 0; x < projection.tileCountX; x++) {
-      const child = this.createChild(0, x, 0)
-      if (child) {
-        children.push(child)
+      for (let y = 0; y < projection.tileCountY; y++) {
+        const child = this.createChild(0, x, y)
+        if (child) {
+          children.push(child)
+        }
       }
     }
 
@@ -284,20 +295,24 @@ export class TiandituTerrainPlugin {
     if (buffer.byteLength < MIN_TERRAIN_TILE_BYTES) {
       // 天地图常对未授权 / 域名未备案 / 服务不可用返回 HTTP 200 + 空 body，
       // 而不是 403 JSON；影像 DataServer 仍可能正常。
+      // 若直接 throw，REPLACE 细化会拆掉父瓦片却装不上子瓦片，出现大块蓝灰空洞。
+      // 这里降级为平坦高程（与 FLAT_TILE_URI 相同），保证几何与影像仍可显示。
+      //
       // Tianditu often returns HTTP 200 with an empty body (instead of a 403
       // JSON error) when the key lacks elevation access, the Referer domain is
       // not whitelisted, or swdx is unavailable — while imagery may still work.
+      // Throwing here leaves REPLACE holes (parent disposed, children never
+      // mesh). Fall back to flat heights (same as FLAT_TILE_URI) so geometry
+      // and imagery overlays still render.
       this.reportServiceError(
-        `elv_c tile response is too small (${buffer.byteLength} bytes). ` +
+        `elv_c tile response is too small (${buffer.byteLength} bytes); using flat fallback. ` +
           'Check that the tk has 三维地形 (swdx) access, the page origin is in the ' +
           'key domain whitelist, or switch to Cesium Ion / URL terrain.'
       )
-      throw new Error(
-        `TiandituTerrainPlugin: elv_c tile response is too small (${buffer.byteLength} bytes).`
-      )
+      return new ArrayBuffer(0)
     }
 
-    return decompressGzipBuffer(buffer)
+    return decompressTiandituTerrainBuffer(buffer)
   }
 
   disposeTile(tile: {
@@ -365,8 +380,7 @@ export class TiandituTerrainPlugin {
     const { tiling, projection } = this
     const ellipsoid = tiles.ellipsoid
     const region = [...tiling.getTileBounds(x, y, level), -INITIAL_HEIGHT_RANGE, INITIAL_HEIGHT_RANGE]
-    const [west, , , north, , maxHeight] = region
-    const [, south] = region
+    const [, south, , north, , maxHeight] = region
     const midLat = south > 0 !== north > 0 ? 0 : Math.min(Math.abs(south), Math.abs(north))
 
     ellipsoid.getCartographicToPosition(midLat, 0, maxHeight, _vec)
@@ -377,8 +391,11 @@ export class TiandituTerrainPlugin {
     const rootGeometricError = (maxRadius * 2 * Math.PI * 0.25) / (65 * tileCountX)
     const geometricError = rootGeometricError / 2 ** level
     const useFlatTile = level < this.topLevel
-    const zoom = level + 1
-    const slippyTile = lonLatToTiandituTileXY(west, north, zoom)
+    // 与 demo GeoTerrainProvider 一致：URL 里 l={z}=level+1，x/y 为当前
+    // Geographic 层级的瓦片索引（不是 Web Mercator，也不对 NW 角再做 slippy 转换）。
+    // Same as demo GeoTerrainProvider: l={z}=level+1, while x/y are the Geographic
+    // tile indices at `level` (not Web Mercator, no NW-corner slippy remapping).
+    const requestLevel = level + 1
 
     return {
       [TILE_AVAILABLE]: null,
@@ -389,7 +406,7 @@ export class TiandituTerrainPlugin {
       geometricError,
       boundingVolume: { region },
       content: {
-        uri: buildTileContentUri(slippyTile.x, slippyTile.y, zoom, useFlatTile)
+        uri: buildTileContentUri(x, y, requestLevel, useFlatTile)
       },
       children: []
     }
