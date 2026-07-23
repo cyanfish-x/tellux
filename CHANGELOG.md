@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+本版本重点：
+
+- **高性能 HISM 渲染**：合入 HISM 实例化渲染能力，修复 RTC 实例化后 CPU 拾取失效，并支持单实例后处理描边高亮。
+- **统一拾取与高亮**：收敛为 `pick` / `pickAll` API，支持 Object3D 与 3D Tiles 拾取，落地统一高亮能力。
+- **WMTS / 天地图**：支持 WMTS 地图服务渲染，接入天地图影像与地形，含负载均衡，并修复地形坐标系与解压逻辑。
+- **WebGPU 影像**：修复 ImageBitmap 二次翻转导致的瓦片错乱。
+- **示例与站点体验**：示例站中英文切换、统一 example-panel、Timeline 联动云速，以及首页地球 loading 优化。
+- 另支持 `load3dTiles` 的 `errorTarget` 配置，并修复 Entity 被后处理天空遮盖等问题。
+
 ## [0.1.8] - 2026-07-04
 
 本版本重点：
