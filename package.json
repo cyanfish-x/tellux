@@ -1,6 +1,6 @@
 {
   "name": "tellux",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "An open-source 3D Earth Engine built on Three.js for digital globes, digital twins, 3D maps, and modern web applications.",
   "type": "module",
   "license": "MIT",
