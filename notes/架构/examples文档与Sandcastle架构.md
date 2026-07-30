@@ -131,6 +131,35 @@ Sandcastle 是一个可编辑、可运行示例的交互页面，设计上分成
 
 runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`、`exampleMapServiceConfig`、HISM demo helpers 等。新增被示例 `import` 的本地模块时，必须同步在 `runner.ts` 的 `new Function` 参数列表中注入，否则 Sandcastle 剥离 import 后会报 `ReferenceError`。
 
+Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner 基础依赖图中静态加载。[runtime-bindings.ts](../../examples/sandcastle/runtime-bindings.ts) 根据当前编译后源码实际使用的 binding 判定所需能力，runner 再通过动态 import 加载：
+
+- `GaussianSplatPlugin` → `3d-tiles-rendererjs-3dgs-plugin`
+- `Tree` → `@dgreenheck/ez-tree`
+- HISM helper binding → `examples/hism/shared.ts`
+
+普通示例只加载 Tellux / Three.js 和通用 helper；专用依赖加载失败会进入 runner 现有的错误回传通道。新增专用注入能力时，应同时更新 binding 检测测试，避免重新扩大所有 Sandcastle 运行的首屏依赖图。
+
+## 构建体积预算
+
+根 [vite.config.ts](../../vite.config.ts) 与 [examples/vite.config.ts](../../examples/vite.config.ts) 使用同一套构建期预算插件。预算在本地 `pnpm build` / `pnpm build:examples` 中直接执行，不依赖 CI。
+
+核心库与示例站使用不同口径：
+
+| 范围 | 预算口径 | raw 上限 | gzip 上限 |
+| --- | --- | ---: | ---: |
+| 核心 `index.js` | 单一库入口 | 600 KiB | 160 KiB |
+| 首页 | 入口及其静态 JS import 图 | 2.8 MiB | 800 KiB |
+| Sandcastle 编辑器 | 入口及其静态 JS import 图 | 5.25 MiB | 1.35 MiB |
+| Sandcastle runner | 入口及其静态 JS import 图 | 3 MiB | 800 KiB |
+| Tree | 包含 `@dgreenheck/ez-tree` 的异步能力 chunk | 4.25 MiB | 3.2 MiB |
+| Gaussian Splat | 包含 3DGS plugin / Spark 的异步能力 chunk | 5.5 MiB | 2 MiB |
+| TypeScript worker | worker 文件 | 6.25 MiB | 1.6 MiB |
+| editor worker | worker 文件 | 300 KiB | 100 KiB |
+
+入口预算只递归静态 `imports`，不把 `dynamicImports` 计入首屏；异步重能力有独立预算。这样既能阻止普通入口意外吃进专用依赖，又不会用整个多页站点的总产物体积掩盖责任边界。
+
+预算超过或目标产物缺失时构建直接失败。调整上限前必须先说明增长来自哪个领域能力，并在本节更新基线；不要只提高 Vite 的通用 chunk warning 阈值。
+
 ### 示例控件面板
 
 有控件的示例页统一使用 `.example-panel`（`examples/example-panel.ts` + `styles.css`）：

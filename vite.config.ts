@@ -4,8 +4,13 @@ import {
   isBundledExternalModule,
   isPeerDependencyExternal
 } from './src/build/peerDependencyExternal'
+import {
+  assertBundleSizeBudgets,
+  selectFilesMatching
+} from './src/build/bundleSizeBudget'
 
 const telluxAssetUrlMarker = '__TELLUX_ASSET_URL__/'
+const KiB = 1024
 
 function preserveTelluxAssetUrls() {
   return {
@@ -57,7 +62,24 @@ function assertPeerDependenciesExternal(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [preserveTelluxAssetUrls(), assertPeerDependenciesExternal()],
+  plugins: [
+    preserveTelluxAssetUrls(),
+    assertPeerDependenciesExternal(),
+    assertBundleSizeBudgets([
+      {
+        name: 'core index',
+        select: selectFilesMatching(/^index\.js$/),
+        maxBytes: 600 * KiB,
+        maxGzipBytes: 160 * KiB
+      },
+      {
+        name: 'assets entry',
+        select: selectFilesMatching(/^assets\.js$/),
+        maxBytes: 4 * KiB,
+        maxGzipBytes: 2 * KiB
+      }
+    ])
+  ],
   assetsInclude: ['**/*.bin'],
   optimizeDeps: {
     include: ['@mapbox/vector-tile', 'pbf']

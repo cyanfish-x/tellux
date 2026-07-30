@@ -1,9 +1,7 @@
 import tellux, { createWindSwayLeavesMaterial } from "../../src"
 import * as THREE from "three"
 import { TilesRenderer } from "3d-tiles-renderer"
-import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
-import { Tree } from "@dgreenheck/ez-tree"
 import {
   createTiandituWmtsPreprocessURL,
   createTiandituXYZImagery,
@@ -18,17 +16,9 @@ import {
 import { formatHeight, mountLocationReadout } from "../location-readout"
 import { setupExamplePanels } from "../example-panel"
 import {
-  HISM_DEMO_CENTER,
-  HISM_DEMO_VIEW_POSE,
-  HISM_TREE_PRESETS,
-  buildHismTreeTemplate,
-  buildLegacyTreeTemplate,
-  buildLodTreeArchetypes,
-  buildSimpleTreeArchetypes,
-  createHismDemoViewerOptions,
-  generateFastPlacements,
-  generatePoissonPlacements,
-} from "../hism/shared"
+  HISM_RUNTIME_BINDING_NAMES,
+  detectOptionalRuntimeBindings,
+} from "./runtime-bindings"
 import exampleStyles from "../styles.css?raw"
 import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
@@ -141,7 +131,8 @@ function transformExampleScript(code: string) {
   )
 }
 
-function executeExampleScript(source: string) {
+async function executeExampleScript(source: string) {
+  const optionalBindings = await loadOptionalRuntimeBindings(source)
   const sandcastleImportMeta = {
     env: { ...import.meta.env },
     url: window.location.href,
@@ -183,9 +174,9 @@ function executeExampleScript(source: string) {
     tellux,
     THREE,
     TilesRenderer,
-    GaussianSplatPlugin,
+    optionalBindings.GaussianSplatPlugin,
     GLTFLoader,
-    Tree,
+    optionalBindings.Tree,
     createTiandituWmtsPreprocessURL,
     createTiandituXYZImagery,
     tiandituTerrainServiceTemplate,
@@ -199,25 +190,42 @@ function executeExampleScript(source: string) {
     setupExamplePanels,
     createWindSwayLeavesMaterial,
     exampleMapServiceConfig,
-    HISM_DEMO_CENTER,
-    HISM_DEMO_VIEW_POSE,
-    HISM_TREE_PRESETS,
-    buildHismTreeTemplate,
-    buildLegacyTreeTemplate,
-    buildLodTreeArchetypes,
-    buildSimpleTreeArchetypes,
-    createHismDemoViewerOptions,
-    generateFastPlacements,
-    generatePoissonPlacements,
+    ...HISM_RUNTIME_BINDING_NAMES.map(
+      (name) => optionalBindings.hism[name]
+    ),
     sandcastleImportMeta
   )
+}
+
+async function loadOptionalRuntimeBindings(source: string) {
+  const required = detectOptionalRuntimeBindings(source)
+  const [gaussianSplatModule, treeModule, hismModule] = await Promise.all([
+    required.gaussianSplat
+      ? import("3d-tiles-rendererjs-3dgs-plugin")
+      : null,
+    required.tree
+      ? import("@dgreenheck/ez-tree")
+      : null,
+    required.hism
+      ? import("../hism/shared")
+      : null,
+  ])
+
+  return {
+    GaussianSplatPlugin: gaussianSplatModule?.GaussianSplatPlugin,
+    Tree: treeModule?.Tree,
+    hism: (hismModule ?? {}) as Record<
+      (typeof HISM_RUNTIME_BINDING_NAMES)[number],
+      unknown
+    >,
+  }
 }
 
 async function runExample(payload: SandcastleRunPayload) {
   applyHtml(payload.html)
   installConsoleBridge(payload.runId)
   removeOriginalModuleScripts()
-  executeExampleScript(payload.compiledJavascript)
+  await executeExampleScript(payload.compiledJavascript)
 }
 
 void main()
