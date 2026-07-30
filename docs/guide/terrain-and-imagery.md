@@ -198,6 +198,8 @@ viewer.layers.remove('my-layer')
 viewer.layers.removeAll()
 ```
 
+图层被移除后，原句柄会立即失效。继续调用 `setName`、`setVisible`、`setStyle` 或 `moveTo` 不会再修改句柄快照或 Viewer；重复调用 `remove()` 返回 `false`。即使之后添加了相同 id 的新图层，旧句柄也不能操作新图层。
+
 ### 遍历与查找
 
 ```ts

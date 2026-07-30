@@ -14,10 +14,15 @@ type ImageryLayerOwner = {
   update(change: Omit<ImageryLayerChange, 'layer'>): void
 }
 
+const imageryLayerOwners = new WeakMap<ImageryLayer, ImageryLayerOwner>()
+
 /**
  * 影像图层控制句柄。
+ * 图层被移除后句柄会失效：写操作不再改变句柄快照或 Viewer，重复移除返回 `false`。
  *
  * Imagery layer control handle.
+ * Once removed, the handle becomes inactive: writes no longer change its
+ * snapshot or Viewer, and repeated removal returns `false`.
  */
 export class ImageryLayer {
   /** 图层 id。Layer id. */
@@ -30,7 +35,7 @@ export class ImageryLayer {
 
   constructor(
     options: Required<Pick<ImageryLayerOptions, 'id' | 'source'>> & Omit<ImageryLayerOptions, 'id' | 'source'>,
-    private readonly owner: ImageryLayerOwner
+    owner: ImageryLayerOwner
   ) {
     this.id = options.id
     this.source = options.source
@@ -40,6 +45,7 @@ export class ImageryLayer {
       opacity: 1,
       ...options.style
     }
+    imageryLayerOwners.set(this, owner)
   }
 
   /** 获取图层名称。Gets the layer name. */
@@ -49,10 +55,11 @@ export class ImageryLayer {
 
   /** 设置图层名称。Sets the layer name. */
   setName(name: string | undefined) {
-    if (this.currentName === name) return this
+    const owner = imageryLayerOwners.get(this)
+    if (!owner || this.currentName === name) return this
 
     this.currentName = name
-    this.owner.update({ type: 'metadata' })
+    owner.update({ type: 'metadata' })
     return this
   }
 
@@ -76,10 +83,11 @@ export class ImageryLayer {
 
   /** 设置图层是否可见，并立即应用到 Viewer。Sets whether the layer is visible and applies it to Viewer. */
   setVisible(visible: boolean) {
-    if (this.currentVisible === visible) return this
+    const owner = imageryLayerOwners.get(this)
+    if (!owner || this.currentVisible === visible) return this
 
     this.currentVisible = visible
-    this.owner.update({ type: 'visibility' })
+    owner.update({ type: 'visibility' })
     return this
   }
 
@@ -90,23 +98,26 @@ export class ImageryLayer {
 
   /** 设置图层样式，并立即应用到 Viewer。Sets the layer style and applies it to Viewer. */
   setStyle(style: ImageryLayerStyleOptions) {
+    const owner = imageryLayerOwners.get(this)
+    if (!owner) return this
+
     this.currentStyle = {
       ...this.currentStyle,
       ...style
     }
-    this.owner.update({ type: 'style' })
+    owner.update({ type: 'style' })
     return this
   }
 
   /** 移动图层到指定顺序。Moves the layer to a target order. */
   moveTo(index: number) {
-    this.owner.move(this.id, index)
+    imageryLayerOwners.get(this)?.move(this.id, index)
     return this
   }
 
   /** 从 Viewer 中移除图层。Removes the layer from Viewer. */
   remove() {
-    return this.owner.remove(this.id)
+    return imageryLayerOwners.get(this)?.remove(this.id) ?? false
   }
 }
 
@@ -149,7 +160,8 @@ export class LayerManager {
     const index = this.layers.findIndex((layer) => layer.id === id)
     if (index === -1) return false
 
-    this.layers.splice(index, 1)
+    const [layer] = this.layers.splice(index, 1)
+    imageryLayerOwners.delete(layer)
     this.notifyLayersChanged({ type: 'structure' })
     return true
   }
@@ -158,6 +170,9 @@ export class LayerManager {
   removeAll() {
     if (this.layers.length === 0) return
 
+    this.layers.forEach((layer) => {
+      imageryLayerOwners.delete(layer)
+    })
     this.layers.length = 0
     this.notifyLayersChanged({ type: 'structure' })
   }
@@ -194,12 +209,27 @@ export class LayerManager {
       ...options,
       id
     }, {
-      remove: (layerId) => this.remove(layerId),
-      move: (layerId, index) => this.move(layerId, index),
-      update: (change) => this.notifyLayersChanged({ ...change, layer })
+      remove: (layerId) => (
+        this.isManagedLayer(layer) && layer.id === layerId
+          ? this.remove(layerId)
+          : false
+      ),
+      move: (layerId, index) => (
+        this.isManagedLayer(layer) && layer.id === layerId
+          ? this.move(layerId, index)
+          : false
+      ),
+      update: (change) => {
+        if (!this.isManagedLayer(layer)) return
+        this.notifyLayersChanged({ ...change, layer })
+      }
     })
 
     return layer
+  }
+
+  private isManagedLayer(layer: ImageryLayer) {
+    return this.layers.includes(layer)
   }
 
   private notifyLayersChanged(change: ImageryLayerChange) {
