@@ -32,6 +32,25 @@ describe('ObjectPicker', () => {
     expect(hit!.object).toBe(near)
   })
 
+  it('returns each intersected object once in pickObjects', () => {
+    const scene = new THREE.Scene()
+    const near = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial()
+    )
+    const far = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial()
+    )
+    far.position.z = -3
+    scene.add(near, far)
+    scene.updateMatrixWorld(true)
+
+    const hits = createPicker(scene).pickObjects({ x: 50, y: 50 })
+
+    expect(hits.map((hit) => hit.object)).toEqual([near, far])
+  })
+
   it('scopes picking to a root and skips telluxPickingIgnore', () => {
     const scene = new THREE.Scene()
     const root = new THREE.Group()

@@ -46,6 +46,13 @@ export interface ViewerPickOptions {
    * Screen-space tolerance for point / polyline entities in CSS pixels.
    */
   tolerance?: number
+  /**
+   * `pickAll` 最多返回的命中数。先完成全局距离排序，再截取结果；默认不限制。
+   *
+   * Maximum number of hits returned by `pickAll`. Applied after global distance
+   * sorting. Unlimited by default.
+   */
+  limit?: number
 }
 
 /**

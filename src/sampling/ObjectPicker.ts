@@ -44,17 +44,18 @@ export class ObjectPicker {
     const recursive = options.recursive !== false
     const intersects = this.raycaster.intersectObject(root, recursive)
 
-    const results: PickedObject[] = []
+    const results = new Map<THREE.Object3D, PickedObject>()
     for (const hit of intersects) {
       if (shouldIgnorePickObject(hit.object)) continue
-      results.push({
+      if (results.has(hit.object)) continue
+      results.set(hit.object, {
         object: hit.object,
         point: hit.point.clone(),
         distance: hit.distance,
         faceIndex: hit.faceIndex ?? null
       })
     }
-    return results
+    return Array.from(results.values())
   }
 }
 

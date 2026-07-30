@@ -9,7 +9,7 @@ import type {
 } from '../../types/hism'
 import { HismLayerImpl } from './HismLayer'
 import { HismPickMarker } from '../picking/HismPickMarker'
-import { pickHismLayers } from '../picking/HismPicker'
+import { pickAllHismLayers, pickHismLayers } from '../picking/HismPicker'
 import { collectHismRuntimeStats } from '../runtime/HismRuntimeStats'
 
 export interface HismManagerOptions {
@@ -78,16 +78,7 @@ export class HismManager {
   }
 
   pick(screenPosition: { x: number; y: number }): HismPickResult | null {
-    const width = this.options.domElement.clientWidth
-    const height = this.options.domElement.clientHeight
-    if (!width || !height) return null
-
-    this.pointer.x = (screenPosition.x / width) * 2 - 1
-    this.pointer.y = -(screenPosition.y / height) * 2 + 1
-    this.raycaster.setFromCamera(
-      this.pointer,
-      this.options.camera as THREE.PerspectiveCamera
-    )
+    if (!this.setPickRay(screenPosition)) return null
 
     const result = pickHismLayers({
       layers: this.layers.values(),
@@ -95,6 +86,15 @@ export class HismManager {
     })
 
     return result
+  }
+
+  /** 拾取全部 HISM 实例并按距离排序。Picks all HISM instances nearest-first. */
+  pickAll(screenPosition: { x: number; y: number }): HismPickResult[] {
+    if (!this.setPickRay(screenPosition)) return []
+    return pickAllHismLayers({
+      layers: this.layers.values(),
+      raycaster: this.raycaster
+    })
   }
 
   /**
@@ -132,6 +132,20 @@ export class HismManager {
       layer.remove()
     })
     this.layers.clear()
+  }
+
+  private setPickRay(screenPosition: { x: number; y: number }) {
+    const width = this.options.domElement.clientWidth
+    const height = this.options.domElement.clientHeight
+    if (!width || !height) return false
+
+    this.pointer.x = (screenPosition.x / width) * 2 - 1
+    this.pointer.y = -(screenPosition.y / height) * 2 + 1
+    this.raycaster.setFromCamera(
+      this.pointer,
+      this.options.camera as THREE.PerspectiveCamera
+    )
+    return true
   }
 
   private createLayerId() {

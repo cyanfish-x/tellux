@@ -122,8 +122,8 @@ export class ScenePicker {
     }
 
     if (layers.includes('hismInstance')) {
-      const instance = this.options.hismManager.pick(position)
-      if (instance) {
+      const instances = this.options.hismManager.pickAll(position)
+      for (const instance of instances) {
         hits.push({
           type: 'hismInstance',
           distance: instance.distance,
@@ -133,8 +133,8 @@ export class ScenePicker {
     }
 
     if (layers.includes('tilesFeature')) {
-      const feature = this.options.tilesetFeaturePicker.pick(position)
-      if (feature) {
+      const features = this.options.tilesetFeaturePicker.pickAll(position)
+      for (const feature of features) {
         hits.push({
           type: 'tilesFeature',
           distance: feature.distance,
@@ -158,7 +158,8 @@ export class ScenePicker {
     }
 
     hits.sort((a, b) => a.distance - b.distance)
-    return hits
+    if (pickOptions.limit === undefined) return hits
+    return hits.slice(0, Math.max(0, Math.floor(pickOptions.limit)))
   }
 
   private resolveActiveLayers(options: ViewerPickOptions): ViewerPickLayer[] {

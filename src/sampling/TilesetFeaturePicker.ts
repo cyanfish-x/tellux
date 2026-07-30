@@ -60,13 +60,7 @@ export class TilesetFeaturePicker {
   ) {}
 
   pick(position: ScreenPosition): Picked3DTilesFeature | null {
-    const width = this.canvas.clientWidth
-    const height = this.canvas.clientHeight
-    if (!width || !height) return null
-
-    this.coords.set((position.x / width) * 2 - 1, -(position.y / height) * 2 + 1)
-    this.camera.updateMatrixWorld()
-    this.raycaster.setFromCamera(this.coords, this.camera)
+    if (!this.setPickRay(position)) return null
 
     let picked: Picked3DTilesFeature | null = null
     for (const { id, tileset } of this.tilesets.loadedSceneTilesetEntries) {
@@ -81,6 +75,19 @@ export class TilesetFeaturePicker {
     return picked
   }
 
+  /** 拾取全部 3D Tiles feature 并按距离排序。Picks all 3D Tiles features nearest-first. */
+  pickAll(position: ScreenPosition): Picked3DTilesFeature[] {
+    if (!this.setPickRay(position)) return []
+
+    const picked: Picked3DTilesFeature[] = []
+    for (const { id, tileset } of this.tilesets.loadedSceneTilesetEntries) {
+      if (!tileset.group.visible) continue
+      picked.push(...this.pickAllTilesetFeatures(id, tileset))
+    }
+    picked.sort((a, b) => a.distance - b.distance)
+    return picked
+  }
+
   private pickTilesetFeature(layerId: string, tileset: TilesRenderer): Picked3DTilesFeature | null {
     tileset.group.updateMatrixWorld(true)
     this.matrix.copy(tileset.group.matrixWorld).invert()
@@ -89,7 +96,32 @@ export class TilesetFeaturePicker {
       return !this.isPickingIgnored(intersection.object)
     })
     if (!hit) return null
+    return this.createPickedFeature(layerId, tileset, hit)
+  }
 
+  private pickAllTilesetFeatures(layerId: string, tileset: TilesRenderer) {
+    tileset.group.updateMatrixWorld(true)
+    this.matrix.copy(tileset.group.matrixWorld).invert()
+
+    const picked = new Map<string, Picked3DTilesFeature>()
+    const intersections = this.raycaster.intersectObject(tileset.group, true)
+    for (const hit of intersections) {
+      if (this.isPickingIgnored(hit.object)) continue
+      const feature = this.createPickedFeature(layerId, tileset, hit)
+      const key = `${feature.object.uuid}:${feature.featureId ?? 'object'}`
+      const previous = picked.get(key)
+      if (!previous || feature.distance < previous.distance) {
+        picked.set(key, feature)
+      }
+    }
+    return Array.from(picked.values())
+  }
+
+  private createPickedFeature(
+    layerId: string,
+    tileset: TilesRenderer,
+    hit: THREE.Intersection
+  ): Picked3DTilesFeature {
     this.point.copy(hit.point).applyMatrix4(this.matrix)
     const cartographic = tileset.ellipsoid.getPositionToCartographic(this.point, this.cartographicScratch)
     const metadata = this.getFeatureMetadata(hit, tileset)
@@ -109,6 +141,17 @@ export class TilesetFeaturePicker {
         height: cartographic.height
       }
     }
+  }
+
+  private setPickRay(position: ScreenPosition) {
+    const width = this.canvas.clientWidth
+    const height = this.canvas.clientHeight
+    if (!width || !height) return false
+
+    this.coords.set((position.x / width) * 2 - 1, -(position.y / height) * 2 + 1)
+    this.camera.updateMatrixWorld()
+    this.raycaster.setFromCamera(this.coords, this.camera)
+    return true
   }
 
   private getFeatureMetadata(hit: THREE.Intersection, tileset: TilesRenderer): FeatureMetadata {

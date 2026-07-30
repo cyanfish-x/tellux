@@ -35,6 +35,38 @@ export function intersectRtcInstancedMesh(
   raycaster: THREE.Raycaster,
   mesh: THREE.InstancedMesh
 ): THREE.Intersection | null {
+  let closest: THREE.Intersection | null = null
+  forEachRtcInstanceHit(raycaster, mesh, (hit) => {
+    if (!closest || hit.distance < closest.distance) {
+      closest = hit
+    }
+  })
+  return closest
+}
+
+/**
+ * 返回射线命中的全部 RTC 实例，每个实例只保留最近交点，并按距离排序。
+ *
+ * Returns every intersected RTC instance, keeping the nearest intersection per
+ * instance and sorting the results by distance.
+ */
+export function intersectAllRtcInstancedMesh(
+  raycaster: THREE.Raycaster,
+  mesh: THREE.InstancedMesh
+): THREE.Intersection[] {
+  const hits: THREE.Intersection[] = []
+  forEachRtcInstanceHit(raycaster, mesh, (hit) => {
+    hits.push(hit)
+  })
+  hits.sort((a, b) => a.distance - b.distance)
+  return hits
+}
+
+function forEachRtcInstanceHit(
+  raycaster: THREE.Raycaster,
+  mesh: THREE.InstancedMesh,
+  callback: (hit: THREE.Intersection) => void
+) {
   ensureAcceleratedRaycast()
   ensureGeometryBvh(mesh.geometry)
 
@@ -47,7 +79,7 @@ export function intersectRtcInstancedMesh(
   if (mesh.boundingSphere) {
     meshSphere.copy(mesh.boundingSphere).applyMatrix4(matrixWorld)
     if (!raycaster.ray.intersectsSphere(meshSphere)) {
-      return null
+      return
     }
   }
 
@@ -60,8 +92,6 @@ export function intersectRtcInstancedMesh(
 
   const previousFirstHitOnly = raycaster.firstHitOnly
   raycaster.firstHitOnly = true
-
-  let closest: THREE.Intersection | null = null
 
   try {
     for (let instanceId = 0; instanceId < mesh.count; instanceId += 1) {
@@ -80,23 +110,26 @@ export function intersectRtcInstancedMesh(
       proxyMesh.matrixWorld = instanceWorldMatrix
       proxyMesh.raycast(raycaster, instanceIntersects)
 
+      let closestForInstance: THREE.Intersection | null = null
       for (let i = 0; i < instanceIntersects.length; i += 1) {
         const hit = instanceIntersects[i]!
         hit.instanceId = instanceId
         hit.object = mesh
-        if (!closest || hit.distance < closest.distance) {
-          closest = hit
+        if (!closestForInstance || hit.distance < closestForInstance.distance) {
+          closestForInstance = hit
         }
       }
       instanceIntersects.length = 0
+      if (closestForInstance) {
+        callback(closestForInstance)
+      }
     }
   } finally {
+    instanceIntersects.length = 0
     raycaster.firstHitOnly = previousFirstHitOnly
     proxyMesh.geometry = undefined as unknown as THREE.BufferGeometry
     proxyMesh.material = undefined as unknown as THREE.Material
   }
-
-  return closest
 }
 
 /**
@@ -140,5 +173,58 @@ export function pickHismLayers(
     instanceId: closestHit.instanceId,
     point: closestHit.point.clone(),
     distance: closestHit.distance
+  }
+}
+
+/**
+ * 对多个 HISM 图层执行全量拾取，每个逻辑实例只返回一次并按距离排序。
+ *
+ * Picks every logical HISM instance across layers once and sorts nearest-first.
+ */
+export function pickAllHismLayers(
+  options: PickHismLayersOptions
+): HismPickResult[] {
+  ensureAcceleratedRaycast()
+
+  const picked = new Map<string, HismPickResult>()
+  for (const layer of options.layers) {
+    if (!layer.show) continue
+
+    for (const mesh of layer.collectVisiblePickMeshes()) {
+      const intersections = intersectAllRtcInstancedMesh(options.raycaster, mesh)
+      for (const hit of intersections) {
+        if (hit.instanceId === undefined) continue
+        const result = createHismPickResult(layer, mesh, hit)
+        const key = JSON.stringify([
+          result.layerId,
+          result.clusterKey,
+          result.archetypeIndex,
+          result.instanceId
+        ])
+        const previous = picked.get(key)
+        if (!previous || result.distance < previous.distance) {
+          picked.set(key, result)
+        }
+      }
+    }
+  }
+
+  return Array.from(picked.values()).sort((a, b) => a.distance - b.distance)
+}
+
+function createHismPickResult(
+  layer: HismLayerImpl,
+  mesh: THREE.InstancedMesh,
+  hit: THREE.Intersection
+): HismPickResult {
+  return {
+    layerId: layer.id,
+    clusterKey: mesh.userData.hismClusterKey as string,
+    archetypeIndex: mesh.userData.hismArchetypeIndex as number,
+    lodIndex: mesh.userData.hismLodIndex as number,
+    partIndex: mesh.userData.hismPartIndex as number,
+    instanceId: hit.instanceId!,
+    point: hit.point.clone(),
+    distance: hit.distance
   }
 }

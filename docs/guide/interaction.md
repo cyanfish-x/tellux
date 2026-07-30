@@ -86,7 +86,7 @@ type ViewerPickResult =
 ```
 
 - `pick`：每层只取最近命中，再取全局最近。
-- `pickAll`：合并各层全部命中，由近到远。
+- `pickAll`：合并各层全部命中，每个逻辑对象只返回一次，再按距离由近到远排序。Entity、HISM 逻辑实例和 Object3D 分别按自身身份去重；3D Tiles 按对象与 feature 组合去重。
 
 ```ts
 const hit = viewer.pick({ x: 400, y: 300 })
@@ -105,8 +105,11 @@ const hits = viewer.pickAll({ x: 400, y: 300 })
 | `root` | object 层根节点；传入且未指定 `layers` 时，默认只测 `['object']`。 |
 | `recursive` | object 层是否递归子节点。 |
 | `tolerance` | 点 / 线实体屏幕容差（CSS 像素）。 |
+| `limit` | `pickAll` 最多返回的非负整数条数；在跨层全局排序后截取，默认不限制。 |
 
 **默认 `layers`**：`['entity', 'hismInstance', 'tilesFeature']`。未注册 HISM 图层时会自动跳过 `hismInstance`。无 `root` 时默认**不含** `object`，避免整 scene 拾取打到地形瓦片 mesh。
+
+`limit` 只约束返回结果，不会提前终止各层的射线遍历。高频或大规模场景仍应收窄 `layers`，并对显式 `pickAll` 调用做节流。
 
 收窄层（例如只要 HISM，或悬停只要 Tiles）：
 

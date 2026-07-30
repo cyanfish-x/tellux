@@ -164,7 +164,7 @@ const coord = viewer.pickCartographic({ x: 400, y: 300 })
 
 ### `pick(position, options?)` / `pickAll(position, options?)`
 
-统一对象拾取。`pick` 返回全局最近的 `ViewerPickResult`；`pickAll` 返回由近到远的全部命中。默认 `layers` 为 `['entity', 'hismInstance', 'tilesFeature']`；传入 `root` 且未指定 `layers` 时只测 `object` 层。无 HISM 图层时自动跳过 `hismInstance`。
+统一对象拾取。`pick` 返回全局最近的 `ViewerPickResult`；`pickAll` 对每个逻辑对象只返回一次，并返回跨层全局排序、由近到远的全部命中。默认 `layers` 为 `['entity', 'hismInstance', 'tilesFeature']`；传入 `root` 且未指定 `layers` 时只测 `object` 层。无 HISM 图层时自动跳过 `hismInstance`。
 
 ```ts
 const hit = viewer.pick({ x: 400, y: 300 })
@@ -172,9 +172,10 @@ if (hit?.type === 'tilesFeature') console.log(hit.feature.properties)
 
 const modelHit = viewer.pick(pos, { root: model.root })
 const hismHit = viewer.pick(pos, { layers: ['hismInstance'] })
+const firstTenHits = viewer.pickAll(pos, { limit: 10 })
 ```
 
-`options` 支持 `layers`、`root`、`recursive`、`tolerance`（点/线实体屏幕容差，CSS 像素）。
+`options` 支持 `layers`、`root`、`recursive`、`tolerance`（点/线实体屏幕容差，CSS 像素）和 `limit`（全局排序后截取的最大结果数，默认不限制）。`limit` 不会减少各层内部射线遍历；高频调用仍应收窄 `layers` 并节流。
 
 ### `addHismLayer(options)`
 

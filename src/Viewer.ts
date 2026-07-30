@@ -839,9 +839,11 @@ export class Viewer {
   }
 
   /**
-   * 拾取屏幕位置全部可选中对象，由近到远。
+   * 拾取屏幕位置全部可选中对象，每个逻辑对象只返回一次，由近到远。
+   * 可通过 `options.limit` 截取全局排序后的前 N 项。
    *
-   * Picks all selectable objects at a screen position, nearest first.
+   * Picks all selectable objects at a screen position once per logical object,
+   * nearest first. Use `options.limit` to keep the first N globally sorted hits.
    */
   pickAll(
     position: ScreenPosition,

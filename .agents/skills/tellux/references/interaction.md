@@ -49,7 +49,7 @@ if (coord) console.log(coord.latitude, coord.longitude, coord.height)
 const hit = viewer.pick({ x: 400, y: 300 })
 // hit.type: 'entity' | 'tilesFeature' | 'hismInstance' | 'object'
 
-const hits = viewer.pickAll({ x: 400, y: 300 }) // 近→远
+const hits = viewer.pickAll({ x: 400, y: 300 }, { limit: 10 }) // 全局近→远
 
 viewer.pick(pos, { layers: ['tilesFeature'] })
 viewer.pick(pos, { layers: ['hismInstance'] })
@@ -58,8 +58,9 @@ viewer.pick(pos, { root: model.root }) // 默认仅 object 层
 
 - 默认 `layers`：`['entity', 'hismInstance', 'tilesFeature']`；无 HISM 图层时跳过 `hismInstance`。
 - 传入 `root` 且未指定 `layers` → `['object']`（避免打到地形瓦片）。
-- `pick` = 每层最近再比全局最近；`pickAll` = 全量合并。
+- `pick` = 每层最近再比全局最近；`pickAll` = 每个逻辑对象只返回一次，跨层全量合并并按距离排序。
 - `tolerance`：点/线实体屏幕容差（CSS 像素）。
+- `limit`：`pickAll` 全局排序后最多返回的条数；默认不限制，不会减少各层内部射线遍历。
 
 > **所有拾取方法只用当前已加载内容**，视角外或未加载区域可能返回椭球坐标或 `null`。
 
