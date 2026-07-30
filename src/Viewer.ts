@@ -923,7 +923,7 @@ export class Viewer {
    * Pass `null` to remove the current terrain and return to the non-terrain mode.
    */
   setTerrain(terrain: ViewerOptions['terrain'] | null) {
-    this.cancelMostDetailedHeightSampling()
+    this.heightSampler.resetForTerrainChange()
     this.tilesets.setTerrain(terrain)
     return this
   }
@@ -941,6 +941,7 @@ export class Viewer {
    * imagery overlay pipeline.
    */
   load3DTileset(options: Load3DTilesetOptions): TilesetLayer {
+    this.cancelMostDetailedHeightSampling()
     return this.wrapTilesetLayer(this.tilesets.load3DTileset(options))
   }
 
@@ -990,6 +991,9 @@ export class Viewer {
    * 让采样区域的瓦片细化后再 raycast；这样采样完成后，该区域也会保留在
    * 主场景缓存中。必要时会退回到采样专用 tileset。
    *
+   * terrain 或参与采样的图层变化、以及 Viewer 销毁会取消未完成任务；
+   * 取消时返回的 Promise 以 `AbortError` 拒绝。
+   *
    * 当 {@link Viewer.useDefaultRenderLoop} 为 `false` 时，需要继续调用
    * {@link Viewer.render} 推进采样任务。
    *
@@ -1001,6 +1005,9 @@ export class Viewer {
    * first add temporary local load regions to the scene tilesets, refine the
    * sampling area, and then raycast; the loaded region remains warm in the scene
    * cache. A sampling-only tileset path is kept as a fallback.
+   *
+   * Terrain or sampled-layer changes and Viewer destruction cancel unfinished
+   * work. Cancellation rejects the returned promise with an `AbortError`.
    *
    * When {@link Viewer.useDefaultRenderLoop} is `false`, continue calling
    * {@link Viewer.render} to advance pending sampling tasks.
@@ -1199,6 +1206,7 @@ export class Viewer {
   }
 
   private wrapTilesetLayer(layer: TilesetLayer): TilesetLayer {
+    const cancelSampling = () => this.cancelMostDetailedHeightSampling()
     return {
       id: layer.id,
       tileset: layer.tileset,
@@ -1206,10 +1214,12 @@ export class Viewer {
         return layer.show
       },
       set show(value: boolean) {
+        if (layer.show === value) return
+        cancelSampling()
         layer.show = value
       },
       remove: () => {
-        this.cancelMostDetailedHeightSampling()
+        cancelSampling()
         layer.remove()
       }
     }

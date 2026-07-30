@@ -105,6 +105,8 @@ results.forEach((result, i) => {
 
 - 3D Tiles / 混合模式下，临时添加的局部加载区域**采样后会留在主场景缓存**（升温）。
 - **当 `useDefaultRenderLoop` 为 `false` 时，调用方必须继续调用 `viewer.render()` 推进采样**。
+- terrain 切换、采样图层结构变化或 `viewer.destroy()` 会用 `AbortError` 拒绝未完成采样，不返回部分结果。
+- terrain 直采缓存有 LRU 容量边界（2 个 layer resource、64 个 decoded tile）；失败项可重试，terrain 切换会清空旧缓存。
 
 `SampleHeightMostDetailedOptions`：`source`、`resolution`(默认256)、`maxFrames`(默认120)、`debug`。
 

@@ -89,6 +89,10 @@ terrain 直采不创建离屏相机，不创建采样 tileset，也不会调用 
 - `layerCache`: 按 terrain 根 URL 缓存 `layer.json` 和已经合并的 availability。
 - `tileCache`: 按 `terrainRoot|level/x/y` 缓存解析后的 `.terrain`。
 
+两个缓存都使用可中止的异步 LRU：默认最多保留 2 个已完成的 layer resource 和 64 个已解码 terrain tile。相同 key 的并发请求共用一个 Promise；失败或取消的 Promise 会从缓存移除，后续调用可以重试。容量超限时只淘汰已完成的最久未使用项，不会为了压缩容量而让仍在途的请求失去并发去重。
+
+terrain 切换会取消在途请求并清空两级缓存；Viewer 销毁也会取消请求并释放全部缓存。因此旧 terrain resource 不会跨切换长期驻留。
+
 批量采样会先按最终瓦片分组，因此同一瓦片内的多个点只产生一次网络请求和一次 quantized-mesh 解析。对 `instanced-horses` 这类大量点落在少量地形瓦片内的场景，主要收益来自跳过隐藏 `TilesRenderer` traversal、跳过 Three.js raycast、跳过几何构建和重用同瓦片解析结果。
 
 ## 主场景局部加载链路
@@ -148,9 +152,11 @@ raycast 类链路会为每个输入点生成一个 `HeightSamplingTask`：
 
 raycast 类链路会按纬度、经度排序，再按 batch size 和经纬度跨度拆分任务。
 
-`sampleHeightMostDetailed` 不会自己开同步 while 循环，也不会渲染离屏帧。它把 job 放进 `HeightSampler` 队列后，由 `Viewer.render()` 在主场景渲染后通过 `setTimeout(..., 0)` 安排采样 pass，再调用 `heightSampler.updateMostDetailedSampling()`。
+`sampleHeightMostDetailed` 不会自己开同步 while 循环，也不会渲染离屏帧。它把 job 放进 `HeightSampler` 队列后，由 `ViewerRenderLoop` 在主场景渲染后通过下一次 `requestAnimationFrame` 安排采样 pass，再调用 `heightSampler.updateMostDetailedSampling()`。
 
 这个设计保证当前帧的 WebGL 绘制先完成。采样 pass 默认只推进有限数量的 batch，避免一次性处理过多瓦片更新。
+
+每次公开调用都会创建独立 `HeightSamplingSession`。session 覆盖等待浏览器 paint、terrain 直采、tileset job 和 hybrid 并行合并；terrain / 采样图层切换或 Viewer 销毁会统一使 session 失效。所有 await 边界都会检查 session，取消时 Promise 以 `AbortError` 拒绝，队列不会再用部分结果正常 resolve。等待 paint 的 rAF / timeout 以及 fetch 都会一并取消。
 
 ## 采样相机与 LoadRegionPlugin
 
@@ -204,7 +210,7 @@ batch 完成后，raycast 类链路会对每个 task 执行 raycast。
 
 ## Fallback 行为
 
-terrain 直采失败时，`HeightSampler` 会打印 warning，并回到 raycast 链路。
+terrain 直采发生普通失败时，`HeightSampler` 会打印 warning，并回到 raycast 链路；`AbortError` 不记录 warning，也不进入 fallback。
 
 如果没有创建采样专用 tileset，例如当前没有 terrain 或对应 source 没有可用图层，实现会退回到 `sampleHeightFromLoadedTiles`。这个 fallback 只使用当前已经加载在主场景中的 tileset，不会额外请求视角外瓦片，因此不保证 most-detailed。
 

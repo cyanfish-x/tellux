@@ -18,6 +18,12 @@ import type {
   SampleHeightOptions
 } from '../types'
 import { HeightSamplingBatcher } from './HeightSamplingBatcher'
+import {
+  createHeightSamplingAbortError,
+  getHeightSamplingAbortReason,
+  HeightSamplingSession,
+  isHeightSamplingAbortError
+} from './HeightSamplingSession'
 import { QuantizedMeshTerrainSampler } from './QuantizedMeshTerrainSampler'
 
 const DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT = -10000
@@ -72,6 +78,7 @@ type HeightSamplingDebugState = {
 }
 
 type HeightSamplingJob = {
+  session: HeightSamplingSession
   options: SampleHeightMostDetailedOptions
   results: SampleHeightMostDetailedResult[]
   batches: HeightSamplingTask[][]
@@ -81,6 +88,7 @@ type HeightSamplingJob = {
   activeBatch: HeightSamplingBatchState | null
   debug: HeightSamplingDebugState | null
   resolve: (results: SampleHeightMostDetailedResult[]) => void
+  reject: (reason: unknown) => void
 }
 
 export class HeightSampler {
@@ -101,7 +109,10 @@ export class HeightSampler {
   private readonly tilesetSampling = new TilesetSamplingAdapter()
   private readonly heightSamplingLoadRegionPlugins = new WeakMap<TilesRenderer, InstanceType<typeof LoadRegionPlugin>>()
   private readonly heightSamplingJobs: HeightSamplingJob[] = []
+  private readonly heightSamplingSessions = new Map<number, HeightSamplingSession>()
   private heightSamplingJobCursor = 0
+  private nextHeightSamplingSessionId = 0
+  private isDisposed = false
 
   get hasPendingMostDetailedSampling() {
     return this.heightSamplingJobs.length > 0
@@ -122,25 +133,49 @@ export class HeightSampler {
   ): Promise<SampleHeightMostDetailedResult[]> {
     if (positions.length === 0) return []
 
-    await this.waitForBrowserPaint()
+    const session = this.createHeightSamplingSession()
+    try {
+      await this.waitForBrowserPaint(session)
+      session.throwIfAborted()
 
-    const hybridResults = await this.sampleAllMostDetailedHybrid(positions, options)
-    if (hybridResults) return hybridResults
+      const hybridResults = await this.sampleAllMostDetailedHybrid(
+        positions,
+        options,
+        session
+      )
+      session.throwIfAborted()
+      if (hybridResults) return hybridResults
 
-    if (options.source === 'terrain' || this.canUseDirectTerrainOnlySampling(options.source)) {
-      const terrainResults = await this.sampleTerrainMostDetailedDirect(positions)
-      if (terrainResults) return terrainResults
+      if (options.source === 'terrain' || this.canUseDirectTerrainOnlySampling(options.source)) {
+        const terrainResults = await this.sampleTerrainMostDetailedDirect(
+          positions,
+          session
+        )
+        session.throwIfAborted()
+        if (terrainResults) return terrainResults
+      }
+
+      const entries = this.createMostDetailedSamplingEntries(options.source)
+      const results = await this.sampleHeightMostDetailedFromEntries(
+        positions,
+        options,
+        entries,
+        session
+      )
+      session.throwIfAborted()
+      return results
+    } finally {
+      this.heightSamplingSessions.delete(session.id)
     }
-
-    const entries = this.createMostDetailedSamplingEntries(options.source)
-    return this.sampleHeightMostDetailedFromEntries(positions, options, entries)
   }
 
   private sampleHeightMostDetailedFromEntries(
     positions: CartographicCoordinateTuple[],
     options: SampleHeightMostDetailedOptions,
-    entries: HeightSamplingTilesetEntry[]
+    entries: HeightSamplingTilesetEntry[],
+    session: HeightSamplingSession
   ): Promise<SampleHeightMostDetailedResult[]> | SampleHeightMostDetailedResult[] {
+    session.throwIfAborted()
     const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
     if (entries.length === 0) {
       positions.forEach((position, index) => {
@@ -155,8 +190,9 @@ export class HeightSampler {
     const maxFrames = Math.max(0, options.maxFrames ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES)
     const debug = this.createHeightSamplingDebugState(options.debug, positions.length, batches.length, entries)
 
-    return new Promise<SampleHeightMostDetailedResult[]>((resolve) => {
+    return new Promise<SampleHeightMostDetailedResult[]>((resolve, reject) => {
       this.heightSamplingJobs.push({
+        session,
         options,
         results,
         batches,
@@ -165,14 +201,16 @@ export class HeightSampler {
         entries,
         activeBatch: null,
         debug,
-        resolve
+        resolve,
+        reject
       })
     })
   }
 
   private async sampleAllMostDetailedHybrid(
     positions: CartographicCoordinateTuple[],
-    options: SampleHeightMostDetailedOptions
+    options: SampleHeightMostDetailedOptions,
+    session: HeightSamplingSession
   ) {
     if (options.source !== undefined && options.source !== 'all') return null
     if (!this.tilesets.terrainOptions || !this.tilesets.terrainTileset) return null
@@ -180,14 +218,22 @@ export class HeightSampler {
     const tilesetEntries = this.tilesets.createHeightSamplingTilesets('tileset')
     if (tilesetEntries.length === 0) return null
 
-    const terrainPromise = this.sampleTerrainMostDetailedDirect(positions)
-    const tilesetResults = await this.sampleHeightMostDetailedFromEntries(
+    const tilesetPromise = this.sampleHeightMostDetailedFromEntries(
       positions,
       { ...options, source: 'tileset' },
-      tilesetEntries
+      tilesetEntries,
+      session
     )
-    const terrainResults = await terrainPromise
-    if (!terrainResults) return null
+    const terrainPromise = this.sampleTerrainMostDetailedDirect(
+      positions,
+      session
+    )
+    const [terrainResults, tilesetResults] = await Promise.all([
+      terrainPromise,
+      tilesetPromise
+    ])
+    session.throwIfAborted()
+    if (!terrainResults) return tilesetResults
 
     return this.mergeMostDetailedTerrainAndTilesetResults(positions, terrainResults, tilesetResults)
   }
@@ -225,23 +271,49 @@ export class HeightSampler {
   }
 
   cancelMostDetailedSampling() {
-    while (this.heightSamplingJobs.length > 0) {
-      this.cancelHeightSamplingJob(this.heightSamplingJobs[0])
-    }
+    this.cancelMostDetailedSamplingWithReason(createHeightSamplingAbortError())
+  }
+
+  resetForTerrainChange() {
+    const reason = createHeightSamplingAbortError(
+      'Tellux height sampling was cancelled because the terrain changed.'
+    )
+    this.cancelMostDetailedSamplingWithReason(reason)
+    this.terrainSampler.clear(reason)
   }
 
   dispose() {
-    this.cancelMostDetailedSampling()
-    this.terrainSampler.clear()
+    if (this.isDisposed) return
+
+    this.isDisposed = true
+    const reason = createHeightSamplingAbortError(
+      'Tellux height sampling was cancelled because the Viewer was destroyed.'
+    )
+    this.cancelMostDetailedSamplingWithReason(reason)
+    this.terrainSampler.clear(reason)
   }
 
-  private async sampleTerrainMostDetailedDirect(positions: CartographicCoordinateTuple[]) {
+  private async sampleTerrainMostDetailedDirect(
+    positions: CartographicCoordinateTuple[],
+    session: HeightSamplingSession
+  ) {
     const terrain = this.tilesets.terrainOptions
     if (!terrain || !this.tilesets.terrainTileset || terrain.type === 'tianditu') return null
 
     try {
-      return await this.terrainSampler.sampleMostDetailed(terrain, positions)
+      const result = await session.waitFor(
+        this.terrainSampler.sampleMostDetailed(
+          terrain,
+          positions,
+          { signal: session.signal }
+        )
+      )
+      session.throwIfAborted()
+      return result
     } catch (error) {
+      if (session.signal.aborted || isHeightSamplingAbortError(error)) {
+        throw getHeightSamplingAbortReason(session.signal)
+      }
       console.warn('Tellux height sampler: direct terrain sampling failed; falling back to tiles renderer sampling.', error)
       return null
     }
@@ -545,6 +617,14 @@ export class HeightSampler {
   }
 
   private updateHeightSamplingJob(job: HeightSamplingJob) {
+    if (job.session.signal.aborted) {
+      this.cancelHeightSamplingJob(
+        job,
+        getHeightSamplingAbortReason(job.session.signal)
+      )
+      return true
+    }
+
     if (!job.activeBatch) {
       this.beginHeightSamplingBatch(job)
     }
@@ -726,16 +806,20 @@ export class HeightSampler {
     this.disposeHeightSamplingBatch(job)
     this.tilesets.disposeHeightSamplingTilesets(job.entries)
     this.removeHeightSamplingJob(job)
+    if (job.session.signal.aborted) {
+      job.reject(getHeightSamplingAbortReason(job.session.signal))
+      return true
+    }
     this.logHeightSamplingJobFinished(job)
     job.resolve(job.results)
     return true
   }
 
-  private cancelHeightSamplingJob(job: HeightSamplingJob) {
+  private cancelHeightSamplingJob(job: HeightSamplingJob, reason: unknown) {
     this.disposeHeightSamplingBatch(job)
     this.tilesets.disposeHeightSamplingTilesets(job.entries)
     this.removeHeightSamplingJob(job)
-    job.resolve(job.results)
+    job.reject(reason)
   }
 
   private removeHeightSamplingJob(job: HeightSamplingJob) {
@@ -751,17 +835,65 @@ export class HeightSampler {
     }
   }
 
-  private waitForBrowserPaint() {
-    return new Promise<void>((resolve) => {
+  private waitForBrowserPaint(session: HeightSamplingSession) {
+    session.throwIfAborted()
+    return new Promise<void>((resolve, reject) => {
+      let frameId = 0
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
+      const finish = () => {
+        cleanup()
+        resolve()
+      }
+      const onAbort = () => {
+        cleanup()
+        reject(getHeightSamplingAbortReason(session.signal))
+      }
+      const cleanup = () => {
+        session.signal.removeEventListener('abort', onAbort)
+        if (frameId !== 0 && typeof cancelAnimationFrame === 'function') {
+          cancelAnimationFrame(frameId)
+          frameId = 0
+        }
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
+      }
+
+      session.signal.addEventListener('abort', onAbort, { once: true })
       if (typeof requestAnimationFrame !== 'function') {
-        setTimeout(resolve, 0)
+        timeoutId = setTimeout(finish, 0)
         return
       }
 
-      requestAnimationFrame(() => {
-        setTimeout(resolve, 0)
+      frameId = requestAnimationFrame(() => {
+        frameId = 0
+        timeoutId = setTimeout(finish, 0)
       })
     })
+  }
+
+  private createHeightSamplingSession() {
+    if (this.isDisposed) {
+      throw createHeightSamplingAbortError(
+        'Tellux height sampling cannot start after the Viewer was destroyed.'
+      )
+    }
+
+    this.nextHeightSamplingSessionId += 1
+    const session = new HeightSamplingSession(this.nextHeightSamplingSessionId)
+    this.heightSamplingSessions.set(session.id, session)
+    return session
+  }
+
+  private cancelMostDetailedSamplingWithReason(reason: unknown) {
+    this.heightSamplingSessions.forEach((session) => {
+      session.abort(reason)
+    })
+    this.terrainSampler.abortPending(reason)
+    while (this.heightSamplingJobs.length > 0) {
+      this.cancelHeightSamplingJob(this.heightSamplingJobs[0], reason)
+    }
   }
 
   private sampleHeightFromSamplingTilesetsForTask(task: HeightSamplingTask, entries: HeightSamplingTilesetEntry[]) {

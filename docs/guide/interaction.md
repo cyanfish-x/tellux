@@ -189,6 +189,10 @@ results.forEach((result, i) => {
 
 返回结果与输入数组一一对应，顺序一致；未命中的项为 `undefined`。
 
+未完成的采样会在 terrain 切换、参与采样的图层结构变化或 `viewer.destroy()` 时统一取消，返回的 Promise 以 `AbortError` 拒绝，不会把部分结果当作成功结果返回。调用方若可能在采样期间切换数据源，应按 `error.name === 'AbortError'` 单独处理取消。
+
+直采 terrain 的 layer 元数据和 decoded tile 会并发去重并缓存；缓存采用有界 LRU（默认最多 2 个 layer resource、64 个 terrain tile），失败请求会立即淘汰以允许重试，terrain 切换时会清空旧数据源缓存。
+
 ::: warning 手动渲染循环下需自行推进
 当 `viewer.useDefaultRenderLoop` 为 `false` 时，瓦片加载和细化不会自动推进。`sampleHeightMostDetailed` 依赖每帧的 tileset update，此时**必须由调用方继续调用 `viewer.render()`**，否则采样任务会一直等待，最终超时返回 `undefined`。
 :::

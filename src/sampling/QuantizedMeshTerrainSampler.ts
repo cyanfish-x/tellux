@@ -15,6 +15,11 @@ import type {
   TerrainTileCoordinate,
   TerrainTileData
 } from './QuantizedMeshTerrainTypes'
+import { AsyncLruCache } from './AsyncLruCache'
+import {
+  throwIfHeightSamplingAborted,
+  waitForHeightSamplingSignal
+} from './HeightSamplingSession'
 
 const GZIP_ID1 = 0x1f
 const GZIP_ID2 = 0x8b
@@ -23,6 +28,8 @@ const TERRAIN_ACCEPT_HEADER =
   'application/vnd.quantized-mesh,application/octet-stream;q=0.9;extensions=octvertexnormals-watermask-metadata'
 const DEFAULT_TERRAIN_VERSION = 1
 const TRIANGLE_EPSILON = 1e-7
+const DEFAULT_LAYER_CACHE_ENTRIES = 2
+const DEFAULT_TILE_CACHE_ENTRIES = 64
 
 type TerrainSampleRequest = {
   index: number
@@ -37,29 +44,52 @@ type TypedArrayConstructor<T extends Uint8Array | Uint16Array | Uint32Array> = {
 
 type QuantizedMeshIndexArray = Uint16Array | Uint32Array
 
+interface QuantizedMeshTerrainSamplerOptions {
+  maxLayerCacheEntries?: number
+  maxTileCacheEntries?: number
+}
+
+interface QuantizedMeshTerrainSampleOptions {
+  signal?: AbortSignal
+}
+
 /**
  * Samples Cesium quantized-mesh terrain directly from `layer.json` and `.terrain`
  * buffers. This avoids creating a hidden TilesRenderer, so terrain-only most
  * detailed sampling is driven by terrain availability instead of camera traversal.
  */
 export class QuantizedMeshTerrainSampler {
-  private readonly layerCache = new Map<string, Promise<TerrainLayerState>>()
-  private readonly tileCache = new Map<string, Promise<TerrainTileData>>()
+  private readonly layerCache: AsyncLruCache<string, TerrainLayerState>
+  private readonly tileCache: AsyncLruCache<string, TerrainTileData>
+
+  constructor(options: QuantizedMeshTerrainSamplerOptions = {}) {
+    this.layerCache = new AsyncLruCache(
+      options.maxLayerCacheEntries ?? DEFAULT_LAYER_CACHE_ENTRIES
+    )
+    this.tileCache = new AsyncLruCache(
+      options.maxTileCacheEntries ?? DEFAULT_TILE_CACHE_ENTRIES
+    )
+  }
 
   async sampleMostDetailed(
     terrain: TerrainOptions,
-    positions: CartographicCoordinateTuple[]
+    positions: CartographicCoordinateTuple[],
+    options: QuantizedMeshTerrainSampleOptions = {}
   ): Promise<SampleHeightMostDetailedResult[]> {
+    const { signal } = options
+    throwIfHeightSamplingAborted(signal)
     const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
     if (positions.length === 0) return results
 
-    const state = await this.getLayerState(terrain)
+    const state = await this.getLayerState(terrain, signal)
+    throwIfHeightSamplingAborted(signal)
     const requests = await Promise.all(
       positions.map(async (position, index): Promise<TerrainSampleRequest | null> => {
-        const coordinate = await this.findMostDetailedTileForPosition(state, position)
+        const coordinate = await this.findMostDetailedTileForPosition(state, position, signal)
         return coordinate ? { index, position, coordinate } : null
       })
     )
+    throwIfHeightSamplingAborted(signal)
 
     const groupedRequests = new Map<string, TerrainSampleRequest[]>()
     requests.forEach((request) => {
@@ -76,7 +106,8 @@ export class QuantizedMeshTerrainSampler {
 
     await Promise.all(
       Array.from(groupedRequests.values()).map(async (group) => {
-        const tile = await this.getTerrainTile(state, group[0].coordinate)
+        const tile = await this.getTerrainTile(state, group[0].coordinate, signal)
+        throwIfHeightSamplingAborted(signal)
         group.forEach((request) => {
           const height = this.interpolateHeight(tile, request.position)
           if (height !== undefined) {
@@ -86,37 +117,51 @@ export class QuantizedMeshTerrainSampler {
       })
     )
 
+    throwIfHeightSamplingAborted(signal)
     return results
   }
 
-  clear() {
-    this.layerCache.clear()
-    this.tileCache.clear()
+  abortPending(reason?: unknown) {
+    this.layerCache.abortPending(reason)
+    this.tileCache.abortPending(reason)
   }
 
-  private getLayerState(terrain: TerrainOptions) {
+  clear(reason?: unknown) {
+    this.layerCache.clear(reason)
+    this.tileCache.clear(reason)
+  }
+
+  private getLayerState(terrain: TerrainOptions, signal?: AbortSignal) {
     const cacheKey = this.getTerrainCacheKey(terrain)
-    let promise = this.layerCache.get(cacheKey)
-    if (!promise) {
-      promise = this.loadLayerState(terrain)
-      this.layerCache.set(cacheKey, promise)
-    }
-
-    return promise
+    return waitForHeightSamplingSignal(
+      this.layerCache.getOrCreate(
+        cacheKey,
+        (cacheSignal) => this.loadLayerState(terrain, cacheSignal)
+      ),
+      signal
+    )
   }
 
-  private async loadLayerState(terrain: TerrainOptions): Promise<TerrainLayerState> {
-    const resource = await this.resolveTerrainResource(terrain)
+  private async loadLayerState(
+    terrain: TerrainOptions,
+    signal: AbortSignal
+  ): Promise<TerrainLayerState> {
+    throwIfHeightSamplingAborted(signal)
+    const resource = await this.resolveTerrainResource(terrain, signal)
+    throwIfHeightSamplingAborted(signal)
     const layerUrl = this.preprocessTerrainUrl(
       new URL('layer.json', resource.rootUrl),
       resource.inheritedSearchParams
     )
-    const response = await this.fetchTerrainResource(resource, layerUrl)
+    const response = await this.fetchTerrainResource(resource, layerUrl, { signal })
     if (!response.ok) {
       throw new Error(`Tellux terrain sampler: failed to load layer.json (${response.status} ${response.statusText}).`)
     }
 
-    const layer = await response.json() as QuantizedMeshLayer
+    const layer = await waitForHeightSamplingSignal(
+      response.json() as Promise<QuantizedMeshLayer>,
+      signal
+    )
     if (!layer.tiles?.length) {
       throw new Error('Tellux terrain sampler: layer.json does not contain terrain tile templates.')
     }
@@ -137,9 +182,12 @@ export class QuantizedMeshTerrainSampler {
     }
   }
 
-  private async resolveTerrainResource(terrain: TerrainOptions): Promise<TerrainResource> {
+  private async resolveTerrainResource(
+    terrain: TerrainOptions,
+    signal: AbortSignal
+  ): Promise<TerrainResource> {
     if (this.isCesiumIonTerrainOptions(terrain)) {
-      return this.resolveCesiumIonTerrainResource(terrain)
+      return this.resolveCesiumIonTerrainResource(terrain, signal)
     }
 
     if (terrain.type === 'tianditu') {
@@ -158,9 +206,16 @@ export class QuantizedMeshTerrainSampler {
     }
   }
 
-  private async resolveCesiumIonTerrainResource(terrain: CesiumIonTerrainOptions): Promise<TerrainResource> {
+  private async resolveCesiumIonTerrainResource(
+    terrain: CesiumIonTerrainOptions,
+    signal: AbortSignal
+  ): Promise<TerrainResource> {
     const endpointUrl = this.getCesiumIonEndpointUrl(terrain)
-    const endpoint = await this.fetchCesiumIonTerrainEndpoint(endpointUrl, terrain.apiToken)
+    const endpoint = await this.fetchCesiumIonTerrainEndpoint(
+      endpointUrl,
+      terrain.apiToken,
+      signal
+    )
     const resource: TerrainResource = {
       cacheKey: this.getTerrainCacheKey(terrain),
       rootUrl: '',
@@ -181,12 +236,14 @@ export class QuantizedMeshTerrainSampler {
     url: string,
     options: RequestInit = {}
   ) {
+    throwIfHeightSamplingAborted(options.signal ?? undefined)
     let response = await fetch(url, this.createTerrainRequestOptions(resource, options))
     if (!this.shouldRefreshCesiumIonTerrainResource(resource, response)) {
       return response
     }
 
-    await this.refreshCesiumIonTerrainResource(resource)
+    await this.refreshCesiumIonTerrainResource(resource, options.signal ?? undefined)
+    throwIfHeightSamplingAborted(options.signal ?? undefined)
     response = await fetch(url, this.createTerrainRequestOptions(resource, options))
     return response
   }
@@ -211,25 +268,36 @@ export class QuantizedMeshTerrainSampler {
     )
   }
 
-  private async refreshCesiumIonTerrainResource(resource: TerrainResource) {
+  private async refreshCesiumIonTerrainResource(
+    resource: TerrainResource,
+    signal?: AbortSignal
+  ) {
     if (!resource.cesiumIon) return
 
     const endpoint = await this.fetchCesiumIonTerrainEndpoint(
       resource.cesiumIon.endpointUrl,
-      resource.cesiumIon.apiToken
+      resource.cesiumIon.apiToken,
+      signal
     )
     this.applyCesiumIonTerrainEndpoint(resource, endpoint)
   }
 
-  private async fetchCesiumIonTerrainEndpoint(endpointUrl: string, apiToken: string): Promise<CesiumIonTerrainEndpoint> {
+  private async fetchCesiumIonTerrainEndpoint(
+    endpointUrl: string,
+    apiToken: string,
+    signal?: AbortSignal
+  ): Promise<CesiumIonTerrainEndpoint> {
     const url = new URL(endpointUrl)
     url.searchParams.set('access_token', apiToken)
-    const response = await fetch(url)
+    const response = await fetch(url, { signal })
     if (!response.ok) {
       throw new Error(`Tellux terrain sampler: failed to load Cesium Ion terrain endpoint (${response.status} ${response.statusText}).`)
     }
 
-    const endpoint = await response.json() as CesiumIonTerrainEndpoint
+    const endpoint = await waitForHeightSamplingSignal(
+      response.json() as Promise<CesiumIonTerrainEndpoint>,
+      signal
+    )
     if (endpoint.type !== 'TERRAIN') {
       throw new Error(`Tellux terrain sampler: Cesium Ion asset type "${endpoint.type}" is not supported by terrain sampling.`)
     }
@@ -256,17 +324,21 @@ export class QuantizedMeshTerrainSampler {
 
   private async findMostDetailedTileForPosition(
     state: TerrainLayerState,
-    position: CartographicCoordinateTuple
+    position: CartographicCoordinateTuple,
+    signal?: AbortSignal
   ): Promise<TerrainTileCoordinate | null> {
+    throwIfHeightSamplingAborted(signal)
     let current = this.findDeepestKnownAvailableTile(state, position)
     if (!current) return null
 
     let availabilityChanged = true
     while (availabilityChanged && current.level < state.maxLevel) {
+      throwIfHeightSamplingAborted(signal)
       availabilityChanged = false
       const deepestKnownLevel = current.level
 
       for (let level = 0; level <= deepestKnownLevel; level += 1) {
+        throwIfHeightSamplingAborted(signal)
         const metadataCoordinate = this.getTileAtPosition(state.projection, position, level)
         if (!this.isTileAvailable(state, metadataCoordinate)) continue
         if (!this.tileShouldHaveMetadata(state, metadataCoordinate)) continue
@@ -274,8 +346,10 @@ export class QuantizedMeshTerrainSampler {
         const metadataKey = this.getCoordinateKey(metadataCoordinate)
         if (state.loadedMetadataTiles.has(metadataKey)) continue
 
+        const tile = await this.getTerrainTile(state, metadataCoordinate, signal)
+        throwIfHeightSamplingAborted(signal)
+        if (state.loadedMetadataTiles.has(metadataKey)) continue
         state.loadedMetadataTiles.add(metadataKey)
-        const tile = await this.getTerrainTile(state, metadataCoordinate)
         if (tile.metadata?.available) {
           this.mergeAvailability(state, metadataCoordinate.level, tile.metadata.available)
           availabilityChanged = true
@@ -354,26 +428,33 @@ export class QuantizedMeshTerrainSampler {
     })
   }
 
-  private getTerrainTile(state: TerrainLayerState, coordinate: TerrainTileCoordinate) {
+  private getTerrainTile(
+    state: TerrainLayerState,
+    coordinate: TerrainTileCoordinate,
+    signal?: AbortSignal
+  ) {
     const key = this.getTileKey(state, coordinate)
-    let promise = this.tileCache.get(key)
-    if (!promise) {
-      promise = this.loadTerrainTile(state, coordinate)
-      this.tileCache.set(key, promise)
-    }
-
-    return promise
+    return waitForHeightSamplingSignal(
+      this.tileCache.getOrCreate(
+        key,
+        (cacheSignal) => this.loadTerrainTile(state, coordinate, cacheSignal)
+      ),
+      signal
+    )
   }
 
   private async loadTerrainTile(
     state: TerrainLayerState,
-    coordinate: TerrainTileCoordinate
+    coordinate: TerrainTileCoordinate,
+    signal: AbortSignal
   ): Promise<TerrainTileData> {
+    throwIfHeightSamplingAborted(signal)
     const url = this.preprocessTerrainUrl(
       new URL(this.getContentUrl(state.layer, coordinate), state.layerUrl),
       state.resource.inheritedSearchParams
     )
     const response = await this.fetchTerrainResource(state.resource, url, {
+      signal,
       headers: {
         Accept: TERRAIN_ACCEPT_HEADER
       }
@@ -382,7 +463,8 @@ export class QuantizedMeshTerrainSampler {
       throw new Error(`Tellux terrain sampler: failed to load terrain tile ${coordinate.level}/${coordinate.x}/${coordinate.y}.`)
     }
 
-    const buffer = await this.getTerrainArrayBuffer(response)
+    const buffer = await this.getTerrainArrayBuffer(response, signal)
+    throwIfHeightSamplingAborted(signal)
     return {
       coordinate,
       bounds: this.getTileBounds(state.projection, coordinate),
@@ -390,8 +472,8 @@ export class QuantizedMeshTerrainSampler {
     }
   }
 
-  private async getTerrainArrayBuffer(response: Response) {
-    const buffer = await response.arrayBuffer()
+  private async getTerrainArrayBuffer(response: Response, signal?: AbortSignal) {
+    const buffer = await waitForHeightSamplingSignal(response.arrayBuffer(), signal)
     if (!this.isGzip(buffer)) return buffer
 
     if (typeof DecompressionStream === 'undefined') {
@@ -401,7 +483,7 @@ export class QuantizedMeshTerrainSampler {
     }
 
     const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))
-    return new Response(stream).arrayBuffer()
+    return waitForHeightSamplingSignal(new Response(stream).arrayBuffer(), signal)
   }
 
   private parseQuantizedMesh(buffer: ArrayBuffer): Omit<TerrainTileData, 'coordinate' | 'bounds'> {

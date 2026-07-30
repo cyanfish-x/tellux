@@ -199,6 +199,8 @@ const height = viewer.sampleHeight([121.4737, 31.2304], { source: 'terrain' })
 
 当 `useDefaultRenderLoop` 为 `false` 时，调用方必须继续调用 `render()` 推进采样，否则会超时返回 `undefined`。`options` 支持 `source`、`resolution`（默认 `256`）、`maxFrames`（默认 `120`）和 `debug`。
 
+terrain 切换、参与采样的图层结构变化或 `destroy()` 会取消未完成任务，并以 `AbortError` 拒绝 Promise；取消时不会返回部分结果。terrain 直采缓存采用有界 LRU（默认 2 个 layer resource、64 个 decoded tile），失败项可重试，切换 terrain 会清理旧缓存。
+
 ```ts
 const results = await viewer.sampleHeightMostDetailed([
   [121.4737, 31.2304],
