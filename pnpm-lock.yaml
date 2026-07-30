@@ -8,15 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@dgreenheck/ez-tree':
-        specifier: ^1.1.0
-        version: 1.1.0(three@0.184.0)
       '@mapbox/tiny-sdf':
         specifier: ^2.2.0
         version: 2.2.0
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
       three-mesh-bvh:
         specifier: 0.9.0
         version: 0.9.0(three@0.184.0)
@@ -33,6 +27,9 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^21.2.0
         version: 21.2.0
+      '@dgreenheck/ez-tree':
+        specifier: ^1.1.0
+        version: 1.1.0(three@0.184.0)
       '@mapbox/vector-tile':
         specifier: ^2.0.5
         version: 2.0.5
@@ -60,6 +57,9 @@ importers:
       concurrently:
         specifier: ^9.2.1
         version: 9.2.3
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       gh-pages:
         specifier: ^6.3.0
         version: 6.3.0

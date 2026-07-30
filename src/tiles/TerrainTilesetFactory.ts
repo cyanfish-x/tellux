@@ -1,5 +1,6 @@
 import { TilesRenderer } from '3d-tiles-renderer'
-import { CesiumIonAuthPlugin, QuantizedMeshPlugin } from '3d-tiles-renderer/plugins'
+import { CesiumIonAuthPlugin } from '3d-tiles-renderer/core/plugins'
+import { QuantizedMeshPlugin } from '3d-tiles-renderer/plugins'
 import { TerrainFetchPlugin } from '../TerrainFetchPlugin'
 import type { ImageryLayer } from '../LayerManager'
 import type { SurfaceMaterialOptions } from '../materials/materialMode'

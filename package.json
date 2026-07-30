@@ -73,6 +73,7 @@
     "3d-tiles-rendererjs-3dgs-plugin": "^0.1.13",
     "@commitlint/cli": "^21.2.0",
     "@commitlint/config-conventional": "^21.2.0",
+    "@dgreenheck/ez-tree": "^1.1.0",
     "@mapbox/vector-tile": "^2.0.5",
     "@sparkjsdev/spark": "^2.1.0",
     "@takram/three-atmosphere": "0.19.1",
@@ -82,6 +83,7 @@
     "@types/node": "^18.18.12",
     "@types/three": "^0.184.1",
     "concurrently": "^9.2.1",
+    "dotenv": "^17.4.2",
     "gh-pages": "^6.3.0",
     "husky": "^9.1.7",
     "monaco-editor": "^0.52.2",
@@ -98,9 +100,7 @@
     "tencentcloud-sdk-nodejs-cdn": "^4.1.200"
   },
   "dependencies": {
-    "@dgreenheck/ez-tree": "^1.1.0",
     "@mapbox/tiny-sdf": "^2.2.0",
-    "dotenv": "^17.4.2",
     "three-mesh-bvh": "0.9.0"
   }
 }

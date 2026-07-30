@@ -1,8 +1,8 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { TilesRenderer } from '3d-tiles-renderer'
+import { CesiumIonAuthPlugin } from '3d-tiles-renderer/core/plugins'
 import {
-  CesiumIonAuthPlugin,
   GLTFExtensionsPlugin,
   TilesFadePlugin,
   UpdateOnChangePlugin,

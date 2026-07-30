@@ -66,6 +66,8 @@ Overlay 的优势是可以被复用到不同表面：同一个 overlay 可以贴
 
 用于从 Cesium Ion asset id 解析 endpoint，并为后续请求带上 Ion token。适合 3D Tiles、影像或地形等 Ion asset 的入口处理。
 
+当前支持的 `3d-tiles-renderer@^0.4.27` 已提供公开入口 `3d-tiles-renderer/core/plugins`，Tellux 从该入口引入插件；旧的 `3d-tiles-renderer/plugins` 兼容入口会输出迁移警告，不应继续使用。
+
 Tellux 当前用法：
 
 - 3D Tiles 场景数据通过 `CesiumIonAuthPlugin` 加载。

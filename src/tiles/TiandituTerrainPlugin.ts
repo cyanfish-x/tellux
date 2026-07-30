@@ -1,6 +1,4 @@
 import { Vector3 } from 'three'
-import { TilingScheme } from '3d-tiles-renderer/src/three/plugins/images/utils/TilingScheme.js'
-import { ProjectionScheme } from '3d-tiles-renderer/src/three/plugins/images/utils/ProjectionScheme.js'
 import {
   createFlatTiandituHeights,
   decompressGzipBuffer,
@@ -8,6 +6,7 @@ import {
   TiandituHeightmapLoader
 } from './TiandituHeightmapLoader'
 import { lonLatToTiandituTileXY, parseTiandituServiceError } from './TiandituSlippyTile'
+import { WebMercatorTilingScheme } from './WebMercatorTilingScheme'
 
 const TILE_X = Symbol('TILE_X')
 const TILE_Y = Symbol('TILE_Y')
@@ -119,8 +118,7 @@ export class TiandituTerrainPlugin {
     processNodeQueue: { remove: (tile: object) => void }
   } | null = null
 
-  private readonly tiling = new TilingScheme()
-  private readonly projection = new ProjectionScheme('EPSG:3857')
+  private readonly tiling = new WebMercatorTilingScheme()
 
   constructor(options: TiandituTerrainPluginOptions) {
     const tokens = resolveTiandituTokens(options.token)
@@ -155,13 +153,10 @@ export class TiandituTerrainPlugin {
       throw new Error('TiandituTerrainPlugin: plugin is not initialized.')
     }
 
-    const { tiling, projection } = this
-    projection.setScheme('EPSG:3857')
-    tiling.setProjection(projection)
-    tiling.generateLevels(this.bottomLevel, projection.tileCountX, projection.tileCountY)
+    const { tiling } = this
 
     const children = []
-    for (let x = 0; x < projection.tileCountX; x++) {
+    for (let x = 0; x < tiling.rootTileCountX; x++) {
       const child = this.createChild(0, x, 0)
       if (child) {
         children.push(child)
@@ -362,7 +357,7 @@ export class TiandituTerrainPlugin {
     const tiles = this.tiles
     if (!tiles) return null
 
-    const { tiling, projection } = this
+    const { tiling } = this
     const ellipsoid = tiles.ellipsoid
     const region = [...tiling.getTileBounds(x, y, level), -INITIAL_HEIGHT_RANGE, INITIAL_HEIGHT_RANGE]
     const [west, , , north, , maxHeight] = region
@@ -372,7 +367,7 @@ export class TiandituTerrainPlugin {
     ellipsoid.getCartographicToPosition(midLat, 0, maxHeight, _vec)
     _vec.z = 0
 
-    const tileCountX = projection.tileCountX
+    const tileCountX = tiling.rootTileCountX
     const maxRadius = Math.max(...ellipsoid.radius)
     const rootGeometricError = (maxRadius * 2 * Math.PI * 0.25) / (65 * tileCountX)
     const geometricError = rootGeometricError / 2 ** level

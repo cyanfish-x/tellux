@@ -1,4 +1,9 @@
 import { defineConfig } from 'vite'
+import type { Plugin } from 'vite'
+import {
+  isBundledExternalModule,
+  isPeerDependencyExternal
+} from './src/build/peerDependencyExternal'
 
 const telluxAssetUrlMarker = '__TELLUX_ASSET_URL__/'
 
@@ -26,21 +31,33 @@ function preserveTelluxAssetUrls() {
   }
 }
 
-const external = [
-  '3d-tiles-renderer',
-  '3d-tiles-renderer/plugins',
-  '@takram/three-atmosphere',
-  '@takram/three-clouds',
-  '@takram/three-geospatial',
-  '@takram/three-geospatial-effects',
-  'postprocessing',
-  'three',
-  'three/webgpu',
-  /^three\/addons\//
-]
+function assertPeerDependenciesExternal(): Plugin {
+  return {
+    name: 'tellux-assert-peer-dependencies-external',
+    generateBundle(_options, bundle) {
+      const bundledPeerModules = new Set<string>()
+
+      for (const output of Object.values(bundle)) {
+        if (output.type !== 'chunk') continue
+
+        for (const moduleId of Object.keys(output.modules)) {
+          if (isBundledExternalModule(moduleId)) {
+            bundledPeerModules.add(moduleId)
+          }
+        }
+      }
+
+      if (bundledPeerModules.size > 0) {
+        this.error(
+          `Peer dependencies were bundled unexpectedly:\n${[...bundledPeerModules].join('\n')}`
+        )
+      }
+    }
+  }
+}
 
 export default defineConfig({
-  plugins: [preserveTelluxAssetUrls()],
+  plugins: [preserveTelluxAssetUrls(), assertPeerDependenciesExternal()],
   assetsInclude: ['**/*.bin'],
   optimizeDeps: {
     include: ['@mapbox/vector-tile', 'pbf']
@@ -56,7 +73,7 @@ export default defineConfig({
     },
     sourcemap: true,
     rollupOptions: {
-      external
+      external: isPeerDependencyExternal
     }
   }
 })
