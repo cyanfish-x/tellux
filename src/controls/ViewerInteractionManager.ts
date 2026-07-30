@@ -25,6 +25,8 @@ export interface ViewerInteractionManagerOptions {
     position: ScreenPosition,
     options?: ViewerPickOptions
   ) => ViewerPickResult[]
+  scheduleAnimationFrame?: (callback: FrameRequestCallback) => number
+  cancelAnimationFrame?: (handle: number) => void
 }
 
 const ENTITY_CLICK_PICK_TOLERANCE = 6
@@ -32,6 +34,9 @@ const ENTITY_MOUSEMOVE_PICK_TOLERANCE = 4
 
 export class ViewerInteractionManager {
   private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
+  private pendingMouseMove: MouseEvent | null = null
+  private mouseMoveFrameHandle: number | null = null
+  private isDisposed = false
 
   constructor(private readonly options: ViewerInteractionManagerOptions) {
     this.options.domElement.addEventListener('pointerdown', this.handleCameraInteraction)
@@ -53,10 +58,17 @@ export class ViewerInteractionManager {
   }
 
   off<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
-    this.eventListeners.get(type)?.delete(listener as AnyViewerEventListener)
+    const listeners = this.eventListeners.get(type)
+    listeners?.delete(listener as AnyViewerEventListener)
+    if (type === 'mousemove' && listeners?.size === 0) {
+      this.cancelPendingMouseMove()
+    }
   }
 
   dispose() {
+    if (this.isDisposed) return
+    this.isDisposed = true
+    this.cancelPendingMouseMove()
     this.options.domElement.removeEventListener('pointerdown', this.handleCameraInteraction)
     this.options.domElement.removeEventListener('wheel', this.handleCameraInteraction)
     this.options.domElement.removeEventListener('pointerdown', this.enableAdjustHeight)
@@ -125,6 +137,19 @@ export class ViewerInteractionManager {
   private readonly handleCanvasMouseMove = (originalEvent: MouseEvent) => {
     if (!this.hasEventListeners('mousemove')) return
 
+    this.pendingMouseMove = originalEvent
+    if (this.mouseMoveFrameHandle !== null) return
+
+    const schedule = this.options.scheduleAnimationFrame ?? globalThis.requestAnimationFrame
+    this.mouseMoveFrameHandle = schedule(this.dispatchPendingMouseMove)
+  }
+
+  private readonly dispatchPendingMouseMove = () => {
+    this.mouseMoveFrameHandle = null
+    const originalEvent = this.pendingMouseMove
+    this.pendingMouseMove = null
+    if (this.isDisposed || !originalEvent || !this.hasEventListeners('mousemove')) return
+
     this.dispatchEvent('mousemove', this.createMouseEvent('mousemove', originalEvent))
   }
 
@@ -136,5 +161,14 @@ export class ViewerInteractionManager {
 
   private clearEventListeners() {
     this.eventListeners.clear()
+  }
+
+  private cancelPendingMouseMove() {
+    if (this.mouseMoveFrameHandle !== null) {
+      const cancel = this.options.cancelAnimationFrame ?? globalThis.cancelAnimationFrame
+      cancel(this.mouseMoveFrameHandle)
+      this.mouseMoveFrameHandle = null
+    }
+    this.pendingMouseMove = null
   }
 }

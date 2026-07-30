@@ -34,6 +34,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "benchmark:hism": "node scripts/hism-benchmark.mjs",
+    "benchmark:hism:pick": "node scripts/hism-pick-benchmark.mjs",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
     "dev": "node scripts/dev.mjs",

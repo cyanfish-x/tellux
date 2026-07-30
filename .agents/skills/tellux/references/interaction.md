@@ -30,7 +30,7 @@ viewer.off('click', onClick)
 | `pick` | 最近命中的 `ViewerPickResult`，未命中为 `null` |
 | `picks` | `click` 为完整 drill（近→远）；`mousemove` 仅为最近一条 |
 
-> `mousemove` 触发频繁，事件内只做 nearest-only；完整叠层请自行 `viewer.pickAll(event.position)`（建议节流）。
+> 原始 `mousemove` 会按渲染帧合并，事件内只做 nearest-only；完整叠层请自行 `viewer.pickAll(event.position)`，大规模场景仍建议收窄 `layers` 或进一步节流。
 
 ## 屏幕拾取
 

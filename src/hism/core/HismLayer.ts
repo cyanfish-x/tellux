@@ -7,13 +7,17 @@ import type {
   HismLayerRuntimeStats,
   HismPickResult
 } from '../../types/hism'
-import { HismCluster } from './HismCluster'
+import {
+  HismCluster,
+  type HismClusterPickCandidate
+} from './HismCluster'
 import {
   clusterCellKeyFromCartographic,
   resolveClusterReference
 } from '../spatial/clusterGrid'
 import { updateFrustumFromCamera } from '../spatial/frustumCull'
 import { validateHismLayerOptions } from './validateHismLayerOptions'
+import type { HismPickTraversalStats } from '../runtime/HismPickMetrics'
 
 const DEFAULT_CLUSTER_CELL_SIZE_METERS = 512
 const cameraPositionScratch = new THREE.Vector3()
@@ -131,6 +135,36 @@ export class HismLayerImpl implements HismLayer {
   collectVisiblePickMeshes() {
     if (!this.isShown || this.isRemoved) return []
     return this.clusters.flatMap((cluster) => cluster.collectVisiblePickMeshes())
+  }
+
+  collectPickCandidates(
+    ray: THREE.Ray,
+    stats?: HismPickTraversalStats
+  ): HismClusterPickCandidate[] {
+    if (!this.isShown || this.isRemoved) return []
+
+    this.root.updateWorldMatrix(true, false)
+    const candidates: HismClusterPickCandidate[] = []
+    for (const cluster of this.clusters) {
+      const visibleInstances = cluster.getVisibleInstanceCount()
+      if (visibleInstances === 0) continue
+
+      if (stats) {
+        stats.visibleClusters += 1
+        stats.visibleInstances += visibleInstances
+      }
+
+      const candidate = cluster.collectPickCandidate(ray)
+      if (!candidate) continue
+
+      if (stats) {
+        stats.candidateClusters += 1
+        stats.candidateInstances += candidate.instanceCount
+        stats.candidateMeshes += candidate.meshes.length
+      }
+      candidates.push(candidate)
+    }
+    return candidates
   }
 
   /**

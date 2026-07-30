@@ -155,7 +155,12 @@ describe('RTC HISM picking', () => {
       layers: [{
         id: 'forest',
         show: true,
-        collectVisiblePickMeshes: () => parts
+        collectPickCandidates: () => [{
+          clusterKey: '0:0',
+          distance: 0,
+          instanceCount: 1,
+          meshes: parts
+        }]
       } as never],
       raycaster
     })

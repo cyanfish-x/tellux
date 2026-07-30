@@ -8,7 +8,6 @@ import type { RTCAutoUniforms } from '../../rendering/RTCAutoUniforms'
 import type { HismApplyInstanceMatrix, HismArchetype, HismInstancePlacement } from '../../types/hism'
 import { getArchetypeLodLevels, getMaxArchetypeLodCount } from '../lod/archetypeLod'
 import { resolveLodLevel } from '../lod/resolveLodLevel'
-import { createClusterCellBounds } from '../spatial/clusterGrid'
 import { intersectsSphere } from '../spatial/frustumCull'
 import {
   cloneGeometryForHismInstancing,
@@ -41,6 +40,16 @@ export interface HismClusterRuntimeStats {
   activeLodCounts: Record<string, number>
 }
 
+export interface HismClusterPickCandidate {
+  clusterKey: string
+  distance: number
+  instanceCount: number
+  meshes: THREE.InstancedMesh[]
+}
+
+const pickWorldSphere = new THREE.Sphere()
+const pickIntersection = new THREE.Vector3()
+
 export class HismCluster {
   readonly root = new THREE.Group()
   readonly cellKey: string
@@ -56,6 +65,7 @@ export class HismCluster {
   constructor(options: HismClusterOptions) {
     this.cellKey = options.cellKey
     this.root.name = `tellux-hism-cluster-${options.cellKey}`
+    const clusterBounds = new THREE.Box3()
 
     const buckets = options.archetypes.map(
       () => [] as HismClusterBuildItem[]
@@ -118,7 +128,6 @@ export class HismCluster {
           this.rtcHandles.push(applyRTCInstancing(mesh, options.rtcUniforms))
 
           const matrix = new THREE.Matrix4()
-          const origins: THREE.Vector3[] = []
 
           bucket.forEach(({ placement }, index) => {
             options.applyInstanceMatrix(
@@ -132,20 +141,14 @@ export class HismCluster {
               matrix
             )
             setRTCMatrixAt(mesh, index, matrix)
-
-            if (partIndex === 0 && lodIndex === 0) {
-              origins.push(
-                new THREE.Vector3(
-                  matrix.elements[12],
-                  matrix.elements[13],
-                  matrix.elements[14]
-                )
-              )
-            }
           })
 
-          if (lodIndex === 0 && origins.length > 0) {
-            this.recomputeBounds(origins, options.cellSizeMeters)
+          mesh.computeBoundingBox()
+          if (mesh.boundingBox && !mesh.boundingBox.isEmpty()) {
+            clusterBounds.union(mesh.boundingBox)
+            mesh.boundingSphere = mesh.boundingBox.getBoundingSphere(
+              new THREE.Sphere()
+            )
           }
 
           meshes.push(mesh)
@@ -164,9 +167,11 @@ export class HismCluster {
       })
     }
 
-    if (this.boundingSphere.radius === 0) {
+    if (clusterBounds.isEmpty()) {
       this.boundingSphere.center.set(0, 0, 0)
       this.boundingSphere.radius = options.cellSizeMeters
+    } else {
+      clusterBounds.getBoundingSphere(this.boundingSphere)
     }
 
     this.applyVisibility()
@@ -188,6 +193,30 @@ export class HismCluster {
     if (!this.frustumVisible) return []
     const group = this.lodGroups[this.activeLodIndex]
     return group?.meshes ?? []
+  }
+
+  collectPickCandidate(ray: THREE.Ray): HismClusterPickCandidate | null {
+    const meshes = this.collectVisiblePickMeshes()
+    if (meshes.length === 0) return null
+
+    this.root.updateWorldMatrix(false, false)
+    pickWorldSphere.copy(this.boundingSphere).applyMatrix4(this.root.matrixWorld)
+    let distance = 0
+    if (!pickWorldSphere.containsPoint(ray.origin)) {
+      const intersection = ray.intersectSphere(
+        pickWorldSphere,
+        pickIntersection
+      )
+      if (!intersection) return null
+      distance = intersection.distanceTo(ray.origin)
+    }
+
+    return {
+      clusterKey: this.cellKey,
+      distance,
+      instanceCount: this.instanceCount,
+      meshes
+    }
   }
 
   /**
@@ -283,26 +312,4 @@ export class HismCluster {
     return maxDistance
   }
 
-  private recomputeBounds(origins: THREE.Vector3[], cellSizeMeters: number) {
-    const center = new THREE.Vector3()
-    for (const origin of origins) {
-      center.add(origin)
-    }
-    center.multiplyScalar(1 / origins.length)
-
-    let maxRadius = 0
-    for (const origin of origins) {
-      maxRadius = Math.max(maxRadius, origin.distanceTo(center))
-    }
-
-    const cellBounds = createClusterCellBounds(this.cellKey, cellSizeMeters)
-    const cellRadius =
-      Math.hypot(
-        cellBounds.eastMax - cellBounds.eastMin,
-        cellBounds.northMax - cellBounds.northMin
-      ) * 0.5
-
-    this.boundingSphere.center.copy(center)
-    this.boundingSphere.radius = maxRadius + cellRadius + 128
-  }
 }

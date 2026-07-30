@@ -2,12 +2,18 @@ import * as THREE from 'three'
 import { acceleratedRaycast } from 'three-mesh-bvh'
 import { getRtcInstanceMatrixAt } from '../../rendering/applyRTCInstancing'
 import type { HismPickResult } from '../../types/hism'
+import type { HismClusterPickCandidate } from '../core/HismCluster'
 import type { HismLayerImpl } from '../core/HismLayer'
+import {
+  resetHismPickTraversalStats,
+  type HismPickTraversalStats
+} from '../runtime/HismPickMetrics'
 import { ensureGeometryBvh } from './geometryBvhCache'
 
 export interface PickHismLayersOptions {
   layers: Iterable<HismLayerImpl>
   raycaster: THREE.Raycaster
+  stats?: HismPickTraversalStats
 }
 
 const instanceLocalMatrix = new THREE.Matrix4()
@@ -25,14 +31,15 @@ const instanceIntersects: THREE.Intersection[] = []
  */
 export function intersectRtcInstancedMesh(
   raycaster: THREE.Raycaster,
-  mesh: THREE.InstancedMesh
+  mesh: THREE.InstancedMesh,
+  stats?: HismPickTraversalStats
 ): THREE.Intersection | null {
   let closest: THREE.Intersection | null = null
   forEachRtcInstanceHit(raycaster, mesh, (hit) => {
     if (!closest || hit.distance < closest.distance) {
       closest = hit
     }
-  })
+  }, stats)
   return closest
 }
 
@@ -44,12 +51,13 @@ export function intersectRtcInstancedMesh(
  */
 export function intersectAllRtcInstancedMesh(
   raycaster: THREE.Raycaster,
-  mesh: THREE.InstancedMesh
+  mesh: THREE.InstancedMesh,
+  stats?: HismPickTraversalStats
 ): THREE.Intersection[] {
   const hits: THREE.Intersection[] = []
   forEachRtcInstanceHit(raycaster, mesh, (hit) => {
     hits.push(hit)
-  })
+  }, stats)
   hits.sort((a, b) => a.distance - b.distance)
   return hits
 }
@@ -57,7 +65,8 @@ export function intersectAllRtcInstancedMesh(
 function forEachRtcInstanceHit(
   raycaster: THREE.Raycaster,
   mesh: THREE.InstancedMesh,
-  callback: (hit: THREE.Intersection) => void
+  callback: (hit: THREE.Intersection) => void,
+  stats?: HismPickTraversalStats
 ) {
   ensureGeometryBvh(mesh.geometry)
 
@@ -76,6 +85,9 @@ function forEachRtcInstanceHit(
 
   if (mesh.geometry.boundingSphere === null) {
     mesh.geometry.computeBoundingSphere()
+  }
+  if (stats) {
+    stats.testedMeshInstances += mesh.count
   }
 
   proxyMesh.geometry = mesh.geometry
@@ -96,6 +108,9 @@ function forEachRtcInstanceHit(
         if (!raycaster.ray.intersectsSphere(instanceSphere)) {
           continue
         }
+      }
+      if (stats) {
+        stats.instanceBoundsHits += 1
       }
 
       proxyMesh.matrixWorld = instanceWorldMatrix
@@ -132,18 +147,27 @@ function forEachRtcInstanceHit(
 export function pickHismLayers(
   options: PickHismLayersOptions
 ): HismPickResult | null {
+  const candidates = collectPickCandidates(options)
+  candidates.sort((a, b) => a.distance - b.distance)
   let closestHit: THREE.Intersection | null = null
   let closestLayer: HismLayerImpl | null = null
 
-  for (const layer of options.layers) {
-    if (!layer.show) continue
+  for (const candidate of candidates) {
+    if (closestHit && candidate.distance > closestHit.distance) break
+    if (options.stats) {
+      options.stats.visitedClusters += 1
+    }
 
-    for (const mesh of layer.collectVisiblePickMeshes()) {
-      const hit = intersectRtcInstancedMesh(options.raycaster, mesh)
+    for (const mesh of candidate.meshes) {
+      const hit = intersectRtcInstancedMesh(
+        options.raycaster,
+        mesh,
+        options.stats
+      )
       if (!hit) continue
       if (!closestHit || hit.distance < closestHit.distance) {
         closestHit = hit
-        closestLayer = layer
+        closestLayer = candidate.layer
       }
     }
   }
@@ -173,15 +197,22 @@ export function pickHismLayers(
 export function pickAllHismLayers(
   options: PickHismLayersOptions
 ): HismPickResult[] {
+  const candidates = collectPickCandidates(options)
   const picked = new Map<string, HismPickResult>()
-  for (const layer of options.layers) {
-    if (!layer.show) continue
+  for (const candidate of candidates) {
+    if (options.stats) {
+      options.stats.visitedClusters += 1
+    }
 
-    for (const mesh of layer.collectVisiblePickMeshes()) {
-      const intersections = intersectAllRtcInstancedMesh(options.raycaster, mesh)
+    for (const mesh of candidate.meshes) {
+      const intersections = intersectAllRtcInstancedMesh(
+        options.raycaster,
+        mesh,
+        options.stats
+      )
       for (const hit of intersections) {
         if (hit.instanceId === undefined) continue
-        const result = createHismPickResult(layer, mesh, hit)
+        const result = createHismPickResult(candidate.layer, mesh, hit)
         const key = JSON.stringify([
           result.layerId,
           result.clusterKey,
@@ -197,6 +228,31 @@ export function pickAllHismLayers(
   }
 
   return Array.from(picked.values()).sort((a, b) => a.distance - b.distance)
+}
+
+interface LayerPickCandidate extends HismClusterPickCandidate {
+  layer: HismLayerImpl
+}
+
+function collectPickCandidates(
+  options: PickHismLayersOptions
+): LayerPickCandidate[] {
+  if (options.stats) {
+    resetHismPickTraversalStats(options.stats)
+  }
+
+  const candidates: LayerPickCandidate[] = []
+  for (const layer of options.layers) {
+    if (!layer.show) continue
+
+    for (const candidate of layer.collectPickCandidates(
+      options.raycaster.ray,
+      options.stats
+    )) {
+      candidates.push({ ...candidate, layer })
+    }
+  }
+  return candidates
 }
 
 function createHismPickResult(

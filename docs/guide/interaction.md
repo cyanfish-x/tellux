@@ -56,7 +56,7 @@ viewer.on('click', (event) => {
 
 关于如何创建可被拾取的点、线、面实体，见「[实体绘制](./entities)」。
 
-`mousemove` 事件触发频率较高：事件内只做 **nearest-only** 拾取（每层最近再比全局最近），避免每帧完整 drill。若业务需要完整叠层列表，可自行调用 `viewer.pickAll(event.position)`（建议节流）。
+原始 `mousemove` 会按 `requestAnimationFrame` 合并，同一渲染帧只处理最后一个鼠标位置；事件内只做 **nearest-only** 拾取（每层最近再比全局最近），避免每帧完整 drill。若业务需要完整叠层列表，可自行调用 `viewer.pickAll(event.position)`；大规模场景仍建议收窄 `layers` 或进一步节流。
 
 ## 屏幕拾取
 

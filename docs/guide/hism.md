@@ -141,6 +141,8 @@ new tellux.Viewer(container, {
 
 拾取仅检测**当前可见**的 HISM mesh（已做视锥剔除后的簇），不会触发额外瓦片加载。描边解析则按 active LOD 取 parts，**不**依赖 frustum，避免选中对象稍出屏就丢轮廓。
 
+`mousemove` 事件会按渲染帧合并，同一帧内只拾取最后一个鼠标位置。HISM 在实例级求交前会先用精确的簇包围体筛掉无关簇；nearest 拾取按射线进入簇的距离排序，并在后续簇不可能更近时提前结束，`pickAll` 则保持完整遍历，不用固定数量预算截断结果。
+
 > 注意：描边贴合实例变换；PositionPipeline 风摆造成的顶点形变不会进入轮廓。
 
 ## 运行时统计
@@ -245,6 +247,17 @@ pnpm benchmark:hism -- --counts 5000,10000,15000
 | `clusterCount` / `visibleClusters` | 总簇数 / 可见簇数 |
 | `lod0` / `lod1` | 各 LOD 可见实例数 |
 | `error` | 失败原因（采样超时等） |
+
+### 拾取基准
+
+拾取基准不需要启动示例服务，默认测 2 万实例、4 个 mesh parts、100 次 nearest 拾取：
+
+```bash
+pnpm benchmark:hism:pick
+pnpm benchmark:hism:pick -- --instances 50000 --parts 8 --iterations 100
+```
+
+输出包含 p50 / p95 延迟，以及总实例数、可见簇、候选簇、候选实例、实际访问簇和实例包围体命中数，便于区分“簇筛选失效”和“单簇实例过密”两类性能问题。
 
 也可手动打开对比页：
 

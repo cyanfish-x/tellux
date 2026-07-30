@@ -119,6 +119,7 @@ describe('ViewerInteractionManager pick injection', () => {
     const pickNearest = vi.fn(() => pickedEntity as never)
     const pickAll = vi.fn(() => [pickedEntity] as never[])
     const events: Array<{ pick: unknown; picks: unknown[] }> = []
+    let mouseMoveFrame: FrameRequestCallback | null = null
     const manager = new ViewerInteractionManager({
       viewer: {} as never,
       camera: { cancelFlight: vi.fn() } as never,
@@ -126,7 +127,12 @@ describe('ViewerInteractionManager pick injection', () => {
       domElement: domElement as never,
       pickCartographic: () => null,
       pickNearest,
-      pickAll
+      pickAll,
+      scheduleAnimationFrame: (callback) => {
+        mouseMoveFrame = callback
+        return 1
+      },
+      cancelAnimationFrame: vi.fn()
     })
 
     manager.on('click', (event) => events.push({ pick: event.pick, picks: event.picks }))
@@ -134,6 +140,7 @@ describe('ViewerInteractionManager pick injection', () => {
 
     domElement.dispatch('click', { clientX: 12, clientY: 14 })
     domElement.dispatch('mousemove', { clientX: 20, clientY: 22 })
+    ;(mouseMoveFrame as FrameRequestCallback | null)?.(0)
 
     expect(pickAll).toHaveBeenCalledTimes(1)
     expect(pickAll).toHaveBeenCalledWith({ x: 12, y: 14 }, { tolerance: 6 })
