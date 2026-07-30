@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import type { ColorInput, Picked3DTilesFeature } from '../types'
-import { resolveColor } from '../entities/invertToneMapping'
+import {
+  resolveColor as defaultResolveColor,
+  type ResolveColor
+} from '../entities/invertToneMapping'
 
 const FEATURE_ID_ATTRIBUTE_NAMES = new Set([
   '_BATCHID',
@@ -25,7 +28,8 @@ export class OverlayHighlighter {
   constructor(
     private readonly scene: THREE.Scene,
     color: ColorInput,
-    opacity: number
+    opacity: number,
+    private readonly resolveColor: ResolveColor = defaultResolveColor
   ) {
     this.color = color
     this.opacity = opacity
@@ -46,7 +50,7 @@ export class OverlayHighlighter {
       if (Array.isArray(material)) return
       if ((material as THREE.MeshBasicMaterial).isMeshBasicMaterial) {
         const basic = material as THREE.MeshBasicMaterial
-        basic.color.copy(resolveColor(color))
+        basic.color.copy(this.resolveColor(color))
         basic.opacity = opacity
       }
     })
@@ -56,7 +60,12 @@ export class OverlayHighlighter {
     this.clear()
     if (!this.enabled) return
 
-    const object = createHighlightObject(feature, this.color, this.opacity)
+    const object = createHighlightObject(
+      feature,
+      this.color,
+      this.opacity,
+      this.resolveColor
+    )
     if (!object) return
 
     this.object = object
@@ -95,7 +104,8 @@ function disposeHighlightObject(object: THREE.Object3D) {
 function createHighlightObject(
   feature: Picked3DTilesFeature,
   color: ColorInput,
-  opacity: number
+  opacity: number,
+  resolveColor: ResolveColor
 ) {
   const object = feature.object
   object.updateMatrixWorld(true)

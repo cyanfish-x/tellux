@@ -1,11 +1,12 @@
 import * as THREE from 'three'
 import type { ColorInput, PointOptions } from '../types'
 import { createCircleTexture } from './createCircleTexture'
-import { resolveColor } from './invertToneMapping'
+import type { ResolveColor } from './invertToneMapping'
 
 interface PointGraphicOptions {
   position: THREE.Vector3
   options: PointOptions
+  resolveColor: ResolveColor
 }
 
 /**
@@ -24,22 +25,28 @@ export class PointGraphic {
   private readonly outlineEdgeMaterial: THREE.PointsMaterial | null
   private readonly fillGeometry: THREE.BufferGeometry
   private readonly outlineGeometry: THREE.BufferGeometry | null
+  private readonly resolveColor: ResolveColor
+  private readonly currentColor: THREE.Color
+  private readonly currentOutlineColor: THREE.Color
   private currentOutlineWidth: number
 
-  constructor({ position, options }: PointGraphicOptions) {
+  constructor({ position, options, resolveColor }: PointGraphicOptions) {
     const pixelSize = options.pixelSize ?? 8
     const outlineWidth = options.outlineWidth ?? 0
+    this.resolveColor = resolveColor
+    this.currentColor = new THREE.Color(options.color ?? 0xffffff)
+    this.currentOutlineColor = new THREE.Color(options.outlineColor ?? 0xffffff)
     this.currentOutlineWidth = outlineWidth
 
     this.fillGeometry = createPointGeometry(position)
-    this.fillMaterial = createPointMaterial(resolveColor(options.color), pixelSize, 0, 'opaque')
-    this.fillEdgeMaterial = createPointMaterial(resolveColor(options.color), pixelSize, 0, 'edge')
+    this.fillMaterial = createPointMaterial(this.resolveColor(this.currentColor), pixelSize, 0, 'opaque')
+    this.fillEdgeMaterial = createPointMaterial(this.resolveColor(this.currentColor), pixelSize, 0, 'edge')
     const group = new THREE.Group()
 
     if (outlineWidth > 0) {
       this.outlineGeometry = createPointGeometry(position)
-      this.outlineMaterial = createPointMaterial(resolveColor(options.outlineColor), pixelSize + outlineWidth * 2, 0.5, 'opaque')
-      this.outlineEdgeMaterial = createPointMaterial(resolveColor(options.outlineColor), pixelSize + outlineWidth * 2, 0.5, 'edge')
+      this.outlineMaterial = createPointMaterial(this.resolveColor(this.currentOutlineColor), pixelSize + outlineWidth * 2, 0.5, 'opaque')
+      this.outlineEdgeMaterial = createPointMaterial(this.resolveColor(this.currentOutlineColor), pixelSize + outlineWidth * 2, 0.5, 'edge')
       group.add(new THREE.Points(this.outlineGeometry, this.outlineEdgeMaterial))
       group.add(new THREE.Points(this.outlineGeometry, this.outlineMaterial))
       group.add(new THREE.Points(this.fillGeometry, this.fillEdgeMaterial))
@@ -73,7 +80,7 @@ export class PointGraphic {
   }
 
   get color(): number {
-    return this.fillMaterial.color.getHex()
+    return this.currentColor.getHex()
   }
 
   get pixelSize(): number {
@@ -81,9 +88,21 @@ export class PointGraphic {
   }
 
   setColor(color: ColorInput) {
-    const resolvedColor = resolveColor(color)
+    this.currentColor.set(color)
+    const resolvedColor = this.resolveColor(this.currentColor)
     this.fillMaterial.color.set(resolvedColor)
     this.fillEdgeMaterial.color.set(resolvedColor)
+  }
+
+  refreshColors() {
+    const fill = this.resolveColor(this.currentColor)
+    this.fillMaterial.color.copy(fill)
+    this.fillEdgeMaterial.color.copy(fill)
+    if (this.outlineMaterial && this.outlineEdgeMaterial) {
+      const outline = this.resolveColor(this.currentOutlineColor)
+      this.outlineMaterial.color.copy(outline)
+      this.outlineEdgeMaterial.color.copy(outline)
+    }
   }
 
   setPixelSize(pixelSize: number) {

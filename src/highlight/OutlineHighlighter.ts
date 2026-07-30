@@ -1,7 +1,10 @@
 import * as THREE from 'three'
 import { OutlineEffect } from 'postprocessing'
 import type { ColorInput } from '../types'
-import { resolveColor } from '../entities/invertToneMapping'
+import {
+  resolveColor as defaultResolveColor,
+  type ResolveColor
+} from '../entities/invertToneMapping'
 
 export interface OutlineHighlighterStyle {
   enabled: boolean
@@ -26,7 +29,8 @@ export class OutlineHighlighter {
     scene: THREE.Scene,
     camera: THREE.Camera,
     style: OutlineHighlighterStyle,
-    private readonly webglAvailable: boolean
+    private readonly webglAvailable: boolean,
+    private readonly resolveColor: ResolveColor = defaultResolveColor
   ) {
     this.style = { ...style }
     this.effect = webglAvailable
@@ -78,8 +82,8 @@ export class OutlineHighlighter {
     if (!this.effect) return
     this.effect.edgeStrength = this.style.edgeStrength
     this.effect.xRay = this.style.xray
-    this.effect.visibleEdgeColor.copy(resolveColor(this.style.color))
-    this.effect.hiddenEdgeColor.copy(resolveColor(this.style.hiddenColor))
+    this.effect.visibleEdgeColor.copy(this.resolveColor(this.style.color))
+    this.effect.hiddenEdgeColor.copy(this.resolveColor(this.style.hiddenColor))
   }
 
   private syncSelection() {

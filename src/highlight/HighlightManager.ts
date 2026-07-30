@@ -6,6 +6,10 @@ import type {
   ViewerPickResult
 } from '../types'
 import type { HighlightSettings } from '../scene/HighlightSettings'
+import {
+  resolveColor as defaultResolveColor,
+  type ResolveColor
+} from '../entities/invertToneMapping'
 import { OutlineHighlighter } from './OutlineHighlighter'
 import { OverlayHighlighter } from './OverlayHighlighter'
 import {
@@ -104,6 +108,8 @@ export interface HighlightManagerOptions {
   camera: THREE.Camera
   settings: HighlightSettings
   webglOutlineAvailable: boolean
+  /** 当前 Viewer 的高亮颜色解析函数。Highlight color resolver for the current Viewer. */
+  resolveColor?: ResolveColor
   resolveHismInstanceParts?: ResolveHismInstanceParts
   hideHismPickMarker?: () => void
 }
@@ -124,6 +130,7 @@ export class HighlightManager {
 
   constructor(private readonly options: HighlightManagerOptions) {
     const { settings } = options
+    const resolveColor = options.resolveColor ?? defaultResolveColor
     this.outline = new OutlineHighlighter(
       options.scene,
       options.camera,
@@ -134,17 +141,20 @@ export class HighlightManager {
         edgeStrength: settings.outline.edgeStrength,
         xray: settings.outline.xray
       },
-      options.webglOutlineAvailable
+      options.webglOutlineAvailable,
+      resolveColor
     )
     this.selectOverlay = new OverlayHighlighter(
       options.scene,
       settings.overlay.color,
-      settings.overlay.opacity
+      settings.overlay.opacity,
+      resolveColor
     )
     this.hoverOverlay = new OverlayHighlighter(
       options.scene,
       settings.overlay.hoverColor,
-      settings.overlay.hoverOpacity
+      settings.overlay.hoverOpacity,
+      resolveColor
     )
     if (options.resolveHismInstanceParts) {
       this.selectHism = new HismInstanceHighlighter(

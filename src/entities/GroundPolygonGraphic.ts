@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { CartographicInput, ColorInput, PolygonOptions } from '../types'
 import { DEG2RAD } from '../constants'
 import { createEncodedCartesian3, encodeCartesian3 } from '../utils/EncodedCartesian3'
-import { resolveColor } from './invertToneMapping'
+import type { ResolveColor } from './invertToneMapping'
 import type { EllipsoidLike, GroundClampSharedUniforms } from './groundClamp'
 
 interface GroundPolygonGraphicOptions {
@@ -12,6 +12,7 @@ interface GroundPolygonGraphicOptions {
   ellipsoid: EllipsoidLike
   /** 由 GroundClampPass 提供、每帧刷新的共享 uniform。 */
   uniforms: GroundClampSharedUniforms
+  resolveColor: ResolveColor
 }
 
 // 与 GroundPolylineGraphic 相同的固定全局高度带（米，相对椭球面）。
@@ -48,13 +49,17 @@ export class GroundPolygonGraphic {
   private geometry: THREE.BufferGeometry
   private readonly material: THREE.ShaderMaterial
   private readonly ellipsoid: EllipsoidLike
+  private readonly resolveColor: ResolveColor
+  private readonly currentColor: THREE.Color
   private positions: CartographicInput[]
 
-  constructor({ positions, options, ellipsoid, uniforms }: GroundPolygonGraphicOptions) {
+  constructor({ positions, options, ellipsoid, uniforms, resolveColor }: GroundPolygonGraphicOptions) {
     this.ellipsoid = ellipsoid
     this.positions = positions
+    this.resolveColor = resolveColor
 
     const { color, alpha } = extractColorAlpha(options.color)
+    this.currentColor = new THREE.Color(color ?? 0xffffff)
     this.material = new THREE.ShaderMaterial({
       name: 'TelluxGroundPolygon',
       uniforms: {
@@ -65,7 +70,7 @@ export class GroundPolygonGraphic {
         telluxGroundDepth: uniforms.telluxGroundDepth,
         uResolution: uniforms.uResolution,
         uInverseProjection: uniforms.uInverseProjection,
-        uColor: { value: resolveColor(color) },
+        uColor: { value: this.resolveColor(this.currentColor) },
         uOpacity: { value: alpha },
         uUp: { value: new THREE.Vector3(0, 0, 1) }
       },
@@ -84,13 +89,22 @@ export class GroundPolygonGraphic {
   }
 
   get color(): number {
-    return (this.material.uniforms.uColor.value as THREE.Color).getHex()
+    return this.currentColor.getHex()
   }
 
   setColor(color: ColorInput) {
     const { color: rgb, alpha } = extractColorAlpha(color)
-    ;(this.material.uniforms.uColor.value as THREE.Color).copy(resolveColor(rgb))
+    this.currentColor.set(rgb ?? 0xffffff)
+    ;(this.material.uniforms.uColor.value as THREE.Color).copy(
+      this.resolveColor(this.currentColor)
+    )
     this.material.uniforms.uOpacity.value = alpha
+  }
+
+  refreshColors() {
+    ;(this.material.uniforms.uColor.value as THREE.Color).copy(
+      this.resolveColor(this.currentColor)
+    )
   }
 
   setPositions(positions: CartographicInput[]) {

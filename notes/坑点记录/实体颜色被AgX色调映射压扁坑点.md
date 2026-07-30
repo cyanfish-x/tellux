@@ -73,9 +73,10 @@ Tellux 在 `Viewer.ts` 设置 `renderer.toneMapping = THREE.AgXToneMapping`，�
 
 3. **必须传 `THREE.Color` 实例而非 hex/number**：反求结果含负分量，`getHex()` 会把负值裁成 0（丢失信息）。所以 `resolveColor` 返回 `THREE.Color`，`createPointMaterial` 等构造参数也从 `number` 改成 `THREE.Color`，全程直接传 Color 实例。
 
-4. **状态同步**：反求依赖当前 `toneMapping` 和 `toneMappingExposure`。模块级状态由 `setToneMappingState()` 维护，`Viewer` 在两处同步：
-   - 初始化设置完 `renderer.toneMapping` 后（`Viewer.ts` 构造函数）。
-   - `toneMappingExposure` setter 变化时。
+4. **Viewer 级状态隔离**：反求依赖当前 `toneMapping` 和 `toneMappingExposure`。每个 `Viewer` 持有独立的 `ToneMappingColorResolver`，并把绑定到本实例的 `resolveColor` 显式注入 `EntityManager` 和 `HighlightManager`，模块中不再保存可变 Viewer 状态。
+   - Viewer 初始化 renderer 后创建自己的 resolver。
+   - `toneMappingExposure` setter 更新该 resolver，并刷新已有实体材质和高亮样式。
+   - 图形对象保留用户传入的语义颜色；刷新时重新反求，不从已经补偿过的材质颜色反推。
 
 5. **非 AgX 不补偿**：`resolveColor` 检测到 `toneMapping !== AgXToneMapping`（含 NoToneMapping）时直接返回目标色，避免无谓反求。
 
@@ -103,16 +104,18 @@ clamp 步骤不可逆，极高饱和度色有极轻微损失，但屏幕取色�
 1. 确认 `renderer.toneMapping` 是不是 `AgXToneMapping`，以及当前 `toneMappingExposure` 值（DebugSettingsPanel 可调）。
 2. 确认是否走了 `setEffects()` 后处理管线（`PostProcessingManager` 存在即启用）。在该管线下 `toneMapped` 必然失效，不要再去改材质的 `toneMapped`。
 3. 确认 `resolveColor` 是否被实体材质调用（点 / 线 / 面 / 描边都应走这个统一入口）。
-4. 确认 `Viewer` 是否同步了色调映射状态：构造函数里 `setToneMappingState(...)` 调用是否还在，exposure setter 是否同步。
+4. 确认当前 `Viewer` 是否把自己的 `colorResolver.resolveColor` 注入实体和高亮；exposure setter 是否依次更新 resolver、调用 `entitiesManager.refreshColors()` 和 `highlightManager.syncStyleFromSettings()`。
 5. 如果改了 AgX 相关常量或 three.js 升级，重新跑反求的正向回代验证脚本，确认 inset/outset 矩阵数值未变（变了要同步更新 `invertToneMapping.ts`）。
 
 ## 相关文件
 
-- `src/entities/invertToneMapping.ts` — AgX 反求算法、`resolveColor`、`setToneMappingState`
+- `src/entities/invertToneMapping.ts` — AgX 反求算法、纯函数 `resolveColor`、Viewer 级 `ToneMappingColorResolver`
+- `src/entities/EntityManager.ts` — 把 Viewer 级解析器注入实体，并统一刷新已有图形
 - `src/entities/PointGraphic.ts` — `resolveColor` 调用点，`createPointMaterial` 收 `THREE.Color`
 - `src/entities/PolygonGraphic.ts` — `resolveColor` 调用点（填充 + 描边）
 - `src/entities/PolylineGraphic.ts` — `resolveColor` 调用点
-- `src/Viewer.ts` — `toneMapping` 设置后同步状态、exposure setter 同步
+- `src/highlight/HighlightManager.ts` — 把同一解析器注入描边和 overlay 高亮
+- `src/Viewer.ts` — 拥有 resolver，并在 exposure setter 中同步和刷新
 - `node_modules/three/build/three.module.js` — `setEffects` / `begin` / `end` / output material（`:4830-5030`、`:16660-16693`）
 
 ## 维护准则
@@ -120,5 +123,5 @@ clamp 步骤不可逆，极高饱和度色有极轻微损失，但屏幕取色�
 - 实体颜色"所见即所得"是靠反求补偿实现的，不是靠材质开关。**不要**给实体材质加 `toneMapped: false`，它在 `setEffects` 管线下无效，且会让后续维护者误以为色调映射已被处理。
 - `resolveColor` 必须返回 `THREE.Color` 实例，调用方必须直接传 Color 给材质，**不要**中间转 `getHex()`——负分量会被裁掉。
 - 反求算法依赖 AgX 的具体实现（矩阵、contrast 多项式、EV 范围）。three.js 升级或切换 tone mapping 时，要重新核对 `tonemapping_pars_fragment` 是否变化，并重跑正向回代验证。
-- 色调映射状态是模块级单例，`Viewer` 有责任在初始化和 exposure 变化时同步。多 Viewer 实例场景下（当前不支持）需重新评估这个设计。
+- 色调映射运行时状态必须归当前 `Viewer` 所有，禁止重新引入模块级单例。新增颜色消费者时，应显式接收同一个 `ResolveColor` 依赖，并在已有材质需要重算时接入 `EntityManager.refreshColors()` 或对应 manager 的样式同步入口。
 - 如果未来要让用户可控地"关闭实体色调映射补偿"（例如想要实体也参与整体调色），应作为实体领域选项暴露，而不是改全局 tone mapping。

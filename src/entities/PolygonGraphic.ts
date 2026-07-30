@@ -1,10 +1,11 @@
 import * as THREE from 'three'
 import type { ColorInput, PolygonOptions } from '../types'
-import { resolveColor } from './invertToneMapping'
+import type { ResolveColor } from './invertToneMapping'
 
 interface PolygonGraphicOptions {
   worldPositions: THREE.Vector3[]
   options: PolygonOptions
+  resolveColor: ResolveColor
 }
 
 /**
@@ -21,9 +22,15 @@ export class PolygonGraphic {
   private readonly outlineMaterial: THREE.LineBasicMaterial | null
   private readonly outline: THREE.LineSegments | null
   private readonly baseGeometry: THREE.BufferGeometry
+  private readonly resolveColor: ResolveColor
+  private readonly currentColor: THREE.Color
+  private readonly currentOutlineColor: THREE.Color
 
-  constructor({ worldPositions, options }: PolygonGraphicOptions) {
+  constructor({ worldPositions, options, resolveColor }: PolygonGraphicOptions) {
     const showFill = options.fill ?? true
+    this.resolveColor = resolveColor
+    this.currentColor = new THREE.Color(options.color ?? 0xffffff)
+    this.currentOutlineColor = new THREE.Color(options.outlineColor ?? 0xffffff)
     // 几何始终构建：填充和描边都依赖它。Frame 把局部几何对齐到第一顶点切平面。
     // Geometry is always built: both fill and outline depend on it. The frame
     // aligns local geometry to the tangent plane at the first vertex.
@@ -33,7 +40,7 @@ export class PolygonGraphic {
 
     this.material = showFill
       ? new THREE.MeshBasicMaterial({
-          color: resolveColor(options.color),
+          color: this.resolveColor(this.currentColor),
           transparent: true,
           depthWrite: false,
           side: THREE.DoubleSide
@@ -49,7 +56,7 @@ export class PolygonGraphic {
     if (options.outline) {
       const outlineGeometry = new THREE.EdgesGeometry(geometry, 1)
       this.outlineMaterial = new THREE.LineBasicMaterial({
-        color: resolveColor(options.outlineColor),
+        color: this.resolveColor(this.currentOutlineColor),
         transparent: true,
         depthWrite: false
       })
@@ -68,19 +75,26 @@ export class PolygonGraphic {
   }
 
   get color(): number {
-    return this.material?.color.getHex() ?? 0xffffff
+    return this.material ? this.currentColor.getHex() : 0xffffff
   }
 
   get outlineColor(): number {
-    return this.outlineMaterial?.color.getHex() ?? this.color
+    return this.outlineMaterial ? this.currentOutlineColor.getHex() : this.color
   }
 
   setColor(color: ColorInput) {
-    this.material?.color.set(resolveColor(color))
+    this.currentColor.set(color)
+    this.material?.color.copy(this.resolveColor(this.currentColor))
   }
 
   setOutlineColor(color: ColorInput) {
-    this.outlineMaterial?.color.set(resolveColor(color))
+    this.currentOutlineColor.set(color)
+    this.outlineMaterial?.color.copy(this.resolveColor(this.currentOutlineColor))
+  }
+
+  refreshColors() {
+    this.material?.color.copy(this.resolveColor(this.currentColor))
+    this.outlineMaterial?.color.copy(this.resolveColor(this.currentOutlineColor))
   }
 
   dispose() {

@@ -6,7 +6,7 @@ import { Clock } from './Clock'
 import { EntityManager } from './entities/EntityManager'
 import { EntityRenderManager } from './entities/EntityRenderManager'
 import { SymbolOcclusionPass } from './entities/SymbolOcclusionPass'
-import { setToneMappingState } from './entities/invertToneMapping'
+import { ToneMappingColorResolver } from './entities/invertToneMapping'
 import { CAMERA_FRAME, DEG2RAD } from './constants'
 import { telluxConfig } from './config'
 import { TargetFlightController } from './controls/TargetFlightController'
@@ -378,6 +378,7 @@ export class Viewer {
   private readonly hismManager: HismManager
   private readonly highlightManager: HighlightManager
   private readonly entitiesManager: EntityManager
+  private readonly colorResolver: ToneMappingColorResolver
   private readonly entityRenderManager: EntityRenderManager
   private readonly symbolOcclusionPass: SymbolOcclusionPass | null
   private readonly groundClampPass: GroundClampPass | null
@@ -445,10 +446,10 @@ export class Viewer {
     this.rendererAdapter.setSize(width, height)
     this.renderer.toneMapping = THREE.AgXToneMapping
     this.renderer.toneMappingExposure = this.currentToneMappingExposure
-    // 同步色调映射状态给实体颜色反求，使实体颜色在 setEffects 后处理管线下仍能"所见即所得"。
-    // Sync tone-mapping state for entity color inversion so entity colors stay
-    // WYSIWYG under the setEffects post-processing pipeline.
-    setToneMappingState(this.renderer.toneMapping, this.renderer.toneMappingExposure)
+    this.colorResolver = new ToneMappingColorResolver({
+      toneMapping: this.renderer.toneMapping,
+      exposure: this.renderer.toneMappingExposure
+    })
     resolvedContainer.appendChild(this.renderer.domElement)
     this.transparentOverlayTexture = this.createTransparentOverlayTexture()
 
@@ -512,7 +513,8 @@ export class Viewer {
       groundClamp: this.groundClampPass
         ? { root: this.groundClampPass.root, uniforms: this.groundClampPass.sharedUniforms }
         : null,
-      pixelRatio: () => this.currentResolutionScale
+      pixelRatio: () => this.currentResolutionScale,
+      resolveColor: this.colorResolver.resolveColor
     })
     this.entityRenderManager = new EntityRenderManager({
       root: this.entitiesManager.root,
@@ -611,6 +613,7 @@ export class Viewer {
       camera: this.threeCamera,
       settings: this.scene.highlight,
       webglOutlineAvailable: this.rendererAdapter.supportsWebGLEffects,
+      resolveColor: this.colorResolver.resolveColor,
       resolveHismInstanceParts: (pick) =>
         this.hismManager.resolveInstanceParts(pick),
       hideHismPickMarker: () => this.hismManager.hidePickMarker()
@@ -707,7 +710,12 @@ export class Viewer {
   set toneMappingExposure(value: number) {
     this.currentToneMappingExposure = value
     this.renderer.toneMappingExposure = value
-    setToneMappingState(this.renderer.toneMapping, value)
+    this.colorResolver.setState({
+      toneMapping: this.renderer.toneMapping,
+      exposure: value
+    })
+    this.entitiesManager.refreshColors()
+    this.highlightManager.syncStyleFromSettings()
   }
 
   /**

@@ -3,11 +3,12 @@ import { Line2 } from 'three/addons/lines/Line2.js'
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js'
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 import type { ColorInput, PolylineOptions } from '../types'
-import { resolveColor } from './invertToneMapping'
+import type { ResolveColor } from './invertToneMapping'
 
 interface PolylineGraphicOptions {
   worldPositions: THREE.Vector3[]
   options: PolylineOptions
+  resolveColor: ResolveColor
 }
 
 /**
@@ -20,16 +21,20 @@ export class PolylineGraphic {
   readonly object3D: Line2
   private readonly material: LineMaterial
   private readonly geometry: LineGeometry
+  private readonly resolveColor: ResolveColor
+  private readonly currentColor: THREE.Color
   private worldPositions: THREE.Vector3[]
 
-  constructor({ worldPositions, options }: PolylineGraphicOptions) {
+  constructor({ worldPositions, options, resolveColor }: PolylineGraphicOptions) {
     const width = options.width ?? 2
+    this.resolveColor = resolveColor
+    this.currentColor = new THREE.Color(options.color ?? 0xffffff)
     this.worldPositions = clonePositions(worldPositions)
     this.geometry = new LineGeometry()
     this.geometry.setPositions(toFlatArray(this.worldPositions))
 
     this.material = new LineMaterial({
-      color: resolveColor(options.color),
+      color: this.resolveColor(this.currentColor),
       linewidth: width,
       worldUnits: false,
       transparent: true,
@@ -44,7 +49,7 @@ export class PolylineGraphic {
   }
 
   get color(): number {
-    return this.material.color.getHex()
+    return this.currentColor.getHex()
   }
 
   get width(): number {
@@ -58,7 +63,12 @@ export class PolylineGraphic {
   }
 
   setColor(color: ColorInput) {
-    this.material.color.set(resolveColor(color))
+    this.currentColor.set(color)
+    this.material.color.copy(this.resolveColor(this.currentColor))
+  }
+
+  refreshColors() {
+    this.material.color.copy(this.resolveColor(this.currentColor))
   }
 
   setWidth(width: number) {

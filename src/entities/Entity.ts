@@ -14,6 +14,10 @@ import {
   type GroundClampContext,
   type PolylinePickable
 } from './groundClamp'
+import {
+  resolveColor as defaultResolveColor,
+  type ResolveColor
+} from './invertToneMapping'
 
 export interface EntityContext {
   toVector3: (input: CartographicInput, target: THREE.Vector3) => THREE.Vector3
@@ -24,6 +28,12 @@ export interface EntityContext {
   groundClamp: GroundClampContext | null
   /** 渲染器像素比 getter（symbol 像素尺寸 / 文字 SDF 超采样用）。 */
   pixelRatio: () => number
+  /**
+   * 当前 Viewer 的实体颜色解析函数；未提供时使用默认解析器。
+   *
+   * Entity color resolver for the current Viewer. Uses the default resolver when omitted.
+   */
+  resolveColor?: ResolveColor
 }
 
 /**
@@ -47,12 +57,14 @@ export class Entity {
   private currentPosition: CartographicInput | undefined
   private currentShow: boolean
   private isRemoved = false
+  private readonly resolveColor: ResolveColor
 
   constructor(
     id: string,
     options: EntityOptions,
     private readonly context: EntityContext
   ) {
+    this.resolveColor = this.context.resolveColor ?? defaultResolveColor
     this.id = id
     this.currentShow = options.show ?? true
     this.currentPosition = options.position
@@ -70,7 +82,11 @@ export class Entity {
       if (options.position) {
         this.context.toVector3(options.position, position)
       }
-      this.pointGraphic = new PointGraphic({ position, options: options.point })
+      this.pointGraphic = new PointGraphic({
+        position,
+        options: options.point,
+        resolveColor: this.resolveColor
+      })
       this.root.add(this.pointGraphic.object3D)
     }
 
@@ -112,7 +128,8 @@ export class Entity {
         positions: polyline.positions,
         options: polyline,
         ellipsoid: this.context.ellipsoid(),
-        uniforms: groundClamp.uniforms
+        uniforms: groundClamp.uniforms,
+        resolveColor: this.resolveColor
       })
       this.ensureGroundGroup(id, groundClamp.root).add(this.groundPolylineGraphic.object3D)
       return
@@ -129,7 +146,11 @@ export class Entity {
       this.context.toVector3(input, target)
       return target
     })
-    this.polylineGraphic = new PolylineGraphic({ worldPositions, options: polyline })
+    this.polylineGraphic = new PolylineGraphic({
+      worldPositions,
+      options: polyline,
+      resolveColor: this.resolveColor
+    })
     this.root.add(this.polylineGraphic.object3D)
   }
 
@@ -158,7 +179,8 @@ export class Entity {
         positions: polygon.positions,
         options: polygon,
         ellipsoid: this.context.ellipsoid(),
-        uniforms: groundClamp.uniforms
+        uniforms: groundClamp.uniforms,
+        resolveColor: this.resolveColor
       })
       this.ensureGroundGroup(id, groundClamp.root).add(this.groundPolygonGraphic.object3D)
       return
@@ -174,7 +196,11 @@ export class Entity {
       this.context.toVector3(input, target)
       return target
     })
-    this.polygonGraphic = new PolygonGraphic({ worldPositions, options: polygon })
+    this.polygonGraphic = new PolygonGraphic({
+      worldPositions,
+      options: polygon,
+      resolveColor: this.resolveColor
+    })
     this.root.add(this.polygonGraphic.object3D)
   }
 
@@ -265,6 +291,15 @@ export class Entity {
     if (this.isRemoved) return
     // 首期几何无动画，保留接口对齐 ModelManager.update。
     // First-phase geometry has no animation; the interface is kept to mirror ModelManager.update.
+  }
+
+  /** 重新解析所有参与主画面色调映射的颜色。Re-resolves all tone-mapped colors. */
+  refreshColors() {
+    this.pointGraphic?.refreshColors()
+    this.polylineGraphic?.refreshColors()
+    this.polygonGraphic?.refreshColors()
+    this.groundPolylineGraphic?.refreshColors()
+    this.groundPolygonGraphic?.refreshColors()
   }
 
   remove() {

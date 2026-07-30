@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { CartographicInput, ColorInput, PolylineOptions } from '../types'
 import { DEG2RAD } from '../constants'
 import { createEncodedCartesian3, encodeCartesian3 } from '../utils/EncodedCartesian3'
-import { resolveColor } from './invertToneMapping'
+import type { ResolveColor } from './invertToneMapping'
 import type {
   EllipsoidLike,
   GroundClampSharedUniforms,
@@ -16,6 +16,7 @@ interface GroundPolylineGraphicOptions {
   ellipsoid: EllipsoidLike
   /** 由 GroundClampPass 提供、每帧刷新的共享 uniform。 */
   uniforms: GroundClampSharedUniforms
+  resolveColor: ResolveColor
 }
 
 // 墙体积撑到的固定全局高度带（米，相对椭球面）。墙只需覆盖屏幕区域，真实贴合
@@ -61,12 +62,16 @@ export class GroundPolylineGraphic implements PolylinePickable {
   private readonly uniforms: GroundClampSharedUniforms
   private positions: CartographicInput[]
   private surfaceVertices: THREE.Vector3[] = []
+  private readonly resolveColor: ResolveColor
+  private readonly currentColor: THREE.Color
   private widthMeters: number
 
-  constructor({ positions, options, ellipsoid, uniforms }: GroundPolylineGraphicOptions) {
+  constructor({ positions, options, ellipsoid, uniforms, resolveColor }: GroundPolylineGraphicOptions) {
     this.ellipsoid = ellipsoid
     this.uniforms = uniforms
     this.positions = positions
+    this.resolveColor = resolveColor
+    this.currentColor = new THREE.Color(options.color ?? 0xffffff)
     this.widthMeters = options.width ?? 2
 
     this.material = new THREE.ShaderMaterial({
@@ -81,7 +86,7 @@ export class GroundPolylineGraphic implements PolylinePickable {
         uResolution: uniforms.uResolution,
         uInverseProjection: uniforms.uInverseProjection,
         // 每 graphic 独有：
-        uColor: { value: resolveColor(options.color) },
+        uColor: { value: this.resolveColor(this.currentColor) },
         uOpacity: { value: 1 },
         uHalfWidthMeters: { value: Math.max(this.widthMeters / 2, 0) }
       },
@@ -102,7 +107,7 @@ export class GroundPolylineGraphic implements PolylinePickable {
   }
 
   get color(): number {
-    return (this.material.uniforms.uColor.value as THREE.Color).getHex()
+    return this.currentColor.getHex()
   }
 
   /** 贴地折线宽度，语义为**米**（非像素）。 */
@@ -111,7 +116,16 @@ export class GroundPolylineGraphic implements PolylinePickable {
   }
 
   setColor(color: ColorInput) {
-    ;(this.material.uniforms.uColor.value as THREE.Color).copy(resolveColor(color))
+    this.currentColor.set(color)
+    ;(this.material.uniforms.uColor.value as THREE.Color).copy(
+      this.resolveColor(this.currentColor)
+    )
+  }
+
+  refreshColors() {
+    ;(this.material.uniforms.uColor.value as THREE.Color).copy(
+      this.resolveColor(this.currentColor)
+    )
   }
 
   setWidth(width: number) {

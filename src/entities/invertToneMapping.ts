@@ -155,20 +155,35 @@ function invertAgx(targetEncoded: Vec3, exposure: number): Vec3 {
   return [c[0] / exposure, c[1] / exposure, c[2] / exposure]
 }
 
-// ----- 模块级色调映射状态，由 Viewer 同步 / module-level state synced by Viewer -----
-let activeToneMapping: THREE.ToneMapping = THREE.AgXToneMapping
-let activeToneMappingExposure = 1
+export interface ToneMappingColorState {
+  toneMapping: THREE.ToneMapping
+  exposure: number
+}
+
+export type ResolveColor = (input: ColorInput | undefined) => THREE.Color
+
+const DEFAULT_TONE_MAPPING_COLOR_STATE: ToneMappingColorState = {
+  toneMapping: THREE.AgXToneMapping,
+  exposure: 1
+}
 
 /**
- * @internal 同步当前 renderer 的色调映射状态，供颜色反求使用。
- * 仅 AgX 走反求；其它 tone mapping 不补偿。
+ * Viewer 级色调映射颜色解析器。
  *
- * @internal Syncs the renderer's current tone-mapping state for color inversion.
- * Only AgX is inverted; other tone mappings are left uncompensated.
+ * Viewer-scoped tone-mapping color resolver.
  */
-export function setToneMappingState(toneMapping: THREE.ToneMapping, exposure: number): void {
-  activeToneMapping = toneMapping
-  activeToneMappingExposure = exposure
+export class ToneMappingColorResolver {
+  private state: ToneMappingColorState
+
+  constructor(state: ToneMappingColorState) {
+    this.state = { ...state }
+  }
+
+  readonly resolveColor: ResolveColor = (input) => resolveColor(input, this.state)
+
+  setState(state: ToneMappingColorState) {
+    this.state = { ...state }
+  }
 }
 
 /**
@@ -190,12 +205,15 @@ export function setToneMappingState(toneMapping: THREE.ToneMapping, exposure: nu
  * will map back to the target, cancelling the pipeline's whole-frame tone
  * mapping (which otherwise turns pure red orange, etc.).
  */
-export function resolveColor(input: ColorInput | undefined): THREE.Color {
+export function resolveColor(
+  input: ColorInput | undefined,
+  state: ToneMappingColorState = DEFAULT_TONE_MAPPING_COLOR_STATE
+): THREE.Color {
   if (input === undefined) {
     input = 0xffffff
   }
   const source = new THREE.Color(input)
-  if (activeToneMapping !== THREE.AgXToneMapping) {
+  if (state.toneMapping !== THREE.AgXToneMapping) {
     return source
   }
   // Color.getRGB 返回 linear-sRGB；但反求需要 sRGB 编码值作为"目标显示色"。
@@ -208,7 +226,7 @@ export function resolveColor(input: ColorInput | undefined): THREE.Color {
     srgbEncode(source.g),
     srgbEncode(source.b)
   ]
-  const inverted = invertAgx(encoded, activeToneMappingExposure)
+  const inverted = invertAgx(encoded, state.exposure)
   return new THREE.Color(inverted[0], inverted[1], inverted[2])
 }
 

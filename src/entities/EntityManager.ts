@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { CartographicInput, EntityOptions } from '../types'
 import { Entity } from './Entity'
 import type { EllipsoidLike, GroundClampContext } from './groundClamp'
+import { resolveColor, type ResolveColor } from './invertToneMapping'
 
 export interface EntityManagerOptions {
   scene: THREE.Scene
@@ -12,6 +13,12 @@ export interface EntityManagerOptions {
   groundClamp: GroundClampContext | null
   /** 渲染器像素比 getter（symbol 像素尺寸 / 文字 SDF 超采样用）。 */
   pixelRatio: () => number
+  /**
+   * 当前 Viewer 的实体颜色解析函数；未提供时使用默认 AgX / exposure 1。
+   *
+   * Entity color resolver for the current Viewer. Defaults to AgX / exposure 1.
+   */
+  resolveColor?: ResolveColor
 }
 
 /**
@@ -51,7 +58,8 @@ export class EntityManager {
       removeEntity: (target) => this.removeEntity(target),
       ellipsoid: this.options.ellipsoid,
       groundClamp: this.options.groundClamp,
-      pixelRatio: this.options.pixelRatio
+      pixelRatio: this.options.pixelRatio,
+      resolveColor: this.options.resolveColor ?? resolveColor
     })
     this.entities.set(id, entity)
     this.entitiesRoot.add(entity.object3D)
@@ -90,6 +98,11 @@ export class EntityManager {
 
   update(deltaTime: number) {
     this.entities.forEach((entity) => entity.update(deltaTime))
+  }
+
+  /** 重新解析已有实体颜色。Re-resolves colors for existing entities. */
+  refreshColors() {
+    this.entities.forEach((entity) => entity.refreshColors())
   }
 
   /**
