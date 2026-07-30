@@ -2,9 +2,8 @@ import type { CloudRuntimeState } from '../rendering/AtmosphereRuntimeState'
 import type { CloudQualityPreset } from '../types'
 import type { CloudStateApplier } from './SceneStateAppliers'
 import type { ResolvedSceneOptions } from './SceneOptions'
+import { sceneValueNormalizers } from './SceneValueNormalization'
 import { SceneToggle } from './SceneToggle'
-
-const DEFAULT_CLOUD_SPEED = 0.0005
 
 export class CloudSettings {
   private readonly visibility: SceneToggle
@@ -27,10 +26,10 @@ export class CloudSettings {
     this.visibility = new SceneToggle(options.show, onEffectsChange)
     this.currentQuality = options.quality
     this.currentLightShafts = options.lightShafts
-    this.currentCoverage = options.coverage
-    this.currentSpeed = toNonNegativeFinite(options.speed, DEFAULT_CLOUD_SPEED)
-    this.currentLayerAltitude = options.layer.altitude
-    this.currentLayerHeight = options.layer.height
+    this.currentCoverage = sceneValueNormalizers.cloudCoverage(options.coverage)
+    this.currentSpeed = sceneValueNormalizers.cloudSpeed(options.speed)
+    this.currentLayerAltitude = sceneValueNormalizers.cloudLayerAltitude(options.layer.altitude)
+    this.currentLayerHeight = sceneValueNormalizers.cloudLayerHeight(options.layer.height)
   }
 
   /**
@@ -90,9 +89,10 @@ export class CloudSettings {
   }
 
   set coverage(value: number) {
-    if (this.currentCoverage === value) return
+    const nextCoverage = sceneValueNormalizers.cloudCoverage(value)
+    if (this.currentCoverage === nextCoverage) return
 
-    this.currentCoverage = value
+    this.currentCoverage = nextCoverage
     this.apply()
   }
 
@@ -107,7 +107,7 @@ export class CloudSettings {
   }
 
   set speed(value: number) {
-    const nextSpeed = toNonNegativeFinite(value, DEFAULT_CLOUD_SPEED)
+    const nextSpeed = sceneValueNormalizers.cloudSpeed(value)
     if (this.currentSpeed === nextSpeed) return
 
     this.currentSpeed = nextSpeed
@@ -124,9 +124,10 @@ export class CloudSettings {
   }
 
   set layerAltitude(value: number) {
-    if (this.currentLayerAltitude === value) return
+    const nextAltitude = sceneValueNormalizers.cloudLayerAltitude(value)
+    if (this.currentLayerAltitude === nextAltitude) return
 
-    this.currentLayerAltitude = value
+    this.currentLayerAltitude = nextAltitude
     this.apply()
   }
 
@@ -140,9 +141,10 @@ export class CloudSettings {
   }
 
   set layerHeight(value: number) {
-    if (this.currentLayerHeight === value) return
+    const nextHeight = sceneValueNormalizers.cloudLayerHeight(value)
+    if (this.currentLayerHeight === nextHeight) return
 
-    this.currentLayerHeight = value
+    this.currentLayerHeight = nextHeight
     this.apply()
   }
 
@@ -160,8 +162,4 @@ export class CloudSettings {
       layerHeight: this.currentLayerHeight
     }
   }
-}
-
-function toNonNegativeFinite(value: number, fallback: number) {
-  return Math.max(0, Number.isFinite(value) ? value : fallback)
 }

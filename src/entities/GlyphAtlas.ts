@@ -1,7 +1,11 @@
 import * as THREE from 'three'
 import type { TextOptions } from '../types'
 import OptimizedTinySDF from './OptimizedTinySDF'
-import type { MsdfAtlas } from './MsdfAtlasLoader'
+import {
+  loadMsdfAtlas,
+  type MsdfAtlas,
+  type MsdfGlyphMetrics
+} from './MsdfAtlasLoader'
 
 type FontWeight = NonNullable<TextOptions['fontWeight']>
 
@@ -232,7 +236,7 @@ class FontGlyphAtlas {
     return this.createDynamicGlyphEntry(char)
   }
 
-  private createMsdfGlyphEntry(msdfGlyph: import('./MsdfAtlasLoader').MsdfGlyphMetrics): GlyphEntry {
+  private createMsdfGlyphEntry(msdfGlyph: MsdfGlyphMetrics): GlyphEntry {
     const atlas = this.msdfAtlas!
     const scaleW = atlas.data.common.scaleW
     const scaleH = atlas.data.common.scaleH
@@ -386,7 +390,6 @@ export async function preloadFontMsdfAtlas(
   fontWeight: FontWeight,
   basePath: string
 ): Promise<MsdfAtlas> {
-  const { loadMsdfAtlas } = await import('./MsdfAtlasLoader')
   const atlas = await loadMsdfAtlas(basePath)
   setMsdfAtlasForFont(font, fontWeight, atlas)
   return atlas

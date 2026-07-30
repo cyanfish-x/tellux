@@ -1,33 +1,4 @@
 import type * as THREE from 'three'
-import type { ClampInput, HeightSamplingSource } from '../types'
-
-/**
- * 归一化后的贴地配置。`normalizeClamp` 把 `boolean | GroundClamp | undefined`
- * 收敛成这个形状或 `null`（不贴地）。
- *
- * Normalized ground-clamp config produced by {@link normalizeClamp}.
- */
-export interface ResolvedClamp {
-  source: HeightSamplingSource
-  offset: number
-}
-
-/**
- * 把用户输入的 `clamp` 字段归一化。
- * - `undefined` / `false` → `null`（不贴地）。
- * - `true` → `{ source: 'all', offset: 0 }`。
- * - 对象 → 补默认值（`source: 'all'`、`offset: 0`）。
- *
- * Normalizes the user-facing `clamp` field; returns `null` when clamping is off.
- */
-export function normalizeClamp(clamp: ClampInput | undefined): ResolvedClamp | null {
-  if (!clamp) return null
-  if (clamp === true) return { source: 'all', offset: 0 }
-  return {
-    source: clamp.source ?? 'all',
-    offset: clamp.offset ?? 0
-  }
-}
 
 /**
  * 分类材质需要、由 {@link GroundClampPass} 每帧刷新的共享 uniform。所有贴地

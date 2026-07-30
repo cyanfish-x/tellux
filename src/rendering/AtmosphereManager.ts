@@ -48,6 +48,10 @@ import type {
   AtmosphereRuntimeState,
   CloudRuntimeState
 } from './AtmosphereRuntimeState'
+import {
+  normalizeAtmosphereRuntimeState,
+  normalizeCloudRuntimeState
+} from '../scene/SceneValueNormalization'
 import type { AtmosphereLightingMode } from '../types'
 
 interface AtmosphereUniformValue {
@@ -249,6 +253,7 @@ export class AtmosphereManager {
   }
 
   applyAtmosphereState(state: AtmosphereRuntimeState) {
+    state = normalizeAtmosphereRuntimeState(state)
     this.setInscatterIntensity(state.inscatterIntensity)
     this.setInscatterHorizonBlend(state.inscatterHorizonBlend)
     this.setInscatterHorizonRange(state.inscatterHorizonRange)
@@ -303,6 +308,7 @@ export class AtmosphereManager {
   }
 
   applyCloudsState(state: CloudRuntimeState) {
+    state = normalizeCloudRuntimeState(state)
     if (state.quality !== undefined) {
       this.cloudsEffect.qualityPreset = state.quality
     }

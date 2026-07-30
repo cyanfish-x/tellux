@@ -1,5 +1,6 @@
 import type * as THREE from 'three'
 import type { ResolvedSceneOptions } from './SceneOptions'
+import { sceneValueNormalizers } from './SceneValueNormalization'
 
 export class AtmosphereNightSettings {
   constructor(
@@ -59,7 +60,7 @@ export class AtmosphereNightSettings {
   }
 
   set moonLightIntensity(value: number) {
-    this.options.moonLightIntensity = value
+    this.options.moonLightIntensity = sceneValueNormalizers.moonLightIntensity(value)
     this.onStateChange()
   }
 
@@ -69,7 +70,7 @@ export class AtmosphereNightSettings {
   }
 
   set ambientIntensity(value: number) {
-    this.options.ambientIntensity = value
+    this.options.ambientIntensity = sceneValueNormalizers.nightAmbientIntensity(value)
     this.onStateChange()
   }
 
@@ -91,7 +92,7 @@ export class AtmosphereNightSettings {
   }
 
   set transitionRange(value: [number, number]) {
-    this.options.transitionRange = [...value]
+    this.options.transitionRange = sceneValueNormalizers.nightTransitionRange(value)
     this.onStateChange()
   }
 

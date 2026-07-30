@@ -1,4 +1,5 @@
 import type { ResolvedSceneOptions } from './SceneOptions'
+import { sceneValueNormalizers } from './SceneValueNormalization'
 import { SceneToggle } from './SceneToggle'
 
 export class AtmosphereSkySettings {
@@ -17,7 +18,7 @@ export class AtmosphereSkySettings {
   }
 
   set starsIntensity(value: number) {
-    this.options.starsIntensity = value
+    this.options.starsIntensity = sceneValueNormalizers.starsIntensity(value)
     this.onStateChange()
   }
 
@@ -27,7 +28,7 @@ export class AtmosphereSkySettings {
   }
 
   set starsPointSize(value: number) {
-    this.options.starsPointSize = value
+    this.options.starsPointSize = sceneValueNormalizers.starsPointSize(value)
     this.onStateChange()
   }
 
@@ -67,7 +68,7 @@ export class AtmosphereSkySettings {
   }
 
   set sunAngularRadius(value: number) {
-    this.options.sunAngularRadius = value
+    this.options.sunAngularRadius = sceneValueNormalizers.sunAngularRadius(value)
     this.onStateChange()
   }
 
@@ -77,7 +78,7 @@ export class AtmosphereSkySettings {
   }
 
   set moonAngularRadius(value: number) {
-    this.options.moonAngularRadius = value
+    this.options.moonAngularRadius = sceneValueNormalizers.moonAngularRadius(value)
     this.onStateChange()
   }
 
@@ -87,7 +88,7 @@ export class AtmosphereSkySettings {
   }
 
   set lunarRadianceScale(value: number) {
-    this.options.lunarRadianceScale = value
+    this.options.lunarRadianceScale = sceneValueNormalizers.lunarRadianceScale(value)
     this.onStateChange()
   }
 

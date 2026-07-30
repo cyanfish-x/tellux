@@ -1,5 +1,6 @@
 import type { AtmosphereLightingMode } from '../types'
 import type { ResolvedSceneOptions } from './SceneOptions'
+import { sceneValueNormalizers } from './SceneValueNormalization'
 
 export class AtmosphereLightingSettings {
   private readonly onStateChange: () => void
@@ -63,7 +64,7 @@ export class AtmosphereLightingSettings {
   }
 
   set sunLightIntensity(value: number) {
-    this.options.sunLightIntensity = value
+    this.options.sunLightIntensity = sceneValueNormalizers.sunLightIntensity(value)
     this.onStateChange()
   }
 
@@ -73,7 +74,7 @@ export class AtmosphereLightingSettings {
   }
 
   set skyLightIntensity(value: number) {
-    this.options.skyLightIntensity = value
+    this.options.skyLightIntensity = sceneValueNormalizers.skyLightIntensity(value)
     this.onStateChange()
   }
 
@@ -83,7 +84,7 @@ export class AtmosphereLightingSettings {
   }
 
   set albedoScale(value: number) {
-    this.options.albedoScale = value
+    this.options.albedoScale = sceneValueNormalizers.albedoScale(value)
     this.onStateChange()
   }
 

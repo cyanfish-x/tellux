@@ -1,4 +1,5 @@
 import type { ResolvedSceneOptions } from './SceneOptions'
+import { sceneValueNormalizers } from './SceneValueNormalization'
 
 export class AtmosphereShadowSettings {
   constructor(
@@ -12,7 +13,7 @@ export class AtmosphereShadowSettings {
   }
 
   set radius(value: number) {
-    this.options.radius = value
+    this.options.radius = sceneValueNormalizers.shadowRadius(value)
     this.onStateChange()
   }
 
@@ -22,7 +23,7 @@ export class AtmosphereShadowSettings {
   }
 
   set sampleCount(value: number) {
-    this.options.sampleCount = value
+    this.options.sampleCount = sceneValueNormalizers.shadowSampleCount(value)
     this.onStateChange()
   }
 

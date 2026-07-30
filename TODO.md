@@ -21,7 +21,7 @@
 
   - 文字走 per-symbol / GlyphAtlas SDF（非原计划 canvas 覆盖 v1）；案例见 `examples/symbol.ts`。
   - 见 [docs/guide/entities.md](./docs/guide/entities.md)、[docs/design/symbol-entity.md](./docs/design/symbol-entity.md)。
-- [X] 折线 / 多边形真·贴地（`clamp: true`，`offset: 0`，WebGL）
+- [X] 折线 / 多边形真·贴地（`clamp: true`，WebGL）
 
   - API 为统一 `clamp` 字段（非 Cesium 式 `heightReference` 枚举）。
   - 见 [docs/guide/entities.md](./docs/guide/entities.md)、[docs/design/ground-clamp.md](./docs/design/ground-clamp.md)。
@@ -42,7 +42,7 @@
 
 - 背景：折线 / 多边形已支持 GPU 真·贴地；点 / Symbol 仍为绝对椭球高。
 - 方案：线 / 面用 GPU 阴影体 + 深度纹理逐片元分类（对标 Cesium `GroundPrimitive` / `GroundPolylinePrimitive`）；点 / Symbol 走 CPU `sampleHeightMostDetailed` 采样（Cesium 正解，非妥协）。
-- 公开 API：统一 `clamp: boolean | { source, offset }`（`true` ≡ `{ source: 'all', offset: 0 }`）。
+- 稳定公开 API：当前仅折线 / 多边形提供 `clamp?: boolean`；深度源、偏移、点 / Symbol 贴地在实现完成前不进入公开类型。
 - 渲染器：WebGL 优先；WebGPU 暂不处理（`onBeforeCompile` 失效，后续单独立项）。
 
 - [X] P0 深度分类管线 + 贴地线
@@ -57,15 +57,15 @@
 
   - 接入 HeightSampler：add 即摆椭球高，`sampleHeightMostDetailed` resolve 后 snap。
   - LOD 变化去抖重采样（点仅 1 顶点）。
-  - `PointOptions.clamp`（当前会降级绝对高并告警）。
+  - 实现、生命周期与降级语义验证完成后再设计公开 API。
 - [ ] P3 terrain / 3D Tiles 深度分离（`source`）
 
-  - 主渲染插入 terrain-only / tileset-only 深度快照 → `source: 'terrain' | 'tileset'`。
+  - 主渲染插入 terrain-only / tileset-only 深度快照；公开配置形状待实现阶段评审。
   - 当前贴地深度为地形与 3D Tiles 并集（`source: 'all'`）。
 - [ ] P4 `offset > 0`（相对地表抬高）+ 打磨
 
   - 地表高 + `offset` 米；性能（scissor / 包络）、与 OIT 交互、拾取语义厘清。
-  - 当前 `offset > 0` 会降级为绝对高并告警。
+  - 未进入公开类型，不提供 warning 降级分支。
 
 ## Symbol 实体（Icon + 文字标签）
 

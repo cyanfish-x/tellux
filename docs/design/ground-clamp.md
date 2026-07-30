@@ -1,6 +1,6 @@
 # 实体贴地（Ground Clamp）技术方案
 
-> 状态：**设计中，暂未实现**（2026-07-01；API 于 2026-07-03 改版：§4 由 `HeightReference` 7 值枚举改为统一 `clamp` 字段）
+> 状态：**P0 贴地线与 P1 贴地面已实现**；点贴地、深度源分离与正向偏移仍在路线图中（2026-07-30 收紧稳定 API，见 §4）。
 > 范围：点 / 线 / 面实体的真·贴地渲染，对标 Cesium `GroundPrimitive` / `GroundPolylinePrimitive`。
 > 渲染器：**WebGL 优先全量实现**；WebGPU 支持暂不处理，后续单独立项。
 
@@ -37,7 +37,7 @@
 ### 0.4 关键约束
 
 - **WebGPU 下 `onBeforeCompile` GLSL 注入失效**（已记录坑点）。本方案的材质注入强依赖该机制，故 **WebGL 优先**；WebGPU 需改用 TSL/WGSL 原生着色器，**本期不做**。
-- 点实体走 **CPU `clamp` 采样**（见 §3.7）。这是 Cesium 对点 / 布告板 / 标签 / 模型的**正解**（`Model.updateClamping`、`Billboard._updateClamping` 均 CPU 采样改 modelMatrix），不是妥协。线 / 面才用 GPU 分类。
+- 点实体未来如支持贴地，应走 **CPU 高度采样**（见 §3.7）。这是 Cesium 对点 / 布告板 / 标签 / 模型的常用路径；完成生命周期与 LOD 收敛设计前，该能力不进入稳定公开类型。线 / 面使用 GPU 分类。
 
 ---
 
@@ -122,7 +122,7 @@ gl_FragCoord → 采样 depthTexture → 窗口深度 z
 | `GroundPolylineGraphic`     | 线墙体积几何 + 分类材质                  | `GroundPolylineGeometry` + `PolylineShadowVolumeFS`               |
 | `GroundPolygonGraphic`      | 面阴影体几何 + 模板两遍材质              | `PolygonGeometry.createShadowVolume` + `ShadowVolumeAppearanceFS` |
 | `EncodedCartesian3`（util） | 高 / 低双精度拆分                        | `EncodedCartesian3`                                                 |
-| `clamp` 字段 + 解析         | API（统一 `boolean \| GroundClamp`）     | 取代 `HeightReference` 7 值枚举                                     |
+| `clamp` 字段                | 稳定 API（线 / 面当前仅 `boolean`）      | 取代 `HeightReference` 7 值枚举                                     |
 | 点：复用`HeightSampler`     | CPU 采样改点位置                         | `Billboard._updateClamping`                                         |
 
 ---
@@ -180,16 +180,16 @@ gl_FragCoord → 采样 depthTexture → 窗口深度 z
 - **插入位置**：effects 链中、`EntityRenderManager` 邻近，但必须在云 / 大气合成之前。真实顺序为 `GroundClamp → Atmosphere → Entity OIT`。透明实体必须在大气之后，否则大气天空分支会抹掉其地平线像素。
 - **大气之后的深度规则**：大气 pass 可能 swap 到无深度的 targetB。因此 `EntityRenderManager` 及其他需要场景深度的后处理 pass 必须从 `readBuffer.depthTexture ?? writeBuffer.depthTexture` 两侧探测，不能只读 `readBuffer`。
 
-### 3.7 点：clamp CPU 采样（正解，非妥协）
+### 3.7 点：CPU 采样路线图
 
-- `clamp` 存在（`true` 或对象）时，`Entity` add 发起 `HeightSampler.sampleHeightMostDetailed([pos], { source })`，resolve 后 `PointGraphic.setPosition`。
+- 未来点贴地启用时，`Entity` add 发起 `HeightSampler.sampleHeightMostDetailed([pos], { source })`，resolve 后 `PointGraphic.setPosition`。
 - add 立即用椭球高先摆出来，采样 resolve 后 snap（渐进式，同瓦片流式体验）。
 - **LOD 重采样**：挂 `TilesetSamplingAdapter` readiness 信号或 `update()` 周期去抖重采样（点仅 1 顶点，几乎免费）。
-- `source` 直接取自 `clamp.source`（缺省 `'all'`）；最终点位 = 采样高程 + `clamp.offset`（缺省 0）。
+- 深度源与偏移的公开形状需在实现阶段重新评审；当前 `PointOptions` 不暴露 `clamp`。
 
 ### 3.8 实体集成
 
-- `Entity` 构造：`polyline.clamp` 存在 → 建 `GroundPolylineGraphic`，加入 `groundClampRoot`（非普通 entity root）；面同理。
+- `Entity` 构造：`polyline.clamp === true` → 建 `GroundPolylineGraphic`，加入 `groundClampRoot`（非普通 entity root）；面同理。
 - `EntityManager` 需持有 `groundClampRoot` 引用（由 `GroundClampPass` 提供 / 注入）。
 - 普通拾取（[EntityPicker](../../src/sampling/EntityPicker.ts)）对线 / 面走射线或屏幕投影——贴地几何为墙体积，射线命中语义需重新定义（建议按 footprint 投影拾取，复用现有 `forEachSegment` 屏幕投影逻辑）。
 
@@ -197,29 +197,25 @@ gl_FragCoord → 采样 depthTexture → 窗口深度 z
 
 ## 4. API 设计
 
-贴地本质是坐标的**垂直定位**属性，不是图形样式。它只有两个正交轴：贴到哪个面（深度源）、离那个面多高（偏移）。故**不采用 Cesium 的 7 值枚举**（笛卡尔积爆炸、`height` 语义被枚举远程改写、点 / 线 / 面三套 API 各行其是），改用一个**统一 `clamp` 字段**：`boolean` 走常见场景，对象走精细控制。
+贴地本质是坐标的**垂直定位**属性，不是图形样式。稳定 API 当前只承诺已经实现的线 / 面布尔贴地：
 
 ```ts
-export interface GroundClamp {
-  /** 贴到什么面；直接透传给 HeightSampler.source。默认 'all'（terrain 与 3D Tiles 取上）。 */
-  source?: 'all' | 'terrain' | 'tileset'
-  /** 地表之上的偏移（米）。0 或缺省 = 真·贴地；> 0 = 抬离地表。 */
-  offset?: number
+export interface PolylineOptions {
+  clamp?: boolean
+}
+
+export interface PolygonOptions {
+  clamp?: boolean
 }
 ```
 
-- 落到 `PointOptions / PolylineOptions / PolygonOptions`，三者**共用同一字段**：
-  ```ts
-  clamp?: boolean | GroundClamp
-  ```
 - 取值语义：
   - 缺省 / `false` → 绝对椭球高（当前行为，替代旧 `NONE`）。
-  - `true` → `{ source: 'all', offset: 0 }`，贴地，覆盖最常见诉求。
-  - 对象 → 精细控制，如 `{ source: 'terrain', offset: 5 }` = 地形上方 5 米。
-- **clamp 即 offset=0 的 relative**：Cesium 的 `CLAMP_TO_*` 与 `RELATIVE_TO_*` 在此塌缩为 `offset` 一个数字，不需两套枚举族；`source` 轴与 [HeightSampler](../../src/sampling/HeightSampler.ts) 的 `SampleHeightOptions.source` 一一对应，不重复编码。
-- 内部分发对用户透明：`source` 决定深度源（点采样）/ 分类深度快照（线 / 面）；点走 CPU 采样、线 / 面走分类渲染，用户侧始终是同一字段。
+  - `true` → 使用主场景深度中 terrain 与 3D Tiles 的可见并集进行贴地。
 
-### 4.1 实现断崖：offset=0 与 offset>0（线 / 面）
+未来的深度源分离、正向偏移和点贴地仍可采用分组对象或独立领域配置，但应在实现、测试、WebGL/WebGPU 降级语义和生命周期边界同时明确后再进入公开类型。不要提前暴露 `{ source, offset }` 再由运行时 warning 降级。
+
+### 4.1 路线图断崖：零偏移与正向偏移（线 / 面）
 
 概念连续，实现不连续，必须显式处理：
 
@@ -228,24 +224,24 @@ export interface GroundClamp {
 | `0`（真贴地）   | CPU 采样改点位  | **GPU 影体分类**（逐像素，不重建几何）      |
 | `> 0`（抬离）   | CPU 采样 + 偏移 | CPU 重采样抬升几何（采样间浮沉，后续阶段）  |
 
-- 点的 offset 天然是「采样高程 + offset」，无断崖。
-- 线 / 面 Phase 1 只实现 `offset=0`（GPU 分类）；对「线 / 面 + offset>0」未实现组合 **`console.warn` 降级**，不抛异常。
+- 点的偏移天然是「采样高程 + offset」，无断崖。
+- 线 / 面当前只实现零偏移 GPU 分类；正向偏移尚未进入公开类型，因此不存在运行时 warning 降级分支。
 
 ### 4.2 polygon 的 height / extrudeHeight 交互
 
 避免「字段被远程改写」：
 
-- `clamp` 存在 → 底面 = 贴地面，`height`（绝对底高）被忽略；
-- `extrudeHeight` 重定义为**相对底面的厚度**（米），而非绝对顶高。
+- `clamp: true` → 底面 = 贴地面，`height`（绝对底高）被忽略；
+- 当前 `extrudeHeight` / `outline` 会告警并忽略。未来若支持贴地拉伸，应单独评审“相对厚度”语义，不能沿用绝对顶高造成远程改写。
 
 即「贴地 + 向上拉伸体块」是自然组合，比 Cesium `GroundPrimitive` 只能压平更灵活。
 
 ### 4.3 分期
 
-- **Phase 1 仅实现 `clamp: true` / `{ source: 'all', offset: 0 }`**（线 / 面真贴地 + 点采样）。
+- **Phase 1 已实现 `clamp: true`**（线 / 面真贴地）。
 - `source: 'terrain' | 'tileset'` 依赖 §3.6 的分离深度快照（Phase 3）。
 - `offset > 0`（RELATIVE 语义）为 Phase 4。
-- 类型可**一次性声明完整**（API 稳定），运行时对未实现取值 warn 降级到最近的已实现档。
+- 未实现阶段不预占稳定类型；路线图字段完成后再扩展 API。
 
 ---
 
@@ -255,9 +251,9 @@ export interface GroundClamp {
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | **P0** 深度分类管线 + 贴地线 | `GroundClampPass` 骨架、深度绑定、`EncodedCartesian3`、port `GroundPolylineGeometry` 墙体积、线分类材质、normal nudge、`clamp: true`（线，offset=0） | 线在山地上随地形起伏贴合，相机 / LOD 变化无穿山 / 浮空、无抖动 |
 | **P1** 贴地面（已实现）      | `GroundPolygonGraphic`：earcut 三角化 + 每三角形棱柱 + 单 pass 半平面分类（§3.4/3.5，非模板两遍）、半透明填充、`clamp: true`（面，offset=0）                      | 面贴合地形，凹多边形正确，相邻面无 z-fighting                  |
-| **P2** 点 clamp              | `HeightSampler` 接入 + LOD 重采样、`clamp: true`（点）                                                                                                              | 点 snap 到地表，LOD 载入后位置收敛                             |
-| **P3** terrain/tileset 分离  | 主渲染中插入 terrain-only 深度快照 → `clamp.source: 'terrain' \| 'tileset'`                                                                                          | 同一线可仅贴地形或仅贴建筑顶                                   |
-| **P4** offset>0 + 打磨       | `clamp.offset > 0`（relative 语义）、精度 / 性能（scissor、bounding）、与 OIT 交互厘清                                                                                | 偏移贴地稳定，大场景帧率达标                                   |
+| **P2** 点 clamp              | `HeightSampler` 接入 + LOD 重采样；公开 API 在实现阶段评审                                                                                                          | 点 snap 到地表，LOD 载入后位置收敛                             |
+| **P3** terrain/tileset 分离  | 主渲染中插入 terrain-only 深度快照；深度源配置形状待评审                                                                                                             | 同一线可仅贴地形或仅贴建筑顶                                   |
+| **P4** 正向偏移 + 打磨       | relative 语义、精度 / 性能（scissor、bounding）、与 OIT 交互厘清；配置形状待评审                                                                                     | 偏移贴地稳定，大场景帧率达标                                   |
 | ~~P5 WebGPU~~                     | **本期不做**，后续单独立项（TSL/WGSL 原生着色器）                                                                                                                 | —                                                             |
 
 细节 1（双精度）与细节 2（微偏移）随 **P0** 落实，贯穿后续。
@@ -288,7 +284,7 @@ export interface GroundClamp {
 
 - [EntityRenderManager.ts](../../src/entities/EntityRenderManager.ts) — OIT depth-reading pass 范式（`telluxDepthDiscard` L351、材质注入 L336）
 - [effects.ts](../../src/effects.ts) — `ThreeEffectPass` / depthTexture 注入
-- [HeightSampler.ts](../../src/sampling/HeightSampler.ts) — 点 clamp 采样源（`clamp.source` ↔ `SampleHeightOptions.source`）
+- [HeightSampler.ts](../../src/sampling/HeightSampler.ts) — 点贴地路线图的高度采样能力
 - [EntityPicker.ts](../../src/sampling/EntityPicker.ts) — 拾取
 - [PolylineGraphic.ts](../../src/entities/PolylineGraphic.ts) / [PolygonGraphic.ts](../../src/entities/PolygonGraphic.ts) / [PointGraphic.ts](../../src/entities/PointGraphic.ts) — 现有 graphic
 - [entities.ts](../../src/types/entities.ts) — `EntityOptions` / `*Options` 类型

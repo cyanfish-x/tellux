@@ -2,7 +2,7 @@
 
 > 状态：**v1 已实现（per-symbol SDF，2026-07-04）**。文字渲染直接采用 SDF 方案（每符号一张 SDF 纹理），跳过原计划的 canvas 覆盖 v1；glyph 图集 / troika 路线作为量级驱动的后续。
 > 范围：点锚定的屏幕空间图标（billboard）+ 文字标签，对标 Mapbox GL `symbol` layer 与 Cesium `BillboardGraphics` / `LabelGraphics`。
-> 渲染器：WebGL 优先；与现有实体 OIT / 拾取 / 颜色反求管线对齐。
+> 渲染器：WebGL 优先；与现有实体拾取体系对齐，并通过后合成显示色路径保持 WYSIWYG。
 
 ---
 
@@ -18,11 +18,11 @@
 
 - 图标 + 文字成对出现（带名字的兴趣点）是最常见用法，分开会迫使大多数实体写两个字段、且无法表达二者相对排布。
 - 共享锚点 / 偏移 / 旋转 / 透明度等放置属性天然属于「这一组标注」而非单个图元。
-- 内部共用一个屏幕空间四边形原语（`AnchorQuadGraphic`），icon 与 text 是两个 quad 实例，渲染管线、拾取、OIT、颜色反求完全复用。
+- 内部共用一个屏幕空间四边形原语（`AnchorQuadGraphic`），icon 与 text 是两个 quad 实例，渲染管线、拾取、遮挡和显示色解析完全复用。
 
 ### 0.3 文字渲染：per-symbol SDF（v1 实现）
 
-v1 直接采用 **SDF 方案**：每段文字先用 canvas 光栅化（仅 alpha 覆盖，白色字形透明底），再用两遍可分离 EDT（Felzenszwalb-Huttenlocher）生成单通道有符号距离场纹理；icon 同理从图片 alpha 生成 SDF。二者各一个屏幕空间 billboard quad，共用一套 SDF shader（`smoothstep` 抗锯齿填充 + 距离阈值描边 / halo），颜色作为 uniform 经 [resolveColor](../../src/entities/invertToneMapping.ts) 做 AgX 反求 → 全 WYSIWYG，且改色不需重建纹理，改文字 / 字号才重建。
+v1 直接采用 **SDF 方案**：每段文字先用 canvas 光栅化（仅 alpha 覆盖，白色字形透明底），再用两遍可分离 EDT（Felzenszwalb-Huttenlocher）生成单通道有符号距离场纹理；icon 同理从图片 alpha 生成 SDF。二者各一个屏幕空间 billboard quad，共用一套 SDF shader（`smoothstep` 抗锯齿填充 + 距离阈值描边 / halo）。Symbol 位于主色调映射之后的独立合成 pass，颜色 uniform 经 [resolveDisplayColor](../../src/entities/invertToneMapping.ts) 转成目标显示色，不做 AgX 反求；改色不需重建纹理，改文字 / 字号才重建。
 
 - 契合设计文档的 `AnchorQuadGraphic` 原语（icon / text 各一个 quad），与 Point / Polyline / Polygon graphic 同构，OIT / 拾取 / 颜色管线全复用。
 - 零新依赖；距离变换为自研约 60 行。复用浏览器系统字体，**中文标注零字体成本**。
@@ -32,7 +32,7 @@ v1 直接采用 **SDF 方案**：每段文字先用 canvas 光栅化（仅 alpha
 
 ### 0.4 关键约束
 
-- **WYSIWYG**：所有用户色（icon tint / text fill / outline / background）统一走 `resolveColor`，抵消内置 AgX 管线对整帧的色调映射压扁（详见 [invertToneMapping.ts](../../src/entities/invertToneMapping.ts)）。
+- **WYSIWYG**：所有用户色（icon tint / text fill / outline / background）统一走 `resolveDisplayColor`。Symbol 在 AgX 之后合成，因此直接使用目标显示色，不能复用主场景实体的反求路径（详见 [invertToneMapping.ts](../../src/entities/invertToneMapping.ts)）。
 - **锚点遮挡**：symbol 不走实体 OIT；WebGL 下由 [SymbolOcclusionPass](../../src/entities/SymbolOcclusionPass.ts) 在主场景之后单独绘制，并读取场景深度纹理按锚点做全有 / 全无遮挡。
 - **WebGPU**：`onBeforeCompile` 在 WebGPU 失效；自写 ShaderMaterial 不依赖该机制（直接写完整 GLSL），但当前锚点遮挡 pass 依赖 WebGL `setEffects` 深度纹理链。WebGPU 支持需后续单独立项。
 - **不依赖 sandcastle import 白名单**：canvas 纹理在 graphic 内部 `document.createElement('canvas')` 生成，案例侧无新依赖。
@@ -101,7 +101,7 @@ Entity
 ### 3.1 AnchorQuadGraphic（共享原语）
 
 - 几何：`PlaneGeometry(1, 1)`，单 quad。
-- 材质：自写 `ShaderMaterial`，uniform：`uMap`、`uTint`（linear，`resolveColor` 输出）、`uOpacity`、`uRotation`、`uPixelOffset`、`uAnchor`（归一化偏移）、`uSizeMode`（`'pixel' | 'world'`）、`uPixelSize`、`uWorldSize`、`uCameraRight` / `uCameraUp`（或 VS 取 view 矩阵列）。
+- 材质：自写 `ShaderMaterial`，uniform：`uMap`、`uTint`（`resolveDisplayColor` 输出的显示色）、`uOpacity`、`uRotation`、`uPixelOffset`、`uAnchor`（归一化偏移）、`uPixelSize`、`uCameraRight` / `uCameraUp`（或 VS 取 view 矩阵列）。
 - VS：顶点单位四边形按 sizeMode 缩放（pixel = 除以 drawing buffer 尺寸转 NDC；world = 世界单位），按 rotation 旋转，按 anchor / pixelOffset 平移，再用 camera right / up 基向量从锚点 world position 摆到屏幕空间 → `gl_Position`。**像素大小在 VS 里做，不需每帧按距离 rescale。**
 - FS：`gl_FragColor = texture2D(uMap, vUv) * vec4(uTint, uOpacity);`（main 末尾显式写 `gl_FragColor`，命中 OIT fallback 分支）。
 - `alphaTest` / `depthTest` / `depthWrite` 通过 material 属性控制；半透明时 `transparent: true` 触发 OIT。
@@ -121,7 +121,7 @@ Entity
 
 ### 3.3 颜色 WYSIWYG
 
-- icon tint、text fill、text outline、text background 各自经 `resolveColor(input)` 得 linear Color，作为对应 quad 的 uniform。
+- icon tint、text fill、text outline、text background 各自经 `resolveDisplayColor(input)` 得到目标显示色，作为对应 quad 的 uniform。
 - canvas 仅存覆盖：字形 / 描边为白 alpha，背景透明 → `texture2D(uMap).a` 是字形覆盖率，`rgb` 乘 tint。
 - 描边：text quad 画两遍？不——canvas 一次烘焙出「描边 + 字形」覆盖（描边在字形外圈，字形在内圈），FS 里用覆盖率区分：`fillA = inner coverage`、`outlineA = total - inner`。或更简：两个 AnchorQuad 叠加（outline quad 在下，fill quad 在上），各自 tint。**实现时定**，倾向单 canvas 双通道覆盖率（少一个 quad）。
 - 背景色：单独 uniform + 一个不透明 alpha 填充（在字形覆盖之前画），或作为 text quad 的背景层。**实现时定**。
@@ -170,9 +170,7 @@ export interface IconOptions {
   image: string | HTMLImageElement | HTMLCanvasElement | THREE.Texture
   /** 缩放，默认 1。 */
   scale?: number
-  /** true=世界米，false=屏幕像素（默认）。 */
-  sizeInMeters?: boolean
-  /** tint 颜色，默认白色（不染色）。经 resolveColor 反求。 */
+  /** tint 颜色，默认白色（不染色）。按目标显示色解析。 */
   color?: ColorInput
   /** 透明度 [0,1]，默认 1。 */
   opacity?: number
@@ -188,13 +186,13 @@ export interface TextOptions {
   fontSize?: number
   /** 字重，默认 'normal'。 */
   fontWeight?: 'normal' | 'bold' | number
-  /** 填充色，默认白色。经 resolveColor 反求。 */
+  /** 填充色，默认白色。按目标显示色解析。 */
   fillColor?: ColorInput
   /** 描边色；仅 outlineWidth>0 生效。 */
   outlineColor?: ColorInput
   /** 描边像素宽，默认 0。 */
   outlineWidth?: number
-  /** 背景色；缺省透明。经 resolveColor 反求。 */
+  /** 背景色；缺省透明。按目标显示色解析。 */
   backgroundColor?: ColorInput
   /** 内边距 [x, y]（像素），默认 [4, 2]。 */
   padding?: [number, number]
@@ -222,8 +220,6 @@ export interface SymbolOptions {
   textIconSpacing?: number
   /** 旋转（弧度，屏幕空间顺时针），默认 0。 */
   rotation?: number
-  /** 贴地配置（P2：单点 HeightSampler 采样，与点一致；offset=0=贴地）。 */
-  clamp?: ClampInput
 }
 ```
 
@@ -302,7 +298,7 @@ viewer.entities.add({
 
 - `symbol` 与 `point` 可共存（同一实体既有圆点又有图标 + 文字），二者独立挂 root。
 - `symbol` 跟随 `EntityOptions.position`（同 point）。
-- `clamp` 字段语义与点 / 线 / 面一致（[ground-clamp.md](./ground-clamp.md) §4）；v1 不实现，warn 降级为绝对高。
+- Symbol 贴地和米制尺寸仍是路线图能力；在实现与验证完成前不进入稳定公开类型。
 
 ### 4.2 实现断崖（同 ground-clamp 思路）
 
@@ -310,12 +306,12 @@ viewer.entities.add({
 |---|---|---|
 | 绝对高 + pixelOffset / scale / anchor / rotation / color | ✅ | — |
 | 半透明（OIT） | ✅ | — |
-| 贴地 clamp（单点采样） | ❌ warn 降级 | S4 |
+| 贴地 clamp（单点采样） | 🧭 未进入稳定 API | S4 |
 | 距离缩放 / 透明度衰减 | ❌ | S5 |
 | disableDepthTestDistance | ❌ | S5 |
 | SDF 文字 / instanced collection | ❌ | 量级驱动 |
 
-类型一次性声明完整（API 稳定），运行时对未实现取值 warn 降级。
+稳定类型只声明已兑现能力；路线图字段在实现、测试和文档同批完成后再进入公开 API。
 
 ---
 
@@ -338,7 +334,7 @@ viewer.entities.add({
 ## 6. 风险与开放问题
 
 - **大数量 symbol 性能**：当前仍是 per-quad mesh / draw call；锚点遮挡 pass 先保证语义正确，后续量级上来再做 atlas、instancing、屏幕裁剪和碰撞 / 聚合。
-- **canvas 覆盖 vs 烘焙颜色**：本期定 coverage-only + uniform tint（WYSIWYG + 改色不重建）；需验证 AgX 反求对纯白覆盖乘 tint 的回代色与目标色一致。
+- **canvas 覆盖 vs 烘焙颜色**：本期定 coverage-only + uniform tint（WYSIWYG + 改色不重建）；Symbol 后合成 pass 直接使用 `resolveDisplayColor` 的目标显示色。
 - **描边 / 背景实现**：单 canvas 双通道覆盖率 vs 双 quad 叠加 vs 背景层——S2 实现时定，倾向单 canvas 双通道（少 quad）。
 - **图标纹理生命周期**：异步加载 + 多实体共享缓存 + dispose 时机（引用计数 vs 简单 dispose），避免泄漏或释放中纹理。
 - **像素大小与 DPI**：canvas 按设备 pixelRatio 绘制保证锐利；pixel size 在 VS 里需结合 drawing buffer 尺寸（非 CSS 尺寸）转 NDC，与 [syncResolution](../../src/entities/EntityManager.ts#L88) 的 resolution 口径一致。
@@ -366,7 +362,7 @@ viewer.entities.add({
 - [PointGraphic.ts](../../src/entities/PointGraphic.ts) — 点锚定 + 屏幕空间像素大小范式
 - [EntityGraphics.ts](../../src/entities/EntityGraphics.ts) — `*Graphics` 运行时句柄范式
 - [EntityRenderManager.ts](../../src/entities/EntityRenderManager.ts) — OIT pass、`patchFragmentShader` 材质注入
-- [invertToneMapping.ts](../../src/entities/invertToneMapping.ts) — `resolveColor` AgX 反求
+- [invertToneMapping.ts](../../src/entities/invertToneMapping.ts) — `resolveDisplayColor` 后合成显示色解析
 - [EntityPicker.ts](../../src/sampling/EntityPicker.ts) — 拾取（raycast + 屏幕空间 tolerance）
 - [types/entities.ts](../../src/types/entities.ts) — `EntityOptions` / `*Options`
 - [ground-clamp.md](./ground-clamp.md) — `clamp` 字段语义、单点 HeightSampler 采样

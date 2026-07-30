@@ -2,6 +2,7 @@ import { DEFAULT_CAMERA } from './constants'
 import type { SurfaceMaterialOptions } from './materials/materialMode'
 import type { ModelMaterialMode } from './models/GltfModelLayer'
 import type { ResolvedSceneOptions } from './Scene'
+import { sceneValueNormalizers } from './scene/SceneValueNormalization'
 import type { AtmosphereLightingMode, SurfaceMaterialMode, ViewerOptions, ViewerSurfaceMaterialOptions } from './types'
 
 export type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
@@ -20,6 +21,7 @@ export function resolveViewerResolutionScale(options: ViewerOptions) {
 
 export function resolveViewerSceneOptions(options: ViewerOptions['scene']): ResolvedSceneOptions {
   const atmosphereLightingMode = options?.atmosphere?.lighting?.mode ?? 'post-process'
+  const normalize = sceneValueNormalizers
 
   return {
     atmosphere: {
@@ -28,65 +30,107 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
         mode: atmosphereLightingMode,
         sunLight: options?.atmosphere?.lighting?.sunLight ?? true,
         skyLight: options?.atmosphere?.lighting?.skyLight ?? true,
-        sunLightIntensity: options?.atmosphere?.lighting?.sunLightIntensity ?? 1,
-        skyLightIntensity: options?.atmosphere?.lighting?.skyLightIntensity ?? 1,
-        albedoScale: options?.atmosphere?.lighting?.albedoScale ?? 1
+        sunLightIntensity: normalize.sunLightIntensity(
+          options?.atmosphere?.lighting?.sunLightIntensity ?? 1
+        ),
+        skyLightIntensity: normalize.skyLightIntensity(
+          options?.atmosphere?.lighting?.skyLightIntensity ?? 1
+        ),
+        albedoScale: normalize.albedoScale(options?.atmosphere?.lighting?.albedoScale ?? 1)
       },
       night: {
         enabled: options?.atmosphere?.night?.enabled ?? false,
         moonLight: options?.atmosphere?.night?.moonLight ?? true,
         ambientLight: options?.atmosphere?.night?.ambientLight ?? true,
         color: options?.atmosphere?.night?.color ?? 0x9bbcff,
-        moonLightIntensity: options?.atmosphere?.night?.moonLightIntensity ?? 0.18,
-        ambientIntensity: options?.atmosphere?.night?.ambientIntensity ?? 0.08,
+        moonLightIntensity: normalize.moonLightIntensity(
+          options?.atmosphere?.night?.moonLightIntensity ?? 0.18
+        ),
+        ambientIntensity: normalize.nightAmbientIntensity(
+          options?.atmosphere?.night?.ambientIntensity ?? 0.08
+        ),
         useMoonPhase: options?.atmosphere?.night?.useMoonPhase ?? true,
-        transitionRange: options?.atmosphere?.night?.transitionRange ?? [-0.08, 0.05]
+        transitionRange: normalize.nightTransitionRange(
+          options?.atmosphere?.night?.transitionRange ?? [-0.08, 0.05]
+        )
       },
       scattering: {
         transmittance: options?.atmosphere?.scattering?.transmittance ?? true,
         inscatter: options?.atmosphere?.scattering?.inscatter ?? true,
-        intensity: options?.atmosphere?.scattering?.intensity ?? 0.6,
+        intensity: normalize.inscatterIntensity(
+          options?.atmosphere?.scattering?.intensity ?? 0.6
+        ),
         horizonBlend: options?.atmosphere?.scattering?.horizonBlend ?? true,
-        horizonRange: options?.atmosphere?.scattering?.horizonRange ?? [0, 0.6],
+        horizonRange: normalize.inscatterHorizonRange(
+          options?.atmosphere?.scattering?.horizonRange ?? [0, 0.6]
+        ),
         correctAltitude: options?.atmosphere?.scattering?.correctAltitude ?? true,
         correctGeometricError: options?.atmosphere?.scattering?.correctGeometricError ?? true,
-        solarIrradianceScale: options?.atmosphere?.scattering?.solarIrradianceScale ?? 1,
-        rayleighScatteringScale: options?.atmosphere?.scattering?.rayleighScatteringScale ?? 1,
-        mieScatteringScale: options?.atmosphere?.scattering?.mieScatteringScale ?? 1,
-        mieExtinctionScale: options?.atmosphere?.scattering?.mieExtinctionScale ?? 1,
-        miePhaseFunctionG: options?.atmosphere?.scattering?.miePhaseFunctionG ?? 0.8,
-        absorptionExtinctionScale: options?.atmosphere?.scattering?.absorptionExtinctionScale ?? 1,
-        groundAlbedo: options?.atmosphere?.scattering?.groundAlbedo ?? 0.1
+        solarIrradianceScale: normalize.solarIrradianceScale(
+          options?.atmosphere?.scattering?.solarIrradianceScale ?? 1
+        ),
+        rayleighScatteringScale: normalize.rayleighScatteringScale(
+          options?.atmosphere?.scattering?.rayleighScatteringScale ?? 1
+        ),
+        mieScatteringScale: normalize.mieScatteringScale(
+          options?.atmosphere?.scattering?.mieScatteringScale ?? 1
+        ),
+        mieExtinctionScale: normalize.mieExtinctionScale(
+          options?.atmosphere?.scattering?.mieExtinctionScale ?? 1
+        ),
+        miePhaseFunctionG: normalize.miePhaseFunctionG(
+          options?.atmosphere?.scattering?.miePhaseFunctionG ?? 0.8
+        ),
+        absorptionExtinctionScale: normalize.absorptionExtinctionScale(
+          options?.atmosphere?.scattering?.absorptionExtinctionScale ?? 1
+        ),
+        groundAlbedo: normalize.groundAlbedo(
+          options?.atmosphere?.scattering?.groundAlbedo ?? 0.1
+        )
       },
       sky: {
         stars: options?.atmosphere?.sky?.stars ?? true,
-        starsIntensity: options?.atmosphere?.sky?.starsIntensity ?? 1,
-        starsPointSize: options?.atmosphere?.sky?.starsPointSize ?? 1,
+        starsIntensity: normalize.starsIntensity(
+          options?.atmosphere?.sky?.starsIntensity ?? 1
+        ),
+        starsPointSize: normalize.starsPointSize(
+          options?.atmosphere?.sky?.starsPointSize ?? 1
+        ),
         sun: options?.atmosphere?.sky?.sun ?? true,
         moon: options?.atmosphere?.sky?.moon ?? true,
         ground: options?.atmosphere?.sky?.ground ?? true,
-        sunAngularRadius: options?.atmosphere?.sky?.sunAngularRadius ?? 0.004675,
-        moonAngularRadius: options?.atmosphere?.sky?.moonAngularRadius ?? 0.0045,
-        lunarRadianceScale: options?.atmosphere?.sky?.lunarRadianceScale ?? 1
+        sunAngularRadius: normalize.sunAngularRadius(
+          options?.atmosphere?.sky?.sunAngularRadius ?? 0.004675
+        ),
+        moonAngularRadius: normalize.moonAngularRadius(
+          options?.atmosphere?.sky?.moonAngularRadius ?? 0.0045
+        ),
+        lunarRadianceScale: normalize.lunarRadianceScale(
+          options?.atmosphere?.sky?.lunarRadianceScale ?? 1
+        )
       },
       shadow: {
-        radius: options?.atmosphere?.shadow?.radius ?? 3,
-        sampleCount: options?.atmosphere?.shadow?.sampleCount ?? 8
+        radius: normalize.shadowRadius(options?.atmosphere?.shadow?.radius ?? 3),
+        sampleCount: normalize.shadowSampleCount(
+          options?.atmosphere?.shadow?.sampleCount ?? 8
+        )
       },
       fallbackAmbientLight: {
         show: options?.atmosphere?.fallbackAmbientLight?.show ?? true,
-        intensity: options?.atmosphere?.fallbackAmbientLight?.intensity ?? 0.5
+        intensity: normalize.fallbackAmbientLightIntensity(
+          options?.atmosphere?.fallbackAmbientLight?.intensity ?? 0.5
+        )
       }
     },
     clouds: {
       show: options?.clouds?.show ?? true,
       quality: options?.clouds?.quality,
       lightShafts: options?.clouds?.lightShafts ?? true,
-      coverage: options?.clouds?.coverage ?? 0.3,
-      speed: options?.clouds?.speed ?? 0.001,
+      coverage: normalize.cloudCoverage(options?.clouds?.coverage ?? 0.3),
+      speed: normalize.cloudSpeed(options?.clouds?.speed ?? 0.001),
       layer: {
-        altitude: options?.clouds?.layer?.altitude ?? 1500,
-        height: options?.clouds?.layer?.height ?? 650
+        altitude: normalize.cloudLayerAltitude(options?.clouds?.layer?.altitude ?? 1500),
+        height: normalize.cloudLayerHeight(options?.clouds?.layer?.height ?? 650)
       }
     },
     entities: {

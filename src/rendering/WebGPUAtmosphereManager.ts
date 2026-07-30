@@ -19,6 +19,7 @@ import {
 
 import type { AtmosphereRuntimeState, CloudRuntimeState } from './AtmosphereRuntimeState'
 import type { TelluxRendererAdapter, TelluxWebGPURenderer } from './RendererAdapter'
+import { normalizeAtmosphereRuntimeState } from '../scene/SceneValueNormalization'
 import type { AtmosphereLightingMode } from '../types'
 
 type WebGPUNode = Node
@@ -109,6 +110,7 @@ export class WebGPUAtmosphereManager {
   }
 
   applyAtmosphereState(state: AtmosphereRuntimeState) {
+    state = normalizeAtmosphereRuntimeState(state)
     this.atmosphereContext.correctAltitude = state.correctAltitude
     this.atmosphereContext.showGround = state.ground
     this.aerialPerspectiveNode.correctGeometricError = state.correctGeometricError

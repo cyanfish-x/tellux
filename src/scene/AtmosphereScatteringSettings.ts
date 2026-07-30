@@ -1,5 +1,5 @@
-import * as THREE from 'three'
 import type { ResolvedSceneOptions } from './SceneOptions'
+import { sceneValueNormalizers } from './SceneValueNormalization'
 
 export class AtmosphereScatteringSettings {
   constructor(
@@ -33,7 +33,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set intensity(value: number) {
-    this.options.intensity = THREE.MathUtils.clamp(value, 0, 1)
+    this.options.intensity = sceneValueNormalizers.inscatterIntensity(value)
     this.onStateChange()
   }
 
@@ -53,7 +53,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set horizonRange(value: [number, number]) {
-    this.options.horizonRange = [...value]
+    this.options.horizonRange = sceneValueNormalizers.inscatterHorizonRange(value)
     this.onStateChange()
   }
 
@@ -83,7 +83,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set solarIrradianceScale(value: number) {
-    this.options.solarIrradianceScale = value
+    this.options.solarIrradianceScale = sceneValueNormalizers.solarIrradianceScale(value)
     this.onStateChange()
   }
 
@@ -93,7 +93,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set rayleighScatteringScale(value: number) {
-    this.options.rayleighScatteringScale = value
+    this.options.rayleighScatteringScale = sceneValueNormalizers.rayleighScatteringScale(value)
     this.onStateChange()
   }
 
@@ -103,7 +103,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set mieScatteringScale(value: number) {
-    this.options.mieScatteringScale = value
+    this.options.mieScatteringScale = sceneValueNormalizers.mieScatteringScale(value)
     this.onStateChange()
   }
 
@@ -113,7 +113,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set mieExtinctionScale(value: number) {
-    this.options.mieExtinctionScale = value
+    this.options.mieExtinctionScale = sceneValueNormalizers.mieExtinctionScale(value)
     this.onStateChange()
   }
 
@@ -123,7 +123,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set miePhaseFunctionG(value: number) {
-    this.options.miePhaseFunctionG = value
+    this.options.miePhaseFunctionG = sceneValueNormalizers.miePhaseFunctionG(value)
     this.onStateChange()
   }
 
@@ -133,7 +133,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set absorptionExtinctionScale(value: number) {
-    this.options.absorptionExtinctionScale = value
+    this.options.absorptionExtinctionScale = sceneValueNormalizers.absorptionExtinctionScale(value)
     this.onStateChange()
   }
 
@@ -143,7 +143,7 @@ export class AtmosphereScatteringSettings {
   }
 
   set groundAlbedo(value: number) {
-    this.options.groundAlbedo = value
+    this.options.groundAlbedo = sceneValueNormalizers.groundAlbedo(value)
     this.onStateChange()
   }
 

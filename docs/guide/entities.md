@@ -44,7 +44,6 @@ viewer.entities.add({
 | `color` | 白色 | 填充颜色。 |
 | `outlineColor` | — | 描边颜色；仅 `outlineWidth > 0` 时生效。 |
 | `outlineWidth` | `0` | 描边像素宽度，`0` 表示无描边。 |
-| `clamp` | — | 贴地配置；点贴地暂未实现（见「贴地」一节）。 |
 
 ```ts
 viewer.entities.add({
@@ -73,7 +72,7 @@ entity.point.pixelSize = 16
 | `positions` | — | 顶点经纬高序列。 |
 | `width` | `2` | 像素宽度（绝对高）或米宽度（贴地）。 |
 | `color` | 白色 | 颜色。 |
-| `clamp` | — | 贴地配置。 |
+| `clamp` | `false` | `true` 时贴合地形与 3D Tiles；仅 WebGL。 |
 
 ```ts
 // 绝对高折线
@@ -117,7 +116,7 @@ viewer.entities.add({
 | `color` | 白色 | 填充颜色，支持 `rgba(...)` / `#rrggbbaa` 的 alpha。 |
 | `outline` | `false` | 是否显示描边。 |
 | `outlineColor` | — | 描边颜色。 |
-| `clamp` | — | 贴地配置。 |
+| `clamp` | `false` | `true` 时贴合地形与 3D Tiles；仅 WebGL。 |
 
 ```ts
 // 平面多边形
@@ -188,8 +187,7 @@ SDF 方案下，图标按其 alpha 通道作为剪影生成距离场：可任意
 | --- | --- | --- |
 | `image` | — | 图标来源：URL / `Image` / `Canvas` / `THREE.Texture`。URL 会跨实体共享同一张 SDF 纹理。 |
 | `scale` | `1` | 缩放。 |
-| `sizeInMeters` | `false` | `true` = 世界米；暂未实现，会告警降级为屏幕像素。 |
-| `color` | 白色 | tint 染色，经反求还原（WYSIWYG）。 |
+| `color` | 白色 | tint 染色；在 Symbol 后合成 pass 中直接显示目标色。 |
 | `opacity` | `1` | 透明度。 |
 
 ### 文字（text）
@@ -239,20 +237,16 @@ Symbol 由独立的锚点遮挡 pass 绘制：锚点被地形 / 3D Tiles / 模�
 
 ## 贴地（clamp）
 
-`clamp` 是坐标的垂直定位属性，对折线和多边形生效。它有两个正交轴：贴到哪个面（`source`）、离那个面多高（`offset`）。
+稳定 API 目前只在折线和多边形上提供布尔 `clamp`。`true` 会使用主场景深度把图形贴到 terrain 与 3D Tiles 的可见并集；缺省或 `false` 使用绝对椭球高。
 
 | 取值 | 含义 |
 | --- | --- |
 | 缺省 / `false` | 绝对椭球高，不贴地。 |
-| `true` | 等价 `{ source: 'all', offset: 0 }`，真·贴地。 |
-| `{ source, offset }` | 精细控制。`source` 默认 `'all'`，`offset` 默认 `0`（米）。 |
+| `true` | 贴合 terrain 与 3D Tiles 的可见并集。 |
 
 ```ts
-// 贴地，地形与 3D Tiles 取上
+// 贴地，terrain 与 3D Tiles 取可见并集
 clamp: true
-
-// 等价写法
-clamp: { source: 'all', offset: 0 }
 ```
 
 贴地通过 GPU 深度分类实现：片元着色器读取主场景深度纹理还原地表点，逐像素判定是否落在图形 footprint 内，因此能随地形 / 3D Tiles 起伏贴合，且几何不随地形 LOD 重建。**仅 WebGL 支持**（WebGPU 下无贴地 pass，会降级为绝对高并告警）。
@@ -261,11 +255,9 @@ clamp: { source: 'all', offset: 0 }
 
 | 能力 | 状态 |
 | --- | --- |
-| 折线 / 多边形 `clamp: true`（`offset: 0`） | ✅ 已实现（WebGL） |
-| 折线 / 多边形 `offset > 0`（抬离地表） | ❌ 暂未实现，降级为绝对高并告警 |
-| 点 `clamp` | ❌ 暂未实现，降级为绝对高并告警 |
+| 折线 / 多边形 `clamp: true` | ✅ 已实现（WebGL） |
 | 贴地多边形 `extrudeHeight` / `outline` | ❌ 不支持，告警忽略 |
-| `source: 'terrain'` / `'tileset'`（分离贴地） | ❌ 后续阶段；当前贴地深度为地形与 3D Tiles 并集 |
+| 点 / Symbol 贴地、正向偏移、分离深度源 | 🧭 路线图能力，尚未进入公开类型 |
 
 ## 实体管理
 
@@ -310,7 +302,7 @@ entity.properties.label = '新名称'
 
 颜色字段接受 `ColorInput`：数值 hex（`0xffd166`）、CSS 颜色字符串（`'#ffd166'`、`'rgba(...)'`）或 `THREE.Color` 实例。
 
-Tellux 内置了 AgX 色调映射，会压扁整帧亮度。实体颜色统一经过反求处理，使你输入的颜色就是屏幕上看到的颜色（WYSIWYG），无需手动补偿。
+Tellux 内置 AgX 色调映射。点、线、面在主色调映射链内渲染，因此通过 `resolveColor()` 做反求补偿；Symbol 位于后合成链，使用 `resolveDisplayColor()` 直接把输入颜色转换到显示空间。两条路径都保持所见即所得（WYSIWYG），调用侧无需手动补偿。
 
 半透明填充（如 `rgba(...)` 或 `#rrggbbaa`）由实体专用的 OIT（顺序无关透明）pass 合成，避免多个半透明面相互穿插时的排序错误。透明模式在 `scene.entities.transparency.mode` 配置：
 
@@ -354,12 +346,11 @@ viewer.on('click', (event) => {
 | 能力 | 状态 |
 | --- | --- |
 | 点 / 折线 / 多边形（绝对高） | ✅ |
-| 折线 / 多边形真·贴地（`offset: 0`，WebGL） | ✅ |
+| 折线 / 多边形真·贴地（`clamp: true`，WebGL） | ✅ |
 | 半透明 OIT 合成（WebGL） | ✅ |
 | 图标 + 文字标签（Symbol 实体，SDF 渲染） | ✅ |
-| 点贴地、`offset > 0` 贴地 | ❌ 计划中 |
-| `source` 分离贴地（仅地形 / 仅 3D Tiles） | ❌ 计划中 |
-| Symbol 贴地、`sizeInMeters`、距离衰减 | ❌ 计划中 |
+| 点 / Symbol 贴地、正向偏移与分离深度源 | 🧭 路线图，未进入稳定 API |
+| Symbol 米制尺寸与距离衰减 | 🧭 路线图，未进入稳定 API |
 
 Symbol 实体已实现，详见上方「图标与文字标签」一节；设计取舍见 [Symbol 实体设计文档](../design/symbol-entity.md)。
 

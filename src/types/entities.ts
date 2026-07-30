@@ -1,47 +1,6 @@
 import type { Color, Texture, Vector3 } from 'three'
-import type { CartographicInput, HeightSamplingSource } from './spatial'
+import type { CartographicInput } from './spatial'
 import type { Entity } from '../entities/Entity'
-
-/**
- * 贴地（Ground Clamp）配置。贴地是坐标的垂直定位属性，只有两个正交轴：
- * 贴到哪个面（{@link source}）、离那个面多高（{@link offset}）。
- *
- * Ground-clamp options. Clamping is a vertical-positioning property with two
- * orthogonal axes: which surface to clamp to ({@link source}) and how far above
- * it ({@link offset}).
- *
- * 详见 `docs/design/ground-clamp.md` §4。
- */
-export interface GroundClamp {
-  /**
-   * 贴到什么面；直接透传给高度采样的 `source`。默认 `'all'`（terrain 与
-   * 3D Tiles 取上）。
-   *
-   * Which surface to clamp to; forwarded to the height-sampling `source`.
-   * Defaults to `'all'` (terrain and 3D Tiles, whichever is higher).
-   */
-  source?: HeightSamplingSource
-  /**
-   * 地表之上的偏移（米）。`0` 或缺省 = 真·贴地；`> 0` = 抬离地表。
-   *
-   * Offset above the surface in meters. `0` or omitted = true ground clamp;
-   * `> 0` = lifted above the surface.
-   */
-  offset?: number
-}
-
-/**
- * 贴地字段：`boolean` 走常见场景，对象走精细控制。
- * - 缺省 / `false` → 绝对椭球高（不贴地）。
- * - `true` → `{ source: 'all', offset: 0 }`，贴地。
- * - 对象 → 精细控制。
- *
- * Ground-clamp field: `boolean` for the common case, object for fine control.
- * - omitted / `false` → absolute ellipsoidal height (no clamp).
- * - `true` → `{ source: 'all', offset: 0 }`, clamped.
- * - object → fine control.
- */
-export type ClampInput = boolean | GroundClamp
 
 /**
  * 颜色输入：数值 hex、CSS 颜色字符串或 Three.js Color。
@@ -80,13 +39,6 @@ export interface PointOptions {
    * Outline pixel width. Defaults to `0` (no outline).
    */
   outlineWidth?: number
-  /**
-   * 贴地配置。点贴地为 CPU 采样（P2 尚未实现，当前会降级为绝对高并告警）。
-   *
-   * Ground-clamp options. Point clamping is CPU-sampled (P2, not yet
-   * implemented; currently falls back to absolute height with a warning).
-   */
-  clamp?: ClampInput
 }
 
 /**
@@ -114,17 +66,13 @@ export interface PolylineOptions {
    */
   color?: ColorInput
   /**
-   * 贴地配置。`clamp: true`（或 `offset: 0`）时折线通过 GPU 深度分类真·贴地，
-   * 随地形/3D Tiles 起伏贴合；此时 {@link width} 语义为**米**（贴地 ribbon 宽度），
-   * 非像素。`offset > 0` 暂未实现（P4），会降级为绝对高并告警。仅 WebGL 支持。
+   * 是否通过 GPU 深度分类贴合 terrain / 3D Tiles。贴地时 {@link width} 以米为
+   * 单位；当前仅 WebGL 支持。
    *
-   * Ground-clamp options. With `clamp: true` (or `offset: 0`) the polyline is
-   * draped onto terrain/3D Tiles via GPU depth classification; {@link width} is
-   * then interpreted in **meters** (ground ribbon width), not pixels. `offset > 0`
-   * is not yet implemented (P4) and falls back to absolute height with a warning.
-   * WebGL only.
+   * Whether to drape the polyline onto terrain / 3D Tiles using GPU depth
+   * classification. When clamped, {@link width} is measured in meters. WebGL only.
    */
-  clamp?: ClampInput
+  clamp?: boolean
 }
 
 /**
@@ -177,20 +125,14 @@ export interface PolygonOptions {
    */
   outlineColor?: ColorInput
   /**
-   * 贴地配置。`clamp: true`（或 `offset: 0`）时多边形通过 GPU 深度分类真·贴地，
-   * 随地形/3D Tiles 起伏贴合，凹多边形支持；此时 {@link height} 被忽略（§4.2），
-   * {@link extrudeHeight} / {@link outline} 暂不支持（告警忽略）。填充色支持
-   * `rgba(...)` / `#rrggbbaa` 的 alpha 半透明。`offset > 0` 暂未实现（P4），
-   * 会降级为绝对高并告警。仅 WebGL 支持。
+   * 是否通过 GPU 深度分类贴合 terrain / 3D Tiles。贴地时忽略 {@link height}；
+   * {@link extrudeHeight} / {@link outline} 暂不支持。当前仅 WebGL 支持。
    *
-   * Ground-clamp options. With `clamp: true` (or `offset: 0`) the polygon is
-   * draped onto terrain/3D Tiles via GPU depth classification (concave polygons
-   * supported); {@link height} is then ignored (§4.2) and {@link extrudeHeight}
-   * / {@link outline} are not yet supported (warned and ignored). The fill color
-   * honors `rgba(...)` / `#rrggbbaa` alpha. `offset > 0` is not yet implemented
-   * (P4) and falls back to absolute height with a warning. WebGL only.
+   * Whether to drape the polygon onto terrain / 3D Tiles using GPU depth
+   * classification. {@link height} is ignored while clamped; {@link extrudeHeight}
+   * and {@link outline} are not yet supported. WebGL only.
    */
-  clamp?: ClampInput
+  clamp?: boolean
 }
 
 /**
@@ -235,16 +177,10 @@ export interface IconOptions {
    */
   scale?: number
   /**
-   * `true` = 世界米，`false` = 屏幕像素（默认）。世界米模式暂未实现，会告警降级。
+   * tint 颜色，默认白色（不染色）。Symbol 后合成路径按目标显示色解析。
    *
-   * `true` = world meters, `false` = screen pixels (default). World-meters mode is
-   * not yet implemented and falls back with a warning.
-   */
-  sizeInMeters?: boolean
-  /**
-   * tint 颜色，默认白色（不染色）。经 resolveColor 反求。
-   *
-   * Tint color. Defaults to white (no tint). WYSIWYG via resolveColor.
+   * Tint color. Defaults to white (no tint). Resolved as a target display color
+   * in the Symbol post-composite path.
    */
   color?: ColorInput
   /**
@@ -298,16 +234,17 @@ export interface TextOptions {
    */
   fontWeight?: 'normal' | 'bold' | number
   /**
-   * 填充色，默认白色。经 resolveColor 反求。
+   * 填充色，默认白色。Symbol 后合成路径按目标显示色解析。
    *
-   * Fill color. Defaults to white. WYSIWYG via resolveColor.
+   * Fill color. Defaults to white. Resolved as a target display color in the
+   * Symbol post-composite path.
    */
   fillColor?: ColorInput
   /**
-   * 描边色；仅 {@link outlineWidth} 大于 0 时生效。经 resolveColor 反求。
+   * 描边色；仅 {@link outlineWidth} 大于 0 时生效。Symbol 后合成路径按目标显示色解析。
    *
    * Outline color; only used when {@link outlineWidth} is greater than 0.
-   * WYSIWYG via resolveColor.
+   * Resolved as a target display color in the Symbol post-composite path.
    */
   outlineColor?: ColorInput
   /**
@@ -409,13 +346,6 @@ export interface SymbolOptions {
    * Rotation in radians (screen-space, counterclockwise). Defaults to `0`.
    */
   rotation?: number
-  /**
-   * 贴地配置。Symbol 贴地暂未实现（会告警降级为绝对高）。
-   *
-   * Ground-clamp options. Symbol clamping is not yet implemented (falls back to
-   * absolute height with a warning).
-   */
-  clamp?: ClampInput
 }
 
 /**

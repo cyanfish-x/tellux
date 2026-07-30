@@ -151,9 +151,6 @@ export class SymbolGraphic {
       this.iconQuad.setRenderOrder(1)
       this.object3D.add(this.iconQuad.object3D)
       if (options.icon) {
-        if (options.icon.sizeInMeters) {
-          console.warn('[tellux] Symbol icon sizeInMeters 暂未实现，按屏幕像素渲染。')
-        }
         void this.loadIcon(options.icon)
       }
     }

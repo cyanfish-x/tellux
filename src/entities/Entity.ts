@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { CartographicInput, ClampInput, EntityOptions } from '../types'
+import type { CartographicInput, EntityOptions } from '../types'
 import { PointGraphic } from './PointGraphic'
 import { PolylineGraphic } from './PolylineGraphic'
 import { PolygonGraphic } from './PolygonGraphic'
@@ -8,11 +8,10 @@ import { GroundPolygonGraphic } from './GroundPolygonGraphic'
 import { SymbolGraphic } from './SymbolGraphic'
 import { PointGraphics, PolylineGraphics, PolygonGraphics, SymbolGraphics } from './EntityGraphics'
 import { tagObject3DWithEntity } from '../sampling/EntityPicker'
-import {
-  normalizeClamp,
-  type EllipsoidLike,
-  type GroundClampContext,
-  type PolylinePickable
+import type {
+  EllipsoidLike,
+  GroundClampContext,
+  PolylinePickable
 } from './groundClamp'
 import {
   resolveColor as defaultResolveColor,
@@ -77,7 +76,6 @@ export class Entity {
     tagObject3DWithEntity(this.root, this)
 
     if (options.point) {
-      warnUnsupportedClamp(options.point.clamp, id, 'point', 'P2')
       const position = new THREE.Vector3()
       if (options.position) {
         this.context.toVector3(options.position, position)
@@ -99,7 +97,6 @@ export class Entity {
     }
 
     if (options.symbol) {
-      warnUnsupportedClamp(options.symbol.clamp, id, 'symbol', 'S4')
       const position = new THREE.Vector3()
       if (options.position) {
         this.context.toVector3(options.position, position)
@@ -114,16 +111,16 @@ export class Entity {
   }
 
   /**
-   * 折线分发：贴地（`clamp` 命中且 `offset===0` 且有贴地 pass）走 GPU 深度分类
+   * 折线分发：`clamp: true` 且有贴地 pass 时走 GPU 深度分类
    * 的 {@link GroundPolylineGraphic}（挂到共享 groundClampRoot 下的每实体子组）；
    * 否则走普通 {@link PolylineGraphic}（挂到实体自身 root）。
    */
   private buildPolyline(id: string, options: EntityOptions) {
     const polyline = options.polyline!
-    const clamp = normalizeClamp(polyline.clamp)
+    const clamp = polyline.clamp === true
     const groundClamp = this.context.groundClamp
 
-    if (clamp && clamp.offset === 0 && groundClamp) {
+    if (clamp && groundClamp) {
       this.groundPolylineGraphic = new GroundPolylineGraphic({
         positions: polyline.positions,
         options: polyline,
@@ -136,9 +133,7 @@ export class Entity {
     }
 
     if (clamp) {
-      // offset>0（P4 未实现）或无贴地 pass（WebGPU）→ 降级为绝对高普通折线。
-      const reason = clamp.offset !== 0 ? 'offset>0 (P4 未实现)' : '当前渲染器不支持贴地（需 WebGL）'
-      console.warn(`[tellux] 实体 "${id}" 的贴地折线降级为绝对高：${reason}。`)
+      console.warn(`[tellux] 实体 "${id}" 的贴地折线降级为绝对高：当前渲染器不支持贴地（需 WebGL）。`)
     }
 
     const worldPositions = polyline.positions.map((input) => {
@@ -155,16 +150,16 @@ export class Entity {
   }
 
   /**
-   * 多边形分发：贴地（`clamp` 命中且 `offset===0` 且有贴地 pass）走 GPU 深度分类
+   * 多边形分发：`clamp: true` 且有贴地 pass 时走 GPU 深度分类
    * 的 {@link GroundPolygonGraphic}；否则走普通 {@link PolygonGraphic}。贴地时
    * `height` 按设计被忽略（§4.2）；`extrudeHeight` / `outline` 暂未支持，告警忽略。
    */
   private buildPolygon(id: string, options: EntityOptions) {
     const polygon = options.polygon!
-    const clamp = normalizeClamp(polygon.clamp)
+    const clamp = polygon.clamp === true
     const groundClamp = this.context.groundClamp
 
-    if (clamp && clamp.offset === 0 && groundClamp) {
+    if (clamp && groundClamp) {
       if (polygon.extrudeHeight !== undefined) {
         console.warn(`[tellux] 实体 "${id}"：贴地面暂不支持 extrudeHeight（后续阶段），已忽略。`)
       }
@@ -187,8 +182,7 @@ export class Entity {
     }
 
     if (clamp) {
-      const reason = clamp.offset !== 0 ? 'offset>0 (P4 未实现)' : '当前渲染器不支持贴地（需 WebGL）'
-      console.warn(`[tellux] 实体 "${id}" 的贴地面降级为绝对高：${reason}。`)
+      console.warn(`[tellux] 实体 "${id}" 的贴地面降级为绝对高：当前渲染器不支持贴地（需 WebGL）。`)
     }
 
     const worldPositions = polygon.positions.map((input) => {
@@ -315,24 +309,5 @@ export class Entity {
       this.groundClampRoot.remove(this.groundGroup)
     }
     this.context.removeEntity(this)
-  }
-}
-
-/**
- * 对暂未实现贴地的图形类型（点/面）在用户传了 `clamp` 时告警一次并降级。
- *
- * Warns once and degrades gracefully when `clamp` is set on a graphic type whose
- * clamping is not yet implemented (point / polygon).
- */
-function warnUnsupportedClamp(
-  clamp: ClampInput | undefined,
-  id: string,
-  kind: string,
-  phase: string
-) {
-  if (normalizeClamp(clamp)) {
-    console.warn(
-      `[tellux] 实体 "${id}" 的${kind}贴地（clamp）暂未实现（${phase}），已按绝对高渲染。`
-    )
   }
 }

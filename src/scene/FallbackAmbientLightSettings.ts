@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { ResolvedSceneOptions } from './SceneOptions'
+import { sceneValueNormalizers } from './SceneValueNormalization'
 
 const FALLBACK_AMBIENT_LIGHT_MIN_HEIGHT = 8000
 const FALLBACK_AMBIENT_LIGHT_MAX_HEIGHT = 7600000
@@ -12,7 +13,7 @@ export class FallbackAmbientLightSettings {
     private readonly source: THREE.AmbientLight
   ) {
     this.source.visible = options.show
-    this.currentIntensity = options.intensity
+    this.currentIntensity = sceneValueNormalizers.fallbackAmbientLightIntensity(options.intensity)
   }
 
   /** 是否启用夜间兜底环境光。Enables the nighttime fallback ambient light. */
@@ -30,7 +31,7 @@ export class FallbackAmbientLightSettings {
   }
 
   set intensity(value: number) {
-    this.currentIntensity = Math.max(0, Number.isFinite(value) ? value : 0.5)
+    this.currentIntensity = sceneValueNormalizers.fallbackAmbientLightIntensity(value)
   }
 
   update(currentHeight: number) {
