@@ -15,6 +15,7 @@ import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
 import { LayerManager } from './LayerManager'
 import { HismManager } from './hism'
 import { HighlightManager } from './highlight'
+import { ResourceScope, awaitReadyOrDestroy } from './lifecycle/ResourceLifecycle'
 import { ModelManager } from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
@@ -300,12 +301,16 @@ export class Viewer {
    * Renderer 初始化完成 Promise。
    *
    * WebGPU renderer 需要异步初始化。使用外部手动渲染循环时，建议等待该
-   * Promise 完成后再调用 {@link Viewer.render}。
+   * Promise 完成后再调用 {@link Viewer.render}。若直接使用构造函数且该
+   * Promise 拒绝，调用方仍需执行 {@link Viewer.destroy}；需要自动清理时
+   * 请优先使用 {@link Viewer.create}。
    *
    * Promise resolved when the renderer is initialized.
    *
    * WebGPU renderers require asynchronous initialization. When using an external
    * manual render loop, wait for this Promise before calling {@link Viewer.render}.
+   * Callers using the constructor must still call {@link Viewer.destroy} if this
+   * promise rejects; prefer {@link Viewer.create} for automatic cleanup.
    */
   readonly ready: Promise<void>
   /**
@@ -404,16 +409,16 @@ export class Viewer {
    * 创建 Viewer 并等待 renderer 初始化完成。
    *
    * WebGPU renderer 需要异步初始化；该工厂方法适合 WebGPU 或外部手动渲染循环。
+   * 初始化失败时会自动销毁已经创建的 Viewer 资源。
    *
    * Creates a Viewer and waits for renderer initialization.
    *
    * WebGPU renderers require asynchronous initialization; this factory is useful
-   * for WebGPU or external manual render loops.
+   * for WebGPU or external manual render loops. If initialization fails, all
+   * resources already owned by the Viewer are destroyed automatically.
    */
   static async create(container: HTMLElement | string, options: ViewerOptions = {}) {
-    const viewer = new Viewer(container, options)
-    await viewer.ready
-    return viewer
+    return awaitReadyOrDestroy(new Viewer(container, options))
   }
 
   /**
@@ -424,249 +429,281 @@ export class Viewer {
    */
   constructor(container: HTMLElement | string, options: ViewerOptions = {}) {
     const resolvedContainer = Viewer.resolveContainer(container)
-    this.container = resolvedContainer
-    this.currentResolutionScale = resolveViewerResolutionScale(options)
-    const sceneOptions = resolveViewerSceneOptions(options.scene)
-    this.currentToneMappingExposure = sceneOptions.postProcess.toneMappingExposure
+    const constructionScope = new ResourceScope()
 
-    const width = resolvedContainer.clientWidth || 1
-    const height = resolvedContainer.clientHeight || 1
-    const cameraOptions = resolveViewerCameraOptions(options.camera)
-    let atmosphere: ViewerAtmosphereManager | null = null
-    let postProcessing: PostProcessingManager | null = null
-    let tilesets: TilesetManager | null = null
+    try {
+      this.container = resolvedContainer
+      this.currentResolutionScale = resolveViewerResolutionScale(options)
+      const sceneOptions = resolveViewerSceneOptions(options.scene)
+      this.currentToneMappingExposure = sceneOptions.postProcess.toneMappingExposure
 
-    this.threeCamera = new THREE.PerspectiveCamera(cameraOptions.fov, width / height, cameraOptions.near, cameraOptions.far)
-    this.camera = new Camera(this.threeCamera, () => tilesets?.tileset.ellipsoid ?? null)
-    this.rendererAdapter = createRendererAdapter(options)
-    this.renderer = this.rendererAdapter.renderer
-    this.rendererType = this.rendererAdapter.type
-    this.ready = this.rendererAdapter.ready
-    this.rendererAdapter.setPixelRatio(this.currentResolutionScale)
-    this.rendererAdapter.setSize(width, height)
-    this.renderer.toneMapping = THREE.AgXToneMapping
-    this.renderer.toneMappingExposure = this.currentToneMappingExposure
-    this.colorResolver = new ToneMappingColorResolver({
-      toneMapping: this.renderer.toneMapping,
-      exposure: this.renderer.toneMappingExposure
-    })
-    resolvedContainer.appendChild(this.renderer.domElement)
-    this.transparentOverlayTexture = this.createTransparentOverlayTexture()
+      const width = resolvedContainer.clientWidth || 1
+      const height = resolvedContainer.clientHeight || 1
+      const cameraOptions = resolveViewerCameraOptions(options.camera)
+      let atmosphere: ViewerAtmosphereManager | null = null
+      let postProcessing: PostProcessingManager | null = null
+      let tilesets: TilesetManager | null = null
 
-    let highlightManager: HighlightManager | null = null
-    this.scene = new Scene(
-      sceneOptions,
-      (state) => atmosphere?.applyAtmosphereState(state),
-      (state) => atmosphere?.applyCloudsState(state),
-      () => {
-        postProcessing?.applyEffects()
-        if (atmosphere instanceof WebGPUAtmosphereManager) {
-          atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
+      this.threeCamera = new THREE.PerspectiveCamera(cameraOptions.fov, width / height, cameraOptions.near, cameraOptions.far)
+      this.camera = new Camera(this.threeCamera, () => tilesets?.tileset.ellipsoid ?? null)
+      this.rendererAdapter = createRendererAdapter(options)
+      constructionScope.defer(() => this.rendererAdapter.dispose())
+      this.renderer = this.rendererAdapter.renderer
+      this.rendererType = this.rendererAdapter.type
+      this.ready = this.rendererAdapter.ready
+      void this.ready.catch(() => undefined)
+      this.rendererAdapter.setPixelRatio(this.currentResolutionScale)
+      this.rendererAdapter.setSize(width, height)
+      this.renderer.toneMapping = THREE.AgXToneMapping
+      this.renderer.toneMappingExposure = this.currentToneMappingExposure
+      this.colorResolver = new ToneMappingColorResolver({
+        toneMapping: this.renderer.toneMapping,
+        exposure: this.renderer.toneMappingExposure
+      })
+      resolvedContainer.appendChild(this.renderer.domElement)
+      constructionScope.defer(() => {
+        this.renderer.domElement.parentElement?.removeChild(this.renderer.domElement)
+      })
+      this.transparentOverlayTexture = this.createTransparentOverlayTexture()
+      constructionScope.defer(() => this.transparentOverlayTexture.dispose())
+
+      let highlightManager: HighlightManager | null = null
+      this.scene = new Scene(
+        sceneOptions,
+        (state) => atmosphere?.applyAtmosphereState(state),
+        (state) => atmosphere?.applyCloudsState(state),
+        () => {
+          postProcessing?.applyEffects()
+          if (atmosphere instanceof WebGPUAtmosphereManager) {
+            atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
+          }
+        },
+        () => {
+          if (tilesets) this.syncSurfaceMaterialMode()
+        },
+        () => {
+          highlightManager?.syncStyleFromSettings()
+          postProcessing?.applyEffects()
         }
-      },
-      () => {
-        if (tilesets) this.syncSurfaceMaterialMode()
-      },
-      () => {
-        highlightManager?.syncStyleFromSettings()
-        postProcessing?.applyEffects()
+      )
+      this.atmosphere = this.createAtmosphereManager(() => postProcessing?.applyEffects())
+      constructionScope.defer(() => this.atmosphere?.dispose())
+      atmosphere = this.atmosphere
+      this.atmosphere?.addLightSourcesTo(this.scene.threeScene)
+      this.scene.syncRuntimeEffects()
+      this.clock = new Clock(() => this.atmosphere?.updateSunDirection(this.clock.currentTime))
+
+      this.dracoLoader = new DRACOLoader()
+      constructionScope.defer(() => this.dracoLoader.dispose())
+      this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
+      this.gltfLoader = new GLTFLoader()
+      this.gltfLoader.setDRACOLoader(this.dracoLoader)
+
+      this.tilesets = new TilesetManager({
+        scene: this.scene.threeScene,
+        camera: this.threeCamera,
+        renderer: this.renderer,
+        useWebGPUCompatibleSurfaceOverlay: this.rendererType === 'webgpu',
+        dracoLoader: this.dracoLoader,
+        transparentOverlayTexture: this.transparentOverlayTexture,
+        terrain: options.terrain,
+        surfaceMaterialMode: resolveSurfaceMaterialMode(
+          sceneOptions.surface.materialMode,
+          sceneOptions.atmosphere.lighting.mode
+        ),
+        surfaceMaterialOptions: sceneOptions.surface.material,
+        sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode)
+      })
+      constructionScope.defer(() => this.tilesets.dispose())
+      tilesets = this.tilesets
+      this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
+      this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.domElement, this.threeCamera, this.tilesets)
+      this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
+      constructionScope.defer(() => this.heightSampler.dispose())
+      // 贴地分类 pass 仅 WebGL（依赖 setEffects 深度纹理链）；WebGPU 下为 null。
+      this.groundClampPass = this.rendererAdapter.supportsWebGLEffects
+        ? new GroundClampPass(this.threeCamera)
+        : null
+      constructionScope.defer(() => this.groundClampPass?.dispose())
+      this.entitiesManager = new EntityManager({
+        scene: this.scene.threeScene,
+        toVector3: (input, target) => this.cartographicToVector3(input, target),
+        ellipsoid: () => this.tilesets.tileset.ellipsoid,
+        groundClamp: this.groundClampPass
+          ? { root: this.groundClampPass.root, uniforms: this.groundClampPass.sharedUniforms }
+          : null,
+        pixelRatio: () => this.currentResolutionScale,
+        resolveColor: this.colorResolver.resolveColor
+      })
+      constructionScope.defer(() => this.entitiesManager.dispose())
+      this.entityRenderManager = new EntityRenderManager({
+        root: this.entitiesManager.root,
+        camera: this.threeCamera,
+        requestedMode: sceneOptions.entities.transparency.mode,
+        supportsWeightedOit: this.rendererAdapter.supportsWebGLEffects
+      })
+      constructionScope.defer(() => this.entityRenderManager.dispose())
+      this.symbolOcclusionPass = this.rendererAdapter.supportsWebGLEffects
+        ? new SymbolOcclusionPass(this.entitiesManager.root, this.threeCamera)
+        : null
+      constructionScope.defer(() => this.symbolOcclusionPass?.dispose())
+      this.entityPicker = new EntityPicker(this.renderer.domElement, this.threeCamera, this.entitiesManager)
+      this.objectPicker = new ObjectPicker(this.renderer.domElement, this.threeCamera, this.scene.threeScene)
+      this.targetFlights = new TargetFlightController({
+        camera: this.camera,
+        tilesets: this.tilesets
+      })
+      constructionScope.defer(() => this.targetFlights.dispose())
+      this.viewport = new ViewportResizeManager({
+        container: this.container,
+        camera: this.threeCamera,
+        renderer: this.rendererAdapter,
+        tilesets: this.tilesets
+      })
+      constructionScope.defer(() => this.viewport.dispose())
+      this.camera.setView(cameraOptions)
+
+      const controls = new TelluxGlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
+      this.controls = controls
+      constructionScope.defer(() => this.controls.dispose())
+      if (this.rendererType === 'webgpu') {
+        controls.useWebGPUCompatiblePivotMaterial()
       }
-    )
-    this.atmosphere = this.createAtmosphereManager(() => postProcessing?.applyEffects())
-    atmosphere = this.atmosphere
-    this.atmosphere?.addLightSourcesTo(this.scene.threeScene)
-    this.scene.syncRuntimeEffects()
-    this.clock = new Clock(() => this.atmosphere?.updateSunDirection(this.clock.currentTime))
-
-    this.dracoLoader = new DRACOLoader()
-    this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
-    this.gltfLoader = new GLTFLoader()
-    this.gltfLoader.setDRACOLoader(this.dracoLoader)
-
-    this.tilesets = new TilesetManager({
-      scene: this.scene.threeScene,
-      camera: this.threeCamera,
-      renderer: this.renderer,
-      useWebGPUCompatibleSurfaceOverlay: this.rendererType === 'webgpu',
-      dracoLoader: this.dracoLoader,
-      transparentOverlayTexture: this.transparentOverlayTexture,
-      terrain: options.terrain,
-      surfaceMaterialMode: resolveSurfaceMaterialMode(
-        sceneOptions.surface.materialMode,
-        sceneOptions.atmosphere.lighting.mode
-      ),
-      surfaceMaterialOptions: sceneOptions.surface.material,
-      sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode)
-    })
-    tilesets = this.tilesets
-    this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
-    this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.domElement, this.threeCamera, this.tilesets)
-    this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
-    // 贴地分类 pass 仅 WebGL（依赖 setEffects 深度纹理链）；WebGPU 下为 null。
-    this.groundClampPass = this.rendererAdapter.supportsWebGLEffects
-      ? new GroundClampPass(this.threeCamera)
-      : null
-    this.entitiesManager = new EntityManager({
-      scene: this.scene.threeScene,
-      toVector3: (input, target) => this.cartographicToVector3(input, target),
-      ellipsoid: () => this.tilesets.tileset.ellipsoid,
-      groundClamp: this.groundClampPass
-        ? { root: this.groundClampPass.root, uniforms: this.groundClampPass.sharedUniforms }
-        : null,
-      pixelRatio: () => this.currentResolutionScale,
-      resolveColor: this.colorResolver.resolveColor
-    })
-    this.entityRenderManager = new EntityRenderManager({
-      root: this.entitiesManager.root,
-      camera: this.threeCamera,
-      requestedMode: sceneOptions.entities.transparency.mode,
-      supportsWeightedOit: this.rendererAdapter.supportsWebGLEffects
-    })
-    this.symbolOcclusionPass = this.rendererAdapter.supportsWebGLEffects
-      ? new SymbolOcclusionPass(this.entitiesManager.root, this.threeCamera)
-      : null
-    this.entityPicker = new EntityPicker(this.renderer.domElement, this.threeCamera, this.entitiesManager)
-    this.objectPicker = new ObjectPicker(this.renderer.domElement, this.threeCamera, this.scene.threeScene)
-    this.targetFlights = new TargetFlightController({
-      camera: this.camera,
-      tilesets: this.tilesets
-    })
-    this.viewport = new ViewportResizeManager({
-      container: this.container,
-      camera: this.threeCamera,
-      renderer: this.rendererAdapter,
-      tilesets: this.tilesets
-    })
-    this.camera.setView(cameraOptions)
-
-    const controls = new TelluxGlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
-    if (this.rendererType === 'webgpu') {
-      controls.useWebGPUCompatiblePivotMaterial()
-    }
-    this.controls = controls
-    this.syncControlsEllipsoid()
-    this.layers = new LayerManager(options.layers, (layers, change) => {
-      if (change.type === 'structure') {
-        this.cancelMostDetailedHeightSampling()
-        this.tilesets.setImageryLayers(layers)
-        this.syncControlsEllipsoid()
-      } else if (change.type === 'order') {
-        this.tilesets.syncImageryLayerOrder(layers)
-      } else if (change.type === 'visibility' || change.type === 'style') {
-        this.tilesets.syncImageryLayer(change.layer)
-      }
-    })
-    this.controls.enableDamping = true
-    this.controls.adjustHeight = false
-    // 注入相机 pitch 读取：低角度禁拖判定用应用自身的俯仰源（Cesium 约定）。
-    // Inject the camera-pitch reader so the low-angle no-drag test uses the app's own pitch
-    // source (Cesium convention).
-    this.controls.pitchProvider = () => this.camera.getPitch()
-    // 注入飞行状态：相机 flyTo 期间禁止闲置 pitch 回弹，避免与飞行动画争抢相机控制。
-    // Inject flight state so the idle pitch spring-back stays out of the way during flyTo
-    // animations and doesn't fight them for camera control.
-    this.controls.isFlyingProvider = () => this.camera.isFlying
-    // viewer.camera.allowUnderground 变化时实时同步控件的离地约束（防穿地开关）。
-    // Sync the controls' ground-clamp constraint live when viewer.camera.allowUnderground changes.
-    this.camera.onAllowUndergroundChange = (value) => {
-      this.controls.adjustHeight = !value
-    }
-
-    const hismScaleMatrix = new THREE.Matrix4()
-    this.hismManager = new HismManager({
-      scene: this.scene.threeScene,
-      camera: this.threeCamera,
-      domElement: this.renderer.domElement,
-      showPickMarker: options.hism?.showPickMarker,
-      applyInstanceMatrix: (coordinates, frame, scale, target) => {
-        this.cartographicToMatrix4(coordinates, frame, target)
-        if (scale === undefined) return
-        if (typeof scale === 'number') {
-          hismScaleMatrix.makeScale(scale, scale, scale)
-        } else {
-          hismScaleMatrix.makeScale(scale[0], scale[1], scale[2])
+      this.syncControlsEllipsoid()
+      this.layers = new LayerManager(options.layers, (layers, change) => {
+        if (change.type === 'structure') {
+          this.cancelMostDetailedHeightSampling()
+          this.tilesets.setImageryLayers(layers)
+          this.syncControlsEllipsoid()
+        } else if (change.type === 'order') {
+          this.tilesets.syncImageryLayerOrder(layers)
+        } else if (change.type === 'visibility' || change.type === 'style') {
+          this.tilesets.syncImageryLayer(change.layer)
         }
-        target.multiply(hismScaleMatrix)
+      })
+      this.controls.enableDamping = true
+      this.controls.adjustHeight = false
+      // 注入相机 pitch 读取：低角度禁拖判定用应用自身的俯仰源（Cesium 约定）。
+      // Inject the camera-pitch reader so the low-angle no-drag test uses the app's own pitch
+      // source (Cesium convention).
+      this.controls.pitchProvider = () => this.camera.getPitch()
+      // 注入飞行状态：相机 flyTo 期间禁止闲置 pitch 回弹，避免与飞行动画争抢相机控制。
+      // Inject flight state so the idle pitch spring-back stays out of the way during flyTo
+      // animations and doesn't fight them for camera control.
+      this.controls.isFlyingProvider = () => this.camera.isFlying
+      // viewer.camera.allowUnderground 变化时实时同步控件的离地约束（防穿地开关）。
+      // Sync the controls' ground-clamp constraint live when viewer.camera.allowUnderground changes.
+      this.camera.onAllowUndergroundChange = (value) => {
+        this.controls.adjustHeight = !value
       }
-    })
 
-    this.scenePicker = new ScenePicker({
-      entityPicker: this.entityPicker,
-      tilesetFeaturePicker: this.tilesetFeaturePicker,
-      objectPicker: this.objectPicker,
-      hismManager: this.hismManager,
-      getObjectRoot: () => this.scene.threeScene
-    })
+      const hismScaleMatrix = new THREE.Matrix4()
+      this.hismManager = new HismManager({
+        scene: this.scene.threeScene,
+        camera: this.threeCamera,
+        domElement: this.renderer.domElement,
+        showPickMarker: options.hism?.showPickMarker,
+        applyInstanceMatrix: (coordinates, frame, scale, target) => {
+          this.cartographicToMatrix4(coordinates, frame, target)
+          if (scale === undefined) return
+          if (typeof scale === 'number') {
+            hismScaleMatrix.makeScale(scale, scale, scale)
+          } else {
+            hismScaleMatrix.makeScale(scale[0], scale[1], scale[2])
+          }
+          target.multiply(hismScaleMatrix)
+        }
+      })
+      constructionScope.defer(() => this.hismManager.dispose())
 
-    this.interactions = new ViewerInteractionManager({
-      viewer: this,
-      camera: this.camera,
-      controls: this.controls,
-      domElement: this.renderer.domElement,
-      pickCartographic: (position) => this.pickCartographic(position),
-      pickNearest: (position, pickOptions) => this.pick(position, pickOptions),
-      pickAll: (position, pickOptions) => this.pickAll(position, pickOptions)
-    })
+      this.scenePicker = new ScenePicker({
+        entityPicker: this.entityPicker,
+        tilesetFeaturePicker: this.tilesetFeaturePicker,
+        objectPicker: this.objectPicker,
+        hismManager: this.hismManager,
+        getObjectRoot: () => this.scene.threeScene
+      })
 
-    this.highlightManager = new HighlightManager({
-      scene: this.scene.threeScene,
-      camera: this.threeCamera,
-      settings: this.scene.highlight,
-      webglOutlineAvailable: this.rendererAdapter.supportsWebGLEffects,
-      resolveColor: this.colorResolver.resolveColor,
-      resolveHismInstanceParts: (pick) =>
-        this.hismManager.resolveInstanceParts(pick),
-      hideHismPickMarker: () => this.hismManager.hidePickMarker()
-    })
-    highlightManager = this.highlightManager
+      this.interactions = new ViewerInteractionManager({
+        viewer: this,
+        camera: this.camera,
+        controls: this.controls,
+        domElement: this.renderer.domElement,
+        pickCartographic: (position) => this.pickCartographic(position),
+        pickNearest: (position, pickOptions) => this.pick(position, pickOptions),
+        pickAll: (position, pickOptions) => this.pickAll(position, pickOptions)
+      })
+      constructionScope.defer(() => this.interactions.dispose())
 
-    this.postProcessing = this.rendererAdapter.supportsWebGLEffects && this.atmosphere
-      ? new PostProcessingManager(
-          this.renderer as TelluxWebGLRenderer,
-          this.scene,
-          this.scene.threeScene,
-          this.threeCamera,
-          this.atmosphere as AtmosphereManager,
-          () => this.camera.getCurrentHeight(),
-          this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
-          this.groundClampPass ?? undefined,
-          this.symbolOcclusionPass ?? undefined,
-          this.highlightManager.outlineEffect
-        )
-      : null
-    postProcessing = this.postProcessing
-    this.models = new ModelManager({
-      scene: this.scene.threeScene,
-      loader: this.gltfLoader,
-      getMaterialMode: () => resolveModelMaterialMode(this.scene.atmosphere.lighting.mode),
-      applyModelMatrix: (modelOptions, target) => {
-        this.cartographicToMatrix4(modelOptions.coordinates, {
-          heading: modelOptions.heading,
-          pitch: modelOptions.pitch,
-          roll: modelOptions.roll
-        }, target)
-      },
-      setPostProcessMaterialLights: (enabled) => {
-        this.atmosphere?.setPostProcessMaterialLights(enabled)
+      this.highlightManager = new HighlightManager({
+        scene: this.scene.threeScene,
+        camera: this.threeCamera,
+        settings: this.scene.highlight,
+        webglOutlineAvailable: this.rendererAdapter.supportsWebGLEffects,
+        resolveColor: this.colorResolver.resolveColor,
+        resolveHismInstanceParts: (pick) =>
+          this.hismManager.resolveInstanceParts(pick),
+        hideHismPickMarker: () => this.hismManager.hidePickMarker()
+      })
+      constructionScope.defer(() => this.highlightManager.dispose())
+      highlightManager = this.highlightManager
+
+      this.postProcessing = this.rendererAdapter.supportsWebGLEffects && this.atmosphere
+        ? new PostProcessingManager(
+            this.renderer as TelluxWebGLRenderer,
+            this.scene,
+            this.scene.threeScene,
+            this.threeCamera,
+            this.atmosphere as AtmosphereManager,
+            () => this.camera.getCurrentHeight(),
+            this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
+            this.groundClampPass ?? undefined,
+            this.symbolOcclusionPass ?? undefined,
+            this.highlightManager.outlineEffect
+          )
+        : null
+      constructionScope.defer(() => this.postProcessing?.dispose())
+      postProcessing = this.postProcessing
+      this.models = new ModelManager({
+        scene: this.scene.threeScene,
+        loader: this.gltfLoader,
+        getMaterialMode: () => resolveModelMaterialMode(this.scene.atmosphere.lighting.mode),
+        applyModelMatrix: (modelOptions, target) => {
+          this.cartographicToMatrix4(modelOptions.coordinates, {
+            heading: modelOptions.heading,
+            pitch: modelOptions.pitch,
+            roll: modelOptions.roll
+          }, target)
+        },
+        setPostProcessMaterialLights: (enabled) => {
+          this.atmosphere?.setPostProcessMaterialLights(enabled)
+        }
+      })
+      constructionScope.defer(() => this.models.dispose())
+      this.widgets = new WidgetManager(this, options.widgets)
+      constructionScope.defer(() => this.widgets.dispose())
+      this.widgets.applyInitialSettings()
+      this.renderLoop = new ViewerRenderLoop({
+        renderer: this.rendererAdapter,
+        heightSampler: this.heightSampler,
+        renderFrame: (deltaTime, time) => this.renderFrame(deltaTime, time)
+      })
+      constructionScope.defer(() => this.renderLoop.dispose())
+      this.postProcessing?.applyEffects()
+      this.atmosphere?.loadTextures()
+      this.atmosphere?.updateSunDirection(this.clock.currentTime)
+
+      this.resize()
+
+      this.widgets.mount()
+
+      if (options.useDefaultRenderLoop !== false) {
+        this.useDefaultRenderLoop = true
       }
-    })
-    this.widgets = new WidgetManager(this, options.widgets)
-    this.widgets.applyInitialSettings()
-    this.renderLoop = new ViewerRenderLoop({
-      renderer: this.rendererAdapter,
-      heightSampler: this.heightSampler,
-      renderFrame: (deltaTime, time) => this.renderFrame(deltaTime, time)
-    })
-    this.postProcessing?.applyEffects()
-    this.atmosphere?.loadTextures()
-    this.atmosphere?.updateSunDirection(this.clock.currentTime)
-
-    this.resize()
-
-    this.widgets.mount()
-
-    if (options.useDefaultRenderLoop !== false) {
-      this.useDefaultRenderLoop = true
+      constructionScope.commit()
+    } catch (error) {
+      constructionScope.rollback()
+      throw error
     }
   }
 

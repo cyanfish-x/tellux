@@ -15,6 +15,7 @@ export class GltfModelLayer implements ModelLayer {
   private currentAction: THREE.AnimationAction | null = null
   private currentAnimationChannel: number
   private isRemoved = false
+  private readyState: 'pending' | 'resolved' | 'rejected' = 'pending'
   private resolveReady!: (layer: ModelLayer) => void
   private rejectReady!: (reason?: unknown) => void
 
@@ -33,6 +34,7 @@ export class GltfModelLayer implements ModelLayer {
       this.resolveReady = resolve
       this.rejectReady = reject
     })
+    void this.ready.catch(() => undefined)
   }
 
   get model() {
@@ -56,7 +58,7 @@ export class GltfModelLayer implements ModelLayer {
       const gltf = await this.loader.loadAsync(this.options.url)
       if (this.isRemoved) {
         disposeObject(gltf.scene)
-        this.rejectReady(new Error(`Viewer: model "${this.id}" was removed before it finished loading.`))
+        this.rejectReadyLayer(this.createRemovedBeforeLoadError())
         return
       }
 
@@ -74,12 +76,12 @@ export class GltfModelLayer implements ModelLayer {
         }
       }
 
-      this.resolveReady(this)
+      this.resolveReadyLayer()
     } catch (error) {
       if (!this.isRemoved) {
         this.removeLayer(this)
       }
-      this.rejectReady(error)
+      this.rejectReadyLayer(error)
     }
   }
 
@@ -137,6 +139,7 @@ export class GltfModelLayer implements ModelLayer {
     if (this.isRemoved) return
 
     this.isRemoved = true
+    this.rejectReadyLayer(this.createRemovedBeforeLoadError())
     this.stopAnimation()
     this.currentMixer?.stopAllAction()
     this.currentMixer = null
@@ -168,5 +171,23 @@ export class GltfModelLayer implements ModelLayer {
 
   private shouldPreserveMaterial() {
     return this.options.materialMode === 'preserve'
+  }
+
+  private resolveReadyLayer() {
+    if (this.readyState !== 'pending') return
+
+    this.readyState = 'resolved'
+    this.resolveReady(this)
+  }
+
+  private rejectReadyLayer(reason: unknown) {
+    if (this.readyState !== 'pending') return
+
+    this.readyState = 'rejected'
+    this.rejectReady(reason)
+  }
+
+  private createRemovedBeforeLoadError() {
+    return new Error(`Viewer: model "${this.id}" was removed before it finished loading.`)
   }
 }

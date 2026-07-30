@@ -14,7 +14,7 @@ const viewer = await tellux.Viewer.create(container, options)
 
 ### `static create(container, options)`
 
-异步工厂方法，创建 Viewer 并等待 renderer 初始化完成。WebGPU renderer 必须异步初始化，外部手动渲染循环场景也推荐用它。返回 `Promise<Viewer>`。
+异步工厂方法，创建 Viewer 并等待 renderer 初始化完成。WebGPU renderer 必须异步初始化，外部手动渲染循环场景也推荐用它。初始化失败时，已创建的 canvas、监听器、manager 和 GPU 资源会自动销毁。返回 `Promise<Viewer>`。
 
 ```ts
 const viewer = await tellux.Viewer.create(container, {
@@ -86,7 +86,7 @@ HISM 实例化图层管理器。提供 `add()`、`get()`、`list()`、`remove()`
 
 类型：`Promise<void>`
 
-renderer 初始化完成的就绪 Promise。`Viewer.create(...)` 会内部 `await` 它；使用 `new Viewer(...)` + WebGPU 或外部手动渲染循环时，建议先 `await viewer.ready` 再操作。
+renderer 初始化完成的就绪 Promise。`Viewer.create(...)` 会内部 `await` 它并在失败时自动销毁 Viewer。使用 `new Viewer(...)` + WebGPU 或外部手动渲染循环时，建议先 `await viewer.ready` 再操作；若 Promise 拒绝，调用方仍需执行 `viewer.destroy()`。
 
 ### `useDefaultRenderLoop`
 
@@ -132,7 +132,7 @@ viewer.on('click', (event) => {
 
 ### `addModel(options)`
 
-加载 glTF / GLB 模型并按经纬高加入场景。
+加载 glTF / GLB 模型并按经纬高加入场景。返回的 `ModelLayer.ready` 在加载失败或加载完成前移除模型时拒绝；需要感知错误时应显式 `await` 或 `catch`。Tellux 会在内部观察该拒绝，因此只使用句柄而不等待 `ready` 时不会产生未处理 Promise 拒绝。
 
 ### `flyToTarget(target, options?)`
 

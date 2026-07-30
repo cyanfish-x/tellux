@@ -90,7 +90,12 @@ export interface ModelLayer {
   readonly model: Object3D | null
   /** 模型内包含的动画剪辑。Animation clips included in the model. */
   readonly animations: AnimationClip[]
-  /** 模型加载完成 Promise。Promise resolved when the model is loaded. */
+  /**
+   * 模型加载完成 Promise。加载失败或在完成前移除模型时会拒绝。
+   *
+   * Promise resolved when the model is loaded. It rejects if loading fails or
+   * the model is removed before loading completes.
+   */
   readonly ready: Promise<ModelLayer>
   /** 是否显示该模型。Whether the model is visible. */
   show: boolean
