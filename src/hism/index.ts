@@ -54,7 +54,6 @@ export {
   pickHismLayers,
   intersectAllRtcInstancedMesh,
   intersectRtcInstancedMesh,
-  ensureAcceleratedRaycast,
   type PickHismLayersOptions
 } from './picking/HismPicker'
 export { HismPickMarker } from './picking/HismPickMarker'

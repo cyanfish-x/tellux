@@ -5,14 +5,6 @@ import type { HismPickResult } from '../../types/hism'
 import type { HismLayerImpl } from '../core/HismLayer'
 import { ensureGeometryBvh } from './geometryBvhCache'
 
-let raycastPatched = false
-
-export function ensureAcceleratedRaycast(): void {
-  if (raycastPatched) return
-  THREE.Mesh.prototype.raycast = acceleratedRaycast
-  raycastPatched = true
-}
-
 export interface PickHismLayersOptions {
   layers: Iterable<HismLayerImpl>
   raycaster: THREE.Raycaster
@@ -67,7 +59,6 @@ function forEachRtcInstanceHit(
   mesh: THREE.InstancedMesh,
   callback: (hit: THREE.Intersection) => void
 ) {
-  ensureAcceleratedRaycast()
   ensureGeometryBvh(mesh.geometry)
 
   mesh.updateWorldMatrix(true, false)
@@ -108,7 +99,7 @@ function forEachRtcInstanceHit(
       }
 
       proxyMesh.matrixWorld = instanceWorldMatrix
-      proxyMesh.raycast(raycaster, instanceIntersects)
+      acceleratedRaycast.call(proxyMesh, raycaster, instanceIntersects)
 
       let closestForInstance: THREE.Intersection | null = null
       for (let i = 0; i < instanceIntersects.length; i += 1) {
@@ -141,8 +132,6 @@ function forEachRtcInstanceHit(
 export function pickHismLayers(
   options: PickHismLayersOptions
 ): HismPickResult | null {
-  ensureAcceleratedRaycast()
-
   let closestHit: THREE.Intersection | null = null
   let closestLayer: HismLayerImpl | null = null
 
@@ -184,8 +173,6 @@ export function pickHismLayers(
 export function pickAllHismLayers(
   options: PickHismLayersOptions
 ): HismPickResult[] {
-  ensureAcceleratedRaycast()
-
   const picked = new Map<string, HismPickResult>()
   for (const layer of options.layers) {
     if (!layer.show) continue
