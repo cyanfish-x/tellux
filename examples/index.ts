@@ -4,6 +4,8 @@ import {
   mountLanguageToggle,
   resolveLocale,
 } from "./i18n"
+import { mountDocsLink } from "./docs-link"
+import { mountFeaturedStrip } from "./showcase"
 import { exampleMapServiceConfig } from "./shared"
 
 resolveLocale()
@@ -12,6 +14,8 @@ mountLanguageToggle({
   mount: document.querySelector("[data-lang-toggle]"),
   applyDocument: true,
 })
+mountDocsLink()
+mountFeaturedStrip()
 
 // Hero 地球自转角速度（度/秒），约 120 秒一圈。
 // Auto-rotation angular speed (degrees/second), roughly one revolution per 120 s.
@@ -26,30 +30,7 @@ const AUTO_ROTATE_MIN_HEIGHT = 460000
 const AUTO_ROTATE_RESUME_DELAY = 2000
 
 const nav = document.querySelector(".portal-nav")
-const docsLink = document.querySelector<HTMLAnchorElement>("[data-docs-link]")
 const globeContainer = document.querySelector("#portal-globe-viewer")
-
-const getDocsUrl = () => {
-  const isLocalHost =
-    window.location.hostname === "127.0.0.1" ||
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "::1"
-
-  // 开发时文档站由 docs:dev / pnpm dev 独立跑在根路径（vitepress，无 /docs base）；
-  // 端口可能因占用回退，由 VITE_TELLUX_DOCS_ORIGIN 注入实际地址。
-  if (isLocalHost && import.meta.env.DEV) {
-    const origin = (
-      import.meta.env.VITE_TELLUX_DOCS_ORIGIN || "http://127.0.0.1:5174"
-    ).replace(/\/$/, "")
-    return `${origin}/`
-  }
-
-  return new URL("./docs/", window.location.href).toString()
-}
-
-if (docsLink) {
-  docsLink.href = getDocsUrl()
-}
 
 if (nav instanceof HTMLElement) {
   const updateNavigationSurface = () => {

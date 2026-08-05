@@ -17,6 +17,7 @@
 关键入口包括：
 
 - `index.html`：项目主页。
+- `gallery.html`：社区案例 gallery 页（独立展示社区作品，带搜索与标签筛选）。
 - `basic.html`、`terrain.html`、`3d-tiles.html` 等：独立示例页。
 - `sandcastle.html`：Sandcastle 编辑器页面。
 - `sandcastle/runner.html`：Sandcastle iframe 运行页面。
@@ -37,14 +38,18 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 
 `examples/index.html` 负责页面结构和文案：
 
-- 顶部导航包含 Tellux 品牌、能力、工作流、Sandcastle 和 GitHub 入口。
+- 顶部导航包含 Tellux 品牌、能力、工作流、Sandcastle、社区作品和 GitHub 入口。
 - Hero 区域展示 Tellux 的定位：基于 Three.js 的 3D Earth Engine。
 - 页面中部介绍地球与相机、多源影像图层、3D Tiles、Cesium 地形、大气云和工程默认值。
 - 后续展示真实地形、大气和体积云效果素材。
+- `#showcase` 社区案例精选条：位于页面底部收尾，只展示最新 3 条 + 「查看全部」入口（指向 `gallery.html`），空数据时整块隐藏。数据来自 `examples/showcase-data.ts`，由 `examples/showcase.ts` 的 `mountFeaturedStrip()` 渲染；完整列表与搜索 / 标签筛选在 gallery 页（`mountGallery()`）。
+
+`examples/gallery.html` 是社区案例 gallery 页：复用 portal 壳（品牌导航 + 语言切换 + 文档链接），页面主体为搜索框 + 标签筛选条 + 全量卡片网格，由 `examples/gallery.ts` 挂载。决策背景见 [notes/架构/adr/0001-community-showcase-gallery-page.md](adr/0001-community-showcase-gallery-page.md)。链接健康检查用 `scripts/check-showcase-links.mjs`（`pnpm check:showcase`）。
 
 `examples/index.ts` 负责主页交互和 Hero 三维地球：
 
 - 绑定锚点平滑滚动和顶部导航滚动状态。
+- 调用 `mountFeaturedStrip()` 挂载首页社区案例精选条（空数据隐藏，语言切换重渲染）。
 - 在 `#portal-globe-viewer` 中创建 `tellux.Viewer`。
 - 使用天地图卫星影像 XYZ 瓦片（`examples/shared.ts` 中的 `tiandituImageryXYZUrl`）作为默认影像底图。
 - 如果配置了 `VITE_CESIUM_TERRAIN_URL`，则加载 Cesium quantized-mesh 地形。

@@ -119,6 +119,10 @@
     "示例",
     "Examples"
   ],
+  "portal.nav.showcase": [
+    "社区作品",
+    "Community"
+  ],
   "portal.nav.github": [
     "GitHub",
     "GitHub"
@@ -234,6 +238,82 @@
   "portal.showcase.clouds.body": [
     "Tellux 的体积云沿用物理光照和大气合成流程，云体会随相机高度、太阳方向和曝光设置呈现连续的层次变化。从近地平线的厚重云墙到高空俯视的柔和云海，它都能和地形、天空、后处理保持统一的空间关系。",
     "Physically lit volumetric clouds with atmospheric compositing—continuous layering with camera height, sun direction, and exposure, consistent with terrain, sky, and post-processing."
+  ],
+  "portal.community.sectionAria": [
+    "社区优秀案例展示",
+    "Community showcase"
+  ],
+  "portal.community.eyebrow": [
+    "Community",
+    "Community"
+  ],
+  "portal.community.title": [
+    "用 Tellux 构建的社区作品",
+    "Community works built with Tellux"
+  ],
+  "portal.community.body": [
+    "基于 Tellux 的数字地球、数字孪生、三维地图与行业应用。点击卡片在新标签页查看作者作品。",
+    "Digital earth, digital twins, 3D maps, and industry apps built with Tellux. Click a card to open the author's work in a new tab."
+  ],
+  "portal.community.emptyAria": [
+    "暂无社区案例",
+    "No community cases yet"
+  ],
+  "portal.community.empty": [
+    "还没有社区案例，期待你的第一个作品。",
+    "No community cases yet — looking forward to your first one."
+  ],
+  "portal.community.submit": [
+    "提交案例",
+    "Submit a case"
+  ],
+  "portal.community.open": [
+    "查看作品",
+    "View project"
+  ],
+  "portal.community.viewAll": [
+    "查看全部案例",
+    "View all works"
+  ],
+  "gallery.meta.description": [
+    "基于 Tellux 构建的社区优秀案例合集：数字地球、数字孪生、三维地图与行业应用。",
+    "Community works built with Tellux: digital earth, digital twins, 3D maps, and industry apps."
+  ],
+  "gallery.meta.title": [
+    "Tellux 社区作品",
+    "Tellux Community Works"
+  ],
+  "gallery.toolbarAria": [
+    "搜索与筛选社区案例",
+    "Search and filter community works"
+  ],
+  "gallery.searchPlaceholder": [
+    "搜索案例标题或描述",
+    "Search by title or description"
+  ],
+  "gallery.searchAria": [
+    "搜索社区案例",
+    "Search community works"
+  ],
+  "gallery.tagsAria": [
+    "按标签筛选",
+    "Filter by tag"
+  ],
+  "gallery.count.all": [
+    "共 {total} 个案例",
+    "{total} works in total"
+  ],
+  "gallery.count.filtered": [
+    "显示 {shown} / {total} 个案例",
+    "Showing {shown} of {total} works"
+  ],
+  "gallery.emptyResultAria": [
+    "没有匹配的案例",
+    "No matching works"
+  ],
+  "gallery.emptyResult": [
+    "没有匹配的案例，换个关键词或标签试试。",
+    "No matching works. Try another keyword or tag."
   ],
   "portal.capabilities.f01.title": [
     "地球与相机",

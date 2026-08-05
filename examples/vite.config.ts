@@ -4,6 +4,7 @@ import { defineConfig, loadEnv } from "vite"
 const projectRoot = resolve(__dirname, "..")
 const htmlInputs = {
   index: resolve(__dirname, "index.html"),
+  gallery: resolve(__dirname, "gallery.html"),
   basic: resolve(__dirname, "basic.html"),
   flyTo: resolve(__dirname, "fly-to.html"),
   dataSources: resolve(__dirname, "data-sources.html"),

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN" class="portal-page">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      data-i18n-attr="content:gallery.meta.description"
+      content="基于 Tellux 构建的社区优秀案例合集：数字地球、数字孪生、三维地图与行业应用。"
+    />
+    <title data-i18n="gallery.meta.title">Tellux 社区作品</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./gallery.ts"></script>
+  </head>
+  <body class="portal-page">
+    <main class="portal portal-gallery">
+      <header class="portal-gallery__nav">
+        <nav
+          class="portal-nav"
+          data-i18n-attr="aria-label:portal.nav.aria"
+          aria-label="Tellux 网站导航"
+        >
+          <a
+            class="portal-brand"
+            href="./index.html"
+            data-i18n-attr="aria-label:portal.nav.homeAria"
+            aria-label="Tellux 首页"
+          >
+            <span class="portal-brand__mark" aria-hidden="true">T</span>
+            <span>Tellux</span>
+          </a>
+          <div class="portal-nav__links">
+            <a href="./index.html#capabilities" data-i18n="portal.nav.capabilities">能力</a>
+            <a href="./index.html#workflow" data-i18n="portal.nav.workflow">工作流</a>
+            <a data-docs-link href="./docs/" data-i18n="portal.nav.docs">文档</a>
+            <a href="./sandcastle.html" data-i18n="portal.nav.examples">示例</a>
+            <a href="./gallery.html" data-i18n="portal.nav.showcase">社区作品</a>
+            <a href="https://github.com/cyanfish-x/tellux">GitHub</a>
+            <div data-lang-toggle></div>
+          </div>
+        </nav>
+      </header>
+
+      <section
+        class="portal-gallery__toolbar"
+        data-gallery
+        data-i18n-attr="aria-label:gallery.toolbarAria"
+        aria-label="搜索与筛选社区案例"
+      >
+        <div class="gallery-search">
+          <input
+            type="search"
+            data-gallery-search
+            autocomplete="off"
+            spellcheck="false"
+            data-i18n-attr="placeholder:gallery.searchPlaceholder,aria-label:gallery.searchAria"
+            placeholder="搜索案例标题或描述"
+            aria-label="搜索社区案例"
+          />
+        </div>
+        <div
+          class="gallery-tags"
+          data-gallery-tags
+          role="group"
+          data-i18n-attr="aria-label:gallery.tagsAria"
+          aria-label="按标签筛选"
+        ></div>
+        <p class="gallery-count" data-gallery-count aria-live="polite"></p>
+      </section>
+
+      <section class="portal-gallery__content">
+        <div
+          class="portal-community__empty"
+          data-gallery-empty-all
+          hidden
+          data-i18n-attr="aria-label:portal.community.emptyAria"
+          aria-label="暂无社区案例"
+        >
+          <p data-i18n="portal.community.empty">
+            还没有社区案例，期待你的第一个作品。
+          </p>
+          <a
+            class="portal-button"
+            href="https://github.com/cyanfish-x/tellux/issues/new"
+            data-i18n="portal.community.submit"
+            >提交案例</a
+          >
+        </div>
+        <div
+          class="portal-community__empty portal-community__empty--result"
+          data-gallery-empty-result
+          hidden
+          data-i18n-attr="aria-label:gallery.emptyResultAria"
+          aria-label="没有匹配的案例"
+        >
+          <p data-i18n="gallery.emptyResult">
+            没有匹配的案例，换个关键词或标签试试。
+          </p>
+        </div>
+        <div class="portal-community__grid portal-gallery__grid" data-gallery-grid></div>
+      </section>
+    </main>
+  </body>
+</html>
