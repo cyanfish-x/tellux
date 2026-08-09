@@ -1,9 +1,11 @@
 ﻿import tellux from "../src"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin } from "3d-tiles-rendererjs-3dgs-plugin"
+import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 const container = document.querySelector("#viewer")
@@ -118,7 +120,7 @@ function createGaussianSplatTileset(url: string) {
 function loadGaussianSplatTileset() {
   const url = tilesetUrlField.value.trim()
   if (!url) {
-    setStatus("请先输入 3DGS tileset.json URL，或配置 VITE_GAUSSIAN_SPLAT_3D_TILESET_URL。")
+    setStatus(t({ zh: "请先输入 3DGS tileset.json URL，或配置 VITE_GAUSSIAN_SPLAT_3D_TILESET_URL。", en: "Enter a 3DGS tileset.json URL, or set VITE_GAUSSIAN_SPLAT_3D_TILESET_URL." }))
     return
   }
 
@@ -127,7 +129,7 @@ function loadGaussianSplatTileset() {
   syncSplatVisibility()
   viewer.scene.threeScene.add(activeTileset.group)
   flyToSample()
-  setStatus("已加载高斯泼溅 3D Tiles。等待瓦片细化中...")
+  setStatus(t({ zh: "已加载高斯泼溅 3D Tiles。等待瓦片细化中...", en: "Gaussian splat 3D Tiles loaded. Waiting for tile refinement..." }))
 }
 
 function flyToSample() {
@@ -165,8 +167,10 @@ function updateSplatStatus() {
   previousLoadedTileCount = loadedTileCount
   setStatus(
     loadedTileCount > 0
-      ? `高斯泼溅瓦片可见：${loadedTileCount}。`
-      : "高斯泼溅 tileset 已加入场景，移动相机可触发加载。"
+      ? t({ zh: "高斯泼溅瓦片可见：{n}。", en: "Visible Gaussian splat tiles: {n}." }, {
+          n: loadedTileCount,
+        })
+      : t({ zh: "高斯泼溅 tileset 已加入场景，移动相机可触发加载。", en: "Tileset added; move the camera to trigger loading." })
   )
 }
 
@@ -185,11 +189,19 @@ loadControl.addEventListener("click", loadGaussianSplatTileset)
 flyToControl.addEventListener("click", flyToSample)
 removeControl.addEventListener("click", () => {
   clearActiveTileset()
-  setStatus("高斯泼溅 3D Tiles 已移除。")
+  setStatus(t({ zh: "高斯泼溅 3D Tiles 已移除。", en: "Gaussian splat 3D Tiles removed." }))
 })
 splatVisibleToggle.addEventListener("change", () => {
   syncSplatVisibility()
-  setStatus(activeTileset ? `高斯泼溅已${splatVisibleToggle.checked ? "显示" : "隐藏"}。` : "还没有加载高斯泼溅。")
+  setStatus(
+    activeTileset
+      ? t({ zh: "高斯泼溅已{state}。", en: "Gaussian splats are {state}." }, {
+          state: splatVisibleToggle.checked
+            ? t({ zh: "显示", en: "shown" })
+            : t({ zh: "隐藏", en: "hidden" }),
+        })
+      : t({ zh: "还没有加载高斯泼溅。", en: "No Gaussian splats loaded yet." })
+  )
 })
 
 loadGaussianSplatTileset()

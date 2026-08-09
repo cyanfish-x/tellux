@@ -12,7 +12,7 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <aside class="example-panel" id="horse-panel" aria-label="若尔盖草原奔马实例化控件">
+    <aside class="example-panel" id="horse-panel" data-i18n-attr="aria-label:example.instanced-horses.panel.aria" aria-label="若尔盖草原奔马实例化控件">
       <header class="example-panel__chrome">
         <button
           type="button"
@@ -22,21 +22,22 @@
           aria-controls="horse-panel-body"
           title="收起面板"
           aria-label="收起面板"
+          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
         ></button>
-        <span class="example-panel__title">若尔盖草原奔马实例化</span>
+        <span class="example-panel__title" data-i18n="example.instanced-horses.panel.title">若尔盖草原奔马实例化</span>
       </header>
 
       <div class="example-panel__collapse" id="horse-panel-body">
         <div class="example-panel__content">
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">操作</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.instanced-horses.folder.actions">操作</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
-                <button class="example-panel__button" id="fly-to-horses" type="button">飞到马群</button>
-                <button class="example-panel__button example-panel__button--ghost" id="toggle-horses" type="button">
+                <button class="example-panel__button" id="fly-to-horses" type="button" data-i18n="example.instanced-horses.btn.fly">飞到马群</button>
+                <button class="example-panel__button example-panel__button--ghost" id="toggle-horses" type="button" data-i18n="example.instanced-horses.btn.pause">
                   暂停动画
                 </button>
-                <button class="example-panel__button example-panel__button--ghost" id="regenerate-horses" type="button">
+                <button class="example-panel__button example-panel__button--ghost" id="regenerate-horses" type="button" data-i18n="example.instanced-horses.btn.regen">
                   重新生成
                 </button>
               </div>
@@ -44,17 +45,17 @@
           </details>
 
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">状态</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.instanced-horses.folder.status">状态</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
-                <p id="horse-status" class="example-panel__status" aria-live="polite">正在准备若尔盖草原点位...</p>
+                <p id="horse-status" class="example-panel__status" aria-live="polite" data-i18n="example.instanced-horses.status.initial">正在准备若尔盖草原点位...</p>
                 <dl class="example-panel__readout">
                   <dt>Center</dt>
                   <dd>102.434637, 33.568156</dd>
                   <dt>Instances</dt>
                   <dd id="horse-count">-</dd>
                   <dt>Spacing</dt>
-                  <dd>最小 34 米</dd>
+                  <dd data-i18n="example.instanced-horses.readout.spacing">最小 34 米</dd>
                   <dt>Animation</dt>
                   <dd id="horse-animation-status">-</dd>
                 </dl>

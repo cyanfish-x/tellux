@@ -26,15 +26,31 @@
   - API 为统一 `clamp` 字段（非 Cesium 式 `heightReference` 枚举）。
   - 见 [docs/guide/entities.md](./docs/guide/entities.md)、[docs/design/ground-clamp.md](./docs/design/ground-clamp.md)。
 
-## 社区优秀案例作品展示页
+## 社区优秀案例展示
 
-目标：建设面向社区的优秀案例作品展示页，集中分享基于 Tellux 构建的数字地球、数字孪生、三维地图及行业应用，促进案例传播、用户交流和生态共建。
+目标：在项目主页建设社区优秀案例展示区，集中分享基于 Tellux 构建的数字地球、数字孪生、三维地图及行业应用，促进案例传播与生态共建。案例以「url + 封面图床直链」维护，点击卡片新标签页静态跳转，不做详情页与 iframe 内嵌预览。
 
-- [ ] C0 展示页定位与内容规范：明确入选标准、案例字段、版权授权、分类标签和排序方式。
-- [ ] C1 展示页基础页面：新增案例入口与卡片网格，支持详情、在线预览、响应式布局、空状态和加载失败处理。
-- [ ] C2 案例数据与维护流程：建立可版本管理的案例清单 / 内容格式，补充社区提交模板、审核、署名、更新和下架流程。
-- [ ] C3 与示例、文档联动：为官方示例和高质量 Sandcastle 案例补充条目，并串联 README、文档、示例与源码入口。
-- [ ] C4 发布与质量验证：验证链接、封面、筛选、移动端体验及页面构建，完善 SEO / 社交分享信息并发布首批社区案例。
+- [X] C0 展示区定位与内容规范
+
+  - 入选标准：基于 Tellux 构建、可公开访问的作品。
+  - 案例字段：`title` / `description` / `cover` / `url` / `tags` / `author` / `date`。
+  - 封面由作者上传自己的图床后填直链；页面按 `date` 降序展示。
+- [X] C1 展示区基础
+
+  - 独立 gallery 页 `examples/gallery.html`（复用 portal 壳 + 搜索 + 标签筛选），首页仅保留「最新 3 条 + 查看全部」精选条，空数据时隐藏。
+  - 卡片新标签页跳转（`target="_blank"` + `rel="noopener"`）+ 响应式布局 + 封面加载失败兜底（`is-broken` 占位）。
+  - 决策背景见 [notes/架构/adr/0001-community-showcase-gallery-page.md](./notes/架构/adr/0001-community-showcase-gallery-page.md)。
+- [X] C2 案例数据与维护流程
+
+  - `examples/showcase-data.ts` 单一数据源（可版本管理）。
+  - 提交模板 = GitHub issue / PR；审核、署名、更新与下架由维护者在 PR 中把关。
+- [ ] C3 与示例、文档联动
+
+  - 本期只收社区外部案例；后续可评估是否收录官方示例与 Sandcastle 条目（需为本地资源并自配封面）。
+- [ ] C4 发布与质量验证
+
+  - `scripts/check-showcase-links.mjs` 链接健康检查（校验 `url` / `cover`）。
+  - 移动端体验与页面构建验证；发布首批社区案例。
 
 ## 实体贴地（Ground Clamp）
 

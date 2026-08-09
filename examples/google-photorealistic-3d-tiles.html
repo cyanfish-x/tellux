@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="sandcastle-order" content="2.2" />
   <meta name="sandcastle-thumbnail" content="./images/city.png" />
-  <title>Tellux 城市级海量模型加载</title>
+  <title data-i18n="example.google-photorealistic-3d-tiles.docTitle">Tellux 城市级海量模型加载</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 
@@ -14,7 +14,7 @@
   <main class="viewer-shell">
     <div id="viewer"></div>
 
-    <aside class="example-panel" id="city-panel" aria-label="城市级海量模型加载控件">
+    <aside class="example-panel" id="city-panel" data-i18n-attr="aria-label:example.google-photorealistic-3d-tiles.panel.aria" aria-label="城市级海量模型加载控件">
       <header class="example-panel__chrome">
         <button
           type="button"
@@ -24,28 +24,29 @@
           aria-controls="city-panel-body"
           title="收起面板"
           aria-label="收起面板"
+          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
         ></button>
-        <span class="example-panel__title">城市级海量模型</span>
+        <span class="example-panel__title" data-i18n="example.google-photorealistic-3d-tiles.panel.title">城市级海量模型</span>
       </header>
 
       <div class="example-panel__collapse" id="city-panel-body">
         <div class="example-panel__content">
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">加载</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.google-photorealistic-3d-tiles.folder.load">加载</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
                 <div class="example-panel__field">
-                  <label class="example-panel__label" for="ion-token">Cesium Ion token</label>
+                  <label class="example-panel__label" for="ion-token" data-i18n="example.3d-tiles.label.token">Cesium Ion token</label>
                   <input id="ion-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
                 </div>
-                <button class="example-panel__button" id="load-tileset" type="button">加载 3D Tiles</button>
-                <button class="example-panel__button example-panel__button--ghost" id="fly-to-city" type="button">定位到东京</button>
+                <button class="example-panel__button" id="load-tileset" type="button" data-i18n="example.google-photorealistic-3d-tiles.btn.load">加载 3D Tiles</button>
+                <button class="example-panel__button example-panel__button--ghost" id="fly-to-city" type="button" data-i18n="example.google-photorealistic-3d-tiles.btn.flyTo">定位到东京</button>
               </div>
             </div>
           </details>
 
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">状态</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.google-photorealistic-3d-tiles.folder.status">状态</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
                 <p id="tileset-status" class="example-panel__status" aria-live="polite"></p>
@@ -56,7 +57,7 @@
       </div>
     </aside>
 
-    <aside id="google-attributions" class="tile-attributions" aria-label="地图数据来源"></aside>
+    <aside id="google-attributions" class="tile-attributions" data-i18n-attr="aria-label:example.google-photorealistic-3d-tiles.attr.aria" aria-label="地图数据来源"></aside>
   </main>
   <script type="module" src="./google-photorealistic-3d-tiles.ts"></script>
 </body>

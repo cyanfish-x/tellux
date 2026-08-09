@@ -1,0 +1,2066 @@
+{
+  "common.panel.collapse": [
+    "收起面板",
+    "Collapse panel"
+  ],
+  "common.panel.expand": [
+    "展开面板",
+    "Expand panel"
+  ],
+  "common.location.title": [
+    "鼠标位置",
+    "Mouse position"
+  ],
+  "common.location.longitude": [
+    "经度",
+    "Longitude"
+  ],
+  "common.location.latitude": [
+    "纬度",
+    "Latitude"
+  ],
+  "common.location.height": [
+    "高程",
+    "Elevation"
+  ],
+  "common.imagery.arcgis": [
+    "当前示例使用 ArcGIS World Imagery XYZ 瓦片。",
+    "This example uses ArcGIS World Imagery XYZ tiles."
+  ],
+  "common.imagery.tianditu": [
+    "当前示例使用天地图卫星影像 XYZ 瓦片。",
+    "This example uses Tianditu satellite imagery XYZ tiles."
+  ],
+  "common.imagery.tiandituNeedToken": [
+    "当前示例使用天地图卫星影像 XYZ 瓦片，请配置 VITE_TIANDITU_TOKEN。",
+    "This example uses Tianditu satellite imagery XYZ tiles; please set VITE_TIANDITU_TOKEN."
+  ],
+  "common.shown": [
+    "显示",
+    "shown"
+  ],
+  "common.hidden": [
+    "隐藏",
+    "hidden"
+  ],
+  "common.loading": [
+    "加载中…",
+    "Loading…"
+  ],
+  "common.folder.display": [
+    "显示",
+    "Display"
+  ],
+  "common.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "common.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "common.folder.options": [
+    "选项",
+    "Options"
+  ],
+  "common.folder.source": [
+    "数据源",
+    "Data source"
+  ],
+  "common.folder.load": [
+    "加载",
+    "Load"
+  ],
+  "common.btn.load": [
+    "加载",
+    "Load"
+  ],
+  "common.btn.remove": [
+    "移除",
+    "Remove"
+  ],
+  "common.btn.clear": [
+    "清除",
+    "Clear"
+  ],
+  "common.pick": [
+    "拾取",
+    "Pick"
+  ],
+  "portal.meta.description": [
+    "Tellux 是一个基于 Three.js 的开源 3D Earth Engine，用于构建数字地球、数字孪生、三维地图以及各类 3D Earth 应用。",
+    "Tellux is an open-source Three.js 3D Earth Engine for digital earth, digital twins, 3D maps, and other 3D Earth apps."
+  ],
+  "portal.meta.title": [
+    "Tellux - Three.js 3D Earth Engine",
+    "Tellux - Three.js 3D Earth Engine"
+  ],
+  "portal.nav.aria": [
+    "Tellux 网站导航",
+    "Tellux site navigation"
+  ],
+  "portal.nav.homeAria": [
+    "Tellux 首页",
+    "Tellux home"
+  ],
+  "portal.nav.capabilities": [
+    "能力",
+    "Capabilities"
+  ],
+  "portal.nav.workflow": [
+    "工作流",
+    "Workflow"
+  ],
+  "portal.nav.docs": [
+    "文档",
+    "Docs"
+  ],
+  "portal.nav.examples": [
+    "示例",
+    "Examples"
+  ],
+  "portal.nav.showcase": [
+    "社区作品",
+    "Community"
+  ],
+  "portal.nav.github": [
+    "GitHub",
+    "GitHub"
+  ],
+  "portal.hero.eyebrow": [
+    "Three.js 3D Earth Engine",
+    "Three.js 3D Earth Engine"
+  ],
+  "portal.hero.title": [
+    "用 Three.js<br />组织可扩展的<br />3D Earth 应用",
+    "Build scalable<br />3D Earth apps<br />with Three.js"
+  ],
+  "portal.hero.body": [
+    "Tellux 将 3D Tiles、Cesium 地形、影像图层、地球相机、大气、体积云和后处理能力封装成更贴近 Cesium / mapboxgl 使用习惯的 TypeScript API。",
+    "Tellux wraps 3D Tiles, Cesium terrain, imagery layers, earth camera, atmosphere, volumetric clouds, and post-processing into a TypeScript API familiar to Cesium / mapboxgl users."
+  ],
+  "portal.hero.actionsAria": [
+    "主要操作",
+    "Primary actions"
+  ],
+  "portal.hero.ctaSandcastle": [
+    "进入 Sandcastle",
+    "Open Sandcastle"
+  ],
+  "portal.hero.ctaQuickstart": [
+    "快速开始",
+    "Quick start"
+  ],
+  "portal.hero.visualAria": [
+    "可交互三维地球预览",
+    "Interactive 3D globe preview"
+  ],
+  "portal.metrics.aria": [
+    "Tellux 基础信息",
+    "Tellux basics"
+  ],
+  "portal.capabilities.eyebrow": [
+    "Capabilities",
+    "Capabilities"
+  ],
+  "portal.capabilities.title": [
+    "把底层渲染能力收束成 GIS 开发者熟悉的入口",
+    "Package low-level rendering into GIS-friendly APIs"
+  ],
+  "portal.capabilities.body": [
+    "Tellux 不替代 Three.js，而是在 Three.js、3d-tiles-renderer 与 Takram geospatial 生态之上提供应用侧封装。",
+    "Tellux does not replace Three.js; it adds an application layer on Three.js, 3d-tiles-renderer, and the Takram geospatial stack."
+  ],
+  "portal.workflow.eyebrow": [
+    "Workflow",
+    "Workflow"
+  ],
+  "portal.workflow.title": [
+    "从一个容器开始，逐步叠加真实地理数据",
+    "Start from a container, then layer real geospatial data"
+  ],
+  "portal.workflow.body": [
+    "首页文案对应库中已经实现的 API：Viewer 初始化、地形、影像图层、相机定位、运行时图层管理和 3D Tiles 加载。",
+    "Homepage copy maps to shipped APIs: Viewer init, terrain, imagery, camera, runtime layers, and 3D Tiles."
+  ],
+  "portal.workflow.li1": [
+    "TypeScript 类型入口：<code>dist/index.d.ts</code>",
+    "TypeScript types entry: <code>dist/index.d.ts</code>"
+  ],
+  "portal.workflow.li2": [
+    "发布入口：<code>dist/index.js</code>",
+    "Package entry: <code>dist/index.js</code>"
+  ],
+  "portal.workflow.li3": [
+    "开发示例从 <code>src</code> 直接引入，方便验证源码行为",
+    "Dev examples import from <code>src</code> to verify source behavior"
+  ],
+  "portal.showcase.sectionAria": [
+    "真实地形、大气与体积云效果展示",
+    "Terrain, atmosphere, and volumetric cloud showcase"
+  ],
+  "portal.showcase.terrain.aria": [
+    "真实地形与大气效果展示",
+    "Real terrain and atmosphere showcase"
+  ],
+  "portal.showcase.terrain.alt": [
+    "Tellux 渲染的雪山地形、低角度太阳和预计算大气散射效果",
+    "Tellux-rendered snowy terrain with low-angle sun and precomputed atmospheric scattering"
+  ],
+  "portal.showcase.terrain.eyebrow": [
+    "Terrain & Atmosphere",
+    "Terrain & Atmosphere"
+  ],
+  "portal.showcase.terrain.title": [
+    "真实地形和预计算大气一起进入工程视图",
+    "Real terrain and precomputed atmosphere in an engineering view"
+  ],
+  "portal.showcase.terrain.body": [
+    "Tellux 可以在 Cesium quantized-mesh 地形上叠加影像纹理，并结合预计算大气 LUT、太阳光和天空光探针，让远山雾化、低空暖光和雪线明暗关系保持稳定。它不是展示页滤镜，而是面向三维 GIS 场景的实时渲染基础。",
+    "Overlay imagery on Cesium quantized-mesh terrain with precomputed atmosphere LUTs, sunlight, and sky probes—stable haze, warm low light, and snowline contrast. Not a demo filter; a realtime 3D GIS rendering foundation."
+  ],
+  "portal.showcase.clouds.aria": [
+    "体积云渲染效果展示",
+    "Volumetric cloud rendering showcase"
+  ],
+  "portal.showcase.clouds.videoAria": [
+    "Tellux 渲染的体积云随视角推进和光照变化的效果",
+    "Tellux volumetric clouds responding to camera motion and lighting"
+  ],
+  "portal.showcase.clouds.eyebrow": [
+    "Volumetric Clouds",
+    "Volumetric Clouds"
+  ],
+  "portal.showcase.clouds.title": [
+    "把云层作为真实空间体积参与场景表达",
+    "Treat clouds as real volumetric volumes in the scene"
+  ],
+  "portal.showcase.clouds.body": [
+    "Tellux 的体积云沿用物理光照和大气合成流程，云体会随相机高度、太阳方向和曝光设置呈现连续的层次变化。从近地平线的厚重云墙到高空俯视的柔和云海，它都能和地形、天空、后处理保持统一的空间关系。",
+    "Physically lit volumetric clouds with atmospheric compositing—continuous layering with camera height, sun direction, and exposure, consistent with terrain, sky, and post-processing."
+  ],
+  "portal.community.sectionAria": [
+    "社区优秀案例展示",
+    "Community showcase"
+  ],
+  "portal.community.eyebrow": [
+    "Community",
+    "Community"
+  ],
+  "portal.community.title": [
+    "用 Tellux 构建的社区作品",
+    "Community works built with Tellux"
+  ],
+  "portal.community.body": [
+    "基于 Tellux 的数字地球、数字孪生、三维地图与行业应用。点击卡片在新标签页查看作者作品。",
+    "Digital earth, digital twins, 3D maps, and industry apps built with Tellux. Click a card to open the author's work in a new tab."
+  ],
+  "portal.community.emptyAria": [
+    "暂无社区案例",
+    "No community cases yet"
+  ],
+  "portal.community.empty": [
+    "还没有社区案例，期待你的第一个作品。",
+    "No community cases yet — looking forward to your first one."
+  ],
+  "portal.community.submit": [
+    "提交案例",
+    "Submit a case"
+  ],
+  "portal.community.open": [
+    "查看作品",
+    "View project"
+  ],
+  "portal.community.viewAll": [
+    "查看全部案例",
+    "View all works"
+  ],
+  "gallery.meta.description": [
+    "基于 Tellux 构建的社区优秀案例合集：数字地球、数字孪生、三维地图与行业应用。",
+    "Community works built with Tellux: digital earth, digital twins, 3D maps, and industry apps."
+  ],
+  "gallery.meta.title": [
+    "Tellux 社区作品",
+    "Tellux Community Works"
+  ],
+  "gallery.toolbarAria": [
+    "搜索与筛选社区案例",
+    "Search and filter community works"
+  ],
+  "gallery.searchPlaceholder": [
+    "搜索案例标题或描述",
+    "Search by title or description"
+  ],
+  "gallery.searchAria": [
+    "搜索社区案例",
+    "Search community works"
+  ],
+  "gallery.tagsAria": [
+    "按标签筛选",
+    "Filter by tag"
+  ],
+  "gallery.count.all": [
+    "共 {total} 个案例",
+    "{total} works in total"
+  ],
+  "gallery.count.filtered": [
+    "显示 {shown} / {total} 个案例",
+    "Showing {shown} of {total} works"
+  ],
+  "gallery.emptyResultAria": [
+    "没有匹配的案例",
+    "No matching works"
+  ],
+  "gallery.emptyResult": [
+    "没有匹配的案例，换个关键词或标签试试。",
+    "No matching works. Try another keyword or tag."
+  ],
+  "portal.capabilities.f01.title": [
+    "地球与相机",
+    "Globe & camera"
+  ],
+  "portal.capabilities.f01.body": [
+    "内置 WGS84 地球控制器，经纬高视角、heading / pitch / roll、飞行定位和鼠标地理读数。",
+    "Built-in WGS84 globe controls with lon/lat/height, heading/pitch/roll, fly-to, and mouse geographic readout."
+  ],
+  "portal.capabilities.f02.title": [
+    "多源影像图层",
+    "Multi-source imagery"
+  ],
+  "portal.capabilities.f02.body": [
+    "通过统一的 <code>viewer.layers</code> 管理 XYZ、Cesium Ion imagery、WMS 和 MVT，支持透明度、显隐和顺序。",
+    "Manage XYZ, Cesium Ion imagery, WMS, and MVT via <code>viewer.layers</code>, with opacity, visibility, and ordering."
+  ],
+  "portal.capabilities.f03.title": [
+    "3D Tiles 场景",
+    "3D Tiles scenes"
+  ],
+  "portal.capabilities.f03.body": [
+    "加载 tileset.json 或 Cesium Ion 资源，接入 b3dm、i3dm、pnts、cmpt 与 glTF / GLB 内容。",
+    "Load tileset.json or Cesium Ion assets: b3dm, i3dm, pnts, cmpt, and glTF / GLB."
+  ],
+  "portal.capabilities.f04.title": [
+    "Cesium 地形",
+    "Cesium terrain"
+  ],
+  "portal.capabilities.f04.body": [
+    "支持 quantized-mesh terrain，从地形根目录或 layer.json 加载，并可在运行时热切换。",
+    "Quantized-mesh terrain from a root URL or layer.json, with runtime hot-swap."
+  ],
+  "portal.capabilities.f05.title": [
+    "大气、云与光照",
+    "Atmosphere, clouds & lighting"
+  ],
+  "portal.capabilities.f05.body": [
+    "集成 sky atmosphere、体积云、太阳光、天空光探针，并提供 light-source / post-process 光照模式。",
+    "Sky atmosphere, volumetric clouds, sunlight, sky probes, and light-source / post-process lighting modes."
+  ],
+  "portal.capabilities.f06.title": [
+    "工程友好的默认值",
+    "Engineering-friendly defaults"
+  ],
+  "portal.capabilities.f06.body": [
+    "内置 LOD fade、按需更新、SMAA、镜头光晕、曝光控制和 Draco 解码器路径配置。",
+    "Built-in LOD fade, on-demand updates, SMAA, lens flare, exposure, and Draco decoder path config."
+  ],
+  "sandcastle.brand.homeAria": [
+    "Tellux 首页",
+    "Tellux home"
+  ],
+  "sandcastle.actions.aria": [
+    "示例操作",
+    "Example actions"
+  ],
+  "sandcastle.actions.standalone": [
+    "Standalone",
+    "Standalone"
+  ],
+  "sandcastle.rail.examples": [
+    "案例",
+    "Examples"
+  ],
+  "sandcastle.rail.code": [
+    "代码",
+    "Code"
+  ],
+  "sandcastle.rail.docs": [
+    "文档",
+    "Docs"
+  ],
+  "sandcastle.sidebar.aria": [
+    "示例列表",
+    "Example list"
+  ],
+  "sandcastle.search.placeholder": [
+    "搜索示例或标签",
+    "Search examples or tags"
+  ],
+  "sandcastle.search.aria": [
+    "搜索示例或标签",
+    "Search examples or tags"
+  ],
+  "sandcastle.side.collapse": [
+    "收起侧边栏",
+    "Collapse sidebar"
+  ],
+  "sandcastle.side.expand": [
+    "展开侧边栏",
+    "Expand sidebar"
+  ],
+  "sandcastle.editor.aria": [
+    "代码编辑",
+    "Code editor"
+  ],
+  "sandcastle.editor.tabsAria": [
+    "代码类型",
+    "Code panes"
+  ],
+  "sandcastle.editor.javascript": [
+    "Javascript",
+    "Javascript"
+  ],
+  "sandcastle.editor.html": [
+    "HTML/CSS",
+    "HTML/CSS"
+  ],
+  "sandcastle.editor.actionsAria": [
+    "代码操作",
+    "Code actions"
+  ],
+  "sandcastle.editor.run": [
+    "Run",
+    "Run"
+  ],
+  "sandcastle.splitter.aria": [
+    "调整代码与预览区域宽度",
+    "Resize code and preview"
+  ],
+  "sandcastle.stage.aria": [
+    "预览与控制台",
+    "Preview and console"
+  ],
+  "sandcastle.preview.iframeTitle": [
+    "Tellux Sandcastle preview",
+    "Tellux Sandcastle preview"
+  ],
+  "sandcastle.preview.loading": [
+    "Loading example...",
+    "Loading example..."
+  ],
+  "sandcastle.preview.fullscreen": [
+    "全屏预览",
+    "Fullscreen preview"
+  ],
+  "sandcastle.preview.exitFullscreen": [
+    "退出全屏预览",
+    "Exit fullscreen preview"
+  ],
+  "sandcastle.console.aria": [
+    "Console",
+    "Console"
+  ],
+  "sandcastle.console.resizeAria": [
+    "调整 Console 高度",
+    "Resize console height"
+  ],
+  "sandcastle.console.collapse": [
+    "折叠 Console",
+    "Collapse console"
+  ],
+  "sandcastle.console.expand": [
+    "展开 Console",
+    "Expand console"
+  ],
+  "sandcastle.console.clear": [
+    "Clear",
+    "Clear"
+  ],
+  "sandcastle.console.title": [
+    "Console",
+    "Console"
+  ],
+  "sandcastle.status.running": [
+    "Running example...",
+    "Running example..."
+  ],
+  "sandcastle.registry.defaultDescription": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.basic.registry.title": [
+    "三维地球",
+    "3D Globe"
+  ],
+  "example.basic.registry.description": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.webgpu-basic.registry.title": [
+    "WebGPU 地球",
+    "WebGPU Globe"
+  ],
+  "example.webgpu-basic.registry.description": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.atmosphere.registry.title": [
+    "体积云与大气",
+    "Volumetric Clouds & Atmosphere"
+  ],
+  "example.atmosphere.registry.description": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.3d-tiles.registry.title": [
+    "3D Tiles 加载",
+    "Load 3D Tiles"
+  ],
+  "example.3d-tiles.registry.description": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.3d-tiles-picking.registry.title": [
+    "拾取与高亮",
+    "Pick & Highlight"
+  ],
+  "example.3d-tiles-picking.registry.description": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.gaussian-splat-3d-tiles.registry.title": [
+    "高斯泼溅 3D Tiles",
+    "Gaussian Splat 3D Tiles"
+  ],
+  "example.gaussian-splat-3d-tiles.registry.description": [
+    "示例侧集成 3d-tiles-rendererjs-3dgs-plugin，在 Tellux 地球场景中加载高斯泼溅 3D Tiles。",
+    "Integrates 3d-tiles-rendererjs-3dgs-plugin to load Gaussian splat 3D Tiles in a Tellux globe scene."
+  ],
+  "example.google-photorealistic-3d-tiles.registry.title": [
+    "城市级海量模型",
+    "City-scale Massive Models"
+  ],
+  "example.google-photorealistic-3d-tiles.registry.description": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.terrain.registry.title": [
+    "地形热切换",
+    "Terrain Hot-swap"
+  ],
+  "example.terrain.registry.description": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.data-sources.registry.title": [
+    "图层管理器",
+    "Layer Manager"
+  ],
+  "example.data-sources.registry.description": [
+    "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
+    "Full-page example. Edit JavaScript and HTML/CSS, then run again."
+  ],
+  "example.fly-to.registry.title": [
+    "相机飞行",
+    "Camera Fly-to"
+  ],
+  "example.fly-to.registry.description": [
+    "选择一个目的地开始飞行。",
+    "Pick a destination to start flying."
+  ],
+  "example.entities.registry.title": [
+    "实体绘制",
+    "Entity Drawing"
+  ],
+  "example.entities.registry.description": [
+    "已加载示例实体。",
+    "Sample entities loaded."
+  ],
+  "example.symbol.registry.title": [
+    "图标与文字标签",
+    "Icons & Text Labels"
+  ],
+  "example.symbol.registry.description": [
+    "加载中…",
+    "Loading…"
+  ],
+  "example.ground-clamp.registry.title": [
+    "贴地折线",
+    "Ground-clamped Polyline"
+  ],
+  "example.ground-clamp.registry.description": [
+    "加载中…",
+    "Loading…"
+  ],
+  "example.ground-clamp-polygon.registry.title": [
+    "贴地面",
+    "Ground-clamped Polygon"
+  ],
+  "example.ground-clamp-polygon.registry.description": [
+    "加载中…",
+    "Loading…"
+  ],
+  "example.instanced-horses.registry.title": [
+    "若尔盖草原奔马实例化",
+    "Zoige Instanced Horses"
+  ],
+  "example.instanced-horses.registry.description": [
+    "正在准备若尔盖草原点位...",
+    "Preparing Zoige grassland placements..."
+  ],
+  "example.mixed-height-sampling-horses.registry.title": [
+    "混合场景高度采样奔马",
+    "Mixed Height Sampling Horses"
+  ],
+  "example.mixed-height-sampling-horses.registry.description": [
+    "正在准备混合采样场景...",
+    "Preparing mixed sampling scene..."
+  ],
+  "example.vegetation.registry.title": [
+    "程序化植被森林",
+    "Procedural Vegetation Forest"
+  ],
+  "example.vegetation.registry.description": [
+    "正在准备植被场景...",
+    "Preparing vegetation scene..."
+  ],
+  "example.threejs-interop.registry.title": [
+    "Three.js 原生互操作",
+    "Three.js Interop"
+  ],
+  "example.threejs-interop.registry.description": [
+    "正在加载 Littlest Tokyo...",
+    "Loading Littlest Tokyo..."
+  ],
+  "example.hism-forest.registry.title": [
+    "HISM 森林基准",
+    "HISM Forest Benchmark"
+  ],
+  "example.hism-forest.registry.description": [
+    "正在准备 HISM 场景...",
+    "Preparing HISM scene..."
+  ],
+  "example.hism-compare.registry.title": [
+    "Legacy vs HISM 性能对比",
+    "Legacy vs HISM Compare"
+  ],
+  "example.hism-compare.registry.description": [
+    "正在初始化模板...",
+    "Initializing templates..."
+  ],
+  "example.basic.title": [
+    "三维地球",
+    "3D Globe"
+  ],
+  "example.webgpu-basic.title": [
+    "WebGPU 地球",
+    "WebGPU Globe"
+  ],
+  "example.atmosphere.panel.aria": [
+    "大气与云控件",
+    "Atmosphere & clouds controls"
+  ],
+  "example.atmosphere.panel.title": [
+    "体积云与大气",
+    "Volumetric clouds & atmosphere"
+  ],
+  "example.atmosphere.folder.place": [
+    "地点",
+    "Places"
+  ],
+  "example.atmosphere.hint": [
+    "使用右上角公共设置面板调整大气、体积云、日期、光照和曝光。",
+    "Use the top-right shared settings panel for atmosphere, clouds, date, lighting, and exposure."
+  ],
+  "example.atmosphere.btn.dujiangyan": [
+    "紫坪铺水库",
+    "Zipingpu Reservoir"
+  ],
+  "example.atmosphere.btn.himalaya": [
+    "喜马拉雅",
+    "Himalaya"
+  ],
+  "example.atmosphere.docTitle": [
+    "Tellux 体积云与大气",
+    "Tellux Volumetric Clouds & Atmosphere"
+  ],
+  "example.3d-tiles.docTitle": [
+    "Tellux 3D Tiles",
+    "Tellux 3D Tiles"
+  ],
+  "example.3d-tiles.panel.aria": [
+    "3D Tiles 加载控件",
+    "3D Tiles loading controls"
+  ],
+  "example.3d-tiles.panel.title": [
+    "3D Tiles 加载",
+    "Load 3D Tiles"
+  ],
+  "example.3d-tiles.folder.source": [
+    "数据源",
+    "Data source"
+  ],
+  "example.3d-tiles.folder.options": [
+    "选项",
+    "Options"
+  ],
+  "example.3d-tiles.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.3d-tiles.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.3d-tiles.label.loadMode": [
+    "加载方式",
+    "Load method"
+  ],
+  "example.3d-tiles.label.url": [
+    "tileset.json URL",
+    "tileset.json URL"
+  ],
+  "example.3d-tiles.label.assetId": [
+    "Cesium Ion asset id",
+    "Cesium Ion asset id"
+  ],
+  "example.3d-tiles.label.token": [
+    "Cesium Ion token",
+    "Cesium Ion token"
+  ],
+  "example.3d-tiles.label.visible": [
+    "显示 3D Tiles",
+    "Show 3D Tiles"
+  ],
+  "example.3d-tiles.label.flyTo": [
+    "加载后飞行到 3D Tiles",
+    "Fly to 3D Tiles after load"
+  ],
+  "example.3d-tiles.btn.load": [
+    "加载",
+    "Load"
+  ],
+  "example.3d-tiles.btn.remove": [
+    "移除",
+    "Remove"
+  ],
+  "example.3d-tiles.ph.tokenDefault": [
+    "留空使用默认 token",
+    "Leave empty to use default token"
+  ],
+  "example.3d-tiles.ph.tokenInput": [
+    "输入 Cesium Ion token",
+    "Enter Cesium Ion token"
+  ],
+  "example.3d-tiles.status.loaded": [
+    "{description} 已加入场景。图层 id：{id}",
+    "{description} added. Layer id: {id}"
+  ],
+  "example.3d-tiles.status.needUrl": [
+    "请先输入 tileset.json URL，或在 .env 中配置 VITE_3D_TILESET_URL。",
+    "Enter a tileset.json URL, or set VITE_3D_TILESET_URL in .env."
+  ],
+  "example.3d-tiles.status.needIon": [
+    "请先输入 Cesium Ion asset id 和 token，或在 .env 中配置默认值。",
+    "Enter Cesium Ion asset id and token, or configure defaults in .env."
+  ],
+  "example.3d-tiles.status.switchedUrl": [
+    "已切换到 URL 加载；填写 tileset.json 地址后点击“加载”。",
+    "Switched to URL loading; enter tileset.json then click Load."
+  ],
+  "example.3d-tiles.status.switchedIon": [
+    "已切换到 Cesium Ion 加载；填写 asset id 和 token 后点击“加载”。",
+    "Switched to Cesium Ion; enter asset id and token then click Load."
+  ],
+  "example.3d-tiles.status.visibility": [
+    "3D Tiles 已{state}。",
+    "3D Tiles is {state}."
+  ],
+  "example.3d-tiles.status.none": [
+    "还没有加载 3D Tiles。",
+    "No 3D Tiles loaded yet."
+  ],
+  "example.3d-tiles.status.removed": [
+    "3D Tiles 已移除。",
+    "3D Tiles removed."
+  ],
+  "example.3d-tiles.status.autoLoaded": [
+    "已自动加载默认 3D Tiles；也可以替换 URL 后重新加载。",
+    "Default 3D Tiles auto-loaded; replace the URL and reload if needed."
+  ],
+  "example.3d-tiles.status.ionReady": [
+    "已读取 Cesium Ion 默认配置，可点击“加载”。",
+    "Cesium Ion defaults loaded; click Load."
+  ],
+  "example.3d-tiles.status.promptUrl": [
+    "输入 tileset.json URL 后点击“加载”。",
+    "Enter tileset.json URL then click Load."
+  ],
+  "example.3d-tiles.status.promptIon": [
+    "输入 Cesium Ion asset id 和 token 后点击“加载”。",
+    "Enter Cesium Ion asset id and token then click Load."
+  ],
+  "example.3d-tiles-picking.docTitle": [
+    "Tellux 拾取与高亮",
+    "Tellux Pick & Highlight"
+  ],
+  "example.3d-tiles-picking.panel.aria": [
+    "拾取与高亮控件",
+    "Pick & highlight controls"
+  ],
+  "example.3d-tiles-picking.panel.title": [
+    "拾取与高亮",
+    "Pick & highlight"
+  ],
+  "example.3d-tiles-picking.folder.load": [
+    "加载",
+    "Load"
+  ],
+  "example.3d-tiles-picking.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.3d-tiles-picking.btn.load": [
+    "加载",
+    "Load"
+  ],
+  "example.3d-tiles-picking.btn.clear": [
+    "清除选择",
+    "Clear selection"
+  ],
+  "example.3d-tiles-picking.hint": [
+    "移动鼠标高亮 feature，点击后锁定选择并展示属性。",
+    "Hover to highlight features; click to lock selection and show properties."
+  ],
+  "example.3d-tiles-picking.ph.tokenDefault": [
+    "留空使用默认 token",
+    "Leave empty to use default token"
+  ],
+  "example.3d-tiles-picking.ph.tokenInput": [
+    "输入 Cesium Ion token",
+    "Enter Cesium Ion token"
+  ],
+  "example.3d-tiles-picking.status.needCreds": [
+    "请先输入 Cesium Ion asset id 和 token，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。",
+    "Enter asset id and token, or set VITE_CESIUM_ION_TOKEN."
+  ],
+  "example.3d-tiles-picking.status.loaded": [
+    "3D Tiles 已加入场景。等待瓦片加载后移动鼠标拾取 feature。",
+    "3D Tiles added. After tiles load, move the mouse to pick features."
+  ],
+  "example.3d-tiles-picking.status.prompt": [
+    "输入 Cesium Ion token 后点击加载；默认 asset id 对应 Cesium NYC buildings 示例。",
+    "Enter token then Load; default asset id is Cesium NYC buildings."
+  ],
+  "example.3d-tiles-picking.popup.meta": [
+    "图层 {layerId} · feature {featureId}",
+    "Layer {layerId} · feature {featureId}"
+  ],
+  "example.3d-tiles-picking.popup.empty": [
+    "当前命中对象没有可读取的 feature 属性。",
+    "No readable feature properties on this hit."
+  ],
+  "example.gaussian-splat-3d-tiles.panel.aria": [
+    "高斯泼溅 3D Tiles 控件",
+    "Gaussian splat 3D Tiles controls"
+  ],
+  "example.gaussian-splat-3d-tiles.panel.title": [
+    "高斯泼溅 3D Tiles",
+    "Gaussian Splat 3D Tiles"
+  ],
+  "example.gaussian-splat-3d-tiles.folder.source": [
+    "数据源",
+    "Data source"
+  ],
+  "example.gaussian-splat-3d-tiles.folder.options": [
+    "选项",
+    "Options"
+  ],
+  "example.gaussian-splat-3d-tiles.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.gaussian-splat-3d-tiles.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.gaussian-splat-3d-tiles.label.visible": [
+    "显示高斯泼溅",
+    "Show Gaussian splats"
+  ],
+  "example.gaussian-splat-3d-tiles.btn.load": [
+    "加载",
+    "Load"
+  ],
+  "example.gaussian-splat-3d-tiles.btn.flyTo": [
+    "飞行到目标",
+    "Fly to target"
+  ],
+  "example.gaussian-splat-3d-tiles.btn.remove": [
+    "移除",
+    "Remove"
+  ],
+  "example.gaussian-splat-3d-tiles.status.needUrl": [
+    "请先输入 3DGS tileset.json URL，或配置 VITE_GAUSSIAN_SPLAT_3D_TILESET_URL。",
+    "Enter a 3DGS tileset.json URL, or set VITE_GAUSSIAN_SPLAT_3D_TILESET_URL."
+  ],
+  "example.gaussian-splat-3d-tiles.status.loaded": [
+    "已加载高斯泼溅 3D Tiles。等待瓦片细化中...",
+    "Gaussian splat 3D Tiles loaded. Waiting for tile refinement..."
+  ],
+  "example.gaussian-splat-3d-tiles.status.visibleCount": [
+    "高斯泼溅瓦片可见：{n}。",
+    "Visible Gaussian splat tiles: {n}."
+  ],
+  "example.gaussian-splat-3d-tiles.status.waiting": [
+    "高斯泼溅 tileset 已加入场景，移动相机可触发加载。",
+    "Tileset added; move the camera to trigger loading."
+  ],
+  "example.gaussian-splat-3d-tiles.status.removed": [
+    "高斯泼溅 3D Tiles 已移除。",
+    "Gaussian splat 3D Tiles removed."
+  ],
+  "example.gaussian-splat-3d-tiles.status.visibility": [
+    "高斯泼溅已{state}。",
+    "Gaussian splats are {state}."
+  ],
+  "example.gaussian-splat-3d-tiles.status.none": [
+    "还没有加载高斯泼溅。",
+    "No Gaussian splats loaded yet."
+  ],
+  "example.google-photorealistic-3d-tiles.docTitle": [
+    "Tellux 城市级海量模型加载",
+    "Tellux City-scale Massive Models"
+  ],
+  "example.google-photorealistic-3d-tiles.panel.aria": [
+    "城市级海量模型加载控件",
+    "City-scale model loading controls"
+  ],
+  "example.google-photorealistic-3d-tiles.panel.title": [
+    "城市级海量模型",
+    "City-scale massive models"
+  ],
+  "example.google-photorealistic-3d-tiles.folder.load": [
+    "加载",
+    "Load"
+  ],
+  "example.google-photorealistic-3d-tiles.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.google-photorealistic-3d-tiles.btn.load": [
+    "加载 3D Tiles",
+    "Load 3D Tiles"
+  ],
+  "example.google-photorealistic-3d-tiles.btn.flyTo": [
+    "定位到东京",
+    "Go to Tokyo"
+  ],
+  "example.google-photorealistic-3d-tiles.attr.aria": [
+    "地图数据来源",
+    "Map data attribution"
+  ],
+  "example.google-photorealistic-3d-tiles.ph.tokenDefault": [
+    "留空使用 VITE_CESIUM_ION_TOKEN",
+    "Leave empty to use VITE_CESIUM_ION_TOKEN"
+  ],
+  "example.google-photorealistic-3d-tiles.ph.tokenInput": [
+    "输入 Cesium Ion token",
+    "Enter Cesium Ion token"
+  ],
+  "example.google-photorealistic-3d-tiles.status.needToken": [
+    "请先输入 Cesium Ion token，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。",
+    "Enter token or set VITE_CESIUM_ION_TOKEN."
+  ],
+  "example.google-photorealistic-3d-tiles.status.loaded": [
+    "已通过 viewer.load3DTileset 加载城市级海量 3D Tiles 模型。",
+    "City-scale 3D Tiles loaded via viewer.load3DTileset."
+  ],
+  "example.google-photorealistic-3d-tiles.status.prompt": [
+    "输入 Cesium Ion token 后加载城市级海量 3D Tiles 模型。",
+    "Enter Cesium Ion token to load city-scale 3D Tiles."
+  ],
+  "example.terrain.docTitle": [
+    "Tellux 天地图地形热切换",
+    "Tellux Tianditu Terrain Hot-swap"
+  ],
+  "example.terrain.panel.aria": [
+    "地形热切换控件",
+    "Terrain hot-swap controls"
+  ],
+  "example.terrain.panel.title": [
+    "地形热切换",
+    "Terrain hot-swap"
+  ],
+  "example.terrain.folder.source": [
+    "数据源",
+    "Data source"
+  ],
+  "example.terrain.folder.toggle": [
+    "开关",
+    "Toggle"
+  ],
+  "example.terrain.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.terrain.label.source": [
+    "地形来源",
+    "Terrain source"
+  ],
+  "example.terrain.label.tk": [
+    "天地图 tk",
+    "Tianditu tk"
+  ],
+  "example.terrain.label.ionAssetId": [
+    "Cesium Ion terrain asset id",
+    "Cesium Ion terrain asset id"
+  ],
+  "example.terrain.label.ionToken": [
+    "Cesium Ion token",
+    "Cesium Ion token"
+  ],
+  "example.terrain.label.enable": [
+    "启用地形",
+    "Enable terrain"
+  ],
+  "example.terrain.option.tianditu": [
+    "天地图 swdx",
+    "Tianditu swdx"
+  ],
+  "example.terrain.option.cesiumIon": [
+    "Cesium Ion terrain",
+    "Cesium Ion terrain"
+  ],
+  "example.terrain.ph.tkDefault": [
+    "留空使用 VITE_TIANDITU_TOKEN",
+    "Leave empty to use VITE_TIANDITU_TOKEN"
+  ],
+  "example.terrain.ph.tkInput": [
+    "输入天地图 tk",
+    "Enter Tianditu tk"
+  ],
+  "example.terrain.ph.ionDefault": [
+    "留空使用 VITE_CESIUM_ION_TOKEN",
+    "Leave empty to use VITE_CESIUM_ION_TOKEN"
+  ],
+  "example.terrain.ph.ionInput": [
+    "输入 Cesium Ion token",
+    "Enter Cesium Ion token"
+  ],
+  "example.terrain.hint.template": [
+    "服务模板：{url}",
+    "Service template: {url}"
+  ],
+  "example.terrain.status.needTk": [
+    "请先输入天地图 tk，或在 .env 中配置 VITE_TIANDITU_TOKEN。",
+    "Enter Tianditu tk or set VITE_TIANDITU_TOKEN."
+  ],
+  "example.terrain.status.needIon": [
+    "请先输入 Cesium Ion terrain asset id 和 token，或在 .env 中配置默认值。",
+    "Enter Ion terrain asset id and token, or set defaults."
+  ],
+  "example.terrain.status.loadedTianditu": [
+    "天地图 swdx 地形已通过 viewer.setTerrain 加载。",
+    "Tianditu swdx terrain loaded via viewer.setTerrain."
+  ],
+  "example.terrain.status.loadedIon": [
+    "Cesium Ion 地形已通过 viewer.setTerrain 加载。",
+    "Cesium Ion terrain loaded via viewer.setTerrain."
+  ],
+  "example.terrain.status.disabled": [
+    "地形已关闭，Viewer 已切回无地形模式。",
+    "Terrain off; Viewer is in no-terrain mode."
+  ],
+  "example.terrain.status.selectTianditu": [
+    "已选择天地图 swdx 地形，勾选后加载 elv_c 高程瓦片。",
+    "Tianditu swdx selected; enable to load elv_c elevation tiles."
+  ],
+  "example.terrain.status.selectIon": [
+    "已选择 Cesium Ion 地形来源，勾选后加载 terrain asset。",
+    "Cesium Ion selected; enable to load terrain asset."
+  ],
+  "example.terrain.status.devDefaultIon": [
+    "本地开发已默认加载 Cesium Ion 地形。可手动切换到天地图 swdx（需 key 开通三维地形且域名白名单含当前页面来源）。",
+    "Dev default: Cesium Ion terrain. Switch to Tianditu swdx if key allows 3D terrain and domain whitelist includes this origin."
+  ],
+  "example.terrain.status.autoTianditu": [
+    "已从天地图 swdx 默认配置自动加载地形；也可以切换到 Cesium Ion 地形。",
+    "Auto-loaded Tianditu swdx; you can switch to Cesium Ion."
+  ],
+  "example.terrain.status.fallbackIon": [
+    "未检测到 VITE_TIANDITU_TOKEN，已从 Cesium Ion 默认配置自动加载地形。",
+    "No VITE_TIANDITU_TOKEN; auto-loaded Cesium Ion defaults."
+  ],
+  "example.terrain.status.needAny": [
+    "请配置 VITE_TIANDITU_TOKEN，或输入天地图 tk / Cesium Ion 凭据后加载。",
+    "Set VITE_TIANDITU_TOKEN, or enter Tianditu tk / Ion credentials."
+  ],
+  "example.data-sources.panel.aria": [
+    "图层管理器",
+    "Layer manager"
+  ],
+  "example.data-sources.panel.title": [
+    "图层管理器",
+    "Layer manager"
+  ],
+  "example.data-sources.folder.layers": [
+    "图层",
+    "Layers"
+  ],
+  "example.data-sources.issue.noToken": [
+    "未配置 VITE_TIANDITU_TOKEN。",
+    "VITE_TIANDITU_TOKEN is not set."
+  ],
+  "example.data-sources.layer.xyz.label": [
+    "天地图影像 XYZ",
+    "Tianditu imagery XYZ"
+  ],
+  "example.data-sources.layer.wms.label": [
+    "风云卫星 GEOS 红外云图 WMS",
+    "FY GEOS IR cloud WMS"
+  ],
+  "example.data-sources.layer.wms.desc": [
+    "NSMC GEOS_IRX / 全球拼图 / 粗粒度 WMS",
+    "NSMC GEOS_IRX / global mosaic / coarse WMS"
+  ],
+  "example.data-sources.layer.wmts.label": [
+    "天地图影像注记 WMTS",
+    "Tianditu imagery annotation WMTS"
+  ],
+  "example.data-sources.layer.geojson.label": [
+    "成都市行政区划",
+    "Chengdu administrative boundaries"
+  ],
+  "example.data-sources.layer.geojson.desc": [
+    "天地图 v2/administrative / 156510100",
+    "Tianditu v2/administrative / 156510100"
+  ],
+  "example.data-sources.drag.aria": [
+    "拖动 {label} 调整顺序",
+    "Drag {label} to reorder"
+  ],
+  "example.data-sources.drag.title": [
+    "拖动调整顺序",
+    "Drag to reorder"
+  ],
+  "example.data-sources.visibility.aria": [
+    "{label} 显隐",
+    "{label} visibility"
+  ],
+  "example.data-sources.opacity.label": [
+    "透明度",
+    "Opacity"
+  ],
+  "example.data-sources.opacity.aria": [
+    "{label} 透明度",
+    "{label} opacity"
+  ],
+  "example.data-sources.status.none": [
+    "当前未显示叠加图层。",
+    "No overlay layers visible."
+  ],
+  "example.data-sources.status.count": [
+    "当前显示 {n} 个叠加图层。",
+    "{n} overlay layer(s) visible."
+  ],
+  "example.data-sources.status.needToken": [
+    "天地图图层需要配置 VITE_TIANDITU_TOKEN。",
+    "Tianditu layers require VITE_TIANDITU_TOKEN."
+  ],
+  "example.data-sources.status.geojsonFail": [
+    "成都市 GeoJSON 未加载成功。请检查 tk 是否开通 v2/administrative。",
+    "Chengdu GeoJSON failed. Check tk access to v2/administrative."
+  ],
+  "example.fly-to.panel.aria": [
+    "相机飞行控件",
+    "Camera fly-to controls"
+  ],
+  "example.fly-to.panel.title": [
+    "相机飞行",
+    "Camera fly-to"
+  ],
+  "example.fly-to.folder.dest": [
+    "目的地",
+    "Destinations"
+  ],
+  "example.fly-to.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.fly-to.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.fly-to.hint": [
+    "使用 <code>viewer.camera.flyTo</code> 触发 Cesium 风格的相机飞行动画。",
+    "Use <code>viewer.camera.flyTo</code> for Cesium-style camera flight."
+  ],
+  "example.fly-to.btn.cancel": [
+    "取消飞行",
+    "Cancel flight"
+  ],
+  "example.fly-to.status.initial": [
+    "选择一个目的地开始飞行。",
+    "Pick a destination to start flying."
+  ],
+  "example.fly-to.dest.dujiangyan": [
+    "成都都江堰",
+    "Chengdu Dujiangyan"
+  ],
+  "example.fly-to.dest.guilin": [
+    "桂林-千里江山图",
+    "Guilin – A Thousand Miles of Rivers and Mountains"
+  ],
+  "example.fly-to.dest.namcha": [
+    "西藏南迦巴瓦峰",
+    "Namcha Barwa, Tibet"
+  ],
+  "example.fly-to.status.flying": [
+    "正在飞往{label}...",
+    "Flying to {label}..."
+  ],
+  "example.fly-to.status.arrived": [
+    "已抵达{label}。",
+    "Arrived at {label}."
+  ],
+  "example.fly-to.status.cancelled": [
+    "飞行已取消。",
+    "Flight cancelled."
+  ],
+  "example.entities.docTitle": [
+    "Tellux 实体绘制",
+    "Tellux Entity Drawing"
+  ],
+  "example.entities.panel.aria": [
+    "实体绘制控件",
+    "Entity drawing controls"
+  ],
+  "example.entities.panel.title": [
+    "实体绘制",
+    "Entity drawing"
+  ],
+  "example.entities.folder.display": [
+    "显示",
+    "Display"
+  ],
+  "example.entities.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.entities.hint": [
+    "通过 <code>viewer.entities.add()</code> 绘制点、折线、多边形和拉伸体块。",
+    "Draw points, polylines, polygons, and extruded blocks via <code>viewer.entities.add()</code>."
+  ],
+  "example.entities.label.points": [
+    "点位",
+    "Points"
+  ],
+  "example.entities.label.polyline": [
+    "折线",
+    "Polyline"
+  ],
+  "example.entities.label.polygon": [
+    "面块",
+    "Polygons"
+  ],
+  "example.entities.btn.clear": [
+    "清空实体",
+    "Clear entities"
+  ],
+  "example.entities.status.initial": [
+    "已加载示例实体。",
+    "Sample entities loaded."
+  ],
+  "example.entities.pick.key": [
+    "拾取",
+    "Pick"
+  ],
+  "example.entities.pick.hint": [
+    "点击任意实体查看属性",
+    "Click any entity to view properties"
+  ],
+  "example.entities.pick.miss": [
+    "未命中实体",
+    "No entity hit"
+  ],
+  "example.entities.pick.hit": [
+    "命中：{label}（类型：{kind}，id：{id}）",
+    "Hit: {label} (type: {kind}, id: {id})"
+  ],
+  "example.entities.data.nodeA": [
+    "节点 A",
+    "Node A"
+  ],
+  "example.entities.data.nodeB": [
+    "节点 B",
+    "Node B"
+  ],
+  "example.entities.data.nodeC": [
+    "节点 C",
+    "Node C"
+  ],
+  "example.entities.data.nodeD": [
+    "节点 D",
+    "Node D"
+  ],
+  "example.entities.data.polyline": [
+    "游览路径",
+    "Tour route"
+  ],
+  "example.entities.data.polygon": [
+    "规划区块",
+    "Planning zone"
+  ],
+  "example.entities.data.extruded": [
+    "拉伸体块",
+    "Extruded block"
+  ],
+  "example.entities.status.drawn": [
+    "已绘制 {n} 个点位 + 1 条折线 + 2 个多边形（含 1 个拉伸体块）。",
+    "Drew {n} points + 1 polyline + 2 polygons (including 1 extruded block)."
+  ],
+  "example.entities.status.togglePoints": [
+    "点位已{state}。",
+    "Points are {state}."
+  ],
+  "example.entities.status.togglePolyline": [
+    "折线已{state}。",
+    "Polyline is {state}."
+  ],
+  "example.entities.status.togglePolygon": [
+    "面块已{state}。",
+    "Polygons are {state}."
+  ],
+  "example.entities.status.cleared": [
+    "已清空所有实体。",
+    "All entities cleared."
+  ],
+  "example.symbol.docTitle": [
+    "Tellux 图标与文字标签",
+    "Tellux Icons & Text Labels"
+  ],
+  "example.symbol.panel.aria": [
+    "图标与文字标签控件",
+    "Icons & text labels controls"
+  ],
+  "example.symbol.panel.title": [
+    "图标与文字标签",
+    "Icons & text labels"
+  ],
+  "example.symbol.folder.display": [
+    "显示",
+    "Display"
+  ],
+  "example.symbol.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.symbol.folder.stress": [
+    "压测",
+    "Stress test"
+  ],
+  "example.symbol.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.symbol.label.poi": [
+    "POI（图标+文字）",
+    "POI (icon + text)"
+  ],
+  "example.symbol.label.labels": [
+    "纯文字标签",
+    "Text-only labels"
+  ],
+  "example.symbol.label.icons": [
+    "纯图标",
+    "Icons only"
+  ],
+  "example.symbol.label.multiline": [
+    "多行/背景",
+    "Multiline / background"
+  ],
+  "example.symbol.label.count": [
+    "数量（1–20000）",
+    "Count (1–20000)"
+  ],
+  "example.symbol.btn.recolor": [
+    "改色（不重建）",
+    "Recolor (no rebuild)"
+  ],
+  "example.symbol.btn.clear": [
+    "清空实体",
+    "Clear entities"
+  ],
+  "example.symbol.btn.genStress": [
+    "生成压测 Symbol",
+    "Generate stress symbols"
+  ],
+  "example.symbol.btn.clearStress": [
+    "清空压测",
+    "Clear stress test"
+  ],
+  "example.symbol.hint": [
+    "在演示区网格散布 icon+text；文字从固定词表轮换以复用 SDF/atlas。",
+    "Scatter icon+text on a grid; labels rotate from a fixed word list to reuse SDF/atlas."
+  ],
+  "example.symbol.hint.stress": [
+    "在演示区网格散布 icon+text；文字从固定词表轮换以复用 SDF/atlas。",
+    "Scatter icon+text on a grid; labels rotate from a fixed word list to reuse SDF/atlas."
+  ],
+  "example.symbol.status.initial": [
+    "加载中…",
+    "Loading…"
+  ],
+  "example.symbol.pick.key": [
+    "拾取",
+    "Pick"
+  ],
+  "example.symbol.pick.hint": [
+    "点击任意标签查看属性",
+    "Click any label to view properties"
+  ],
+  "example.symbol.pick.miss": [
+    "未命中实体",
+    "No entity hit"
+  ],
+  "example.symbol.pick.hit": [
+    "命中：{label}（类型：{kind}，id：{id}）",
+    "Hit: {label} (type: {kind}, id: {id})"
+  ],
+  "example.symbol.status.drawn": [
+    "已绘制 {poi} 个 POI + {labels} 个文字标签 + {icons} 个图标 + 多行/背景 + 圆点共存。",
+    "Drew {poi} POIs + {labels} text labels + {icons} icons + multiline/background + dot coexistence."
+  ],
+  "example.symbol.status.togglePoi": [
+    "POI 已{state}。",
+    "POIs are {state}."
+  ],
+  "example.symbol.status.toggleLabels": [
+    "文字标签已{state}。",
+    "Text labels are {state}."
+  ],
+  "example.symbol.status.toggleIcons": [
+    "图标已{state}。",
+    "Icons are {state}."
+  ],
+  "example.symbol.status.toggleMultiline": [
+    "多行/背景已{state}。",
+    "Multiline/background is {state}."
+  ],
+  "example.symbol.status.recolored": [
+    "\"黄浦江\" 标签填充色已改为 {color}（未重建纹理）。",
+    "\"Huangpu River\" label fill changed to {color} (texture not rebuilt)."
+  ],
+  "example.symbol.status.cleared": [
+    "已清空所有实体。",
+    "All entities cleared."
+  ],
+  "example.symbol.status.stressCleared": [
+    "已清空压测 Symbol。",
+    "Stress symbols cleared."
+  ],
+  "example.symbol.status.invalidCount": [
+    "请输入有效的压测数量（≥ 1）。",
+    "Enter a valid stress count (≥ 1)."
+  ],
+  "example.symbol.status.generating": [
+    "正在生成 {count} 个压测 Symbol…",
+    "Generating {count} stress symbols…"
+  ],
+  "example.symbol.status.progress": [
+    "正在生成压测 Symbol… {end} / {count}",
+    "Generating stress symbols… {end} / {count}"
+  ],
+  "example.symbol.status.done": [
+    "压测完成：{count} 个 Symbol，耗时 {ms} ms（约 {rate} 个/秒）。当前实体总数 {total}。",
+    "Stress test done: {count} symbols in {ms} ms (~{rate}/s). Total entities: {total}."
+  ],
+  "example.symbol.place.lujiazui": [
+    "陆家嘴",
+    "Lujiazui"
+  ],
+  "example.symbol.place.orientalPearl": [
+    "东方明珠",
+    "Oriental Pearl Tower"
+  ],
+  "example.symbol.place.shanghaiTower": [
+    "上海中心",
+    "Shanghai Tower"
+  ],
+  "example.symbol.place.huangpu": [
+    "黄浦江",
+    "Huangpu River"
+  ],
+  "example.symbol.place.pudong": [
+    "浦东新区",
+    "Pudong New Area"
+  ],
+  "example.symbol.place.bund": [
+    "外滩",
+    "The Bund"
+  ],
+  "example.symbol.icon.restaurant": [
+    "餐厅",
+    "Restaurant"
+  ],
+  "example.symbol.icon.bar": [
+    "酒吧",
+    "Bar"
+  ],
+  "example.symbol.icon.label": [
+    "圆点 + 标签",
+    "Dot + label"
+  ],
+  "example.ground-clamp.docTitle": [
+    "Tellux 贴地折线",
+    "Tellux Ground-clamped Polyline"
+  ],
+  "example.ground-clamp.panel.aria": [
+    "贴地折线控件",
+    "Ground-clamp polyline controls"
+  ],
+  "example.ground-clamp.panel.title": [
+    "贴地折线",
+    "Ground-clamped polyline"
+  ],
+  "example.ground-clamp.folder.display": [
+    "显示",
+    "Display"
+  ],
+  "example.ground-clamp.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.ground-clamp.hint": [
+    "<code>polyline.clamp: true</code> 依赖 GPU 深度分类贴地；青色为贴地折线，黄色为固定高对比折线。",
+    "<code>polyline.clamp: true</code> uses GPU depth classification; cyan = clamped, yellow = fixed-height reference."
+  ],
+  "example.ground-clamp.label.clamp": [
+    "贴地折线",
+    "Clamped polyline"
+  ],
+  "example.ground-clamp.label.reference": [
+    "固定高折线",
+    "Fixed-height polyline"
+  ],
+  "example.ground-clamp.status.initial": [
+    "加载中…",
+    "Loading…"
+  ],
+  "example.ground-clamp.status.noTerrain": [
+    "未配置默认地形服务，无地形数据，贴地效果不可见。",
+    "No default terrain; clamp effect not visible."
+  ],
+  "example.ground-clamp.status.ready": [
+    "青色线贴合地形起伏；黄色线固定高，悬空穿越峡谷。",
+    "Cyan follows terrain; yellow is fixed-height across the canyon."
+  ],
+  "example.ground-clamp.props.clamp": [
+    "贴地折线",
+    "Clamped polyline"
+  ],
+  "example.ground-clamp.props.reference": [
+    "固定高折线",
+    "Fixed-height polyline"
+  ],
+  "example.ground-clamp-polygon.docTitle": [
+    "Tellux 贴地面",
+    "Tellux Ground-clamped Polygon"
+  ],
+  "example.ground-clamp-polygon.panel.aria": [
+    "贴地面控件",
+    "Ground-clamp polygon controls"
+  ],
+  "example.ground-clamp-polygon.panel.title": [
+    "贴地面",
+    "Ground-clamped polygon"
+  ],
+  "example.ground-clamp-polygon.folder.display": [
+    "显示",
+    "Display"
+  ],
+  "example.ground-clamp-polygon.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.ground-clamp-polygon.hint": [
+    "<code>polygon.clamp: true</code> 支持凹多边形贴地；青色为贴地凹多边形，黄色为固定高对比平面。",
+    "<code>polygon.clamp: true</code> supports concave polygon clamp; cyan = clamped, yellow = fixed-height reference."
+  ],
+  "example.ground-clamp-polygon.label.clamp": [
+    "贴地面",
+    "Clamped polygon"
+  ],
+  "example.ground-clamp-polygon.label.reference": [
+    "固定高平面",
+    "Fixed-height plane"
+  ],
+  "example.ground-clamp-polygon.status.initial": [
+    "加载中…",
+    "Loading…"
+  ],
+  "example.ground-clamp-polygon.status.noTerrain": [
+    "未配置默认地形服务，无地形数据，贴地效果不可见。",
+    "No default terrain; clamp effect not visible."
+  ],
+  "example.ground-clamp-polygon.status.ready": [
+    "青色凹多边形贴合峡谷地形（缺口镂空）；黄色同形面固定高度，悬空于峡谷之上。",
+    "Cyan concave polygon follows canyon (with hole); yellow same shape at fixed height."
+  ],
+  "example.ground-clamp-polygon.props.clamp": [
+    "贴地面",
+    "Clamped polygon"
+  ],
+  "example.ground-clamp-polygon.props.reference": [
+    "固定高平面",
+    "Fixed-height plane"
+  ],
+  "example.instanced-horses.panel.aria": [
+    "若尔盖草原奔马实例化控件",
+    "Zoige instanced horses controls"
+  ],
+  "example.instanced-horses.panel.title": [
+    "若尔盖草原奔马实例化",
+    "Zoige grassland instanced horses"
+  ],
+  "example.instanced-horses.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.instanced-horses.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.instanced-horses.btn.fly": [
+    "飞到马群",
+    "Fly to herd"
+  ],
+  "example.instanced-horses.btn.pause": [
+    "暂停动画",
+    "Pause animation"
+  ],
+  "example.instanced-horses.btn.play": [
+    "播放动画",
+    "Play animation"
+  ],
+  "example.instanced-horses.btn.regen": [
+    "重新生成",
+    "Regenerate"
+  ],
+  "example.instanced-horses.status.initial": [
+    "正在准备若尔盖草原点位...",
+    "Preparing Zoige grassland placements..."
+  ],
+  "example.instanced-horses.status.genPoints": [
+    "正在生成带间距约束的若尔盖草原随机点...",
+    "Generating spaced random points on Zoige grassland..."
+  ],
+  "example.instanced-horses.status.sampling": [
+    "已生成 {n} 个候选点，正在离屏采样地形高度...",
+    "Generated {n} candidates; offscreen sampling terrain height..."
+  ],
+  "example.instanced-horses.status.sampleFail": [
+    "地形高度采样失败，请检查地形数据源是否可用。",
+    "Terrain height sampling failed."
+  ],
+  "example.instanced-horses.status.noHit": [
+    "地形高度没有命中，未加载奔马实例。",
+    "No terrain hits; horses not loaded."
+  ],
+  "example.instanced-horses.status.loadingModel": [
+    "采样命中 {n} 个点，正在加载 Three.js Horse.glb...",
+    "{n} hits; loading Horse.glb..."
+  ],
+  "example.instanced-horses.status.modelFail": [
+    "奔马模型加载失败，请检查 three.js 示例资源是否可访问。",
+    "Horse model failed to load."
+  ],
+  "example.instanced-horses.status.ready": [
+    "已在若尔盖大草原附近放置 {n} 匹实例化奔马。",
+    "Placed {n} instanced horses near Zoige."
+  ],
+  "example.instanced-horses.readout.spacing": [
+    "最小 34 米",
+    "Min 34 m"
+  ],
+  "example.mixed-height-sampling-horses.panel.aria": [
+    "混合场景高度采样奔马控件",
+    "Mixed-height sampling horses controls"
+  ],
+  "example.mixed-height-sampling-horses.panel.title": [
+    "混合场景高度采样奔马",
+    "Mixed-height sampling horses"
+  ],
+  "example.mixed-height-sampling-horses.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.mixed-height-sampling-horses.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.mixed-height-sampling-horses.btn.pause": [
+    "暂停动画",
+    "Pause animation"
+  ],
+  "example.mixed-height-sampling-horses.btn.play": [
+    "播放动画",
+    "Play animation"
+  ],
+  "example.mixed-height-sampling-horses.btn.regen": [
+    "重新生成",
+    "Regenerate"
+  ],
+  "example.mixed-height-sampling-horses.status.initial": [
+    "正在准备混合采样场景...",
+    "Preparing mixed sampling scene..."
+  ],
+  "example.mixed-height-sampling-horses.status.loadingTiles": [
+    "正在加载 CesiumGS Discrete LOD 3D Tiles...",
+    "Loading CesiumGS Discrete LOD 3D Tiles..."
+  ],
+  "example.mixed-height-sampling-horses.status.genPoints": [
+    "正在生成 3D Tiles 附近的随机点...",
+    "Generating random points near 3D Tiles..."
+  ],
+  "example.mixed-height-sampling-horses.status.sampling": [
+    "已生成 {n} 个候选点，正在用 source: all 采样混合高度...",
+    "Generated {n} candidates; sampling mixed heights with source: all..."
+  ],
+  "example.mixed-height-sampling-horses.status.sampleFail": [
+    "混合高度采样失败，请检查 3D Tiles 和地形数据源是否可访问。",
+    "Mixed height sampling failed."
+  ],
+  "example.mixed-height-sampling-horses.status.noHit": [
+    "混合高度没有命中，未加载奔马实例。",
+    "No mixed-height hits; horses not loaded."
+  ],
+  "example.mixed-height-sampling-horses.status.loadingModel": [
+    "采样命中 {n} 个点，正在加载 Three.js Horse.glb...",
+    "{n} hits; loading Horse.glb..."
+  ],
+  "example.mixed-height-sampling-horses.status.modelFail": [
+    "奔马模型加载失败，请检查 three.js 示例资源是否可访问。",
+    "Horse model failed to load."
+  ],
+  "example.mixed-height-sampling-horses.status.ready": [
+    "已在 3D Tiles 和地形混合表面放置 {n} 匹实例化奔马。",
+    "Placed {n} instanced horses on mixed 3D Tiles + terrain surface."
+  ],
+  "example.vegetation.panel.aria": [
+    "程序化植被森林控件",
+    "Procedural vegetation forest controls"
+  ],
+  "example.vegetation.panel.title": [
+    "程序化植被森林",
+    "Procedural vegetation forest"
+  ],
+  "example.vegetation.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.vegetation.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.vegetation.btn.fly": [
+    "飞到森林",
+    "Fly to forest"
+  ],
+  "example.vegetation.btn.regen": [
+    "重新生成",
+    "Regenerate"
+  ],
+  "example.vegetation.status.initial": [
+    "正在准备植被场景...",
+    "Preparing vegetation scene..."
+  ],
+  "example.vegetation.status.initPreset": [
+    "正在初始化 ez-tree 预设...",
+    "Initializing ez-tree presets..."
+  ],
+  "example.vegetation.status.genPoints": [
+    "正在生成森林散布点（泊松分布）...",
+    "Generating forest placements (Poisson)..."
+  ],
+  "example.vegetation.status.sampling": [
+    "已生成 {n} 个候选点，正在通过 sampleHeightMostDetailed 采样地表高度...",
+    "Generated {n} candidates; sampling surface height via sampleHeightMostDetailed..."
+  ],
+  "example.vegetation.status.sampleFail": [
+    "地表高度采样失败，请检查地形数据源是否可访问。",
+    "Surface height sampling failed."
+  ],
+  "example.vegetation.status.noHit": [
+    "地表高度未命中，未加载植被。",
+    "No surface hits; vegetation not loaded."
+  ],
+  "example.vegetation.status.ready": [
+    "已在 ({lon}, {lat}) 周边 {r}m 范围内放置 {n} 棵程序化植被。",
+    "Placed {n} procedural trees within {r}m of ({lon}, {lat})."
+  ],
+  "example.threejs-interop.panel.aria": [
+    "Three.js 互操作控件",
+    "Three.js interop controls"
+  ],
+  "example.threejs-interop.panel.title": [
+    "Three.js 原生互操作",
+    "Native Three.js interop"
+  ],
+  "example.threejs-interop.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.threejs-interop.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.threejs-interop.hint": [
+    "加载 Three.js 官方 keyframes 模型，作为原生 <code>Object3D</code> 放到 {anchor} 的地表位置。",
+    "Load the official Three.js keyframes model as a native <code>Object3D</code> at the surface anchor {anchor}."
+  ],
+  "example.threejs-interop.hint.anchorFallback": [
+    "模型锚点",
+    "Model anchor"
+  ],
+  "example.threejs-interop.btn.fly": [
+    "飞到模型",
+    "Fly to model"
+  ],
+  "example.threejs-interop.btn.pause": [
+    "暂停动画",
+    "Pause animation"
+  ],
+  "example.threejs-interop.btn.play": [
+    "播放动画",
+    "Play animation"
+  ],
+  "example.threejs-interop.status.initial": [
+    "正在加载 Littlest Tokyo...",
+    "Loading Littlest Tokyo..."
+  ],
+  "example.threejs-interop.status.sampling": [
+    "正在离屏采样模型位置的地形高度...",
+    "Offscreen sampling terrain height at model position..."
+  ],
+  "example.threejs-interop.status.noHit": [
+    "离屏采样地形高度未命中，已取消模型加载。",
+    "Offscreen terrain sample missed; model load cancelled."
+  ],
+  "example.threejs-interop.status.sampleFail": [
+    "离屏采样地形高度失败，已取消模型加载。",
+    "Offscreen terrain sample failed; model load cancelled."
+  ],
+  "example.threejs-interop.status.ready": [
+    "Littlest Tokyo 已在采样高度 {h} 米处加入场景，并自动播放第 0 个动画通道。",
+    "Littlest Tokyo added at sampled height {h} m; playing animation channel 0."
+  ],
+  "example.threejs-interop.status.modelFail": [
+    "模型加载失败，请检查网络或 three.js 示例资源是否可访问。",
+    "Model load failed; check network or Three.js example assets."
+  ],
+  "example.threejs-interop.status.picked": [
+    "已选中模型（命中 {name}，距离 {d} m）。再次点击空白处取消。",
+    "Model selected (hit {name}, distance {d} m). Click empty space to clear."
+  ],
+  "example.threejs-interop.status.clearPick": [
+    "未命中模型，已清除高亮。",
+    "No model hit; highlight cleared."
+  ],
+  "example.threejs-interop.readout.coords": [
+    "坐标",
+    "Coordinates"
+  ],
+  "example.threejs-interop.readout.anim": [
+    "动画",
+    "Animation"
+  ],
+  "example.threejs-interop.readout.sampling": [
+    "采样地形高度中",
+    "Sampling terrain height"
+  ],
+  "example.threejs-interop.readout.noHit": [
+    "地形高度未命中",
+    "Terrain height missed"
+  ],
+  "example.threejs-interop.readout.sampleFail": [
+    "地形高度采样失败",
+    "Terrain height sampling failed"
+  ],
+  "example.threejs-interop.readout.anims": [
+    "{n} 个动画通道",
+    "{n} animation clip(s)"
+  ],
+  "example.threejs-interop.coords.text": [
+    "经度 {lon}、纬度 {lat}",
+    "Longitude {lon}, latitude {lat}"
+  ],
+  "example.hism-forest.pick.hint": [
+    "点击场景拾取 HISM 实例",
+    "Click the scene to pick HISM instances"
+  ],
+  "example.hism-forest.pick.miss": [
+    "未命中 HISM 实例",
+    "No HISM instance hit"
+  ],
+  "example.hism-forest.pick.hit": [
+    "命中 {layerId} · cluster {clusterKey} · archetype {archetypeIndex} · LOD {lodIndex} · instance {instanceId}",
+    "Hit {layerId} · cluster {clusterKey} · archetype {archetypeIndex} · LOD {lodIndex} · instance {instanceId}"
+  ],
+  "example.hism-forest.panel.aria": [
+    "HISM 森林基准控件",
+    "HISM forest benchmark controls"
+  ],
+  "example.hism-forest.panel.title": [
+    "HISM 森林基准",
+    "HISM forest benchmark"
+  ],
+  "example.hism-forest.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.hism-forest.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.hism-forest.btn.fly": [
+    "飞到场景",
+    "Fly to scene"
+  ],
+  "example.hism-forest.btn.regen": [
+    "重新生成",
+    "Regenerate"
+  ],
+  "example.hism-forest.status.initial": [
+    "正在准备 HISM 场景...",
+    "Preparing HISM scene..."
+  ],
+  "example.hism-forest.status.genPoints": [
+    "正在生成散布点...",
+    "Generating placements..."
+  ],
+  "example.hism-forest.status.sampling": [
+    "正在采样地表高度...",
+    "Sampling surface heights..."
+  ],
+  "example.hism-forest.status.treeSampleFail": [
+    "树实例高度采样失败。",
+    "Tree instance height sampling failed."
+  ],
+  "example.hism-forest.status.ready": [
+    "HISM 场景就绪：{trees} 棵树 + {rocks} 块岩石。",
+    "HISM ready: {trees} trees + {rocks} rocks."
+  ],
+  "example.hism-compare.table.empty": [
+    "生成后自动填入对比结果",
+    "Comparison fills in after generation"
+  ],
+  "example.hism-compare.panel.aria": [
+    "Legacy vs HISM 性能对比控件",
+    "Legacy vs HISM perf compare controls"
+  ],
+  "example.hism-compare.panel.title": [
+    "Legacy vs HISM 性能对比",
+    "Legacy vs HISM performance compare"
+  ],
+  "example.hism-compare.folder.params": [
+    "参数",
+    "Params"
+  ],
+  "example.hism-compare.folder.actions": [
+    "操作",
+    "Actions"
+  ],
+  "example.hism-compare.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.hism-compare.label.count": [
+    "实例数量（1 – 10,000,000）",
+    "Instance count (1 – 10,000,000)"
+  ],
+  "example.hism-compare.label.mode": [
+    "渲染模式",
+    "Render mode"
+  ],
+  "example.hism-compare.label.sampleTerrain": [
+    "地形采样（≤ 5000 实例时可用）",
+    "Terrain sampling (≤ 5000 instances)"
+  ],
+  "example.hism-compare.hint.large": [
+    "超过 5000 实例将使用快速随机散布 + 椭球高度 0，以保证百万级规模可生成。",
+    "Over 5000 instances: fast random scatter + ellipsoid height 0 for million-scale generation."
+  ],
+  "example.hism-compare.hint.fastScatter": [
+    "已启用快速随机散布",
+    "Fast random scatter enabled"
+  ],
+  "example.hism-compare.hint.skipTerrain": [
+    "已跳过地形采样（高度=0）",
+    "Terrain sampling skipped (height=0)"
+  ],
+  "example.hism-compare.hint.singleSpecies": [
+    "已切换为单树种模板以缩短构建时间",
+    "Switched to single-species templates to speed build"
+  ],
+  "example.hism-compare.hint.small": [
+    "≤ 5000 实例时可启用地形采样与泊松散布。",
+    "≤ 5000: terrain sampling + Poisson scatter available."
+  ],
+  "example.hism-compare.btn.generate": [
+    "生成并测速",
+    "Generate & benchmark"
+  ],
+  "example.hism-compare.btn.fly": [
+    "飞到场景",
+    "Fly to scene"
+  ],
+  "example.hism-compare.btn.clear": [
+    "清空场景",
+    "Clear scene"
+  ],
+  "example.hism-compare.status.initial": [
+    "正在初始化模板...",
+    "Initializing templates..."
+  ],
+  "example.hism-compare.status.initTemplates": [
+    "正在初始化 {n} 个 ez-tree 模板...",
+    "Initializing {n} ez-tree templates..."
+  ],
+  "example.hism-compare.status.scattering": [
+    "正在散布 {n} 个实例...",
+    "Scattering {n} instances..."
+  ],
+  "example.hism-compare.status.sampling": [
+    "正在采样地形...",
+    "Sampling terrain..."
+  ],
+  "example.hism-compare.status.skipSample": [
+    "跳过地形采样...",
+    "Skipping terrain sampling..."
+  ],
+  "example.hism-compare.status.empty": [
+    "未生成任何实例。",
+    "No instances generated."
+  ],
+  "example.hism-compare.status.building": [
+    "正在构建 {mode} 场景（{n}）...",
+    "Building {mode} scene ({n})..."
+  ],
+  "example.hism-compare.status.flying": [
+    "相机飞行中，即将开始测速...",
+    "Camera flying; benchmark starting..."
+  ],
+  "example.hism-compare.status.done": [
+    "{mode} 完成：{n} 实例 · FPS {fps} · Draw {draw} · Visible {visible}%",
+    "{mode} done: {n} instances · FPS {fps} · Draw {draw} · Visible {visible}%"
+  ],
+  "example.hism-compare.status.cleared": [
+    "场景已清空。可切换模式后重新生成对比。",
+    "Scene cleared. Switch mode and regenerate."
+  ],
+  "example.hism-compare.status.ready": [
+    "模板就绪。选择模式与数量后点击「生成并测速」。",
+    "Templates ready. Choose mode/count then Generate & benchmark."
+  ]
+}

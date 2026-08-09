@@ -1,6 +1,7 @@
 /**
  * release.js
- * 功能：统筹发版流程——校验、升版本号、生成 changelog、提交、打 tag、发布、推送
+ * 功能：发版准备——校验、升版本号、生成 changelog、提交、打 annotated tag。
+ *       npm publish 需要浏览器 2FA，由用户本机手动执行；push / GitHub Release 见 release-finish.js。
  *
  * 用法：node actions/release.js [patch|minor|major]
  *
@@ -10,13 +11,13 @@
  *   3. node actions/generate-changelog.js --version <新版本>（写入 CHANGELOG.md）
  *   4. git add package.json CHANGELOG.md → commit → 打 annotated tag v<版本>
  *      （annotated tag 才会被 git push --follow-tags 推送；tag 指向含 changelog 的 commit）
- *   5. pnpm publish --no-git-checks（触发 prepublishOnly 钩子再校验一次；
- *      发版流程在 push 之前发布，需 --no-git-checks 跳过 pnpm 对未推送 commit 的拦截）
- *   6. git push --follow-tags（推送 commit + annotated tag）
- *   7. node actions/github-release.js <新版本>（用 gh 创建 GitHub Release，notes 取自 CHANGELOG；
- *      需已安装并登录 gh；失败仅告警，不影响已完成的 npm 发布与 tag 推送）
+ *   5. 打印用户手动 publish 命令后退出（不自动 publish / push）
  *
- * 注意：本脚本会真实发布到 npm 并推送 tag，请在主分支且工作区干净时执行。
+ * 用户本机完成后：
+ *   pnpm publish --no-git-checks --registry https://registry.npmjs.org/
+ *   node actions/release-finish.js <新版本>
+ *
+ * 注意：请在工作区干净时执行；本脚本不会发布到 npm。
  */
 import { execSync, execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -61,37 +62,27 @@ function main() {
   const oldVersion = readVersion()
   console.log(`📌 当前版本: ${oldVersion}`)
 
-  console.log('\n🧪 [1/7] release:check（type-check + build + pack dry-run）...')
+  console.log('\n🧪 [1/4] release:check（type-check + build + pack dry-run）...')
   run('pnpm release:check')
 
-  console.log('\n🔧 [2/7] 升版本号...')
+  console.log('\n🔧 [2/4] 升版本号...')
   run(`npm version ${type} --no-git-tag-version`)
   const newVersion = readVersion()
   console.log(`📌 新版本: ${oldVersion} → ${newVersion}`)
 
-  console.log('\n📝 [3/7] 生成 CHANGELOG...')
+  console.log('\n📝 [3/4] 生成 CHANGELOG...')
   run(`node actions/generate-changelog.js --version ${newVersion}`)
 
-  console.log('\n🏷️ [4/7] 提交版本 + 打 annotated tag...')
+  console.log('\n🏷️ [4/4] 提交版本 + 打 annotated tag...')
   git(['add', 'package.json', 'CHANGELOG.md'])
   git(['commit', '-m', `chore(release): 发布 v${newVersion}`])
   git(['tag', '-a', `v${newVersion}`, '-m', `发布 v${newVersion}`])
 
-  console.log('\n🚀 [5/7] pnpm publish...')
-  run('pnpm publish --no-git-checks')
-
-  console.log('\n📤 [6/7] 推送 commit + tag...')
-  git(['push', '--follow-tags'])
-
-  console.log('\n🔖 [7/7] 创建 GitHub Release（gh）...')
-  try {
-    run(`node actions/github-release.js ${newVersion}`)
-  } catch {
-    console.warn('⚠️  GitHub Release 创建失败（gh 未安装或未登录？）。npm 包与 tag 已发布成功。')
-    console.warn(`   稍后补建：先 gh auth login，再  node actions/github-release.js ${newVersion}`)
-  }
-
-  console.log(`\n🎉 已发布 v${newVersion}`)
+  console.log(`\n✅ 发版准备完成：v${newVersion}（本地 commit + annotated tag 已就绪）`)
+  console.log('\n下一步请你在本机手动 publish（需浏览器 / 密钥验证，助手不要代跑）：')
+  console.log(`  pnpm publish --no-git-checks --registry https://registry.npmjs.org/`)
+  console.log('\n发布成功后告诉助手「继续」，或自行收尾：')
+  console.log(`  node actions/release-finish.js ${newVersion}`)
 }
 
 main()

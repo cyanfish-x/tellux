@@ -1,4 +1,5 @@
 import type { Viewer, ViewerMouseMoveEvent } from "../src"
+import { t } from "./i18n"
 
 export interface LocationReadoutOptions {
   parent: HTMLElement
@@ -27,14 +28,14 @@ export function mountLocationReadout(
   )
 
   const title = document.createElement("h2")
-  title.textContent = options.title ?? "鼠标位置"
+  title.textContent = options.title ?? t({ zh: "鼠标位置", en: "Mouse position" })
 
   const readout = document.createElement("dl")
   readout.className = "location-readout"
 
-  const longitude = createReadoutItem(readout, "经度")
-  const latitude = createReadoutItem(readout, "纬度")
-  const height = createReadoutItem(readout, "高程")
+  const longitude = createReadoutItem(readout, t({ zh: "经度", en: "Longitude" }))
+  const latitude = createReadoutItem(readout, t({ zh: "纬度", en: "Latitude" }))
+  const height = createReadoutItem(readout, t({ zh: "高程", en: "Elevation" }))
 
   panel.append(title, readout)
   options.parent.append(panel)

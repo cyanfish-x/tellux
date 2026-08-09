@@ -1,7 +1,9 @@
 ﻿import tellux from '../src'
+import { bootExampleI18n } from './i18n'
 import { exampleMapServiceConfig } from './shared'
 import { setupExamplePanels } from './example-panel'
 
+bootExampleI18n()
 setupExamplePanels()
 
 const container = document.querySelector('#viewer')

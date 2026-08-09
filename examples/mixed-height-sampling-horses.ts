@@ -1,4 +1,5 @@
-﻿import * as THREE from "three"
+import * as THREE from "three"
+import { bootExampleI18n, t } from "./i18n"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import type { TilesetLayer } from "../src"
 import tellux from "../src"
@@ -6,6 +7,7 @@ import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 const MIXED_TILESET_URL =
@@ -122,7 +124,9 @@ function setSamplingStatus(message: string) {
 }
 
 function updateAnimationButton() {
-  toggleAnimationButton.textContent = isAnimationPlaying ? "暂停动画" : "播放动画"
+  toggleAnimationButton.textContent = isAnimationPlaying
+    ? t({ zh: "暂停动画", en: "Pause animation" })
+    : t({ zh: "播放动画", en: "Play animation" })
 }
 
 function waitForBrowserPaint() {
@@ -134,7 +138,7 @@ function waitForBrowserPaint() {
 }
 
 async function initializeMixedSamplingScene() {
-  setStatus("正在加载 CesiumGS Discrete LOD 3D Tiles...")
+  setStatus(t({ zh: "正在加载 CesiumGS Discrete LOD 3D Tiles...", en: "Loading CesiumGS Discrete LOD 3D Tiles..." }))
   tilesetLayer = viewer.load3DTileset({
     type: "url",
     id: "mixed-height-sampling-tileset",
@@ -151,7 +155,7 @@ async function createHorseHerd() {
   regenerateButton.disabled = true
   horseCountElement && (horseCountElement.textContent = "-")
   setSamplingStatus("-")
-  setStatus("正在生成 3D Tiles 附近的随机点...")
+  setStatus(t({ zh: "正在生成 3D Tiles 附近的随机点...", en: "Generating random points near 3D Tiles..." }))
 
   herd?.dispose()
   herd = null
@@ -165,7 +169,7 @@ async function createHorseHerd() {
     seed: 20260608 + token,
   })
 
-  setStatus(`已生成 ${placements.length} 个候选点，正在用 source: all 采样混合高度...`)
+  setStatus(t({ zh: "已生成 {n} 个候选点，正在用 source: all 采样混合高度...", en: "Generated {n} candidates; sampling mixed heights with source: all..." }, { n: placements.length }))
 
   let sampledPositions: Awaited<ReturnType<typeof viewer.sampleHeightMostDetailed>>
   const samplingTimerLabel = `[Tellux] mixed-height-sampling-horses sampleHeightMostDetailed source=all ${placements.length} points`
@@ -186,7 +190,7 @@ async function createHorseHerd() {
     )
   } catch (error) {
     console.error("Failed to sample mixed terrain and 3D Tiles height.", error)
-    setStatus("混合高度采样失败，请检查 3D Tiles 和地形数据源是否可访问。")
+    setStatus(t({ zh: "混合高度采样失败，请检查 3D Tiles 和地形数据源是否可访问。", en: "Mixed height sampling failed." }))
     regenerateButton.disabled = false
     return
   } finally {
@@ -205,7 +209,7 @@ async function createHorseHerd() {
     )
 
   if (sampledPlacements.length === 0) {
-    setStatus("混合高度没有命中，未加载奔马实例。")
+    setStatus(t({ zh: "混合高度没有命中，未加载奔马实例。", en: "No mixed-height hits; horses not loaded." }))
     regenerateButton.disabled = false
     return
   }
@@ -214,13 +218,13 @@ async function createHorseHerd() {
   const minHeight = Math.min(...heights)
   const maxHeight = Math.max(...heights)
   setSamplingStatus(`${minHeight.toFixed(2)}m - ${maxHeight.toFixed(2)}m`)
-  setStatus(`采样命中 ${sampledPlacements.length} 个点，正在加载 Three.js Horse.glb...`)
+  setStatus(t({ zh: "采样命中 {n} 个点，正在加载 Three.js Horse.glb...", en: "{n} hits; loading Horse.glb..." }, { n: sampledPlacements.length }))
 
   try {
     herd = await buildHorseHerd(sampledPlacements)
   } catch (error) {
     console.error("Failed to load instanced horse model.", error)
-    setStatus("奔马模型加载失败，请检查 three.js 示例资源是否可访问。")
+    setStatus(t({ zh: "奔马模型加载失败，请检查 three.js 示例资源是否可访问。", en: "Horse model failed to load." }))
     regenerateButton.disabled = false
     return
   }
@@ -237,7 +241,7 @@ async function createHorseHerd() {
   horseCountElement &&
     (horseCountElement.textContent = `${sampledPlacements.length} / ${HORSE_COUNT}`)
   setStatus(
-    `已在 3D Tiles 和地形混合表面放置 ${sampledPlacements.length} 匹实例化奔马。`
+    t({ zh: "已在 3D Tiles 和地形混合表面放置 {n} 匹实例化奔马。", en: "Placed {n} instanced horses on mixed 3D Tiles + terrain surface." }, { n: sampledPlacements.length })
   )
 }
 

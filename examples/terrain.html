@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="sandcastle-order" content="3" />
   <meta name="sandcastle-thumbnail" content="https://picture.cyanfish.site/20260612224329334.png" />
-  <title>Tellux 天地图地形热切换</title>
+  <title data-i18n="example.terrain.docTitle">Tellux 天地图地形热切换</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 
@@ -14,7 +14,7 @@
   <main class="viewer-shell">
     <div id="viewer"></div>
 
-    <aside class="example-panel" id="terrain-panel" aria-label="地形热切换控件">
+    <aside class="example-panel" id="terrain-panel" data-i18n-attr="aria-label:example.terrain.panel.aria" aria-label="地形热切换控件">
       <header class="example-panel__chrome">
         <button
           type="button"
@@ -24,37 +24,38 @@
           aria-controls="terrain-panel-body"
           title="收起面板"
           aria-label="收起面板"
+          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
         ></button>
-        <span class="example-panel__title">地形热切换</span>
+        <span class="example-panel__title" data-i18n="example.terrain.panel.title">地形热切换</span>
       </header>
 
       <div class="example-panel__collapse" id="terrain-panel-body">
         <div class="example-panel__content">
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">数据源</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.terrain.folder.source">数据源</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
                 <div class="example-panel__field">
-                  <label class="example-panel__label" for="terrain-source">地形来源</label>
+                  <label class="example-panel__label" for="terrain-source" data-i18n="example.terrain.label.source">地形来源</label>
                   <select id="terrain-source" class="example-panel__select">
-                    <option value="tianditu">天地图 swdx</option>
-                    <option value="cesium-ion">Cesium Ion terrain</option>
+                    <option value="tianditu" data-i18n="example.terrain.option.tianditu">天地图 swdx</option>
+                    <option value="cesium-ion" data-i18n="example.terrain.option.cesiumIon">Cesium Ion terrain</option>
                   </select>
                 </div>
                 <div id="tianditu-terrain-fields">
                   <div class="example-panel__field">
-                    <label class="example-panel__label" for="tianditu-token">天地图 tk</label>
+                    <label class="example-panel__label" for="tianditu-token" data-i18n="example.terrain.label.tk">天地图 tk</label>
                     <input id="tianditu-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
                   </div>
                   <p id="tianditu-terrain-hint" class="example-panel__hint"></p>
                 </div>
                 <div id="ion-terrain-fields">
                   <div class="example-panel__field">
-                    <label class="example-panel__label" for="ion-terrain-asset-id">Cesium Ion terrain asset id</label>
+                    <label class="example-panel__label" for="ion-terrain-asset-id" data-i18n="example.terrain.label.ionAssetId">Cesium Ion terrain asset id</label>
                     <input id="ion-terrain-asset-id" class="example-panel__input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" />
                   </div>
                   <div class="example-panel__field">
-                    <label class="example-panel__label" for="ion-terrain-token">Cesium Ion token</label>
+                    <label class="example-panel__label" for="ion-terrain-token" data-i18n="example.terrain.label.ionToken">Cesium Ion token</label>
                     <input id="ion-terrain-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
                   </div>
                 </div>
@@ -63,11 +64,11 @@
           </details>
 
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">开关</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.terrain.folder.toggle">开关</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
                 <label class="example-panel__row">
-                  <span class="example-panel__label">启用地形</span>
+                  <span class="example-panel__label" data-i18n="example.terrain.label.enable">启用地形</span>
                   <input id="terrain-enabled" class="example-panel__checkbox" type="checkbox" />
                 </label>
               </div>
@@ -75,7 +76,7 @@
           </details>
 
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">状态</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.terrain.folder.status">状态</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
                 <p id="terrain-status" class="example-panel__status" aria-live="polite"></p>

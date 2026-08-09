@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="sandcastle-order" content="61" />
   <meta name="sandcastle-thumbnail" content="https://picture.cyanfish.site/20260703205449080.png" />
-  <title>Tellux 贴地折线</title>
+  <title data-i18n="example.ground-clamp.docTitle">Tellux 贴地折线</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <aside class="example-panel" aria-label="贴地折线控件">
+    <aside class="example-panel" data-i18n-attr="aria-label:example.ground-clamp.panel.aria" aria-label="贴地折线控件">
       <header class="example-panel__chrome">
         <button
           type="button"
@@ -21,25 +21,26 @@
           aria-expanded="true"
           title="收起面板"
           aria-label="收起面板"
+          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
         ></button>
-        <span class="example-panel__title">贴地折线</span>
+        <span class="example-panel__title" data-i18n="example.ground-clamp.panel.title">贴地折线</span>
       </header>
 
       <div class="example-panel__collapse">
         <div class="example-panel__content">
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">显示</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.ground-clamp.folder.display">显示</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
-                <p class="example-panel__hint">
+                <p class="example-panel__hint" data-i18n-html="example.ground-clamp.hint">
                   <code>polyline.clamp: true</code> 依赖 GPU 深度分类贴地；青色为贴地折线，黄色为固定高对比折线。
                 </p>
                 <label class="example-panel__row">
-                  <span class="example-panel__label">贴地折线</span>
+                  <span class="example-panel__label" data-i18n="example.ground-clamp.label.clamp">贴地折线</span>
                   <input class="example-panel__checkbox" type="checkbox" id="toggle-clamp" checked />
                 </label>
                 <label class="example-panel__row">
-                  <span class="example-panel__label">固定高折线</span>
+                  <span class="example-panel__label" data-i18n="example.ground-clamp.label.reference">固定高折线</span>
                   <input class="example-panel__checkbox" type="checkbox" id="toggle-reference" checked />
                 </label>
               </div>
@@ -47,10 +48,10 @@
           </details>
 
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">状态</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.ground-clamp.folder.status">状态</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
-                <p id="clamp-status" class="example-panel__status" aria-live="polite">加载中…</p>
+                <p id="clamp-status" class="example-panel__status" aria-live="polite" data-i18n="example.ground-clamp.status.initial">加载中…</p>
               </div>
             </div>
           </details>

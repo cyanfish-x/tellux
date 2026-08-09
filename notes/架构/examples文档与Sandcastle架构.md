@@ -17,6 +17,7 @@
 关键入口包括：
 
 - `index.html`：项目主页。
+- `gallery.html`：社区案例 gallery 页（独立展示社区作品，带搜索与标签筛选）。
 - `basic.html`、`terrain.html`、`3d-tiles.html` 等：独立示例页。
 - `sandcastle.html`：Sandcastle 编辑器页面。
 - `sandcastle/runner.html`：Sandcastle iframe 运行页面。
@@ -37,14 +38,18 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 
 `examples/index.html` 负责页面结构和文案：
 
-- 顶部导航包含 Tellux 品牌、能力、工作流、Sandcastle 和 GitHub 入口。
+- 顶部导航包含 Tellux 品牌、能力、工作流、Sandcastle、社区作品和 GitHub 入口。
 - Hero 区域展示 Tellux 的定位：基于 Three.js 的 3D Earth Engine。
 - 页面中部介绍地球与相机、多源影像图层、3D Tiles、Cesium 地形、大气云和工程默认值。
 - 后续展示真实地形、大气和体积云效果素材。
+- `#showcase` 社区案例精选条：位于页面底部收尾，只展示最新 3 条 + 「查看全部」入口（指向 `gallery.html`），空数据时整块隐藏。数据来自 `examples/showcase-data.ts`，由 `examples/showcase.ts` 的 `mountFeaturedStrip()` 渲染；完整列表与搜索 / 标签筛选在 gallery 页（`mountGallery()`）。
+
+`examples/gallery.html` 是社区案例 gallery 页：复用 portal 壳（品牌导航 + 语言切换 + 文档链接），页面主体为搜索框 + 标签筛选条 + 全量卡片网格，由 `examples/gallery.ts` 挂载。决策背景见 [notes/架构/adr/0001-community-showcase-gallery-page.md](adr/0001-community-showcase-gallery-page.md)。链接健康检查用 `scripts/check-showcase-links.mjs`（`pnpm check:showcase`）。
 
 `examples/index.ts` 负责主页交互和 Hero 三维地球：
 
 - 绑定锚点平滑滚动和顶部导航滚动状态。
+- 调用 `mountFeaturedStrip()` 挂载首页社区案例精选条（空数据隐藏，语言切换重渲染）。
 - 在 `#portal-globe-viewer` 中创建 `tellux.Viewer`。
 - 使用天地图卫星影像 XYZ 瓦片（`examples/shared.ts` 中的 `tiandituImageryXYZUrl`）作为默认影像底图。
 - 如果配置了 `VITE_CESIUM_TERRAIN_URL`，则加载 Cesium quantized-mesh 地形。
@@ -129,7 +134,19 @@ Sandcastle 是一个可编辑、可运行示例的交互页面，设计上分成
 - 用 `new Function(...)` 注入 Tellux、Three.js、GLTFLoader 和共享示例工具后执行示例代码。
 - 劫持 console，将日志通过 `postMessage` 发回主应用。
 
-runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`、`exampleMapServiceConfig`、HISM demo helpers 等。新增被示例 `import` 的本地模块时，必须同步在 `runner.ts` 的 `new Function` 参数列表中注入，否则 Sandcastle 剥离 import 后会报 `ReferenceError`。
+runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`、`exampleMapServiceConfig`、`t` / `bootExampleI18n`、HISM demo helpers 等。新增被示例 `import` 的本地模块时，必须同步在 `runner.ts` 的 `new Function` 参数列表中注入，否则 Sandcastle 剥离 import 后会报 `ReferenceError`。
+
+### 中英文切换（i18n）
+
+示例站（主页 / Sandcastle / 独立示例）使用自研轻量 i18n，模块在 `examples/i18n/`：
+
+- 语言：`zh` | `en`
+- 解析优先级：`?lang=` → `localStorage['tellux.locale']` → `navigator.language` → 回落 `en`
+- **壳 / HTML**：catalog key + `data-i18n*`（主页、Sandcastle UI、示例面板静态文案）
+- **示例 TS**：优先内联双语 `t({ zh: "…", en: "…" })`，避免抽象 key 损害教程可读性；`t(key)` 仍可用于壳层
+- 词典源：`examples/i18n/_messages.json`，用 `examples/i18n/_gen-messages.mjs` 生成 `messages/zh.ts` 与 `messages/en.ts`（服务 HTML / 壳 / registry）
+- Sandcastle 切语言只刷新壳 UI 与 gallery；Monaco 源码不改写；重新 Run 后 runner 对 iframe DOM 再 `applyTranslations`
+- VitePress 文档站本期不做双语；日后可复用同一 `tellux.locale` key
 
 Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner 基础依赖图中静态加载。[runtime-bindings.ts](../../examples/sandcastle/runtime-bindings.ts) 根据当前编译后源码实际使用的 binding 判定所需能力，runner 再通过动态 import 加载：
 

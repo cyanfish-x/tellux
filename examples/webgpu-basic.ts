@@ -1,6 +1,8 @@
 ﻿import tellux from "../src"
+import { bootExampleI18n } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 
+bootExampleI18n()
 
 async function main() {
   const viewer = await tellux.Viewer.create("viewer", {

@@ -1,9 +1,11 @@
+import type { LocalizedText } from "../i18n"
+
 export interface SandcastleExample {
   id: string
-  title: string
+  title: LocalizedText
   order?: number
   category: string
-  description: string
+  description: LocalizedText
   tags: string[]
   html: string
   javascript: string

@@ -1,19 +1,46 @@
-node_modules
-dist
-examples/dist
-examples/dist-ghpages
-examples/public/docs
-examples/dist
-examples/dist-ghpages
-docs/.vitepress/cache
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+examples/dist/
+examples/dist-ghpages/
+examples/public/docs/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
+# Env & secrets（保留模板；勿提交真实密钥）
+.env
+.env.*
+!.env.example
+
+# Logs & local overrides
 *.log
 *.local
+
+# OS / IDE
 .DS_Store
-.idea
+Thumbs.db
+.idea/
 .vscode/*
 !.vscode/extensions.json
-.env
-.zcode
+
+# Local AI / editor tool state（含 debug 日志，可能带本机敏感信息）
+.cursor/
+.claude/
+.codex/
+.zcode/
+
+# Python caches（i18n 等脚本）
+__pycache__/
+*.py[cod]
+
+# Test / coverage / TS incremental
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Benchmark outputs
 benchmark-results/
 
 # MSDF atlas 生成脚本的中间产物

@@ -12,7 +12,7 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <aside class="example-panel example-panel--wide" aria-label="图层管理器">
+    <aside class="example-panel example-panel--wide" data-i18n-attr="aria-label:example.data-sources.panel.aria" aria-label="图层管理器">
       <header class="example-panel__chrome">
         <button
           type="button"
@@ -20,13 +20,14 @@
           aria-expanded="true"
           title="收起面板"
           aria-label="收起面板"
+          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
         ></button>
-        <span class="example-panel__title">图层管理器</span>
+        <span class="example-panel__title" data-i18n="example.data-sources.panel.title">图层管理器</span>
       </header>
       <div class="example-panel__collapse">
         <div class="example-panel__content">
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">图层</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.data-sources.folder.layers">图层</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
                 <div id="overlay-list" class="layer-manager__list"></div>

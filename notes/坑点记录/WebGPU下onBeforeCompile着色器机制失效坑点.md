@@ -15,7 +15,7 @@ Tellux 在 `feat-webgpu` 分支接入 WebGPU 渲染模式，渲染器适配位�
 
 WebGPU 渲染模式下，地球瓦片在 LOD 层级切换时**没有丝滑的 fade 过渡**，瓦片显隐是直接 pop，对比 WebGL 版本的丝滑淡入淡出体验明显退步。
 
-影像 overlay 贴图在 WebGPU 下反而能正常工作，但这不是「原本的 `ImageOverlayPlugin` 在 WebGPU 下能用」，而是 Tellux 已经写了一套替换实现（见下文根因第 2 点）。
+影像 overlay 贴图在 WebGPU 下走 `WebGPUTerrainOverlayPlugin` 替换实现（见下文根因第 2 点）。若出现瓦片上下颠倒 / 邻接错缝，见 [WebGPU 影像 ImageBitmap 二次翻转坑点](./WebGPU影像ImageBitmap二次翻转坑点.md)。
 
 ## 根因
 

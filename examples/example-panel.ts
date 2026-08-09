@@ -6,6 +6,8 @@
  * Sandcastle 会剥离 import，需在 runner 中注入 `setupExamplePanels`。
  */
 
+import { t } from "./i18n"
+
 const TRANSITION_MS = 240
 
 /**
@@ -74,8 +76,11 @@ export function setupExamplePanelCollapse(
 
   const setExpanded = (expanded: boolean) => {
     toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false')
-    toggle.title = expanded ? '收起面板' : '展开面板'
-    toggle.setAttribute('aria-label', expanded ? '收起面板' : '展开面板')
+    toggle.title = expanded ? t({ zh: "收起面板", en: "Collapse panel" }) : t({ zh: "展开面板", en: "Expand panel" })
+    toggle.setAttribute(
+      'aria-label',
+      expanded ? t({ zh: "收起面板", en: "Collapse panel" }) : t({ zh: "展开面板", en: "Expand panel" })
+    )
     panel.classList.toggle('example-panel--collapsed', !expanded)
     panel.classList.toggle('leva-panel--collapsed', !expanded)
   }

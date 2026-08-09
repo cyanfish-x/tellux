@@ -1,5 +1,8 @@
 import tellux from "../src"
+import { bootExampleI18n } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
+
+bootExampleI18n()
 
 const viewer = new tellux.Viewer("viewer", {
   terrain: exampleMapServiceConfig.createTerrainOptions(),

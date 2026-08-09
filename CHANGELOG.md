@@ -6,6 +6,45 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-23
+
+本版本重点：
+
+- **高性能 HISM 渲染**：合入 HISM 实例化渲染能力，修复 RTC 实例化后 CPU 拾取失效，并支持单实例后处理描边高亮。
+- **统一拾取与高亮**：收敛为 `pick` / `pickAll` API，支持 Object3D 与 3D Tiles 拾取，落地统一高亮能力。
+- **WMTS / 天地图**：支持 WMTS 地图服务渲染，接入天地图影像与地形，含负载均衡，并修复地形坐标系与解压逻辑。
+- **WebGPU 影像**：修复 ImageBitmap 二次翻转导致的瓦片错乱。
+- **示例与站点体验**：示例站中英文切换、统一 example-panel、Timeline 联动云速，以及首页地球 loading 优化。
+- 另支持 `load3dTiles` 的 `errorTarget` 配置，并修复 Entity 被后处理天空遮盖等问题。
+
+### Added
+- Timeline 联动云速并优化首页地球 loading
+- Symbol 示例增加压测与 leva 风格面板
+- 收敛为统一 pick / pickAll 对象拾取 API
+- 支持 HISM 单实例后处理描边高亮
+- 新增统一高亮与 Object3D 拾取能力
+- 天地图负载均衡
+- load3dTiles支持errorTarget(屏幕空间误差)配置
+- 支持wmts地图服务渲染能力，并添加天地图瓦片渲染案例
+
+### Changed
+- 更新示例中的文本翻译为中英文支持
+- 抽取统一 example-panel 并替换各示例旧面板
+
+### Fixed
+- 补全 TilingScheme.flipY 类型声明
+- 修复天地图 swdx 地形瓦片坐标系与解压逻辑
+- 修复 WebGPU 影像 ImageBitmap 二次翻转导致的瓦片错乱
+- 修复文档构建死链并改进 gh-pages 推送
+- 修复示例与 Sandcastle 中天地图与标题相关问题
+- 修复 HISM RTC 实例化后 CPU 拾取失效
+- 修复Entity会被后处理天空遮盖的bug
+- 修复data-source案例控制台报错
+- 示例底图全量替换为天地图
+- 图源案例服务替换修改
+- 修复docs存在死链引用的问题
+- 修复发版脚本提交信息不规范导致release脚本报错的bug
+
 ## [0.1.8] - 2026-07-04
 
 本版本重点：

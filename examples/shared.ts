@@ -4,6 +4,7 @@ import {
   createTiandituWmtsPreprocessURLSource
 } from "./tiandituLoadBalancer"
 import type { TerrainOptions, XYZImagerySourceOptions } from "../src"
+import { t } from "./i18n"
 
 export const defaultTerrainUrl = import.meta.env.VITE_CESIUM_TERRAIN_URL ?? ""
 export const arcgisWorldImageryUrl =
@@ -172,11 +173,11 @@ export function showTokenNotice(element: HTMLElement | null) {
   if (!element) return
 
   if (import.meta.env.DEV) {
-    element.textContent = "当前示例使用 ArcGIS World Imagery XYZ 瓦片。"
+    element.textContent = t({ zh: "当前示例使用 ArcGIS World Imagery XYZ 瓦片。", en: "This example uses ArcGIS World Imagery XYZ tiles." })
     return
   }
 
   element.textContent = defaultTiandituToken
-    ? "当前示例使用天地图卫星影像 XYZ 瓦片。"
-    : "当前示例使用天地图卫星影像 XYZ 瓦片，请配置 VITE_TIANDITU_TOKEN。"
+    ? t({ zh: "当前示例使用天地图卫星影像 XYZ 瓦片。", en: "This example uses Tianditu satellite imagery XYZ tiles." })
+    : t({ zh: "当前示例使用天地图卫星影像 XYZ 瓦片，请配置 VITE_TIANDITU_TOKEN。", en: "This example uses Tianditu satellite imagery XYZ tiles; please set VITE_TIANDITU_TOKEN." })
 }

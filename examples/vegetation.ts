@@ -1,10 +1,12 @@
-﻿import * as THREE from "three"
+import * as THREE from "three"
+import { bootExampleI18n, t } from "./i18n"
 import { Tree } from "@dgreenheck/ez-tree"
 import tellux from "../src"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 import { setupExamplePanels } from "./example-panel"
 
+bootExampleI18n()
 setupExamplePanels()
 
 const CENTER_LONGITUDE = 103.561611
@@ -145,7 +147,7 @@ function waitForBrowserPaint() {
 }
 
 async function initializeVegetationScene() {
-  setStatus("正在初始化 ez-tree 预设...")
+  setStatus(t({ zh: "正在初始化 ez-tree 预设...", en: "Initializing ez-tree presets..." }))
   const templates = PRESETS.map((preset) =>
     buildPresetTemplate(preset.name, preset.baseScale)
   )
@@ -181,7 +183,7 @@ async function createForest(templates: PresetTemplate[]) {
   regenerateButton.disabled = true
   countElement && (countElement.textContent = "-")
   setSamplingStatus("-")
-  setStatus("正在生成森林散布点（泊松分布）...")
+  setStatus(t({ zh: "正在生成森林散布点（泊松分布）...", en: "Generating forest placements (Poisson)..." }))
 
   forest?.dispose()
   forest = null
@@ -197,7 +199,7 @@ async function createForest(templates: PresetTemplate[]) {
   })
 
   setStatus(
-    `已生成 ${placements.length} 个候选点，正在通过 sampleHeightMostDetailed 采样地表高度...`
+    t({ zh: "已生成 {n} 个候选点，正在通过 sampleHeightMostDetailed 采样地表高度...", en: "Generated {n} candidates; sampling surface height via sampleHeightMostDetailed..." }, { n: placements.length })
   )
 
   let sampledPositions: Awaited<
@@ -216,7 +218,7 @@ async function createForest(templates: PresetTemplate[]) {
     )
   } catch (error) {
     console.error("Failed to sample terrain height for vegetation.", error)
-    setStatus("地表高度采样失败，请检查地形数据源是否可访问。")
+    setStatus(t({ zh: "地表高度采样失败，请检查地形数据源是否可访问。", en: "Surface height sampling failed." }))
     regenerateButton.disabled = false
     return
   } finally {
@@ -235,7 +237,7 @@ async function createForest(templates: PresetTemplate[]) {
     )
 
   if (sampledPlacements.length === 0) {
-    setStatus("地表高度未命中，未加载植被。")
+    setStatus(t({ zh: "地表高度未命中，未加载植被。", en: "No surface hits; vegetation not loaded." }))
     regenerateButton.disabled = false
     return
   }
@@ -258,11 +260,12 @@ async function createForest(templates: PresetTemplate[]) {
   countElement &&
     (countElement.textContent = `${sampledPlacements.length} / ${TREE_COUNT}`)
   setStatus(
-    `已在 (${CENTER_LONGITUDE.toFixed(6)}, ${CENTER_LATITUDE.toFixed(
-      6
-    )}) 周边 ${PLACEMENT_RADIUS_METERS}m 范围内放置 ${
-      sampledPlacements.length
-    } 棵程序化植被。`
+    t({ zh: "已在 ({lon}, {lat}) 周边 {r}m 范围内放置 {n} 棵程序化植被。", en: "Placed {n} procedural trees within {r}m of ({lon}, {lat})." }, {
+      lon: CENTER_LONGITUDE.toFixed(6),
+      lat: CENTER_LATITUDE.toFixed(6),
+      r: PLACEMENT_RADIUS_METERS,
+      n: sampledPlacements.length,
+    })
   )
 
   flyToForestView()

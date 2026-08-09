@@ -6,14 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="sandcastle-order" content="60" />
   <meta name="sandcastle-thumbnail" content="https://picture.cyanfish.site/20260703205311770.png" />
-  <title>Tellux 实体绘制</title>
+  <title data-i18n="example.entities.docTitle">Tellux 实体绘制</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <aside class="example-panel" aria-label="实体绘制控件">
+    <aside class="example-panel" data-i18n-attr="aria-label:example.entities.panel.aria" aria-label="实体绘制控件">
       <header class="example-panel__chrome">
         <button
           type="button"
@@ -21,32 +21,33 @@
           aria-expanded="true"
           title="收起面板"
           aria-label="收起面板"
+          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
         ></button>
-        <span class="example-panel__title">实体绘制</span>
+        <span class="example-panel__title" data-i18n="example.entities.panel.title">实体绘制</span>
       </header>
 
       <div class="example-panel__collapse">
         <div class="example-panel__content">
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">显示</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.entities.folder.display">显示</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
-                <p class="example-panel__hint">
+                <p class="example-panel__hint" data-i18n-html="example.entities.hint">
                   通过 <code>viewer.entities.add()</code> 绘制点、折线、多边形和拉伸体块。
                 </p>
                 <label class="example-panel__row">
-                  <span class="example-panel__label">点位</span>
+                  <span class="example-panel__label" data-i18n="example.entities.label.points">点位</span>
                   <input class="example-panel__checkbox" type="checkbox" id="toggle-points" checked />
                 </label>
                 <label class="example-panel__row">
-                  <span class="example-panel__label">折线</span>
+                  <span class="example-panel__label" data-i18n="example.entities.label.polyline">折线</span>
                   <input class="example-panel__checkbox" type="checkbox" id="toggle-polyline" checked />
                 </label>
                 <label class="example-panel__row">
-                  <span class="example-panel__label">面块</span>
+                  <span class="example-panel__label" data-i18n="example.entities.label.polygon">面块</span>
                   <input class="example-panel__checkbox" type="checkbox" id="toggle-polygon" checked />
                 </label>
-                <button class="example-panel__button example-panel__button--ghost" id="clear-entities" type="button">
+                <button class="example-panel__button example-panel__button--ghost" id="clear-entities" type="button" data-i18n="example.entities.btn.clear">
                   清空实体
                 </button>
               </div>
@@ -54,13 +55,13 @@
           </details>
 
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary">状态</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.entities.folder.status">状态</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
-                <p id="entity-status" class="example-panel__status" aria-live="polite">已加载示例实体。</p>
+                <p id="entity-status" class="example-panel__status" aria-live="polite" data-i18n="example.entities.status.initial">已加载示例实体。</p>
                 <div class="example-panel__pick">
-                  <span class="example-panel__pick-key">拾取</span>
-                  <span id="entity-pick-readout" class="example-panel__pick-value">点击任意实体查看属性</span>
+                  <span class="example-panel__pick-key" data-i18n="example.entities.pick.key">拾取</span>
+                  <span id="entity-pick-readout" class="example-panel__pick-value" data-i18n="example.entities.pick.hint">点击任意实体查看属性</span>
                 </div>
               </div>
             </div>

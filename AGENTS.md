@@ -51,6 +51,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 
 - 涉及 Viewer 创建流程、每帧渲染流程、TilesetManager、地形 / 影像 / surface tileset 生命周期时，先读 `notes/架构/项目架构.md`。
 - 涉及历史 bug、容易误判的实现方向、渲染循环抢占和高度采样副作用时，先读 `notes/坑点记录/项目坑点记录.md`。
+- 涉及 WebGPU 影像瓦片颠倒、错缝或 `WebGPUTerrainOverlayPlugin` 贴图时，先读 `notes/坑点记录/WebGPU影像ImageBitmap二次翻转坑点.md`。
 - 涉及 `Scene` 运行时控制对象、`AtmosphereManager` 状态同步、大气用户态和底层 effect/light 状态边界时，先读 `notes/坑点记录/Scene与AtmosphereManager双状态坑点.md`。
 - 涉及实体（点 / 折线 / 多边形）颜色显示偏色、`toneMapped` 失效、`setEffects` 后处理管线或 AgX 反求补偿时，先读 `notes/坑点记录/实体颜色被AgX色调映射压扁坑点.md`。
 - 涉及 `sampleHeightMostDetailed`、地形高度采样、离屏采样、采样专用 tileset、LoadRegionPlugin 或 raycast 高度求交时，先读 `notes/实现链路/sampleHeightMostDetailed实现链路.md`。
@@ -134,10 +135,6 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 - `chore`：工具、依赖或配置变更
 
 提交应保持单一职责；正文可选，用于说明变更原因或重要背景。
-
-禁止在提交信息中加入任何签名或 trailer
-
-若提交环境自动注入上述内容，必须在推送前用不含签名的信息重写该提交（例如 `git commit-tree` 或去掉 trailer 后的 amend），不得把签名留在仓库历史中。
 
 ## 强制规则
 

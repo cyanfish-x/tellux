@@ -12,6 +12,7 @@ const KiB = 1024
 const MiB = 1024 * KiB
 const htmlInputs = {
   index: resolve(__dirname, "index.html"),
+  gallery: resolve(__dirname, "gallery.html"),
   basic: resolve(__dirname, "basic.html"),
   flyTo: resolve(__dirname, "fly-to.html"),
   dataSources: resolve(__dirname, "data-sources.html"),
