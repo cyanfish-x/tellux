@@ -78,17 +78,15 @@ Tellux 当前应继续基于普通 Three.js 入口封装 API，避免把 R3F 组
 Tellux 当前用法：
 
 - `AtmosphereManager` 创建 `new CloudsEffect(camera)`。
-- 设置 `localWeatherVelocity` 形成云纹理位移动画。
-- 调整 `shadow` shorthand：
-  - `farScale`
-  - `maxFar`
-  - `cascadeCount`
-  - `mapSize`
-  - `splitMode`
-  - `splitLambda`
+- 设置 `localWeatherVelocity` 形成云纹理位移动画（由 `scene.clouds.speed` 驱动）。
+- 调整 `shadow` shorthand 基础参数（`farScale` / `maxFar` / `splitMode` / `splitLambda`）；级联与 map 分辨率由 `scene.clouds.shadow.quality` 覆盖。
 - 监听 `cloudsEffect.events` 的 `change` 事件，在云合成资源变化时刷新后处理管线。
-- `Scene.cloudCoverage` 映射到 `cloudsEffect.coverage`。
-- `Scene.cloudLayerAltitude` 和 `Scene.cloudLayerHeight` 修改低云层组的前两层。
+- 公开 API 映射（init 与 runtime 同构）：
+  - `scene.clouds.show` / `quality` / `lightShafts` / `coverage` / `speed`
+  - `scene.clouds.layer.altitude` / `layer.height` → 低云层组前两层
+  - `scene.clouds.look.detail` / `turbulence` / `haze` → `shapeDetail` / `turbulence` / `haze`
+  - `scene.clouds.shadow.quality`：`'low' | 'medium' | 'high'` → `cascadeCount` / `mapSize`
+- 映射实现集中在 `applyCloudAppearanceState`（`src/rendering/cloudAppearance.ts`），在 `qualityPreset` 之后应用，以便用户外观覆盖 preset 默认值。
 
 ## 云层建模
 
@@ -217,15 +215,13 @@ Tellux 当前状态：
 
 Tellux 当前用法：
 
-- 默认降低云影开销：
-  - `cascadeCount = 2`
-  - `mapSize = 512 x 512`
-  - `farScale = 0.25`
-  - `maxFar = 1e5`
-  - `splitMode = 'practical'`
-  - `splitLambda = 0.71`
-- 用户可通过 `scene.atmosphereShadowRadius` 和 `scene.atmosphereShadowSampleCount` 控制大气合成时的云影采样。
-- 云影只在 `scene.atmosphereLightingMode = 'post-process'` 时会影响地表/瓦片光照。`CloudsEffect` 产出的 `atmosphereShadow` 由 `AerialPerspectiveEffect` 的后处理光照分支采样；默认 `light-source` 模式使用 Three.js 太阳光/天空光照明，不会读取体积云 shadow map。
+- 默认降低云影开销；构造时先设保守 shadow shorthand，再由 `scene.clouds.shadow.quality` 覆盖级联与 map 分辨率：
+  - `low` → `cascadeCount = 1`，`mapSize = 256`
+  - `medium`（默认）→ `cascadeCount = 2`，`mapSize = 512`
+  - `high` → `cascadeCount = 4`，`mapSize = 1024`
+  - 另保留 `farScale = 0.25`、`maxFar = 1e5`、`splitMode = 'practical'`、`splitLambda = 0.71`
+- 用户可通过 `scene.atmosphere.shadow.radius` 和 `scene.atmosphere.shadow.sampleCount` 控制大气合成时的云影屏幕采样。
+- 云影只在 `scene.atmosphere.lighting.mode = 'post-process'` 时会影响地表/瓦片光照。`CloudsEffect` 产出的 `atmosphereShadow` 由 `AerialPerspectiveEffect` 的后处理光照分支采样；`light-source` 模式使用 Three.js 太阳光/天空光照明，不会读取体积云 shadow map。
 
 ## 性能注意点
 
@@ -245,14 +241,11 @@ Tellux 当前用法：
 Tellux API 设计建议：
 
 - 默认保持保守参数。
-- 先公开少量高价值参数：
-  - 云开关
-  - 覆盖率
-  - 云底高度
-  - 云层厚度
-  - 质量 preset
-  - 云影开关或质量
-- 将高级 ray marching 参数放入 debug / advanced 配置，避免普通用户误调。
+- 已公开高价值参数：
+  - 云开关、覆盖率、云底高度、云层厚度、质量档、光柱
+  - 外观开关（detail / turbulence / haze）
+  - 云影质量档
+- 将高级 ray marching / 各向异性 / powder 等参数继续留在 debug / advanced，避免普通用户误调。
 
 ## 已知限制
 
@@ -263,6 +256,7 @@ Tellux API 设计建议：
 - 云底高度当前相对椭球表面，不完全等同真实气象高度。
 - 难以在提升视觉质量、性能和功能时保持完全一致的输出。
 - 体积云对移动端或低端 GPU 压力较大。
+- WebGPU 模式下体积云不渲染。
 
 Tellux 对外说明建议：
 
@@ -271,9 +265,8 @@ Tellux 对外说明建议：
 
 ## 后续可扩展方向
 
-- 公开 `scene.clouds.qualityPreset`。
-- 公开完整云层数组配置。
+- 公开完整云层数组配置（`scene.clouds.layers`）。
 - 支持外部 weather / shape / turbulence / STBN 资源路径。
 - 支持程序化云纹理生成和 seed。
-- 支持云影质量 preset。
+- 将 `resolutionScale` / `temporalUpscale` 并入质量档或仅暴露给 debug。
 - 支持 debug 输出云层、云影级联、纹理加载状态和上游合成 buffer 状态。

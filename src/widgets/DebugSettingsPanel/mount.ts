@@ -145,8 +145,8 @@ export function mountDebugSettingsPanel(
   }
 
   function applySmoothedControls(deltaTime: number) {
-    viewer.scene.atmosphere.sky.starsIntensity = smooth.starsIntensity.tick(deltaTime)
-    viewer.scene.atmosphere.sky.starsPointSize = smooth.starsPointSize.tick(deltaTime)
+    viewer.scene.atmosphere.sky.stars.intensity = smooth.starsIntensity.tick(deltaTime)
+    viewer.scene.atmosphere.sky.stars.pointSize = smooth.starsPointSize.tick(deltaTime)
     viewer.scene.atmosphere.scattering.intensity =
       smooth.atmosphereInscatterIntensity.tick(deltaTime)
     viewer.scene.atmosphere.scattering.horizonRange = [
@@ -182,8 +182,8 @@ export function mountDebugSettingsPanel(
     viewer.scene.atmosphere.shadow.radius = smooth.shadowRadius.tick(deltaTime)
     viewer.scene.clouds.coverage = smooth.cloudCoverage.tick(deltaTime)
     viewer.scene.clouds.speed = smooth.cloudSpeed.tick(deltaTime)
-    viewer.scene.clouds.layerAltitude = smooth.cloudLayerAltitude.tick(deltaTime)
-    viewer.scene.clouds.layerHeight = smooth.cloudLayerHeight.tick(deltaTime)
+    viewer.scene.clouds.layer.altitude = smooth.cloudLayerAltitude.tick(deltaTime)
+    viewer.scene.clouds.layer.height = smooth.cloudLayerHeight.tick(deltaTime)
     viewer.toneMappingExposure = smooth.toneMappingExposure.tick(deltaTime)
 
     if (!viewer.clock.animate) {

@@ -211,7 +211,7 @@ export function buildDebugSettingsControls(
     min: 200,
     max: 4000,
     step: 50,
-    value: settings.cloudLayerAltitude ?? viewer.scene.clouds.layerAltitude,
+    value: settings.cloudLayerAltitude ?? viewer.scene.clouds.layer.altitude,
     format: (value) => `${Math.round(value)}m`,
   })
   const cloudHeightControl = createRangeControl({
@@ -220,7 +220,7 @@ export function buildDebugSettingsControls(
     min: 100,
     max: 3000,
     step: 50,
-    value: settings.cloudLayerHeight ?? viewer.scene.clouds.layerHeight,
+    value: settings.cloudLayerHeight ?? viewer.scene.clouds.layer.height,
     format: (value) => `${Math.round(value)}m`,
   })
   const inscatterIntensityControl = createRangeControl({
@@ -324,7 +324,7 @@ export function buildDebugSettingsControls(
     min: 0,
     max: 8,
     step: 0.05,
-    value: settings.starsIntensity ?? viewer.scene.atmosphere.sky.starsIntensity,
+    value: settings.starsIntensity ?? viewer.scene.atmosphere.sky.stars.intensity,
     format: (value) => value.toFixed(2),
   })
   const starsPointSizeControl = createRangeControl({
@@ -333,7 +333,7 @@ export function buildDebugSettingsControls(
     min: 0.1,
     max: 4,
     step: 0.05,
-    value: settings.starsPointSize ?? viewer.scene.atmosphere.sky.starsPointSize,
+    value: settings.starsPointSize ?? viewer.scene.atmosphere.sky.stars.pointSize,
     format: (value) => value.toFixed(2),
   })
   const solarIrradianceControl = createRangeControl({

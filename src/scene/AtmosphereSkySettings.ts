@@ -2,34 +2,58 @@ import type { ResolvedSceneOptions } from './SceneOptions'
 import { sceneValueNormalizers } from './SceneValueNormalization'
 import { SceneToggle } from './SceneToggle'
 
+class AtmosphereStarsSettings {
+  private readonly visibility: SceneToggle
+
+  constructor(
+    private readonly options: ResolvedSceneOptions['atmosphere']['sky']['stars'],
+    private readonly onStateChange: () => void
+  ) {
+    this.visibility = new SceneToggle(options.show, onStateChange)
+  }
+
+  /**
+   * 星空是否显示。
+   *
+   * Whether the star field is shown.
+   */
+  get show() {
+    return this.visibility.show
+  }
+
+  set show(value: boolean) {
+    this.visibility.show = value
+  }
+
+  /** 星空亮度缩放。Star field brightness scale. */
+  get intensity() {
+    return this.options.intensity
+  }
+
+  set intensity(value: number) {
+    this.options.intensity = sceneValueNormalizers.starsIntensity(value)
+    this.onStateChange()
+  }
+
+  /** 星点大小（像素点）。Star point size in pixels. */
+  get pointSize() {
+    return this.options.pointSize
+  }
+
+  set pointSize(value: number) {
+    this.options.pointSize = sceneValueNormalizers.starsPointSize(value)
+    this.onStateChange()
+  }
+}
+
 export class AtmosphereSkySettings {
-  readonly stars: SceneToggle
+  readonly stars: AtmosphereStarsSettings
 
   constructor(
     private readonly options: ResolvedSceneOptions['atmosphere']['sky'],
     private readonly onStateChange: () => void
   ) {
-    this.stars = new SceneToggle(options.stars, onStateChange)
-  }
-
-  /** 星空亮度缩放。Star field brightness scale. */
-  get starsIntensity() {
-    return this.options.starsIntensity
-  }
-
-  set starsIntensity(value: number) {
-    this.options.starsIntensity = sceneValueNormalizers.starsIntensity(value)
-    this.onStateChange()
-  }
-
-  /** 星点大小（像素点）。Star point size in pixels. */
-  get starsPointSize() {
-    return this.options.starsPointSize
-  }
-
-  set starsPointSize(value: number) {
-    this.options.starsPointSize = sceneValueNormalizers.starsPointSize(value)
-    this.onStateChange()
+    this.stars = new AtmosphereStarsSettings(options.stars, onStateChange)
   }
 
   /** 是否在天空中绘制太阳盘。Renders the sun disc in the sky. */

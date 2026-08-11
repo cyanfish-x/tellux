@@ -76,13 +76,13 @@ const viewer = new tellux.Viewer(container, {
 })
 
 viewer.clock.setHourUTC(initialDaytimeHourUTC)
-viewer.scene.clouds.layerAltitude = dujiangyanView.clouds.layerAltitude
-viewer.scene.clouds.layerHeight = dujiangyanView.clouds.layerHeight
+viewer.scene.clouds.layer.altitude = dujiangyanView.clouds.layerAltitude
+viewer.scene.clouds.layer.height = dujiangyanView.clouds.layerHeight
 ;(window as any).viewer = viewer
 
 function applyLocationView(view: typeof dujiangyanView | typeof himalayaView) {
-  viewer.scene.clouds.layerAltitude = view.clouds.layerAltitude
-  viewer.scene.clouds.layerHeight = view.clouds.layerHeight
+  viewer.scene.clouds.layer.altitude = view.clouds.layerAltitude
+  viewer.scene.clouds.layer.height = view.clouds.layerHeight
   viewer.camera.flyTo({
     destination: {
       latitude: view.latitude,

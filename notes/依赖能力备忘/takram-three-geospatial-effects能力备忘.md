@@ -14,7 +14,7 @@
 
 `@takram/three-geospatial-effects` 提供一组基于 `postprocessing` 的效果和 pass。它不是专门的 GIS 数据加载包，而是为 Takram 地理渲染场景提供常用的屏幕后处理、G-buffer 辅助和调试输出。
 
-对 Tellux 来说，它承担的是 `scene.postProcessStages` 里的镜头光晕和抖动能力。SMAA 当前来自 `postprocessing` 自身。
+对 Tellux 来说，它承担的是 `scene.postProcess` 里的镜头光晕和抖动能力。SMAA 当前来自 `postprocessing` 自身。
 
 ## 包入口和边界
 
@@ -63,16 +63,18 @@ Tellux 当前应继续基于普通 Three.js 入口封装 API，避免把 R3F 后
 
 Tellux 当前用法：
 
-- `PostProcessingManager` 创建 `new LensFlareEffect()`。
-- 包装为 `EffectPassAdapter(new EffectPass(camera, new LensFlareEffect()), ...)`。
-- 由 `scene.postProcessStages.lensFlare.enabled` 控制是否加入后处理管线。
+- `PostProcessingManager` 创建并持有 `LensFlareEffect`，包装为 `EffectPassAdapter`。
+- 公开 API（init 可传 `boolean` 简写或对象，runtime 始终为对象）：
+  - `scene.postProcess.lensFlare.enabled`
+  - `scene.postProcess.lensFlare.intensity`
+  - `scene.postProcess.lensFlare.threshold.level` / `range`
+  - `scene.postProcess.lensFlare.quality`：`'low' | 'medium' | 'high'` → `resolution.scale`（`0.25` / `0.5` / `1`）
+- 参数同步集中在 `applyLensFlareAppearanceState`（`src/rendering/lensFlareAppearance.ts`）。
 
 后续可扩展方向：
 
-- 公开 `scene.postProcessStages.lensFlare.intensity`。
-- 公开阈值参数 `thresholdLevel` 和 `thresholdRange`。
-- 根据太阳屏幕位置或亮度控制光晕强度。
-- 提供质量 preset，调整 `resolutionScale`。
+- 根据太阳屏幕位置或亮度自动控制光晕强度。
+- 暴露 `blendFunction` 等极少用高级项（通常不必）。
 
 ## 抖动
 
@@ -92,7 +94,7 @@ Tellux 当前用法：
 Tellux 当前用法：
 
 - `PostProcessingManager` 创建 `new DitheringEffect()`。
-- 由 `scene.postProcessStages.dithering.enabled` 控制是否加入后处理管线。
+- 由 `scene.postProcess.dithering.enabled` 控制是否加入后处理管线（init 也可传 `boolean` 简写）。
 - 当前没有额外公开参数。
 
 API 设计建议：
@@ -170,7 +172,7 @@ Tellux 当前状态：
 
 后续可扩展方向：
 
-- 增加 `scene.postProcessStages.colorGrading`。
+- 增加 `scene.postProcess.colorGrading`。
 - 允许用户传入 Hald LUT 纹理。
 - 作为演示和视觉风格参数，而不是 GIS 核心能力。
 
@@ -193,9 +195,10 @@ Tellux 当前管线顺序由 `PostProcessingManager.applyEffects()` 控制：
 
 ## 后续可扩展方向
 
-- 为 `LensFlareEffect` 增加强度、阈值和质量配置。
+- `LensFlareEffect` 强度 / 阈值 / 质量已公开；后续可做与太阳位置联动的自动强度。
 - 为 `DitheringEffect` 保持简单开关，默认作为末尾 pass。
 - 增加 depth / normal debug view。
 - 评估 `GeometryPass` 用于更完整的材质和 G-buffer 调试。
-- 评估 `createHaldLookupTexture` 用于色彩分级。
+- 评估 `createHaldLookupTexture` 用于色彩分级（`scene.postProcess.colorGrading`）。
+- WebGPU 下 SMAA / 镜头光晕 / 抖动当前不渲染，文档需持续声明。
 

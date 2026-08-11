@@ -73,6 +73,20 @@ export interface ViewerSurfaceMaterialOptions {
 export type CloudQualityPreset = 'low' | 'medium' | 'high' | 'ultra'
 
 /**
+ * 体积云云影质量档位。
+ *
+ * Volumetric cloud shadow quality preset.
+ */
+export type CloudShadowQuality = 'low' | 'medium' | 'high'
+
+/**
+ * 镜头光晕质量档位。
+ *
+ * Lens flare quality preset.
+ */
+export type LensFlareQuality = 'low' | 'medium' | 'high'
+
+/**
  * Viewer 场景配置。
  *
  * Viewer scene options.
@@ -244,17 +258,31 @@ export interface ViewerAtmosphereScatteringOptions {
 }
 
 /**
+ * Viewer 星空配置。
+ *
+ * Viewer star field options.
+ */
+export interface ViewerAtmosphereStarsOptions {
+  /** 是否启用星空，默认 `true`。Enables the star field. Defaults to `true`. */
+  show?: boolean
+  /** 星空亮度缩放，默认 `1`。Star field brightness scale. Defaults to `1`. */
+  intensity?: number
+  /** 星点大小（像素点），默认 `1`。Star point size in pixels. Defaults to `1`. */
+  pointSize?: number
+}
+
+/**
  * Viewer 大气天空元素配置。
  *
  * Viewer atmospheric sky element options.
  */
 export interface ViewerAtmosphereSkyOptions {
-  /** 是否启用星空，默认 `true`。Enables the star field. Defaults to `true`. */
-  stars?: boolean
-  /** 星空亮度缩放，默认 `1`。Star field brightness scale. Defaults to `1`. */
-  starsIntensity?: number
-  /** 星点大小（像素点），默认 `1`。Star point size in pixels. Defaults to `1`. */
-  starsPointSize?: number
+  /**
+   * 星空配置。传入 `boolean` 时等价于 `{ show }`。
+   *
+   * Star field options. A `boolean` is treated as `{ show }`.
+   */
+  stars?: boolean | ViewerAtmosphereStarsOptions
   /** 是否在天空中绘制太阳盘，默认 `true`。Renders the sun disc in the sky. Defaults to `true`. */
   sun?: boolean
   /** 是否在天空中绘制月亮，默认 `true`。Renders the moon in the sky. Defaults to `true`. */
@@ -311,6 +339,10 @@ export interface ViewerCloudOptions {
   speed?: number
   /** 低云层组配置。Low cloud layer group options. */
   layer?: ViewerCloudLayerOptions
+  /** 体积云外观配置。Volumetric cloud look options. */
+  look?: ViewerCloudLookOptions
+  /** 体积云云影配置。Volumetric cloud shadow options. */
+  shadow?: ViewerCloudShadowOptions
 }
 
 /**
@@ -323,6 +355,30 @@ export interface ViewerCloudLayerOptions {
   altitude?: number
   /** 低云层组厚度（米），默认 `650`。Height of the low cloud layer group in meters. Defaults to `650`. */
   height?: number
+}
+
+/**
+ * Viewer 体积云外观配置。
+ *
+ * Viewer volumetric cloud look options.
+ */
+export interface ViewerCloudLookOptions {
+  /** 是否启用 shape detail，默认 `true`。Enables cloud shape detail. Defaults to `true`. */
+  detail?: boolean
+  /** 是否启用湍流，默认 `true`。Enables cloud turbulence. Defaults to `true`. */
+  turbulence?: boolean
+  /** 是否启用雾霾，默认 `true`。Enables cloud haze. Defaults to `true`. */
+  haze?: boolean
+}
+
+/**
+ * Viewer 体积云云影配置。
+ *
+ * Viewer volumetric cloud shadow options.
+ */
+export interface ViewerCloudShadowOptions {
+  /** 云影质量档位，默认 `medium`。Cloud shadow quality preset. Defaults to `medium`. */
+  quality?: CloudShadowQuality
 }
 
 /**
@@ -342,17 +398,67 @@ export interface ViewerSurfaceOptions {
 }
 
 /**
+ * Viewer 后处理阶段开关配置。
+ *
+ * Viewer post-process stage toggle options.
+ */
+export interface ViewerPostProcessStageOptions {
+  /** 是否启用该后处理阶段。Whether this post-processing stage is enabled. */
+  enabled?: boolean
+}
+
+/**
+ * Viewer 镜头光晕阈值配置。
+ *
+ * Viewer lens flare threshold options.
+ */
+export interface ViewerLensFlareThresholdOptions {
+  /** 亮部提取阈值，默认 `10`。Bright-pass threshold level. Defaults to `10`. */
+  level?: number
+  /** 亮部提取过渡宽度，默认 `1`。Bright-pass threshold range. Defaults to `1`. */
+  range?: number
+}
+
+/**
+ * Viewer 镜头光晕配置。
+ *
+ * Viewer lens flare options.
+ */
+export interface ViewerLensFlareOptions {
+  /** 是否启用镜头光晕，默认 `true`。Enables lens flare. Defaults to `true`. */
+  enabled?: boolean
+  /** 光晕强度，默认 `0.005`。Lens flare intensity. Defaults to `0.005`. */
+  intensity?: number
+  /** 亮部提取阈值。Bright-pass threshold options. */
+  threshold?: ViewerLensFlareThresholdOptions
+  /** 光晕质量档位，默认 `medium`。Lens flare quality preset. Defaults to `medium`. */
+  quality?: LensFlareQuality
+}
+
+/**
  * Viewer 后处理配置。
  *
  * Viewer post-processing options.
  */
 export interface ViewerPostProcessOptions {
-  /** 是否启用镜头光晕后处理，默认 `true`。Enables lens flare post-processing. Defaults to `true`. */
-  lensFlare?: boolean
-  /** 是否启用 SMAA 抗锯齿后处理，默认 `true`。Enables SMAA anti-aliasing post-processing. Defaults to `true`. */
-  smaa?: boolean
-  /** 是否启用抖动后处理，默认 `false`。Enables dithering post-processing. Defaults to `false`. */
-  dithering?: boolean
+  /**
+   * 镜头光晕配置。传入 `boolean` 时等价于 `{ enabled }`。
+   *
+   * Lens flare options. A `boolean` is treated as `{ enabled }`.
+   */
+  lensFlare?: boolean | ViewerLensFlareOptions
+  /**
+   * SMAA 抗锯齿配置。传入 `boolean` 时等价于 `{ enabled }`。
+   *
+   * SMAA options. A `boolean` is treated as `{ enabled }`.
+   */
+  smaa?: boolean | ViewerPostProcessStageOptions
+  /**
+   * 抖动配置。传入 `boolean` 时等价于 `{ enabled }`。
+   *
+   * Dithering options. A `boolean` is treated as `{ enabled }`.
+   */
+  dithering?: boolean | ViewerPostProcessStageOptions
   /** 渲染器色调映射曝光值，默认 `10`。Renderer tone mapping exposure. Defaults to `10`. */
   toneMappingExposure?: number
 }

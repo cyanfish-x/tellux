@@ -4,6 +4,7 @@ import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effec
 import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects } from '../effects'
 import type { Scene } from '../Scene'
 import type { AtmosphereManager } from './AtmosphereManager'
+import { applyLensFlareAppearanceState } from './lensFlareAppearance'
 
 const CLOUD_RENDER_MAX_HEIGHT = 27000
 
@@ -12,6 +13,7 @@ export class PostProcessingManager {
   private readonly normalAdapter: ThreeEffectPass
   private readonly cloudAtmosphereAdapter: ThreeEffectPass
   private readonly atmosphereAdapter: ThreeEffectPass
+  private readonly lensFlareEffect: LensFlareEffect
   private readonly lensFlareAdapter: ThreeEffectPass
   private readonly smaaAdapter: ThreeEffectPass
   private readonly ditheringAdapter: ThreeEffectPass
@@ -44,7 +46,11 @@ export class PostProcessingManager {
       () => this.camera
     )
     this.normalAdapter = new EffectPassAdapter(normalPass, () => this.camera)
-    this.lensFlareAdapter = new EffectPassAdapter(new EffectPass(this.camera, new LensFlareEffect()), () => this.camera)
+    this.lensFlareEffect = new LensFlareEffect()
+    this.lensFlareAdapter = new EffectPassAdapter(
+      new EffectPass(this.camera, this.lensFlareEffect),
+      () => this.camera
+    )
     this.smaaAdapter = new EffectPassAdapter(new EffectPass(this.camera, new SMAAEffect()), () => this.camera)
     this.ditheringAdapter = new EffectPassAdapter(new EffectPass(this.camera, new DitheringEffect()), () => this.camera)
     this.outlineAdapter = outlineEffect
@@ -62,6 +68,8 @@ export class PostProcessingManager {
     if (this.outlineAdapter) {
       this.effectAdapters.push(this.outlineAdapter)
     }
+
+    this.syncLensFlareSettings()
   }
 
   applyEffects() {
@@ -79,6 +87,8 @@ export class PostProcessingManager {
   }
 
   private syncEffects(currentHeight: number | null, forceRecompile: boolean) {
+    this.syncLensFlareSettings()
+
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.atmosphere.show
     const shouldRenderClouds =
@@ -145,6 +155,10 @@ export class PostProcessingManager {
     this.currentEffectsKey = effectsKey
     this.activeEffects = nextEffects
     this.renderer.setEffects(nextEffects)
+  }
+
+  private syncLensFlareSettings() {
+    applyLensFlareAppearanceState(this.lensFlareEffect, this.scene.postProcess.lensFlare)
   }
 
   /**

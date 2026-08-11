@@ -3,7 +3,15 @@ import type { SurfaceMaterialOptions } from './materials/materialMode'
 import type { ModelMaterialMode } from './models/GltfModelLayer'
 import type { ResolvedSceneOptions } from './Scene'
 import { sceneValueNormalizers } from './scene/SceneValueNormalization'
-import type { AtmosphereLightingMode, SurfaceMaterialMode, ViewerOptions, ViewerSurfaceMaterialOptions } from './types'
+import type {
+  AtmosphereLightingMode,
+  SurfaceMaterialMode,
+  ViewerAtmosphereStarsOptions,
+  ViewerLensFlareOptions,
+  ViewerOptions,
+  ViewerPostProcessStageOptions,
+  ViewerSurfaceMaterialOptions
+} from './types'
 
 export type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
 export type SceneTilesetMaterialMode = 'basic' | 'standard'
@@ -22,6 +30,7 @@ export function resolveViewerResolutionScale(options: ViewerOptions) {
 export function resolveViewerSceneOptions(options: ViewerOptions['scene']): ResolvedSceneOptions {
   const atmosphereLightingMode = options?.atmosphere?.lighting?.mode ?? 'post-process'
   const normalize = sceneValueNormalizers
+  const stars = resolveStarsOptions(options?.atmosphere?.sky?.stars)
 
   return {
     atmosphere: {
@@ -89,13 +98,7 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
         )
       },
       sky: {
-        stars: options?.atmosphere?.sky?.stars ?? true,
-        starsIntensity: normalize.starsIntensity(
-          options?.atmosphere?.sky?.starsIntensity ?? 1
-        ),
-        starsPointSize: normalize.starsPointSize(
-          options?.atmosphere?.sky?.starsPointSize ?? 1
-        ),
+        stars,
         sun: options?.atmosphere?.sky?.sun ?? true,
         moon: options?.atmosphere?.sky?.moon ?? true,
         ground: options?.atmosphere?.sky?.ground ?? true,
@@ -131,6 +134,14 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
       layer: {
         altitude: normalize.cloudLayerAltitude(options?.clouds?.layer?.altitude ?? 1500),
         height: normalize.cloudLayerHeight(options?.clouds?.layer?.height ?? 650)
+      },
+      look: {
+        detail: options?.clouds?.look?.detail ?? true,
+        turbulence: options?.clouds?.look?.turbulence ?? true,
+        haze: options?.clouds?.look?.haze ?? true
+      },
+      shadow: {
+        quality: normalize.cloudShadowQuality(options?.clouds?.shadow?.quality)
       }
     },
     entities: {
@@ -143,9 +154,9 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
       material: resolveSurfaceMaterialOptions(options?.surface?.material)
     },
     postProcess: {
-      lensFlare: options?.postProcess?.lensFlare ?? true,
-      smaa: options?.postProcess?.smaa ?? true,
-      dithering: options?.postProcess?.dithering ?? false,
+      lensFlare: resolveLensFlareOptions(options?.postProcess?.lensFlare),
+      smaa: resolvePostProcessStageOptions(options?.postProcess?.smaa, true),
+      dithering: resolvePostProcessStageOptions(options?.postProcess?.dithering, false),
       toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 5
     },
     highlight: {
@@ -196,6 +207,61 @@ export function resolveSceneContentMaterialMode(
 
 export function resolveModelMaterialMode(atmosphereLightingMode: AtmosphereLightingMode): ModelMaterialMode {
   return atmosphereLightingMode === 'post-process' ? 'basic' : 'standard'
+}
+
+function resolveStarsOptions(
+  options: boolean | ViewerAtmosphereStarsOptions | undefined
+): ResolvedSceneOptions['atmosphere']['sky']['stars'] {
+  const normalize = sceneValueNormalizers
+  if (typeof options === 'boolean') {
+    return {
+      show: options,
+      intensity: normalize.starsIntensity(1),
+      pointSize: normalize.starsPointSize(1)
+    }
+  }
+
+  return {
+    show: options?.show ?? true,
+    intensity: normalize.starsIntensity(options?.intensity ?? 1),
+    pointSize: normalize.starsPointSize(options?.pointSize ?? 1)
+  }
+}
+
+function resolvePostProcessStageOptions(
+  options: boolean | ViewerPostProcessStageOptions | undefined,
+  defaultEnabled: boolean
+): { enabled: boolean } {
+  if (typeof options === 'boolean') return { enabled: options }
+  return { enabled: options?.enabled ?? defaultEnabled }
+}
+
+function resolveLensFlareOptions(
+  options: boolean | ViewerLensFlareOptions | undefined
+): ResolvedSceneOptions['postProcess']['lensFlare'] {
+  const normalize = sceneValueNormalizers
+  if (typeof options === 'boolean' || options === undefined) {
+    return {
+      enabled: options ?? true,
+      intensity: normalize.lensFlareIntensity(0.005),
+      threshold: {
+        level: normalize.lensFlareThresholdLevel(10),
+        range: normalize.lensFlareThresholdRange(1)
+      },
+      quality: 'medium'
+    }
+  }
+
+  const quality = normalize.lensFlareQuality(options.quality)
+  return {
+    enabled: options.enabled ?? true,
+    intensity: normalize.lensFlareIntensity(options.intensity ?? 0.005),
+    threshold: {
+      level: normalize.lensFlareThresholdLevel(options.threshold?.level ?? 10),
+      range: normalize.lensFlareThresholdRange(options.threshold?.range ?? 1)
+    },
+    quality
+  }
 }
 
 function clamp01(value: number | undefined, fallback: number) {

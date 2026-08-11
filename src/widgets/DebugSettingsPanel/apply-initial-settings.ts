@@ -19,11 +19,11 @@ export function applyInitialDebugSettings(
   }
 
   if (settings.starsIntensity !== undefined) {
-    viewer.scene.atmosphere.sky.starsIntensity = settings.starsIntensity
+    viewer.scene.atmosphere.sky.stars.intensity = settings.starsIntensity
   }
 
   if (settings.starsPointSize !== undefined) {
-    viewer.scene.atmosphere.sky.starsPointSize = settings.starsPointSize
+    viewer.scene.atmosphere.sky.stars.pointSize = settings.starsPointSize
   }
 
   if (settings.clockAnimate !== undefined) {
@@ -55,11 +55,11 @@ export function applyInitialDebugSettings(
   }
 
   if (settings.cloudLayerAltitude !== undefined) {
-    viewer.scene.clouds.layerAltitude = settings.cloudLayerAltitude
+    viewer.scene.clouds.layer.altitude = settings.cloudLayerAltitude
   }
 
   if (settings.cloudLayerHeight !== undefined) {
-    viewer.scene.clouds.layerHeight = settings.cloudLayerHeight
+    viewer.scene.clouds.layer.height = settings.cloudLayerHeight
   }
 
   if (settings.atmosphereInscatterIntensity !== undefined) {

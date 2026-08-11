@@ -2,8 +2,10 @@ import type * as THREE from 'three'
 import type {
   AtmosphereLightingMode,
   CloudQualityPreset,
+  CloudShadowQuality,
   ColorInput,
   EntityTransparencyMode,
+  LensFlareQuality,
   SurfaceMaterialMode
 } from '../types'
 import type { SurfaceMaterialOptions } from '../materials/materialMode'
@@ -46,9 +48,11 @@ export interface ResolvedSceneOptions {
       groundAlbedo: number
     }
     sky: {
-      stars: boolean
-      starsIntensity: number
-      starsPointSize: number
+      stars: {
+        show: boolean
+        intensity: number
+        pointSize: number
+      }
       sun: boolean
       moon: boolean
       ground: boolean
@@ -75,6 +79,14 @@ export interface ResolvedSceneOptions {
       altitude: number
       height: number
     }
+    look: {
+      detail: boolean
+      turbulence: boolean
+      haze: boolean
+    }
+    shadow: {
+      quality: CloudShadowQuality
+    }
   }
   entities: {
     transparency: {
@@ -86,9 +98,21 @@ export interface ResolvedSceneOptions {
     material: SurfaceMaterialOptions
   }
   postProcess: {
-    lensFlare: boolean
-    smaa: boolean
-    dithering: boolean
+    lensFlare: {
+      enabled: boolean
+      intensity: number
+      threshold: {
+        level: number
+        range: number
+      }
+      quality: LensFlareQuality
+    }
+    smaa: {
+      enabled: boolean
+    }
+    dithering: {
+      enabled: boolean
+    }
     toneMappingExposure: number
   }
   highlight: {

@@ -68,7 +68,14 @@ export const sceneValueNormalizers = {
   cloudCoverage: (value: number) => clamped(value, 0.3, 0, 1),
   cloudSpeed: (value: number) => nonNegative(value, 0.001),
   cloudLayerAltitude: (value: number) => finite(value, 1500),
-  cloudLayerHeight: (value: number) => nonNegative(value, 650)
+  cloudLayerHeight: (value: number) => nonNegative(value, 650),
+  cloudShadowQuality: (value: string | undefined) =>
+    value === 'low' || value === 'medium' || value === 'high' ? value : 'medium',
+  lensFlareIntensity: (value: number) => nonNegative(value, 0.005),
+  lensFlareThresholdLevel: (value: number) => nonNegative(value, 10),
+  lensFlareThresholdRange: (value: number) => nonNegative(value, 1),
+  lensFlareQuality: (value: string | undefined) =>
+    value === 'low' || value === 'medium' || value === 'high' ? value : 'medium'
 } as const
 
 export function normalizeAtmosphereRuntimeState(
@@ -111,7 +118,12 @@ export function normalizeCloudRuntimeState(state: CloudRuntimeState): CloudRunti
     ...state,
     coverage: normalize.cloudCoverage(state.coverage),
     speed: normalize.cloudSpeed(state.speed),
-    layerAltitude: normalize.cloudLayerAltitude(state.layerAltitude),
-    layerHeight: normalize.cloudLayerHeight(state.layerHeight)
+    layer: {
+      altitude: normalize.cloudLayerAltitude(state.layer.altitude),
+      height: normalize.cloudLayerHeight(state.layer.height)
+    },
+    shadow: {
+      quality: normalize.cloudShadowQuality(state.shadow.quality)
+    }
   }
 }

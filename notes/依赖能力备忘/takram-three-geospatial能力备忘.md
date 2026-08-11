@@ -239,9 +239,11 @@ Tellux 当前同时依赖：
 
 ## 后续可扩展方向
 
+本包以内部工具为主，近期公开 API 扩展（大气 / 云 / 镜头光晕）不改变其边界：继续不向用户暴露 Takram `Ellipsoid` 等类型。
+
 - 用 `Geodetic` / `PointOfView` 辅助相机 API 内部实现。
 - 用 `Rectangle` / `TilingScheme` 辅助 imagery layer 和 tile debug。
-- 用 `DataTextureLoader` / `TypedArrayLoader` 统一云和 STBN 资产加载。
+- 用 `DataTextureLoader` / `TypedArrayLoader` 统一云和 STBN 资产加载（当前云 shape 仍手动 fetch）。
 - 用 `EllipsoidGeometry` 提供 debug ellipsoid 或 fallback globe mesh。
 - 增加内部适配层，统一 `3d-tiles-renderer` 和 Takram 的椭球/坐标对象。
 

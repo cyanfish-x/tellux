@@ -1,11 +1,128 @@
 import type { CloudRuntimeState } from '../rendering/AtmosphereRuntimeState'
-import type { CloudQualityPreset } from '../types'
+import type { CloudQualityPreset, CloudShadowQuality } from '../types'
 import type { CloudStateApplier } from './SceneStateAppliers'
 import type { ResolvedSceneOptions } from './SceneOptions'
 import { sceneValueNormalizers } from './SceneValueNormalization'
 import { SceneToggle } from './SceneToggle'
 
+class CloudLayerSettings {
+  constructor(
+    private readonly options: ResolvedSceneOptions['clouds']['layer'],
+    private readonly onChange: () => void
+  ) {}
+
+  /**
+   * 低云层组云底高度（米）。
+   *
+   * Base altitude of the low cloud layer group in meters.
+   */
+  get altitude() {
+    return this.options.altitude
+  }
+
+  set altitude(value: number) {
+    const next = sceneValueNormalizers.cloudLayerAltitude(value)
+    if (this.options.altitude === next) return
+    this.options.altitude = next
+    this.onChange()
+  }
+
+  /**
+   * 低云层组厚度（米）。
+   *
+   * Height of the low cloud layer group in meters.
+   */
+  get height() {
+    return this.options.height
+  }
+
+  set height(value: number) {
+    const next = sceneValueNormalizers.cloudLayerHeight(value)
+    if (this.options.height === next) return
+    this.options.height = next
+    this.onChange()
+  }
+}
+
+class CloudLookSettings {
+  constructor(
+    private readonly options: ResolvedSceneOptions['clouds']['look'],
+    private readonly onChange: () => void
+  ) {}
+
+  /**
+   * 是否启用 shape detail。
+   *
+   * Whether cloud shape detail is enabled.
+   */
+  get detail() {
+    return this.options.detail
+  }
+
+  set detail(value: boolean) {
+    if (this.options.detail === value) return
+    this.options.detail = value
+    this.onChange()
+  }
+
+  /**
+   * 是否启用湍流。
+   *
+   * Whether cloud turbulence is enabled.
+   */
+  get turbulence() {
+    return this.options.turbulence
+  }
+
+  set turbulence(value: boolean) {
+    if (this.options.turbulence === value) return
+    this.options.turbulence = value
+    this.onChange()
+  }
+
+  /**
+   * 是否启用雾霾。
+   *
+   * Whether cloud haze is enabled.
+   */
+  get haze() {
+    return this.options.haze
+  }
+
+  set haze(value: boolean) {
+    if (this.options.haze === value) return
+    this.options.haze = value
+    this.onChange()
+  }
+}
+
+class CloudShadowSettings {
+  constructor(
+    private readonly options: ResolvedSceneOptions['clouds']['shadow'],
+    private readonly onChange: () => void
+  ) {}
+
+  /**
+   * 云影质量档位。
+   *
+   * Cloud shadow quality preset.
+   */
+  get quality() {
+    return this.options.quality
+  }
+
+  set quality(value: CloudShadowQuality) {
+    const next = sceneValueNormalizers.cloudShadowQuality(value)
+    if (this.options.quality === next) return
+    this.options.quality = next
+    this.onChange()
+  }
+}
+
 export class CloudSettings {
+  readonly layer: CloudLayerSettings
+  readonly look: CloudLookSettings
+  readonly shadow: CloudShadowSettings
   private readonly visibility: SceneToggle
   private readonly applyCloudsState: CloudStateApplier
   private readonly onEffectsChange: () => void
@@ -13,8 +130,6 @@ export class CloudSettings {
   private currentLightShafts: boolean
   private currentCoverage: number
   private currentSpeed: number
-  private currentLayerAltitude: number
-  private currentLayerHeight: number
 
   constructor(
     options: ResolvedSceneOptions['clouds'],
@@ -26,10 +141,16 @@ export class CloudSettings {
     this.visibility = new SceneToggle(options.show, onEffectsChange)
     this.currentQuality = options.quality
     this.currentLightShafts = options.lightShafts
-    this.currentCoverage = sceneValueNormalizers.cloudCoverage(options.coverage)
-    this.currentSpeed = sceneValueNormalizers.cloudSpeed(options.speed)
-    this.currentLayerAltitude = sceneValueNormalizers.cloudLayerAltitude(options.layer.altitude)
-    this.currentLayerHeight = sceneValueNormalizers.cloudLayerHeight(options.layer.height)
+    this.currentCoverage = options.coverage
+    this.currentSpeed = options.speed
+    const onLayerChange = () => this.apply()
+    const onLookOrShadowChange = () => {
+      this.apply()
+      this.onEffectsChange()
+    }
+    this.layer = new CloudLayerSettings(options.layer, onLayerChange)
+    this.look = new CloudLookSettings(options.look, onLookOrShadowChange)
+    this.shadow = new CloudShadowSettings(options.shadow, onLookOrShadowChange)
   }
 
   /**
@@ -89,10 +210,10 @@ export class CloudSettings {
   }
 
   set coverage(value: number) {
-    const nextCoverage = sceneValueNormalizers.cloudCoverage(value)
-    if (this.currentCoverage === nextCoverage) return
+    const next = sceneValueNormalizers.cloudCoverage(value)
+    if (this.currentCoverage === next) return
 
-    this.currentCoverage = nextCoverage
+    this.currentCoverage = next
     this.apply()
   }
 
@@ -114,40 +235,6 @@ export class CloudSettings {
     this.apply()
   }
 
-  /**
-   * 低云层组云底高度（米）。
-   *
-   * Base altitude of the low cloud layer group in meters.
-   */
-  get layerAltitude() {
-    return this.currentLayerAltitude
-  }
-
-  set layerAltitude(value: number) {
-    const nextAltitude = sceneValueNormalizers.cloudLayerAltitude(value)
-    if (this.currentLayerAltitude === nextAltitude) return
-
-    this.currentLayerAltitude = nextAltitude
-    this.apply()
-  }
-
-  /**
-   * 低云层组厚度（米）。
-   *
-   * Height of the low cloud layer group in meters.
-   */
-  get layerHeight() {
-    return this.currentLayerHeight
-  }
-
-  set layerHeight(value: number) {
-    const nextHeight = sceneValueNormalizers.cloudLayerHeight(value)
-    if (this.currentLayerHeight === nextHeight) return
-
-    this.currentLayerHeight = nextHeight
-    this.apply()
-  }
-
   apply() {
     this.applyCloudsState(this.getRuntimeState())
   }
@@ -158,8 +245,18 @@ export class CloudSettings {
       lightShafts: this.currentLightShafts,
       coverage: this.currentCoverage,
       speed: this.currentSpeed,
-      layerAltitude: this.currentLayerAltitude,
-      layerHeight: this.currentLayerHeight
+      layer: {
+        altitude: this.layer.altitude,
+        height: this.layer.height
+      },
+      look: {
+        detail: this.look.detail,
+        turbulence: this.look.turbulence,
+        haze: this.look.haze
+      },
+      shadow: {
+        quality: this.shadow.quality
+      }
     }
   }
 }

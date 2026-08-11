@@ -1,5 +1,5 @@
 import type * as THREE from 'three'
-import type { AtmosphereLightingMode, CloudQualityPreset } from '../types'
+import type { AtmosphereLightingMode, CloudQualityPreset, CloudShadowQuality } from '../types'
 
 export interface AtmosphereNightRuntimeState {
   enabled: boolean
@@ -52,6 +52,16 @@ export interface CloudRuntimeState {
   lightShafts: boolean
   coverage: number
   speed: number
-  layerAltitude: number
-  layerHeight: number
+  layer: {
+    altitude: number
+    height: number
+  }
+  look: {
+    detail: boolean
+    turbulence: boolean
+    haze: boolean
+  }
+  shadow: {
+    quality: CloudShadowQuality
+  }
 }

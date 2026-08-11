@@ -59,7 +59,7 @@ viewer.scene.atmosphere.scattering.groundAlbedo = 0.1           // 地表对天�
 viewer.scene.atmosphere.sky.sun = true
 viewer.scene.atmosphere.sky.moon = true
 viewer.scene.atmosphere.sky.stars.show = true
-viewer.scene.atmosphere.sky.starsIntensity = 1
+viewer.scene.atmosphere.sky.stars.intensity = 1
 viewer.scene.atmosphere.sky.sunAngularRadius = 0.004675   // 弧度！
 ```
 
@@ -95,8 +95,12 @@ viewer.scene.clouds.quality = 'medium'   // 'low' | 'medium' | 'high' | 'ultra'
 viewer.scene.clouds.coverage = 0.35      // 0~1 覆盖率
 viewer.scene.clouds.lightShafts = true   // 云缝光柱
 viewer.scene.clouds.speed = 0.001        // UV 偏移/秒
-viewer.scene.clouds.layerAltitude = 1500 // 低云层组云底高度（米）
-viewer.scene.clouds.layerHeight = 650    // 低云层组厚度（米）
+viewer.scene.clouds.layer.altitude = 1500 // 低云层组云底高度（米）
+viewer.scene.clouds.layer.height = 650    // 低云层组厚度（米）
+viewer.scene.clouds.look.detail = true
+viewer.scene.clouds.look.turbulence = true
+viewer.scene.clouds.look.haze = true
+viewer.scene.clouds.shadow.quality = 'medium' // 'low' | 'medium' | 'high'
 ```
 
 典型用法：阴天效果 `coverage = 0.7, quality = 'high'`；关云 `show = false`。
@@ -119,6 +123,8 @@ viewer.scene.surface.material.useRoughnessMap = false   // 关掉可避免海面
 ```ts
 viewer.scene.postProcess.smaa.enabled = true
 viewer.scene.postProcess.lensFlare.enabled = true
+viewer.scene.postProcess.lensFlare.intensity = 0.005
+viewer.scene.postProcess.lensFlare.quality = 'medium'
 viewer.scene.postProcess.dithering.enabled = false
 viewer.toneMappingExposure = 10
 ```
@@ -135,11 +141,21 @@ const viewer = new tellux.Viewer(container, {
       lighting: { mode: 'light-source', sunLightIntensity: 1.2, skyLightIntensity: 0.8 },
       night: { enabled: true, moonLight: true },
       scattering: { intensity: 0.6 },
-      sky: { stars: true }
+      sky: { stars: { show: true, intensity: 1 } }
     },
-    clouds: { show: true, quality: 'medium', coverage: 0.35 },
+    clouds: {
+      show: true,
+      quality: 'medium',
+      coverage: 0.35,
+      look: { detail: true, turbulence: true, haze: true },
+      shadow: { quality: 'medium' }
+    },
     surface: { materialMode: 'auto', material: { roughness: 1, useRoughnessMap: false } },
-    postProcess: { lensFlare: true, smaa: true, toneMappingExposure: 10 }
+    postProcess: {
+      lensFlare: { enabled: true, intensity: 0.005, quality: 'medium' },
+      smaa: true,
+      toneMappingExposure: 10
+    }
   }
 })
 ```

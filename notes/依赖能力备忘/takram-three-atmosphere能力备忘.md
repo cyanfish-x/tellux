@@ -105,9 +105,10 @@ Tellux 当前用法：
 
 - `AtmosphereManager` 创建 `new AerialPerspectiveEffect(camera)`。
 - 默认开启 `sky`、`sunLight`、`skyLight`。
-- `PostProcessingManager` 根据 `scene.skyAtmosphere.show` 将大气 effect 放入渲染管线。
+- `PostProcessingManager` 根据 `scene.atmosphere.show` 将大气 effect 放入渲染管线。
 - 云开启时使用 `EffectPass(camera, cloudsEffect, aerialPerspectiveEffect)`，云关闭时使用 `EffectPass(camera, aerialPerspectiveEffect)`。
-- Tellux 额外 patch 了 shader uniform，用于控制 `atmosphereInscatterIntensity` 和地平线混合。
+- Tellux 额外 patch 了 shader uniform，用于控制空气散射强度（`scene.atmosphere.scattering.intensity`）和地平线混合。
+- 公开散射 / 天空 / 阴影参数经 `AtmosphereManager.applyAtmosphereState` 下发到 effect（路径见 `scene.atmosphere.scattering` / `sky` / `shadow`）。
 
 ## 太阳和月亮方向
 
@@ -125,10 +126,10 @@ Tellux 当前用法：
 
 - `Clock` 驱动 `AtmosphereManager.updateSunDirection(currentTime)`。
 - 同步设置：
-  - `aerialPerspectiveEffect.sunDirection`
-  - `aerialPerspectiveEffect.moonDirection`
+  - `aerialPerspectiveEffect.sunDirection` / `moonDirection`
   - `cloudsEffect.sunDirection`
-  - Tellux 自己的 `THREE.DirectionalLight` 位置
+  - `SunDirectionalLight` / `SkyLightProbe` / 夜间月光等光源方向
+  - 星空材质的太阳方向与 ECI→ECEF 旋转
 
 ## 光源式光照能力
 
@@ -148,9 +149,9 @@ Tellux 当前用法：
 
 Tellux 当前状态：
 
-- 当前 Tellux 使用自己的 `THREE.DirectionalLight` 和 `THREE.HemisphereLight` 做基础光照。
-- 后处理路径中开启 `AerialPerspectiveEffect.sunLight` 和 `skyLight`。
-- 未来如要增强自定义对象的物理光照，可评估把 `SunDirectionalLight` / `SkyLightProbe` 接入为可选模式。
+- `AtmosphereManager` 已接入 `SunDirectionalLight` 与 `SkyLightProbe`，作为 `scene.atmosphere.lighting.mode = 'light-source'` 路径。
+- 后处理路径中由 `AerialPerspectiveEffect.sunLight` / `skyLight` 负责（`mode = 'post-process'`）。
+- 公开强度：`scene.atmosphere.lighting.sunLightIntensity` / `skyLightIntensity` / `albedoScale`。
 
 注意点：
 
@@ -170,9 +171,10 @@ Tellux 当前状态：
 
 Tellux 当前状态：
 
-- 当前 Tellux 没有直接创建 `SkyMaterial` 或星空对象。
-- 天空主要由 `AerialPerspectiveEffect.sky` 在后处理中绘制。
-- 后续若要提供独立天空对象或星空开关，可评估引入这些材质。
+- 天空仍主要由 `AerialPerspectiveEffect.sky` 在后处理中绘制；未单独使用 `SkyMaterial`。
+- 已接入 `StarsGeometry` / `StarsMaterial`，由 `scene.atmosphere.sky.stars` 控制：
+  - `show` / `intensity` / `pointSize`（init 可传 `boolean` 简写）
+- WebGPU 模式下星空不渲染。
 
 ## 混合光照和遮罩
 
@@ -207,7 +209,7 @@ Tellux 当前用法：
 
 光照模式限制：
 
-- 体积云云影对地表/瓦片的明暗影响依赖 `AerialPerspectiveEffect.sunLight` 的后处理光照分支，因此只有 `scene.atmosphereLightingMode = 'post-process'` 时生效。
+- 体积云云影对地表/瓦片的明暗影响依赖 `AerialPerspectiveEffect.sunLight` 的后处理光照分支，因此只有 `scene.atmosphere.lighting.mode = 'post-process'` 时生效。
 - `light-source` 模式下地表/瓦片走 Three.js 光源式照明；云层仍可渲染和合成，但 Three.js 普通光源不会采样 `CloudsEffect.atmosphereShadow`。
 
 ## 资源和部署注意点
@@ -218,9 +220,8 @@ Tellux 当前用法：
 
 ## 后续可扩展方向
 
-- 暴露更完整的 Cesium 风格 `scene.skyAtmosphere` 参数。
-- 增加 `scene.sun` / `scene.moon` / `scene.sky` 细分控制。
-- 增加可选的 `SunDirectionalLight` 和 `SkyLightProbe` 光源式光照模式。
+- 大气用户可调面已较完整（`lighting` / `night` / `scattering` / `sky` / `shadow` / `fallbackAmbientLight`）；优先保持领域分组与 init/runtime 同构。
 - 支持预计算纹理外部 URL 或本地资产注入。
 - 用 `LightingMaskPass` 区分地表、3D Tiles、自定义对象和透明对象的光照路径。
+- 评估独立 `SkyMaterial` 天空对象（当前不急需）。
 - 为调试提供大气 LUT、太阳方向、月亮方向和云影合成状态输出。

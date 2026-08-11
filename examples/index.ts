@@ -104,8 +104,8 @@ if (globeContainer instanceof HTMLElement) {
     resolutionScale: Math.min(window.devicePixelRatio, 1.5),
   })
 
-  viewer.scene.clouds.layerAltitude = 1500
-  viewer.scene.clouds.layerHeight = 650
+  viewer.scene.clouds.layer.altitude = 1500
+  viewer.scene.clouds.layer.height = 650
   viewer.clock.hourUTC = 9.2
   viewer.clock.animate = false
   ;(window as any).viewer = viewer

@@ -70,13 +70,14 @@ viewer.scene.atmosphere.scattering.rayleighScatteringScale = 1.2
 | `sun` / `moon` | 是否在天空中绘制太阳盘 / 月亮。 |
 | `ground` | 是否绘制天空中的地面项。 |
 | `stars.show` | 是否显示星空。 |
-| `starsIntensity` | 星空亮度缩放。 |
-| `starsPointSize` | 星点大小（像素）。 |
+| `stars.intensity` | 星空亮度缩放。 |
+| `stars.pointSize` | 星点大小（像素）。 |
 | `sunAngularRadius` / `moonAngularRadius` | 太阳 / 月亮角半径（弧度）。 |
 | `lunarRadianceScale` | 月光辐射亮度缩放。 |
 
 ```ts
 viewer.scene.atmosphere.sky.stars.show = true
+viewer.scene.atmosphere.sky.stars.intensity = 1
 viewer.scene.atmosphere.sky.sun = true
 ```
 
@@ -136,13 +137,18 @@ viewer.scene.clouds.coverage = 0.35
 | `lightShafts` | 是否启用体积云光柱（云缝间漏光）。 |
 | `coverage` | 云覆盖率，`0` 到 `1`。 |
 | `speed` | 天气纹理水平移动速度（UV 偏移 / 秒）。 |
-| `layerAltitude` | 低云层组云底高度（米）。 |
-| `layerHeight` | 低云层组厚度（米）。 |
+| `layer.altitude` | 低云层组云底高度（米）。 |
+| `layer.height` | 低云层组厚度（米）。 |
+| `look.detail` / `look.turbulence` / `look.haze` | shape detail / 湍流 / 雾霾开关。 |
+| `shadow.quality` | 云影质量档位：`'low'` / `'medium'` / `'high'`。 |
 
 ```ts
 // 演变为阴天
 viewer.scene.clouds.coverage = 0.7
 viewer.scene.clouds.quality = 'high'
+viewer.scene.clouds.layer.altitude = 1500
+viewer.scene.clouds.look.haze = true
+viewer.scene.clouds.shadow.quality = 'medium'
 
 // 关闭云
 viewer.scene.clouds.show = false
@@ -175,19 +181,22 @@ viewer.scene.surface.material.useRoughnessMap = false
 
 ## 后处理
 
-`viewer.scene.postProcess` 是后处理效果的开关，每个阶段可通过 `.enabled` 单独控制：
+`viewer.scene.postProcess` 控制后处理阶段。初始化可传 `boolean`（等价于 `{ enabled }`）或完整对象：
 
 ```ts
 viewer.scene.postProcess.smaa.enabled = true
 viewer.scene.postProcess.lensFlare.enabled = true
+viewer.scene.postProcess.lensFlare.intensity = 0.005
+viewer.scene.postProcess.lensFlare.threshold.level = 10
+viewer.scene.postProcess.lensFlare.quality = 'medium'
 viewer.scene.postProcess.dithering.enabled = false
 ```
 
 | 阶段 | 说明 |
 | --- | --- |
-| `smaa` | SMAA 抗锯齿。 |
-| `lensFlare` | 镜头光晕（太阳 / 月亮产生的炫光）。 |
-| `dithering` | 抖动，减少色带。 |
+| `smaa.enabled` | SMAA 抗锯齿。 |
+| `lensFlare.enabled` / `intensity` / `threshold` / `quality` | 镜头光晕开关、强度、亮部阈值与质量档。 |
+| `dithering.enabled` | 抖动，减少色带。 |
 
 色调映射曝光通过 Viewer 顶层属性控制（不属于 postProcess 子树）：
 

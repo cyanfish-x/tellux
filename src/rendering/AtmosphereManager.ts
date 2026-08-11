@@ -48,6 +48,7 @@ import type {
   AtmosphereRuntimeState,
   CloudRuntimeState
 } from './AtmosphereRuntimeState'
+import { applyCloudAppearanceState } from './cloudAppearance'
 import {
   normalizeAtmosphereRuntimeState,
   normalizeCloudRuntimeState
@@ -315,13 +316,14 @@ export class AtmosphereManager {
     this.cloudsEffect.lightShafts = state.lightShafts
     this.cloudsEffect.coverage = this.toFinite(state.coverage, DEFAULT_CLOUD_COVERAGE)
     this.cloudsEffect.localWeatherVelocity.set(Math.max(0, this.toFinite(state.speed, DEFAULT_CLOUD_SPEED)), 0)
+    applyCloudAppearanceState(this.cloudsEffect, state)
 
     CLOUD_LAYER_OFFSETS.forEach((offset, index) => {
       const layer = this.cloudsEffect.cloudLayers[index]
       if (!layer) return
 
-      layer.altitude = this.toFinite(state.layerAltitude, 1500) + offset
-      layer.height = this.toFinite(state.layerHeight, 650) * CLOUD_LAYER_HEIGHT_SCALES[index]
+      layer.altitude = this.toFinite(state.layer.altitude, 1500) + offset
+      layer.height = this.toFinite(state.layer.height, 650) * CLOUD_LAYER_HEIGHT_SCALES[index]
     })
   }
 

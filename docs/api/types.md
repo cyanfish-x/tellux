@@ -58,9 +58,11 @@ const viewer = new Viewer(container, {
         horizonRange: [0, 0.6]
       },
       sky: {
-        stars: true,
-        starsIntensity: 1,
-        starsPointSize: 1
+        stars: {
+          show: true,
+          intensity: 1,
+          pointSize: 1
+        }
       },
       fallbackAmbientLight: {
         show: true,
@@ -75,6 +77,14 @@ const viewer = new Viewer(container, {
       layer: {
         altitude: 1500,
         height: 650
+      },
+      look: {
+        detail: true,
+        turbulence: true,
+        haze: true
+      },
+      shadow: {
+        quality: 'medium'
       }
     },
     entities: {
@@ -92,9 +102,14 @@ const viewer = new Viewer(container, {
     },
     postProcess: {
       toneMappingExposure: 10,
-      lensFlare: true,
-      smaa: true,
-      dithering: false
+      lensFlare: {
+        enabled: true,
+        intensity: 0.005,
+        threshold: { level: 10, range: 1 },
+        quality: 'medium'
+      },
+      smaa: { enabled: true },
+      dithering: { enabled: false }
     }
   }
 })
@@ -201,9 +216,12 @@ const viewer = new tellux.Viewer(container, {
 
       // 天空元素：太阳 / 月亮 / 星空
       sky: {
-        stars: true,              // 是否启用星空，默认 true
-        starsIntensity: 1,        // 星空亮度缩放，默认 1
-        starsPointSize: 1,        // 星点大小（像素），默认 1
+        // stars 也可传 boolean，等价于 { show }
+        stars: {
+          show: true,           // 是否启用星空，默认 true
+          intensity: 1,         // 星空亮度缩放，默认 1
+          pointSize: 1          // 星点大小（像素），默认 1
+        },
         sun: true,                // 是否绘制太阳盘，默认 true
         moon: true,               // 是否绘制月亮，默认 true
         ground: true,             // 是否绘制天空里的地面项，默认 true
@@ -235,6 +253,14 @@ const viewer = new tellux.Viewer(container, {
       layer: {
         altitude: 1500,   // 低云层组云底高度（米），默认 1500
         height: 650       // 低云层组厚度（米），默认 650
+      },
+      look: {
+        detail: true,     // 是否启用 shape detail，默认 true
+        turbulence: true, // 是否启用湍流，默认 true
+        haze: true        // 是否启用雾霾，默认 true
+      },
+      shadow: {
+        quality: 'medium' // 云影质量档位 'low' | 'medium' | 'high'，默认 medium
       }
     },
 
@@ -256,11 +282,20 @@ const viewer = new tellux.Viewer(container, {
     },
 
     // 后处理（SMAA / 光晕 / 抖动为 WebGL 专属，WebGPU 模式下不渲染）
+    // lensFlare / smaa / dithering 也可传 boolean，等价于 { enabled }
     postProcess: {
       toneMappingExposure: 10, // 色调映射曝光，默认 10；运行时也可用 viewer.toneMappingExposure 调整
-      lensFlare: true,         // 是否启用镜头光晕，默认 true
-      smaa: true,              // 是否启用 SMAA 抗锯齿，默认 true
-      dithering: false         // 是否启用抖动（减少色带），默认 false
+      lensFlare: {
+        enabled: true,         // 是否启用镜头光晕，默认 true
+        intensity: 0.005,      // 光晕强度，默认 0.005
+        threshold: {
+          level: 10,           // 亮部提取阈值，默认 10
+          range: 1             // 亮部提取过渡宽度，默认 1
+        },
+        quality: 'medium'      // 光晕质量档位 'low' | 'medium' | 'high'，默认 medium
+      },
+      smaa: { enabled: true },      // 是否启用 SMAA 抗锯齿，默认 true
+      dithering: { enabled: false } // 是否启用抖动（减少色带），默认 false
     }
   },
 
