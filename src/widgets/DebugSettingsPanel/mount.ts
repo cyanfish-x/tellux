@@ -1,55 +1,47 @@
-﻿import { SpringControl } from "../../SpringControl"
-import type { AtmosphereLightingMode } from "../../types"
-import type { Viewer } from "../../Viewer"
-import { buildDebugSettingsControls } from "./controls-panel"
-import { mountDebugFpsHud } from "./fps"
-import {
-  createUTCDatePreservingTimeOfDay,
-  sliderValueToClockMultiplier
-} from "./math"
-import { saveStoredDebugSettings } from "./storage"
-import { installDebugSettingsPanelStyles } from "./styles"
-import {
-  formatHour,
-  getUTCDayOfYear,
-  getUTCHour,
-} from "./time"
-import type { DebugSettingsPanelOptions } from "./types"
+﻿import { SpringControl } from '../../SpringControl'
+import type { AtmosphereLightingMode } from '../../types'
+import type { Viewer } from '../../Viewer'
+import { buildDebugSettingsControls } from './controls-panel'
+import { mountDebugFpsHud } from './fps'
+import { saveStoredDebugSettings } from './storage'
+import { installDebugSettingsPanelStyles } from './styles'
+import type { DebugSettingsPanelOptions } from './types'
 
 export interface DebugSettingsPanelHandle {
   update(deltaTime: number, time?: number): void
   dispose(): void
 }
+
 export function mountDebugSettingsPanel(
   viewer: Viewer,
   settings: DebugSettingsPanelOptions
 ) {
   installDebugSettingsPanelStyles()
   const shell = viewer.container.parentElement ?? viewer.container
-  const existingPanel = shell.querySelector(".tellux-debug-settings")
+  const existingPanel = shell.querySelector('.tellux-debug-settings')
   existingPanel?.remove()
 
-  const panel = document.createElement("section")
-  panel.className = "tellux-debug-settings"
-  panel.setAttribute("aria-label", "调试场景设置")
+  const panel = document.createElement('section')
+  panel.className = 'tellux-debug-settings'
+  panel.setAttribute('aria-label', '调试场景设置')
 
-  const toggle = document.createElement("button")
-  toggle.className = "tellux-debug-settings__toggle"
-  toggle.type = "button"
-  toggle.textContent = "设置"
-  toggle.title = "打开调试设置"
-  toggle.setAttribute("aria-expanded", "false")
+  const toggle = document.createElement('button')
+  toggle.className = 'tellux-debug-settings__toggle'
+  toggle.type = 'button'
+  toggle.textContent = '设置'
+  toggle.title = '打开调试设置'
+  toggle.setAttribute('aria-expanded', 'false')
 
-  const body = document.createElement("div")
-  body.className = "tellux-debug-settings__panel"
+  const body = document.createElement('div')
+  body.className = 'tellux-debug-settings__panel'
   body.hidden = true
 
-  const title = document.createElement("h2")
-  title.textContent = "场景设置"
+  const title = document.createElement('h2')
+  title.textContent = '场景设置'
   body.appendChild(title)
 
-  const content = document.createElement("div")
-  content.className = "tellux-debug-settings__content"
+  const content = document.createElement('div')
+  content.className = 'tellux-debug-settings__content'
   body.appendChild(content)
 
   const {
@@ -74,9 +66,6 @@ export function mountDebugSettingsPanel(
     smaaToggle,
     ditheringToggle,
     fpsToggle,
-    clockAnimateToggle,
-    clockMultiplierControl,
-    dayOfYearControl,
     coverageControl,
     cloudSpeedControl,
     cloudAltitudeControl,
@@ -101,16 +90,12 @@ export function mountDebugSettingsPanel(
     groundAlbedoControl,
     exposureControl,
     resolutionControl,
-    status
+    status,
   } = buildDebugSettingsControls(content, viewer, settings)
 
   panel.append(toggle, body)
   shell.appendChild(panel)
   const fpsHud = mountDebugFpsHud(shell, fpsToggle.input.checked)
-  let shouldApplyTimeControls = true
-  let previousDayOfYearValue = Number(dayOfYearControl.input.value)
-  let previousClockAnimateValue = clockAnimateToggle.input.checked
-  let isSyncingAnimatedTime = false
   const smooth = {
     starsIntensity: createSpringControl(starsIntensityControl.input),
     starsPointSize: createSpringControl(starsPointSizeControl.input),
@@ -141,7 +126,6 @@ export function mountDebugSettingsPanel(
     cloudLayerAltitude: createSpringControl(cloudAltitudeControl.input),
     cloudLayerHeight: createSpringControl(cloudHeightControl.input),
     toneMappingExposure: createSpringControl(exposureControl.input),
-    dayOfYear: createSpringControl(dayOfYearControl.input),
   }
 
   function applySmoothedControls(deltaTime: number) {
@@ -185,44 +169,16 @@ export function mountDebugSettingsPanel(
     viewer.scene.clouds.layer.altitude = smooth.cloudLayerAltitude.tick(deltaTime)
     viewer.scene.clouds.layer.height = smooth.cloudLayerHeight.tick(deltaTime)
     viewer.toneMappingExposure = smooth.toneMappingExposure.tick(deltaTime)
-
-    if (!viewer.clock.animate) {
-      viewer.clock.currentTime = createUTCDatePreservingTimeOfDay(
-        viewer.clock.currentTime,
-        smooth.dayOfYear.tick(deltaTime)
-      )
-    }
   }
 
-  function syncAnimatedTimeControls() {
-    if (!viewer.clock.animate) return
-
-    const currentTime = viewer.clock.currentTime
-    const dayOfYearValue = getUTCDayOfYear(currentTime)
-    const hourUTCValue = getUTCHour(currentTime)
-    isSyncingAnimatedTime = true
-    dayOfYearControl.setValue(dayOfYearValue)
-    isSyncingAnimatedTime = false
-    previousDayOfYearValue = dayOfYearValue
+  function updateStatus() {
     status.textContent =
-      `第 ${dayOfYearValue} 日 UTC ${formatHour(hourUTCValue)} / ` +
       `云量 ${viewer.scene.clouds.coverage.toFixed(2)} / ` +
-      `散射 ${viewer.scene.atmosphere.scattering.intensity.toFixed(
-        2
-      )} / 曝光 ${viewer.toneMappingExposure.toFixed(1)}`
+      `散射 ${viewer.scene.atmosphere.scattering.intensity.toFixed(2)} / ` +
+      `曝光 ${viewer.toneMappingExposure.toFixed(1)}`
   }
 
   function applyControls() {
-    if (isSyncingAnimatedTime) return
-
-    const dayOfYearValue = Number(dayOfYearControl.input.value)
-    const clockMultiplierValue = sliderValueToClockMultiplier(
-      Number(clockMultiplierControl.input.value)
-    )
-    const clockAnimateValue = clockAnimateToggle.input.checked
-    const clockAnimateChanged = clockAnimateValue !== previousClockAnimateValue
-    const timeControlsChanged = dayOfYearValue !== previousDayOfYearValue
-
     viewer.scene.atmosphere.show = skyToggle.input.checked
     viewer.scene.atmosphere.sky.stars.show = starsToggle.input.checked
     smooth.starsIntensity.target = Number(starsIntensityControl.input.value)
@@ -246,7 +202,8 @@ export function mountDebugSettingsPanel(
     smooth.skyLightIntensity.target = Number(
       skyLightIntensityControl.input.value
     )
-    viewer.scene.atmosphere.fallbackAmbientLight.show = fallbackAmbientLightToggle.input.checked
+    viewer.scene.atmosphere.fallbackAmbientLight.show =
+      fallbackAmbientLightToggle.input.checked
     smooth.fallbackAmbientLightIntensity.target = Number(
       fallbackAmbientLightIntensityControl.input.value
     )
@@ -293,17 +250,6 @@ export function mountDebugSettingsPanel(
       shadowSampleCountControl.input.value
     )
     viewer.scene.clouds.show = cloudToggle.input.checked
-    viewer.clock.animate = clockAnimateValue
-    viewer.clock.multiplier = clockMultiplierValue
-    if (shouldApplyTimeControls || timeControlsChanged) {
-      smooth.dayOfYear.target = dayOfYearValue
-      previousDayOfYearValue = dayOfYearValue
-      shouldApplyTimeControls = false
-    }
-    if (clockAnimateChanged && !clockAnimateValue) {
-      smooth.dayOfYear.reset(dayOfYearValue)
-    }
-    previousClockAnimateValue = clockAnimateValue
     smooth.cloudCoverage.target = Number(coverageControl.input.value)
     smooth.cloudSpeed.target = Number(cloudSpeedControl.input.value)
     smooth.cloudLayerAltitude.target = Number(cloudAltitudeControl.input.value)
@@ -321,9 +267,6 @@ export function mountDebugSettingsPanel(
       stars: starsToggle.input.checked,
       starsIntensity: Number(starsIntensityControl.input.value),
       starsPointSize: Number(starsPointSizeControl.input.value),
-      clockAnimate: clockAnimateToggle.input.checked,
-      clockMultiplier: clockMultiplierValue,
-      dayOfYear: dayOfYearValue,
       clouds: cloudToggle.input.checked,
       cloudCoverage: Number(coverageControl.input.value),
       cloudSpeed: Number(cloudSpeedControl.input.value),
@@ -376,26 +319,19 @@ export function mountDebugSettingsPanel(
       showFps: fpsToggle.input.checked,
     })
 
-    const currentTime = viewer.clock.currentTime
-    status.textContent =
-      `第 ${getUTCDayOfYear(currentTime)} 日 UTC ${formatHour(
-        getUTCHour(currentTime)
-      )} / 云量 ${viewer.scene.clouds.coverage.toFixed(2)} / ` +
-      `散射 ${viewer.scene.atmosphere.scattering.intensity.toFixed(
-        2
-      )} / 曝光 ${viewer.toneMappingExposure.toFixed(1)}`
+    updateStatus()
   }
 
-  toggle.addEventListener("click", () => {
+  toggle.addEventListener('click', () => {
     const isOpen = body.hidden
     body.hidden = !isOpen
-    toggle.setAttribute("aria-expanded", String(isOpen))
+    toggle.setAttribute('aria-expanded', String(isOpen))
   })
 
   content
-    .querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")
+    .querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select')
     .forEach((input) => {
-      const eventType = input.type === "range" ? "input" : "change"
+      const eventType = input.type === 'range' ? 'input' : 'change'
       input.addEventListener(eventType, applyControls)
     })
 
@@ -405,7 +341,7 @@ export function mountDebugSettingsPanel(
     update(deltaTime: number, time = performance.now()) {
       applySmoothedControls(deltaTime)
       fpsHud.update(time)
-      syncAnimatedTimeControls()
+      updateStatus()
     },
     dispose() {
       panel.remove()
@@ -417,6 +353,3 @@ export function mountDebugSettingsPanel(
 function createSpringControl(input: HTMLInputElement) {
   return new SpringControl(Number(input.value))
 }
-
-
-

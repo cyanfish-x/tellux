@@ -1,10 +1,5 @@
 import type { Viewer } from "../../Viewer"
 import type { DebugSettingsPanelOptions } from "./types"
-import {
-  createUTCDateFromControls,
-  getUTCDayOfYear,
-  getUTCHour,
-} from "./time"
 
 export function applyInitialDebugSettings(
   viewer: Viewer,
@@ -24,22 +19,6 @@ export function applyInitialDebugSettings(
 
   if (settings.starsPointSize !== undefined) {
     viewer.scene.atmosphere.sky.stars.pointSize = settings.starsPointSize
-  }
-
-  if (settings.clockAnimate !== undefined) {
-    viewer.clock.animate = settings.clockAnimate
-  }
-
-  if (settings.clockMultiplier !== undefined) {
-    viewer.clock.multiplier = settings.clockMultiplier
-  }
-
-  if (settings.dayOfYear !== undefined || settings.hourUTC !== undefined) {
-    viewer.clock.currentTime = createUTCDateFromControls(
-      viewer.clock.currentTime.getUTCFullYear(),
-      settings.dayOfYear ?? getUTCDayOfYear(viewer.clock.currentTime),
-      settings.hourUTC ?? getUTCHour(viewer.clock.currentTime)
-    )
   }
 
   if (settings.clouds !== undefined) {

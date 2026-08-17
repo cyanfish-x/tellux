@@ -323,7 +323,7 @@ const viewer = new tellux.Viewer(container, {
   // —— 内置控件
   widgets: {
     settingPanel: false, // 是否挂载内置调试设置面板，默认 false；传对象作为初始值
-    timeline: false      // 是否挂载内置时间条，默认 false；传对象配置起止时间 / 倍率 / 弹簧过渡。挂载后播放态会把 clock 倍率联动到体积云速度（云速倍率上限 60）
+    timeline: false      // 是否挂载内置时间条，默认 false；传对象可配置起止时间 / 倍率 / 弹簧 / linkCloudSpeed（默认关）
   }
 })
 ```

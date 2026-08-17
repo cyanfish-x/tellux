@@ -72,6 +72,11 @@ const viewer = new tellux.Viewer(container, {
       coverage: 0.35
     },
   },
+  widgets: {
+    timeline: {
+      linkCloudSpeed: true,
+    },
+  },
   resolutionScale: 1
 })
 

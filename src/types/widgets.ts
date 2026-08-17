@@ -11,10 +11,6 @@ export interface DebugSettingsPanelOptions {
   stars?: boolean
   starsIntensity?: number
   starsPointSize?: number
-  clockAnimate?: boolean
-  clockMultiplier?: number
-  hourUTC?: number
-  dayOfYear?: number
   clouds?: boolean
   cloudCoverage?: number
   cloudSpeed?: number
@@ -99,6 +95,19 @@ export interface TimelineOptions {
    */
   multiplier?: number
   /**
+   * 是否将播放态下的 `clock.multiplier` 联动到 `scene.clouds.speed`，默认 `false`。
+   *
+   * 开启后：播放时为挂载时快照的基准云速 × 倍率（倍率上限 `60`），暂停时为 `0`；
+   * 销毁时恢复基准云速。
+   *
+   * Whether to link play-state `clock.multiplier` to `scene.clouds.speed`.
+   * Defaults to `false`.
+   *
+   * When enabled: playing uses base cloud speed captured at mount × multiplier
+   * (capped at `60`), paused uses `0`; dispose restores the base speed.
+   */
+  linkCloudSpeed?: boolean
+  /**
    * 时间条跳转过渡弹簧配置，默认启用。
    *
    * 设为 `false` 可关闭平滑过渡；设为对象可调整弹簧参数。
@@ -130,14 +139,14 @@ export interface ViewerWidgetOptions {
   /**
    * 是否挂载内置时间条，默认 `false`。
    *
-   * 传入对象时会作为时间条初始配置。挂载后会按播放态将
-   * `clock.multiplier` 联动到 `scene.clouds.speed`（云速倍率上限 `60`）。
+   * 传入对象时会作为时间条初始配置。时间控制（播放 / 倍率 / 当前时间）由
+   * Timeline 负责；云速联动需显式设置 `linkCloudSpeed: true`。
    *
    * Whether to mount the built-in timeline. Defaults to `false`.
    *
-   * Pass an object to provide initial timeline options. While mounted, play
-   * state links `clock.multiplier` to `scene.clouds.speed` (cloud speed
-   * multiplier capped at `60`).
+   * Pass an object to provide initial timeline options. Timeline owns clock
+   * playback / multiplier / current time; cloud-speed linking requires
+   * `linkCloudSpeed: true`.
    */
   timeline?: boolean | TimelineOptions
 }

@@ -5,17 +5,7 @@ import {
   createSelectControl,
   createSwitchControl,
 } from "./controls"
-import {
-  CLOCK_MULTIPLIER_SLIDER_MAX,
-  clockMultiplierToSliderValue,
-  sliderValueToClockMultiplier
-} from "./math"
-import {
-  formatRadians,
-  formatUTCMonthDay,
-  getDaysInUTCYear,
-  getUTCDayOfYear,
-} from "./time"
+import { formatRadians } from "./time"
 import type { DebugSettingsPanelOptions } from "./types"
 
 export function buildDebugSettingsControls(
@@ -147,44 +137,6 @@ export function buildDebugSettingsControls(
     "fps",
     "显示帧率",
     settings.showFps ?? true
-  )
-  const clockAnimateToggle = createSwitchControl(
-    "clock-animate",
-    "时间流动",
-    settings.clockAnimate ?? viewer.clock.animate
-  )
-  const clockMultiplierControl = createRangeControl({
-    id: "clock-multiplier",
-    label: "时间倍率",
-    min: 0,
-    max: CLOCK_MULTIPLIER_SLIDER_MAX,
-    step: 0.01,
-    value: clockMultiplierToSliderValue(
-      settings.clockMultiplier ?? viewer.clock.multiplier
-    ),
-    format: (value) => `${sliderValueToClockMultiplier(value).toFixed(0)}x`,
-  })
-
-  const initialClockTime = viewer.clock.currentTime
-  const initialYearUTC = initialClockTime.getUTCFullYear()
-  const initialDayOfYear =
-    settings.dayOfYear ?? getUTCDayOfYear(initialClockTime)
-  const dayOfYearControl = createRangeControl({
-    id: "day-of-year",
-    label: "年内日",
-    min: 1,
-    max: getDaysInUTCYear(initialYearUTC),
-    step: 1,
-    value: initialDayOfYear,
-    format: (value) => formatUTCMonthDay(initialYearUTC, value),
-  })
-
-  content.appendChild(
-    createGroup("日期和时间", [
-      clockAnimateToggle.element,
-      clockMultiplierControl.element,
-      dayOfYearControl.element,
-    ])
   )
 
   const coverageControl = createRangeControl({
@@ -576,9 +528,6 @@ export function buildDebugSettingsControls(
     smaaToggle,
     ditheringToggle,
     fpsToggle,
-    clockAnimateToggle,
-    clockMultiplierControl,
-    dayOfYearControl,
     coverageControl,
     cloudSpeedControl,
     cloudAltitudeControl,

@@ -43,8 +43,6 @@ function sanitizeStoredDebugSettings(
   copyBooleanSetting(value, settings, "stars")
   copyNumberSetting(value, settings, "starsIntensity")
   copyNumberSetting(value, settings, "starsPointSize")
-  copyBooleanSetting(value, settings, "clockAnimate")
-  copyNumberSetting(value, settings, "clockMultiplier")
   copyBooleanSetting(value, settings, "clouds")
   copyNumberSetting(value, settings, "cloudCoverage")
   copyNumberSetting(value, settings, "cloudSpeed")
@@ -96,8 +94,6 @@ function sanitizeStoredDebugSettings(
   ) {
     settings.atmosphereInscatterHorizonRange = horizonRange
   }
-
-  copyNumberSetting(value, settings, "dayOfYear")
 
   return settings as DebugSettingsPanelOptions
 }
