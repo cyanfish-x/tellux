@@ -55,7 +55,7 @@ const FOCUS_LATITUDE = 31.2304
 const SURFACE_OFFSET = 50
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/gltf/",
+  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {

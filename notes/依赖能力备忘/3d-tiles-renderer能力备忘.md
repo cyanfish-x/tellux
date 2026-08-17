@@ -153,7 +153,7 @@ Tellux 当前已经支持通过 `type: 'cesium-ion'` 数据源配置创建 Cesiu
 - KTX2 compressed textures。
 - Meshopt compressed meshes。
 
-Tellux 当前已经传入 `DRACOLoader`，并开启默认 glTF 扩展能力。
+Tellux 当前已经传入 `DRACOLoader`，默认使用完整 Draco decoder（`/draco/`），以同时支持 glTF mesh 与 pnts 点云，并开启默认 glTF 扩展能力。
 
 后续可扩展方向：
 

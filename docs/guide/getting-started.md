@@ -41,13 +41,15 @@ const viewer = new tellux.Viewer('viewer', {
 
 ## 资源路径
 
-Tellux 默认从 `/draco/gltf/` 加载 Draco 解码器。如果你的应用把解码器放在其他公开目录，需要通过 `dracoDecoderPath` 指定：
+Tellux 默认从 `/draco/` 加载 **完整** Draco 解码器（同时支持 glTF mesh 和点云）。应用侧需要把 three.js 的 `examples/jsm/libs/draco/` 解码器文件放到对应公开目录。如果你的路径不是 `/draco/`，通过 `dracoDecoderPath` 指定：
 
 ```ts
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: '/assets/draco/gltf/'
+  dracoDecoderPath: '/assets/draco/'
 })
 ```
+
+`/draco/gltf/` 是体积更小的 glTF 专用 decoder，只能解三角网格，**不能**解 Draco 压缩的点云（`.pnts`）。只有确定不加载点云时才改用它。
 
 ## 销毁
 

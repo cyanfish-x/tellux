@@ -39,7 +39,7 @@ const REFERENCE_HEIGHT = 2200
 const REFERENCE_OFFSET_LON = 0.06
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/gltf/",
+  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {

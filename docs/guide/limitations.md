@@ -39,7 +39,7 @@ WebGPU 是实验能力，以下能力在 WebGPU 模式下**不渲染或不支持
 ### 3D Tiles
 
 - 3D Tiles 作为**独立场景数据**加载，不参与影像 overlay 管线（不能像影像那样贴到地形表面）。
-- 支持 `tileset.json`（URL）和 Cesium Ion 两种加载方式；支持 glTF / GLB / B3DM 等常见瓦片，依赖 Draco 时需配置 `dracoDecoderPath`。
+- 支持 `tileset.json`（URL）和 Cesium Ion 两种加载方式；支持 glTF / GLB / B3DM / pnts 等常见瓦片。Draco 压缩内容默认从 `/draco/` 加载完整 decoder；点云必须用完整 decoder，不能用 `/draco/gltf/`。
 - 摄影测量瓦片的法线可能缺失，影响后处理光照，可用 `creasedNormals: true` 重新生成折痕法线。
 
 ## 交互与采样

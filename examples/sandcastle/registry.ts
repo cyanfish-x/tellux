@@ -39,6 +39,7 @@ const categoryById: Record<string, string> = {
   "3d-tiles-picking": "Tiles",
   "gaussian-splat-3d-tiles": "Tiles",
   "google-photorealistic-3d-tiles": "Tiles",
+  "point-cloud-3d-tiles": "Tiles",
   "instanced-horses": "Models",
   "mixed-height-sampling-horses": "Sampling",
   terrain: "Terrain",
@@ -51,6 +52,9 @@ const categoryById: Record<string, string> = {
 
 const tagByTerm: Array<[string, string]> = [
   ["3d tiles", "3D Tiles"],
+  ["point cloud", "Point Cloud"],
+  ["点云", "Point Cloud"],
+  ["pnts", "Point Cloud"],
   ["arcgis", "Imagery"],
   ["camera", "Camera"],
   ["cesium ion", "Cesium Ion"],

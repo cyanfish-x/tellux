@@ -85,4 +85,24 @@ describe('material mode helpers', () => {
     expect(contentMaterial.roughnessMap).toBe(roughnessMap)
     expect(contentMaterial.envMapIntensity).toBe(1.5)
   })
+
+  it('keeps point cloud PointsMaterial instead of converting it to a mesh material', () => {
+    const material = new THREE.PointsMaterial({
+      size: 1,
+      sizeAttenuation: true,
+      vertexColors: true,
+      toneMapped: true
+    })
+    const points = new THREE.Points(new THREE.BufferGeometry(), material)
+
+    applyMaterialModeToObject(points, 'basic')
+
+    const pointMaterial = points.material as THREE.PointsMaterial
+    expect(pointMaterial).toBe(material)
+    expect(pointMaterial).toBeInstanceOf(THREE.PointsMaterial)
+    expect(pointMaterial.vertexColors).toBe(true)
+    expect(pointMaterial.sizeAttenuation).toBe(false)
+    expect(pointMaterial.toneMapped).toBe(false)
+    expect(pointMaterial.size).toBeGreaterThan(1)
+  })
 })

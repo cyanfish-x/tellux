@@ -42,7 +42,7 @@ const FOCUS_LATITUDE = 31.2304
 const SURFACE_OFFSET = 50 // 抬升 50 米，便于观察 / Raised 50m for visibility.
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/gltf/",
+  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {

@@ -169,11 +169,13 @@ export interface ViewerOptions {
   /**
    * Draco 解码器文件的公开 URL 路径。
    *
-   * 默认 `/draco/gltf/`。
+   * 默认 `/draco/`，对应 three.js 完整 Draco decoder（同时支持 glTF mesh 与点云）。
+   * 若只加载 glTF mesh、需要更小的 wasm，可改为 `/draco/gltf/`。
    *
    * Public URL path for Draco decoder files.
    *
-   * Defaults to `/draco/gltf/`.
+   * Defaults to `/draco/`, the full three.js Draco decoder (meshes and point clouds).
+   * Use `/draco/gltf/` only when you need the smaller glTF-only decoder.
    */
   dracoDecoderPath?: string
   /**

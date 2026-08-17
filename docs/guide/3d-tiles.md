@@ -42,6 +42,8 @@ const layer = viewer.load3DTileset({
 })
 ```
 
+Cesium Ion 上的 Melbourne Point Cloud（asset `43978`）这类资源使用 legacy `pnts` 点云瓦片，且常带 Draco 压缩。Tellux 默认的 `/draco/` 完整 decoder 可以解码这类数据。点云按屏幕像素大小绘制（默认 4px）；Three.js 自带的距离衰减会把地球尺度下的点缩到几乎看不见。完整可运行示例见 [`point-cloud-3d-tiles.html`](../../point-cloud-3d-tiles.html)。
+
 ## 定位到 3D Tiles
 
 `flyToTarget` 可以接收 3D Tiles renderer、Three.js 对象或经纬高点位。

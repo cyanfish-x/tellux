@@ -38,7 +38,7 @@ if (!tokenInput || !loadButton || !flyToCityButton) {
 }
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/gltf/",
+  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {

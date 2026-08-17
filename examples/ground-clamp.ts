@@ -36,7 +36,7 @@ const ROUTE: Array<[number, number]> = [
 const REFERENCE_HEIGHT = 2200
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/gltf/",
+  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {

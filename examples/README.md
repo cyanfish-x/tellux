@@ -38,6 +38,7 @@ pnpm examples
 - `http://127.0.0.1:5173/3d-tiles.html`
 - `http://127.0.0.1:5173/3d-tiles-picking.html`
 - `http://127.0.0.1:5173/gaussian-splat-3d-tiles.html`
+- `http://127.0.0.1:5173/point-cloud-3d-tiles.html`
 - `http://127.0.0.1:5173/terrain.html`
 - `http://127.0.0.1:5173/atmosphere.html`
 - `http://127.0.0.1:5173/threejs-interop.html`
@@ -53,6 +54,15 @@ pnpm examples
 ```txt
 VITE_3D_TILESET_URL=https://example.com/tileset.json
 VITE_CESIUM_ION_3D_TILESET_ASSET_ID=123456
+VITE_CESIUM_ION_TOKEN=your_token
+```
+
+## 点云 3D Tiles 示例
+
+`point-cloud-3d-tiles.html` 演示从 Cesium Ion 加载 pnts 点云，默认 asset 是 Melbourne Point Cloud（`43978`）。需要 `VITE_CESIUM_ION_TOKEN`，也可以换成其他点云 asset id：
+
+```txt
+VITE_CESIUM_ION_POINT_CLOUD_ASSET_ID=43978
 VITE_CESIUM_ION_TOKEN=your_token
 ```
 

@@ -4,6 +4,7 @@ import { TilesRenderer } from '3d-tiles-renderer'
 import {
   applyBasicMaterialToObject,
   applyMaterialModeToObject,
+  applyPointCloudMaterialStyle,
   applySurfaceMaterialModeToObject,
   type RenderMaterialMode,
   type SurfaceMaterialOptions
@@ -82,6 +83,7 @@ export class TileUnlitMaterialPlugin implements TileModelPlugin {
 
   processTileModel(tileScene: THREE.Object3D) {
     applyBasicMaterialToObject(tileScene)
+    applyPointCloudMaterialStyle(tileScene)
   }
 }
 
@@ -92,6 +94,7 @@ export class SceneTilesetMaterialPlugin implements TileModelPlugin {
 
   processTileModel(tileScene: THREE.Object3D) {
     applyMaterialModeToObject(tileScene, this.currentMode)
+    applyPointCloudMaterialStyle(tileScene)
   }
 
   setMode(mode: SceneTilesetMaterialMode, tileset: TilesRenderer) {
@@ -100,6 +103,7 @@ export class SceneTilesetMaterialPlugin implements TileModelPlugin {
     this.currentMode = mode
     tileset.forEachLoadedModel((tileScene) => {
       applyMaterialModeToObject(tileScene, this.currentMode)
+      applyPointCloudMaterialStyle(tileScene)
     })
     tileset.dispatchEvent({ type: 'needs-render' })
   }

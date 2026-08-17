@@ -26,7 +26,7 @@
 
 `examples/public/` 是示例站点的静态资源根目录：
 
-- `examples/public/draco/` 存放 Draco 解码器资源。
+- `examples/public/draco/` 存放 Draco 解码器资源。根目录是 three.js 完整 decoder（mesh + 点云）；`gltf/` 子目录是体积更小的 glTF 专用 decoder，不能解点云。
 - `examples/public/docs/` 是 VitePress 文档的构建输出目录。
 
 Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模块进入 Vite 依赖图，不再通过

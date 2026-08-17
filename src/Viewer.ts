@@ -503,7 +503,7 @@ export class Viewer {
 
       this.dracoLoader = new DRACOLoader()
       constructionScope.defer(() => this.dracoLoader.dispose())
-      this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/gltf/')
+      this.dracoLoader.setDecoderPath(options.dracoDecoderPath ?? '/draco/')
       this.gltfLoader = new GLTFLoader()
       this.gltfLoader.setDRACOLoader(this.dracoLoader)
 

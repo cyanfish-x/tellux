@@ -89,6 +89,10 @@ function applySurfaceStandardMaterialOptions(
 }
 
 function toStandardMaterial(material: THREE.Material) {
+  if (material instanceof THREE.PointsMaterial) {
+    stylePointCloudMaterial(material)
+    return material
+  }
   if (material instanceof THREE.MeshStandardMaterial) return material
   if (!(material instanceof THREE.MeshBasicMaterial)) return material
 
@@ -110,13 +114,22 @@ function toStandardMaterial(material: THREE.Material) {
 }
 
 function toBasicMaterial(material: THREE.Material) {
+  if (material instanceof THREE.PointsMaterial) {
+    stylePointCloudMaterial(material)
+    return material
+  }
+
   if (material instanceof THREE.MeshBasicMaterial) {
     material.toneMapped = false
     material.needsUpdate = true
     return material
   }
 
-  const source = material as THREE.MeshStandardMaterial
+  if (!(material instanceof THREE.MeshStandardMaterial)) {
+    return material
+  }
+
+  const source = material
   const basic = new THREE.MeshBasicMaterial({
     color: source.color ?? new THREE.Color(1, 1, 1),
     map: source.map ?? null,
@@ -131,6 +144,44 @@ function toBasicMaterial(material: THREE.Material) {
   basic.needsUpdate = true
   material.dispose()
   return basic
+}
+
+/**
+ * 3D Tiles 点云默认按屏幕像素大小绘制。
+ *
+ * Three.js 默认 `size = 1` 且 `sizeAttenuation = true`，在地球尺度下点会被缩成
+ * 几乎看不见；Cesium 官方点云则用屏幕空间尺寸，所以远看仍能成面。
+ *
+ * Point cloud tiles default to a constant screen-pixel size.
+ *
+ * Three.js defaults (`size = 1`, `sizeAttenuation = true`) shrink points to
+ * nearly nothing at globe scale. Cesium-style point clouds stay visible by
+ * using screen-space size.
+ */
+export const DEFAULT_POINT_CLOUD_PIXEL_SIZE = 4
+
+export function applyPointCloudMaterialStyle(
+  root: THREE.Object3D,
+  options: { size?: number } = {}
+) {
+  const size = options.size ?? DEFAULT_POINT_CLOUD_PIXEL_SIZE
+  root.traverse((object) => {
+    if (!(object as THREE.Points).isPoints) return
+    const material = (object as THREE.Points).material
+    const materials = Array.isArray(material) ? material : [material]
+    for (const item of materials) {
+      if (item instanceof THREE.PointsMaterial) {
+        stylePointCloudMaterial(item, size)
+      }
+    }
+  })
+}
+
+function stylePointCloudMaterial(material: THREE.PointsMaterial, size = DEFAULT_POINT_CLOUD_PIXEL_SIZE) {
+  material.size = size
+  material.sizeAttenuation = false
+  material.toneMapped = false
+  material.needsUpdate = true
 }
 
 function copyMaterialState(source: THREE.Material, target: THREE.Material) {

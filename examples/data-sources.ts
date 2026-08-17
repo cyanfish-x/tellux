@@ -412,7 +412,7 @@ async function main() {
 ]
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/gltf/",
+  dracoDecoderPath: "/draco/",
   layers: initialLayers,
   camera: {
     latitude: 30.5728,

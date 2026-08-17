@@ -20,6 +20,7 @@ const htmlInputs = {
   tiles3dPicking: resolve(__dirname, "3d-tiles-picking.html"),
   gaussianSplat3dTiles: resolve(__dirname, "gaussian-splat-3d-tiles.html"),
   googlePhotorealistic3dTiles: resolve(__dirname, "google-photorealistic-3d-tiles.html"),
+  pointCloud3dTiles: resolve(__dirname, "point-cloud-3d-tiles.html"),
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
   webgpuBasic: resolve(__dirname, "webgpu-basic.html"),

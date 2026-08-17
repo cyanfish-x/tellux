@@ -317,8 +317,8 @@ const viewer = new tellux.Viewer(container, {
   // —— 透明背景：新代码优先用 renderer.transparent，默认 false
   transparent: false,
 
-  // —— Draco 解码器路径，默认 '/draco/gltf/'
-  dracoDecoderPath: '/draco/gltf/',
+  // —— Draco 解码器路径，默认 '/draco/'（完整 decoder，支持 mesh 与点云）
+  dracoDecoderPath: '/draco/',
 
   // —— 内置控件
   widgets: {
