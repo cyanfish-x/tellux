@@ -639,7 +639,21 @@ export const coastSdfCode = `
 fn coastSDF(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32) -> f32 {
   let uv = xz / (2.0 * seaHalf) + 0.5;
   let inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
-  let sd = textureSampleLevel(sdfTex, samp, clamp(uv, vec2f(0.0), vec2f(1.0)), 0.0).r;
+  let uvc = clamp(uv, vec2f(0.0), vec2f(1.0));
+  // FloatType SDF 在 WebGPU 下不可 filter，textureLoad + 手动双线性
+  let res = 512.0;
+  let p = uvc * res - 0.5;
+  let x0 = i32(clamp(floor(p.x), 0.0, res - 1.0));
+  let y0 = i32(clamp(floor(p.y), 0.0, res - 1.0));
+  let x1 = min(x0 + 1, 511);
+  let y1 = min(y0 + 1, 511);
+  let a = p.x - floor(p.x);
+  let b = p.y - floor(p.y);
+  let c00 = textureLoad(sdfTex, vec2i(x0, y0), 0);
+  let c10 = textureLoad(sdfTex, vec2i(x1, y0), 0);
+  let c01 = textureLoad(sdfTex, vec2i(x0, y1), 0);
+  let c11 = textureLoad(sdfTex, vec2i(x1, y1), 0);
+  let sd = mix(mix(c00, c10, a), mix(c01, c11, a), b).r;
   return mix(1000.0, sd, inside);
 }
 `
@@ -648,7 +662,21 @@ export const terrainHeightCode = `
 fn terrainHeight(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32, slope: f32, seaDepth: f32) -> f32 {
   let uv = xz / (2.0 * seaHalf) + 0.5;
   let inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
-  let h = textureSampleLevel(sdfTex, samp, clamp(uv, vec2f(0.0), vec2f(1.0)), 0.0).g;
+  let uvc = clamp(uv, vec2f(0.0), vec2f(1.0));
+  // FloatType SDF 在 WebGPU 下不可 filter，textureLoad + 手动双线性
+  let res = 512.0;
+  let p = uvc * res - 0.5;
+  let x0 = i32(clamp(floor(p.x), 0.0, res - 1.0));
+  let y0 = i32(clamp(floor(p.y), 0.0, res - 1.0));
+  let x1 = min(x0 + 1, 511);
+  let y1 = min(y0 + 1, 511);
+  let a = p.x - floor(p.x);
+  let b = p.y - floor(p.y);
+  let c00 = textureLoad(sdfTex, vec2i(x0, y0), 0);
+  let c10 = textureLoad(sdfTex, vec2i(x1, y0), 0);
+  let c01 = textureLoad(sdfTex, vec2i(x0, y1), 0);
+  let c11 = textureLoad(sdfTex, vec2i(x1, y1), 0);
+  let h = mix(mix(c00, c10, a), mix(c01, c11, a), b).g;
   // G 通道已烘焙真实地形局部高度；patch 外 fallback 为 3m 高地
   return mix(3.0, min(max(h, -seaDepth), 3.0), inside);
 }

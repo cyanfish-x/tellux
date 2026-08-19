@@ -124,6 +124,8 @@ const OSM_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 const WATER_SDF_RES = 512
 /** 真实地形高度场采样分辨率；会双线性放大到 WATER_SDF_RES 写入 SDF 纹理 G 通道。 */
 const HEIGHTFIELD_RES = 64
+/** 水陆阈值：真实地形局部高度低于该值视为水域（米）。 */
+const WATER_LEVEL = 0
 /** SDF 编码半径（纹理像素）；约 spread×(2×SEA_HALF/RES) 米。 */
 const WATER_SDF_SPREAD_PX = 8
 const GRAVITY = 9.81
@@ -1006,17 +1008,20 @@ function bakeWaterSdfTexture(
   polygonsLocal: Array<Array<Array<{ x: number; z: number }>>>,
   seaHalf: number,
   resolution = WATER_SDF_RES,
-  seaDepth = 8
+  seaDepth = 8,
+  maskOverride?: Uint8Array
 ): { texture: THREE.DataTexture; spreadMeters: number; mask: Uint8Array; resolution: number; seaHalf: number } {
-  const mask = new Uint8Array(resolution * resolution)
-  if (polygonsLocal.length === 0) {
-    mask.fill(1)
-  } else {
-    for (let y = 0; y < resolution; y++) {
-      for (let x = 0; x < resolution; x++) {
-        const lx = ((x + 0.5) / resolution) * 2 * seaHalf - seaHalf
-        const lz = ((y + 0.5) / resolution) * 2 * seaHalf - seaHalf
-        mask[y * resolution + x] = pointInWaterPolygons(lx, lz, polygonsLocal) ? 1 : 0
+  const mask = maskOverride ?? new Uint8Array(resolution * resolution)
+  if (!maskOverride) {
+    if (polygonsLocal.length === 0) {
+      mask.fill(1)
+    } else {
+      for (let y = 0; y < resolution; y++) {
+        for (let x = 0; x < resolution; x++) {
+          const lx = ((x + 0.5) / resolution) * 2 * seaHalf - seaHalf
+          const lz = ((y + 0.5) / resolution) * 2 * seaHalf - seaHalf
+          mask[y * resolution + x] = pointInWaterPolygons(lx, lz, polygonsLocal) ? 1 : 0
+        }
       }
     }
   }
@@ -1103,6 +1108,68 @@ function fillHeightfieldIntoSdf(
     }
   }
   texture.needsUpdate = true
+}
+
+/** CPU 双线性采样低分辨率高度场。 */
+function sampleHeightBilinear(
+  heightData: Float32Array,
+  srcRes: number,
+  seaHalf: number,
+  x: number,
+  z: number
+): number {
+  const u = (x + seaHalf) / (2 * seaHalf)
+  const v = (z + seaHalf) / (2 * seaHalf)
+  const fx = u * srcRes - 0.5
+  const fy = v * srcRes - 0.5
+  const x0 = Math.min(Math.max(Math.floor(fx), 0), srcRes - 1)
+  const y0 = Math.min(Math.max(Math.floor(fy), 0), srcRes - 1)
+  const x1 = Math.min(x0 + 1, srcRes - 1)
+  const y1 = Math.min(y0 + 1, srcRes - 1)
+  const ax = Math.min(Math.max(fx - Math.floor(fx), 0), 1)
+  const ay = Math.min(Math.max(fy - Math.floor(fy), 0), 1)
+  return (
+    heightData[y0 * srcRes + x0] * (1 - ax) * (1 - ay) +
+    heightData[y0 * srcRes + x1] * ax * (1 - ay) +
+    heightData[y1 * srcRes + x0] * (1 - ax) * ay +
+    heightData[y1 * srcRes + x1] * ax * ay
+  )
+}
+
+/** 根据真实地形高度阈值生成水域 mask。 */
+function buildWaterMaskFromHeightData(
+  heightData: Float32Array,
+  srcRes: number,
+  dstRes: number,
+  seaHalf: number,
+  waterLevel: number
+): Uint8Array {
+  const mask = new Uint8Array(dstRes * dstRes)
+  for (let y = 0; y < dstRes; y++) {
+    for (let x = 0; x < dstRes; x++) {
+      const lx = ((x + 0.5) / dstRes) * 2 * seaHalf - seaHalf
+      const lz = ((y + 0.5) / dstRes) * 2 * seaHalf - seaHalf
+      const h = sampleHeightBilinear(heightData, srcRes, seaHalf, lx, lz)
+      mask[y * dstRes + x] = h < waterLevel ? 1 : 0
+    }
+  }
+  return mask
+}
+
+/** 判断世界坐标是否落在水域 mask 内。 */
+function pointInWaterMask(
+  mask: Uint8Array,
+  resolution: number,
+  seaHalf: number,
+  x: number,
+  z: number
+): boolean {
+  const u = (x + seaHalf) / (2 * seaHalf)
+  const v = (z + seaHalf) / (2 * seaHalf)
+  if (u < 0 || u > 1 || v < 0 || v > 1) return false
+  const px = Math.min(Math.floor(u * resolution), resolution - 1)
+  const pz = Math.min(Math.floor(v * resolution), resolution - 1)
+  return mask[pz * resolution + px] === 1
 }
 
 function buildSeaGeometry(gridN: number): THREE.BufferGeometry {
@@ -2188,6 +2255,15 @@ async function main() {
   setOceanStatus(t({ zh: "正在采样真实地形高度场…", en: "Sampling real terrain heightfield…" }))
   try {
     const heightData = await sampleLocalHeightfield(viewer, SEA_HALF, oceanHeight, HEIGHTFIELD_RES)
+    // 水陆 mask 改为基于真实地形高度阈值
+    const heightMask = buildWaterMaskFromHeightData(
+      heightData,
+      HEIGHTFIELD_RES,
+      WATER_SDF_RES,
+      SEA_HALF,
+      WATER_LEVEL
+    )
+    waterSdf = bakeWaterSdfTexture(polygonsLocalForCoast, SEA_HALF, WATER_SDF_RES, 8, heightMask)
     fillHeightfieldIntoSdf(waterSdf.texture, heightData, HEIGHTFIELD_RES, WATER_SDF_RES)
     setOceanStatus("")
   } catch (error) {
@@ -2206,7 +2282,7 @@ async function main() {
     waterSdf.mask,
     waterSdf.resolution,
     waterSdf.seaHalf,
-    (x, z) => pointInWaterPolygons(x, z, polygonsLocalForCoast)
+    (x, z) => pointInWaterMask(waterSdf.mask, waterSdf.resolution, waterSdf.seaHalf, x, z)
   )
   const chain = new ChainSim(coast)
   const filmFoam = new FilmFoamSim(tsl, wgpu, chain.simTexture)
