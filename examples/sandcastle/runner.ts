@@ -22,9 +22,11 @@ import {
   detectOptionalRuntimeBindings,
 } from "./runtime-bindings"
 import exampleStyles from "../styles.css?raw"
-import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
-
-const STORAGE_PREFIX = "tellux:sandcastle-run:"
+import { STORAGE_PREFIX } from "./run-payload-storage"
+import type {
+  SandboxLogLevel,
+  SandcastleRunnerPayload,
+} from "./types"
 
 function serializeConsoleValue(value: unknown) {
   if (value instanceof Error) {
@@ -68,21 +70,66 @@ function installConsoleBridge(runId?: string) {
   })
 }
 
-function loadPayload() {
+function loadPayloadFromStorage(key: string) {
+  const rawPayload = localStorage.getItem(`${STORAGE_PREFIX}${key}`)
+  return rawPayload ? (JSON.parse(rawPayload) as SandcastleRunnerPayload) : null
+}
+
+function loadPayloadFromUrl(encodedPayload: string) {
+  return JSON.parse(decodeURIComponent(encodedPayload)) as SandcastleRunnerPayload
+}
+
+function requestPayloadFromParent(runId: string) {
+  return new Promise<SandcastleRunnerPayload>((resolve, reject) => {
+    const timeoutMs = 10_000
+    const timeoutId = window.setTimeout(() => {
+      window.removeEventListener("message", onMessage)
+      reject(new Error("Timed out waiting for Sandcastle run payload."))
+    }, timeoutMs)
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return
+      }
+      if (
+        event.data?.type !== "sandbox-run-payload" ||
+        event.data.runId !== runId
+      ) {
+        return
+      }
+      window.clearTimeout(timeoutId)
+      window.removeEventListener("message", onMessage)
+      resolve(event.data.payload as SandcastleRunnerPayload)
+    }
+
+    window.addEventListener("message", onMessage)
+    window.parent.postMessage(
+      { type: "sandbox-request-payload", runId },
+      window.location.origin
+    )
+  })
+}
+
+async function loadPayload() {
   const params = new URLSearchParams(window.location.search)
+  const delivery = params.get("delivery")
+  const runId = params.get("runId")
   const key = params.get("run")
   const encodedPayload = params.get("payload")
 
+  if (delivery === "postMessage" && runId) {
+    return requestPayloadFromParent(runId)
+  }
+
   if (encodedPayload) {
-    return JSON.parse(decodeURIComponent(encodedPayload)) as SandcastleRunPayload
+    return loadPayloadFromUrl(encodedPayload)
   }
 
   if (!key) {
     return null
   }
 
-  const rawPayload = localStorage.getItem(`${STORAGE_PREFIX}${key}`)
-  return rawPayload ? (JSON.parse(rawPayload) as SandcastleRunPayload) : null
+  return loadPayloadFromStorage(key)
 }
 
 function prepareHtml(html: string) {
@@ -279,7 +326,7 @@ async function loadOptionalRuntimeBindings(source: string) {
   }
 }
 
-async function runExample(payload: SandcastleRunPayload) {
+async function runExample(payload: SandcastleRunnerPayload) {
   applyHtml(payload.html)
   installConsoleBridge(payload.runId)
   removeOriginalModuleScripts()
@@ -293,9 +340,9 @@ void main()
 async function main() {
   const params = new URLSearchParams(window.location.search)
   const runId = params.get("runId") ?? undefined
-  let payload: SandcastleRunPayload | null = null
+  let payload: SandcastleRunnerPayload | null = null
   try {
-    payload = loadPayload()
+    payload = await loadPayload()
     if (!payload) {
       throw new Error("Sandcastle run payload not found.")
     }

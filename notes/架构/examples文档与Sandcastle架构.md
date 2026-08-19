@@ -119,7 +119,7 @@ Sandcastle 是一个可编辑、可运行示例的交互页面，设计上分成
 - 创建或刷新 preview iframe。
 - 接收 runner 通过 `postMessage` 发回的 console 日志和错误。
 
-运行 payload 会优先存入 `localStorage`，再通过 `run` query 参数把 key 传给 runner。payload 过大或存储失败时，代码会退回到 URL payload 方式。主应用还会定期清理旧的 stored runs，避免 localStorage 无限膨胀。
+运行 payload 优先通过 **postMessage** 传给 preview iframe（不占 localStorage）；Standalone 新标签页走 localStorage，失败时回退到 URL `payload` query。持久化时省略编辑器 TS 源码，只保留 runner 需要的 `html` + `compiledJavascript`。主应用还会定期清理旧的 stored runs，避免 localStorage 无限膨胀。
 
 ### iframe 运行器
 

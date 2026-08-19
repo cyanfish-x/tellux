@@ -16,11 +16,18 @@ import {
   sandcastleExamples,
 } from "./registry"
 import { expandLocalLibImports } from "./expand-local-lib-imports"
+import {
+  buildStandaloneRunnerSearchParams,
+  toRunnerPayload,
+  tryPersistRunnerPayload,
+} from "./run-payload-storage"
 import type {
   SandcastleEditorPane,
   SandcastleExample,
   SandcastleRunPayload,
+  SandcastleRunnerPayload,
   SandboxMessage,
+  SandboxRequestPayloadMessage,
 } from "./types"
 
 const telluxSourceModules = import.meta.glob("../../src/**/*.ts", {
@@ -50,8 +57,6 @@ self.MonacoEnvironment = {
   },
 }
 
-const STORAGE_PREFIX = "tellux:sandcastle-run:"
-const MAX_STORED_RUNS = 6
 const telluxVersion = `v${packageJson.version}`
 const root = document.querySelector("#sandcastle-root")
 
@@ -345,6 +350,7 @@ let isDraggingSplitter = false
 let isDraggingConsole = false
 let consoleHeight = 150
 let activeRunId: string | null = null
+const pendingRunPayloads = new Map<string, SandcastleRunnerPayload>()
 
 function getDocsUrl() {
   const isLocalHost =
@@ -368,59 +374,23 @@ function createRunKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-function getStoredRunEntries() {
-  const entries: Array<{ key: string; createdAt: number }> = []
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const storageKey = localStorage.key(index)
-    if (!storageKey?.startsWith(STORAGE_PREFIX)) {
-      continue
-    }
-    const runKey = storageKey.slice(STORAGE_PREFIX.length)
-    const timestamp = Number.parseInt(runKey.split("-")[0] ?? "", 36)
-    entries.push({
-      key: storageKey,
-      createdAt: Number.isFinite(timestamp) ? timestamp : 0,
-    })
-  }
-  return entries.sort((left, right) => left.createdAt - right.createdAt)
+function createPreviewRunnerUrl(payload: SandcastleRunPayload) {
+  const runnerPayload = toRunnerPayload(payload)
+  pendingRunPayloads.set(payload.runId, runnerPayload)
+  const params = new URLSearchParams({
+    runId: payload.runId,
+    delivery: "postMessage",
+  })
+  return `./sandcastle/runner.html?${params.toString()}`
 }
 
-function pruneStoredRuns(maxRuns: number) {
-  const entries = getStoredRunEntries()
-  const removeCount = Math.max(0, entries.length - maxRuns)
-  for (const entry of entries.slice(0, removeCount)) {
-    localStorage.removeItem(entry.key)
-  }
-}
-
-function clearStoredRuns() {
-  for (const entry of getStoredRunEntries()) {
-    localStorage.removeItem(entry.key)
-  }
-}
-
-function isStorageQuotaExceeded(error: unknown) {
-  return (
-    error instanceof DOMException &&
-    (error.name === "QuotaExceededError" ||
-      error.name === "NS_ERROR_DOM_QUOTA_REACHED")
-  )
-}
-
-function saveRunPayload(key: string, payload: SandcastleRunPayload) {
-  const storageKey = `${STORAGE_PREFIX}${key}`
-  const serializedPayload = JSON.stringify(payload)
-
-  pruneStoredRuns(MAX_STORED_RUNS - 1)
-  try {
-    localStorage.setItem(storageKey, serializedPayload)
-  } catch (error) {
-    if (!isStorageQuotaExceeded(error)) {
-      throw error
-    }
-    clearStoredRuns()
-    localStorage.setItem(storageKey, serializedPayload)
-  }
+function createStandaloneRunnerUrl(payload: SandcastleRunPayload) {
+  const runnerPayload = toRunnerPayload(payload)
+  pendingRunPayloads.set(payload.runId, runnerPayload)
+  const key = createRunKey()
+  const delivery = tryPersistRunnerPayload(key, runnerPayload, localStorage)
+  const params = buildStandaloneRunnerSearchParams(runnerPayload, key, delivery)
+  return `./sandcastle/runner.html?${params.toString()}`
 }
 
 function sleep(ms: number) {
@@ -476,13 +446,7 @@ async function getCurrentPayload(runId: string): Promise<SandcastleRunPayload> {
 }
 
 function createRunnerUrl(payload: SandcastleRunPayload) {
-  const key = createRunKey()
-  saveRunPayload(key, payload)
-  const params = new URLSearchParams({
-    run: key,
-    runId: payload.runId,
-  })
-  return `./sandcastle/runner.html?${params.toString()}`
+  return createPreviewRunnerUrl(payload)
 }
 
 function setPreviewLoading(isLoading: boolean) {
@@ -629,9 +593,10 @@ async function runCurrentCode() {
   activeRunId = runId
   setPreviewLoading(true)
   try {
-    const url = createRunnerUrl(await getCurrentPayload(runId))
-    previewFrame.src = url
-    standaloneLink.href = url
+    const payload = await getCurrentPayload(runId)
+    const previewUrl = createRunnerUrl(payload)
+    previewFrame.src = previewUrl
+    standaloneLink.href = createStandaloneRunnerUrl(payload)
     setStandaloneEnabled(true)
   } catch (error) {
     const message =
@@ -960,6 +925,22 @@ window.addEventListener("message", (event: MessageEvent<SandboxMessage>) => {
     return
   }
   const message = event.data
+  if (message.type === "sandbox-request-payload") {
+    const request = message as SandboxRequestPayloadMessage
+    const payload = pendingRunPayloads.get(request.runId)
+    if (!payload || event.source !== previewFrame.contentWindow) {
+      return
+    }
+    event.source.postMessage(
+      {
+        type: "sandbox-run-payload",
+        runId: request.runId,
+        payload,
+      },
+      window.location.origin
+    )
+    return
+  }
   if (message.type === "sandbox-log") {
     if (!message.runId || message.runId === activeRunId) {
       appendConsoleLine(message.level, message.values)
