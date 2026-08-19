@@ -24,6 +24,7 @@ const htmlInputs = {
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
   webgpuBasic: resolve(__dirname, "webgpu-basic.html"),
+  ocean: resolve(__dirname, "ocean.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
   entities: resolve(__dirname, "entities.html"),
   symbol: resolve(__dirname, "symbol.html"),

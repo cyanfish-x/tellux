@@ -176,6 +176,8 @@ async function executeExampleScript(source: string) {
     "generatePoissonPlacements",
     "t",
     "bootExampleI18n",
+    "TSL",
+    "WEBGPU",
     "__sandcastleImportMeta",
     `"use strict";\n${transformExampleScript(source)}\n//# sourceURL=tellux-sandcastle-example.js`
   )
@@ -204,13 +206,15 @@ async function executeExampleScript(source: string) {
     ),
     t,
     bootExampleI18nInRunner,
+    optionalBindings.TSL,
+    optionalBindings.WEBGPU,
     sandcastleImportMeta
   )
 }
 
 async function loadOptionalRuntimeBindings(source: string) {
   const required = detectOptionalRuntimeBindings(source)
-  const [gaussianSplatModule, treeModule, hismModule] = await Promise.all([
+  const [gaussianSplatModule, treeModule, hismModule, tslModule, webgpuModule] = await Promise.all([
     required.gaussianSplat
       ? import("3d-tiles-rendererjs-3dgs-plugin")
       : null,
@@ -219,6 +223,12 @@ async function loadOptionalRuntimeBindings(source: string) {
       : null,
     required.hism
       ? import("../hism/shared")
+      : null,
+    required.tsl
+      ? import("three/tsl")
+      : null,
+    required.webgpu
+      ? import("three/webgpu")
       : null,
   ])
 
@@ -229,6 +239,8 @@ async function loadOptionalRuntimeBindings(source: string) {
       (typeof HISM_RUNTIME_BINDING_NAMES)[number],
       unknown
     >,
+    TSL: tslModule ?? undefined,
+    WEBGPU: webgpuModule ?? undefined,
   }
 }
 

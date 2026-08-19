@@ -10,7 +10,9 @@ describe('Sandcastle optional runtime bindings', () => {
     `)).toEqual({
       gaussianSplat: false,
       hism: false,
-      tree: false
+      tree: false,
+      tsl: false,
+      webgpu: false
     })
   })
 
@@ -31,5 +33,23 @@ describe('Sandcastle optional runtime bindings', () => {
       import { exampleMapServiceConfig } from "./shared"
       setupExamplePanels()
     `).hism).toBe(false)
+  })
+
+  it('detects TSL / WEBGPU sandbox namespaces used by node-material examples', () => {
+    const source = `
+      const tsl = typeof TSL !== "undefined" ? TSL : { uv }
+      const wgpu = typeof WEBGPU !== "undefined" ? WEBGPU : { NodeMaterial }
+    `
+    expect(detectOptionalRuntimeBindings(source).tsl).toBe(true)
+    expect(detectOptionalRuntimeBindings(source).webgpu).toBe(true)
+  })
+
+  it('does not inject TSL / WEBGPU for examples that only use core THREE', () => {
+    const result = detectOptionalRuntimeBindings(`
+      import * as THREE from "three"
+      const geometry = new THREE.BufferGeometry()
+    `)
+    expect(result.tsl).toBe(false)
+    expect(result.webgpu).toBe(false)
   })
 })

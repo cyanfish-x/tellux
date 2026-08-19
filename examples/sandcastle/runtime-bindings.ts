@@ -15,6 +15,10 @@ export interface OptionalRuntimeBindings {
   gaussianSplat: boolean
   hism: boolean
   tree: boolean
+  /** three/tsl 命名空间(示例里出现 TSL 标识符时注入) */
+  tsl: boolean
+  /** three/webgpu 命名空间(示例里出现 WEBGPU 标识符时注入) */
+  webgpu: boolean
 }
 
 export function detectOptionalRuntimeBindings(
@@ -23,7 +27,9 @@ export function detectOptionalRuntimeBindings(
   return {
     gaussianSplat: hasIdentifier(source, 'GaussianSplatPlugin'),
     hism: HISM_RUNTIME_BINDING_NAMES.some((name) => hasIdentifier(source, name)),
-    tree: hasIdentifier(source, 'Tree')
+    tree: hasIdentifier(source, 'Tree'),
+    tsl: hasIdentifier(source, 'TSL'),
+    webgpu: hasIdentifier(source, 'WEBGPU')
   }
 }
 

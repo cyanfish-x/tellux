@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ocean (gpuocean × tellux)</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    #panel {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      padding: 10px 14px;
+      background: rgba(10, 20, 30, 0.72);
+      color: #eee;
+      border-radius: 8px;
+      font: 12px/1.9 system-ui, sans-serif;
+      user-select: none;
+      max-height: 80vh;
+      overflow: auto;
+    }
+    #panel summary { cursor: pointer; font-weight: 600; }
+    #panel label { display: grid; grid-template-columns: 84px 120px 40px; gap: 8px; align-items: center; }
+    #panel span { text-align: right; font-variant-numeric: tabular-nums; }
+    #error {
+      position: fixed; inset: 0; display: none; place-items: center; text-align: center;
+      background: #1a2633; color: #fff; font: 16px system-ui, sans-serif; padding: 2em; z-index: 20;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="viewer-shell">
+    <div id="viewer"></div>
+  </main>
+  <details id="panel" open>
+    <summary>ocean params</summary>
+    <label>wavelength <input id="wavelength" type="range" min="5" max="60" step="1" value="10"><span></span></label>
+    <label>amplitude <input id="amplitude" type="range" min="0" max="2" step="0.02" value="0.4"><span></span></label>
+    <label>choppiness <input id="choppiness" type="range" min="0" max="3" step="0.05" value="1.5"><span></span></label>
+    <label>layers <input id="layers" type="range" min="1" max="8" step="1" value="5"><span></span></label>
+    <label>spread <input id="spread" type="range" min="0" max="90" step="1" value="40"><span></span></label>
+    <label>waveDir <input id="waveDir" type="range" min="-60" max="60" step="1" value="0"><span></span></label>
+    <label>dispersion <input id="dispersion" type="range" min="0" max="2" step="0.05" value="1"><span></span></label>
+    <label>foam <input id="foam" type="range" min="0" max="1" step="0.02" value="0.6"><span></span></label>
+    <label>pause <input id="pause" type="checkbox"></label>
+  </details>
+  <div id="error"></div>
+  <script type="module" src="./ocean.ts"></script>
+</body>
+
+</html>
