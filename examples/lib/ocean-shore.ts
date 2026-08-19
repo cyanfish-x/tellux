@@ -50,6 +50,8 @@ export const WARP_CELL = 0.4
 export const WARP_LINEAR = 64
 export const WARP_GROWTH = 1.08
 export const GRID_N = 512
+/** 原版 ocean.wgsl：合成纹理最细一级相对名义层的反锯齿校正系数。 */
+const COPY_FINE = 1.75
 
 type Pt = { x: number; z: number }
 
@@ -512,10 +514,11 @@ export class ChainSim {
       this.key = key
       this.reset(params)
     }
+    // 原版每帧都更新 tCamSnap，暂停时 ribbon 窗口也应跟随相机。
+    const tCam = this.coast.nearestMainArc(_camX, _camZ)
+    this.tCamSnap = Math.floor(tCam / 0.4 + 0.5) * 0.4
     this.lastShift = 0
     if (dt > 0) {
-      const tCam = this.coast.nearestMainArc(_camX, _camZ)
-      this.tCamSnap = Math.floor(tCam / 0.4 + 0.5) * 0.4
       const steps = Math.round((tCam - this.zBase) / (160 / (MAIN_COLS - 1)))
       if (steps !== 0) this.lastShift = this.shiftWindow(steps)
       const kLP = 1 - Math.exp(-dt / LEVEL_TAU)
@@ -696,6 +699,8 @@ fn sunTint(sunDir: vec3f) -> vec3f {
 }
 `
 
+// 兼容保留：ocean.ts 已改用 Tellux sky() 作为海面反射色（view-ray 近似）。
+// 这个 gpuocean 程序化 skyColor 目前不再被 oceanShading 调用，仅留作参考/回退。
 export const skyColorCode = `
 fn skyColor(dir: vec3f, sunDir: vec3f) -> vec3f {
   let w = sunWarmth(sunDir);
@@ -774,7 +779,7 @@ function unrollGravityVertex() {
   return Array.from({ length: 8 }, (_, i) => `
   if (numLayers > ${i}.5) {
     let dir = d${i}.xy; let invL = d${i}.z; let amp = d${i}.w;
-    let att = 1.0 - smoothstep(2.0, 6.0, cell * invL * hGrad);
+    let att = 1.0 - smoothstep(2.0, 6.0, cell * invL * hGrad * ${COPY_FINE});
     let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s${i}.xy), 0.0);
     height += amp * att * s.x;
     disp += choppiness * amp * att * s.y * dir;
@@ -785,7 +790,7 @@ function unrollGravityNormal() {
   return Array.from({ length: 8 }, (_, i) => `
   if (numLayers > ${i}.5) {
     let dir = d${i}.xy; let invL = d${i}.z;
-    let amp = d${i}.w * (1.0 - smoothstep(5.0, 14.0, mpp * d${i}.z * hGrad));
+    let amp = d${i}.w * (1.0 - smoothstep(5.0, 14.0, mpp * d${i}.z * hGrad * ${COPY_FINE}));
     let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s${i}.xy));
     let duvdx = vec2f(dir.x, -dir.y) * invL;
     let duvdz = vec2f(dir.y, dir.x) * invL;
@@ -806,7 +811,7 @@ function unrollCapNormal() {
     const tex = iso ? "capTex" : "waveTex"
     const amp = iso
       ? `isoScale * cd${i}.w * capHGrad * (1.0 - smoothstep(5.0, 14.0, mpp * invL * capHGrad))`
-      : `anisoScale * cd${i}.w * hGrad * (1.0 - smoothstep(5.0, 14.0, mpp * invL * hGrad))`
+      : `anisoScale * cd${i}.w * hGrad * (1.0 - smoothstep(5.0, 14.0, mpp * invL * hGrad * ${COPY_FINE}))`
     return `
   {
     let dir = cd${i}.xy; let invL = cd${i}.z;
@@ -852,7 +857,7 @@ fn oceanVertex(
 
 export const oceanShadingCode = `
 fn oceanShading(
-  world: vec3f, waveXZ: vec2f, cut: f32, st: vec2f, stretch: f32,
+  world: vec3f, waveXZ: vec2f, gridXZ: vec2f, cut: f32, st: vec2f, stretch: f32,
   waveTex: texture_2d<f32>, samp: sampler,
   foamTex: texture_2d<f32>, foamPatTex: texture_2d<f32>,
   sdfTex: texture_2d<f32>, capTex: texture_2d<f32>, filmFoamTex: texture_2d<f32>,
@@ -871,7 +876,7 @@ fn oceanShading(
   if (max(abs(waveXZ.x), abs(waveXZ.y)) > seaHalf) { discard; }
   let dist = distance(cameraPos, world);
   let sbF = simBlend(st.x);
-  let rippleXZ = mix(waveXZ, world.xz, sbF);
+  let rippleXZ = mix(gridXZ, world.xz, sbF);
   let hScale = 1.0 - sbF;
   var dPx = vec3f(1.0, 0.0, 0.0);
   var dPz = vec3f(0.0, 0.0, 1.0);
@@ -956,7 +961,8 @@ fn oceanShading(
   let patFilm = mix(patFine, patCoarse, 1.0 - smoothstep(0.07, 0.4, stretch));
   let junctionFade = 1.0 - smoothstep(0.0, 6.0, st.x);
   let maskWave = smoothstep(0.0, 0.15, patWave - (1.05 - 1.15 * accR * junctionFade));
-  let maskFilm = smoothstep(0.0, 0.15, patFilm - (1.05 - 1.15 * (filmAcc.b + filmAcc.r * 0.8)));
+  let wetAcc = (filmAcc.b + filmAcc.r * 0.8) * smoothstep(0.02, 0.08, column);
+  let maskFilm = smoothstep(0.0, 0.15, patFilm - (1.05 - 1.15 * wetAcc));
   let foamMask = min(maskWave + maskFilm, 1.0);
   let foamColor = lightTint * mix(0.45, 1.0, sunLevel) * (0.72 + 0.22 * max(n.y, 0.0));
   color = mix(color, foamColor, foamMask);
@@ -964,39 +970,6 @@ fn oceanShading(
   color = mix(color, skyColor(normalize(vec3f(-v.x, 0.02, -v.z)), sunDir), fog);
   // Tellux 色彩体系：不在这里做 gpuocean 自带的 tonemap + gamma，
   // 输出 linear HDR 交给 Tellux 的 AgX + sRGB output pass。
-  return vec4f(color, 1.0);
-}
-`
-
-export const landVertexCode = `
-fn landVertex(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32, slope: f32, seaDepth: f32) -> vec3f {
-  return vec3f(xz.x, terrainHeight(xz, sdfTex, samp, seaHalf, slope, seaDepth), xz.y);
-}
-`
-
-export const landFragmentCode = `
-fn landFragment(world: vec3f, gridXZ: vec2f, cameraPos: vec3f, sunDir: vec3f,
-                sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32, slope: f32, seaDepth: f32) -> vec4f {
-  if (max(abs(gridXZ.x), abs(gridXZ.y)) > seaHalf) { discard; }
-  // 原生 land 网格覆盖整片地面（没有卫星）。地球上只保留水线到滩肩这一条，
-  // 否则 3 m 封顶的沙板会盖住内陆影像。
-  let sd = coastSDF(gridXZ, sdfTex, samp, seaHalf);
-  let berm = 3.0 / max(slope, 0.01);
-  if (sd > berm + 8.0 || sd < -2.0) { discard; }
-  let e = 0.5;
-  let hx = terrainHeight(gridXZ + vec2f(e, 0.0), sdfTex, samp, seaHalf, slope, seaDepth)
-         - terrainHeight(gridXZ - vec2f(e, 0.0), sdfTex, samp, seaHalf, slope, seaDepth);
-  let hz = terrainHeight(gridXZ + vec2f(0.0, e), sdfTex, samp, seaHalf, slope, seaDepth)
-         - terrainHeight(gridXZ - vec2f(0.0, e), sdfTex, samp, seaHalf, slope, seaDepth);
-  let n = normalize(vec3f(-hx / (2.0 * e), 1.0, -hz / (2.0 * e)));
-  let lightTint = mix(vec3f(1.0), sunTint(sunDir), 0.6);
-  let sunLevel = mix(0.18, 1.0, smoothstep(0.0, 0.5, clamp(sunDir.y, 0.0, 1.0)));
-  var color = vec3f(0.86, 0.78, 0.58) * lightTint * sunLevel * (0.55 + 0.45 * max(n.y, 0.0));
-  let dist = distance(cameraPos, world);
-  let v = normalize(cameraPos - world);
-  let fog = 1.0 - exp(-dist * 3e-5);
-  color = mix(color, skyColor(normalize(vec3f(-v.x, 0.02, -v.z)), sunDir), fog);
-  // Tellux 色彩体系：不再做 gpuocean 自带 tonemap/gamma，交给 AgX + sRGB。
   return vec4f(color, 1.0);
 }
 `
@@ -1189,6 +1162,29 @@ fn ribbonWaveVaryings(
     - (simRestS(b - eS, slope) + mix(chainJ.x, chainM.x, smoothstep(0.0, 12.0, b - eS)))
   ) / (2.0 * eS);
   return vec4f(waveXZ.x, waveXZ.y, stretch, b);
+}
+`
+
+/** ribbon 的 gridXZ：原版 VSOut 中 ribbon 的 gridXZ = matWorld（未压缩的材质坐标）。 */
+export const ribbonGridXZCode = `
+fn ribbonGridXZ(
+  pos: vec3f,
+  mainTable: texture_2d<f32>,
+  slope: f32, simZBase: f32, simTCam: f32
+) -> vec2f {
+  let t = simTCam + pos.y;
+  let b = pos.x * (${SIM_SPAN}.0 + ${SIM_BAND}.0 + 2.0 * ${SKIRT_W}) - ${SIM_BAND}.0 - 2.0 * ${SKIRT_W};
+  let f = t / ${MAIN_TABLE_STEP} + ${MAIN_TABLE_N - 1}.0 * 0.5;
+  let fc = clamp(f, 0.0, ${MAIN_TABLE_N - 1}.0);
+  let j0 = min(i32(floor(fc)), ${MAIN_TABLE_N - 2});
+  let a = fc - f32(j0);
+  let c0 = textureLoad(mainTable, vec2i(j0, 0), 0);
+  let c1 = textureLoad(mainTable, vec2i(j0 + 1, 0), 0);
+  var c = mix(c0, c1, a);
+  let n = normalize(c.zw);
+  let over = (f - fc) * ${MAIN_TABLE_STEP};
+  let coastP = c.xy + vec2f(-n.y, n.x) * over;
+  return coastP + n * (-${REST_DEPTH} / slope + b);
 }
 `
 

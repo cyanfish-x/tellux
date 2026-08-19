@@ -37,7 +37,7 @@ import {
   cameraProjectionMatrix,
   renderGroup,
 } from "three/tsl"
-import { NodeMaterial, QuadMesh } from "three/webgpu"
+import { Node, NodeMaterial, QuadMesh } from "three/webgpu"
 import { VectorTile as ImportedVectorTile } from "@mapbox/vector-tile"
 import ImportedPbf from "pbf"
 import { getSunDirectionECEF as importedGetSunDirectionECEF } from "@takram/three-atmosphere"
@@ -51,10 +51,9 @@ import {
   filmFoamAtCode,
   FOAM_RISE,
   GRID_N,
-  landFragmentCode,
-  landVertexCode,
   oceanShadingCode,
   oceanVertexCode,
+  ribbonGridXZCode,
   ribbonVertexCode,
   ribbonWaveVaryingsCode,
   sampleWaveLevel,
@@ -123,7 +122,11 @@ const OSM_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 /** 水域 SDF 纹理分辨率；片元按距离场软裁岸线。 */
 const WATER_SDF_RES = 512
 /** 真实地形高度场采样分辨率；会双线性放大到 WATER_SDF_RES 写入 SDF 纹理 G 通道。 */
-const HEIGHTFIELD_RES = 128
+const HEIGHTFIELD_RES = 256
+/** 海岸线附近精细高度场分辨率；只在近岸带状区域采样，避免全量 512² 请求。 */
+const HEIGHTFIELD_FINE_RES = 512
+/** 近岸精细采样带宽度（米）。 */
+const COAST_BAND_METERS = 80
 /** 水陆阈值：真实地形局部高度低于该值视为水域（米）。 */
 const WATER_LEVEL = 0
 /** SDF 编码半径（纹理像素）；约 spread×(2×SEA_HALF/RES) 米。 */
@@ -141,13 +144,17 @@ const CAP_UV_OFFSETS = [
   [0.37, 0.71], [0.83, 0.13], [0.53, 0.59],
 ]
 
-const SCALE_RATIO = 0.68
+/** 与 gpuocean/src/noise.js 一致：5 个重力波变体逐级变细的比例。 */
+const COPY_RATIO = 0.87
+/** 原版 ocean.js：由 8 层基础比例和 5 级 COPY_RATIO 组合出的层间比例。 */
+const LAYER_RATIO = (0.68 ** 7 / COPY_RATIO ** 4) ** 0.25
 const DIR_FRACS = [0, 0.9, -0.75, 0.45, -0.35, 0.7, -1, 0.2]
 const UV_OFFSETS = [
   [0.11, 0.63], [0.42, 0.17], [0.78, 0.55], [0.05, 0.91],
   [0.33, 0.4], [0.66, 0.08], [0.9, 0.77], [0.24, 0.31],
 ]
 const COPY_FACTORS = [-0.65, -0.3, 0.1, 0.4, 0.7]
+const DISPERSION_JITTER = [0.55, -0.45, 0.3, -0.6, -0.37]
 const COPY_FACTORS_Y = [0.5, -0.35, -0.65, 0.2, 0.35]
 const COPY_OFFSETS = [
   [0.13, 0.71], [0.53, 0.29], [0.87, 0.61], [0.31, 0.07], [0.67, 0.43],
@@ -353,10 +360,10 @@ function wavesPerTile(h: Float32Array, hx: Float32Array, size: number) {
   return (size * Math.sqrt(hxSq / hSq)) / (2 * Math.PI)
 }
 
-function gravityChannels(size: number, opts: any, seed: number, angle: number) {
-  const sigmaAlong = opts.sigmaAlong ?? 3
-  const sigmaAlongWide = opts.sigmaAlongWide ?? 9
-  const sigmaCross = opts.sigmaCross ?? 14
+function gravityChannels(size: number, opts: any, seed: number, angle: number, scale = 1) {
+  const sigmaAlong = (opts.sigmaAlong ?? 3) * scale
+  const sigmaAlongWide = (opts.sigmaAlongWide ?? 9) * scale
+  const sigmaCross = (opts.sigmaCross ?? 14) * scale
   const random = mulberry32(seed)
 
   const n = size * size
@@ -415,23 +422,29 @@ function gravityChannels(size: number, opts: any, seed: number, angle: number) {
 
 function generateGravityNoiseData(opts: any = {}) {
   const size = opts.size ?? 256
-  const angles = opts.angles ?? [-10, -5, 0, 5, 10].map((a) => (a * Math.PI) / 180)
-  const seeds = [23456, 45678, 12345, 34567, 56789]
-  const variants = angles.map((angle: number, i: number) => gravityChannels(size, opts, seeds[i], angle))
-  const center = angles.indexOf(0)
-  const sigmaD = variants[center].sigmaD
+  const angles = opts.angles ?? [0, -10, 10, -5, 5].map((a) => (a * Math.PI) / 180)
+  const seeds = [12345, 23456, 34567, 45678, 56789]
+  const variants = angles.map((angle: number, i: number) =>
+    gravityChannels(size, opts, seeds[i], angle, COPY_RATIO ** i)
+  )
+  // 与 gpuocean 一致：取第 0 个最粗变体的 sigmaD 作为统一归一化基准。
+  const sigmaD = variants[0].sigmaD
   const out: any[] = []
   for (const v of variants) {
     for (let i = 0; i < v.d.length; i++) v.d[i] /= -sigmaD
     const [hx, hy] = gradients(v.h, size)
     out.push({ h: v.h, d: v.d, hx, hy })
   }
-  const [hx0] = gradients(variants[center].h, size)
+  const [hx0] = gradients(variants[0].h, size)
+  const wRaw = angles.map((_, k) => COPY_RATIO ** k)
+  const wSum = Math.sqrt(wRaw.reduce((a, w) => a + w * w, 0))
   return {
     size,
     variants: out,
-    wavesPerTile: wavesPerTile(variants[center].h, hx0, size),
+    wavesPerTile: wavesPerTile(variants[0].h, hx0, size),
     dispGradPerTexel: -1 / sigmaD,
+    copyWeights: wRaw.map((w) => w / wSum),
+    copySpeeds: angles.map((_, k) => Math.sqrt(COPY_RATIO ** k) - 1),
   }
 }
 
@@ -561,6 +574,8 @@ function buildOceanTextures() {
     gravityWavesPerTile: g.wavesPerTile,
     gravityDispGrad: g.dispGradPerTexel,
     gravityHeights: g.variants.map((v: { h: Float32Array }) => v.h) as Float32Array[],
+    gravityCopyWeights: g.copyWeights as number[],
+    gravityCopySpeeds: g.copySpeeds as number[],
     capillary,
     capillarySize: cap.size,
     capillaryWavesPerTile: cap.wavesPerTile,
@@ -593,8 +608,6 @@ fn waveFieldMain(uvc: vec2f,
 
 const vertexCode = oceanVertexCode
 const fragmentCode = oceanShadingCode
-const landVSCode = landVertexCode
-const landFSCode = landFragmentCode
 
 const foamCode = `
 fn foamMain(uvc: vec2f,
@@ -1060,8 +1073,12 @@ async function sampleLocalHeightfield(
   },
   seaHalf: number,
   oceanHeight: number,
-  resolution = HEIGHTFIELD_RES
-): Promise<Float32Array> {
+  resolution = HEIGHTFIELD_RES,
+  mask?: Uint8Array,
+  maskRes?: number,
+  fineResolution = HEIGHTFIELD_FINE_RES
+): Promise<{ data: Float32Array; resolution: number }> {
+  // 先采一层全 patch 的粗高度场。
   const points: Array<[number, number]> = []
   const cell = (2 * seaHalf) / resolution
   for (let iy = 0; iy < resolution; iy++) {
@@ -1072,12 +1089,90 @@ async function sampleLocalHeightfield(
     }
   }
   const sampled = await viewer.sampleHeightMostDetailed(points, { source: "terrain" })
-  const heights = new Float32Array(resolution * resolution)
+  const coarse = new Float32Array(resolution * resolution)
   for (let i = 0; i < sampled.length; i++) {
     const h = sampled[i]?.[2]
-    heights[i] = typeof h === "number" && Number.isFinite(h) ? h - oceanHeight : 0
+    coarse[i] = typeof h === "number" && Number.isFinite(h) ? h - oceanHeight : 0
   }
-  return heights
+
+  if (!mask || !maskRes) {
+    return { data: coarse, resolution }
+  }
+
+  // 用粗 mask 标记岸线像元，再向外扩张 COAST_BAND_METERS 作为精细采样带。
+  const bandCells = Math.max(1, Math.ceil((COAST_BAND_METERS * maskRes) / (2 * seaHalf)))
+  const near = new Uint8Array(maskRes * maskRes)
+  for (let y = 0; y < maskRes; y++) {
+    for (let x = 0; x < maskRes; x++) {
+      const i = y * maskRes + x
+      const cur = mask[i]
+      if (
+        (x > 0 && mask[i - 1] !== cur) ||
+        (x < maskRes - 1 && mask[i + 1] !== cur) ||
+        (y > 0 && mask[i - maskRes] !== cur) ||
+        (y < maskRes - 1 && mask[i + maskRes] !== cur)
+      ) {
+        near[i] = 1
+      }
+    }
+  }
+  for (let d = 0; d < bandCells; d++) {
+    const next = new Uint8Array(maskRes * maskRes)
+    for (let y = 0; y < maskRes; y++) {
+      for (let x = 0; x < maskRes; x++) {
+        if (near[y * maskRes + x] !== 1) continue
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx
+            const ny = y + dy
+            if (nx < 0 || ny < 0 || nx >= maskRes || ny >= maskRes) continue
+            next[ny * maskRes + nx] = 1
+          }
+        }
+      }
+    }
+    near.set(next)
+  }
+
+  // 精细网格：先用粗高度场双线性填底，再只对近岸带请求真实采样。
+  const fineRes = fineResolution
+  const fineCell = (2 * seaHalf) / fineRes
+  const fineData = new Float32Array(fineRes * fineRes)
+  for (let iy = 0; iy < fineRes; iy++) {
+    for (let ix = 0; ix < fineRes; ix++) {
+      const lx = (ix + 0.5) * fineCell - seaHalf
+      const lz = (iy + 0.5) * fineCell - seaHalf
+      fineData[iy * fineRes + ix] = sampleHeightBilinear(coarse, resolution, seaHalf, lx, lz)
+    }
+  }
+
+  const finePoints: Array<[number, number]> = []
+  const fineIndices: number[] = []
+  for (let iy = 0; iy < fineRes; iy++) {
+    for (let ix = 0; ix < fineRes; ix++) {
+      const lx = (ix + 0.5) * fineCell - seaHalf
+      const lz = (iy + 0.5) * fineCell - seaHalf
+      const u = (lx + seaHalf) / (2 * seaHalf)
+      const v = (lz + seaHalf) / (2 * seaHalf)
+      const px = Math.min(Math.floor(u * maskRes), maskRes - 1)
+      const py = Math.min(Math.floor(v * maskRes), maskRes - 1)
+      if (near[py * maskRes + px] !== 1) continue
+      finePoints.push(oceanLocalToLonLat(lx, lz, OCEAN_LON, OCEAN_LAT))
+      fineIndices.push(iy * fineRes + ix)
+    }
+  }
+
+  if (finePoints.length > 0) {
+    const fineSampled = await viewer.sampleHeightMostDetailed(finePoints, { source: "terrain" })
+    for (let i = 0; i < fineSampled.length; i++) {
+      const h = fineSampled[i]?.[2]
+      if (typeof h === "number" && Number.isFinite(h)) {
+        fineData[fineIndices[i]] = h - oceanHeight
+      }
+    }
+  }
+
+  return { data: fineData, resolution: fineRes }
 }
 
 /** 把低分辨率真实地形高度场双线性放大，写入 SDF 纹理的 G 通道。 */
@@ -1219,8 +1314,18 @@ class WaveFieldSim {
   private copies: any[]
   private phases = new Float64Array(COPY_FACTORS.length)
   private phasesY = new Float64Array(COPY_FACTORS.length)
+  private weights: number[]
+  private base: number[]
+  private jitter: number[]
 
-  constructor(tsl: any, wgpu: any, noiseTextures: THREE.Texture[], size: number) {
+  constructor(
+    tsl: any,
+    wgpu: any,
+    noiseTextures: THREE.Texture[],
+    size: number,
+    copyWeights?: number[],
+    copySpeeds?: number[]
+  ) {
     const { uniform, texture, wgslFn, uv } = tsl
     const { NodeMaterial, QuadMesh } = wgpu
     this.size = size
@@ -1233,10 +1338,16 @@ class WaveFieldSim {
     configureDataTarget(this.rt, THREE.RepeatWrapping)
     this.texture = this.rt.texture
 
+    // 与 gpuocean WaveField 一致：重力波带 copyWeights/copySpeeds，
+    // 单纹理噪声（毛细波）走 COPY_FACTORS fallback。
+    this.weights = copyWeights ?? COPY_FACTORS.map(() => 1 / Math.sqrt(COPY_FACTORS.length))
+    this.base = copySpeeds ?? COPY_FACTORS.map(() => 0)
+    this.jitter = copySpeeds ? DISPERSION_JITTER : COPY_FACTORS
     this.copies = COPY_FACTORS.map(() => uniform(new THREE.Vector4()))
     const texNodes = noiseTextures.map((t) => texture(t))
     const fn = wgslFn(waveFieldCode)
     const mat = new NodeMaterial()
+    mat.name = "oceanWaveField"
     mat.lights = false
     mat.toneMapped = false
     mat.fragmentNode = fn(
@@ -1249,10 +1360,10 @@ class WaveFieldSim {
   }
 
   update(dt: number, texFreq: number, dispersion: number) {
-    const weight = 1 / Math.sqrt(COPY_FACTORS.length)
     for (let i = 0; i < COPY_FACTORS.length; i++) {
-      this.phases[i] += COPY_FACTORS[i] * dispersion * texFreq * dt
+      this.phases[i] += (this.base[i] + dispersion * this.jitter[i]) * texFreq * dt
       this.phasesY[i] += COPY_FACTORS_Y[i] * dispersion * texFreq * dt
+      const weight = this.weights[i]
       this.copies[i].value.set(
         COPY_OFFSETS[i][0] - this.phases[i],
         COPY_OFFSETS[i][1] - this.phasesY[i],
@@ -1340,7 +1451,7 @@ class FoamSim {
         depthBuffer: false,
         samples: 0,
       })
-      configureDataTarget(rt)
+      configureDataTarget(rt, THREE.RepeatWrapping)
       return rt
     })
     this.views = this.rts.map((rt) => rt.texture)
@@ -1377,6 +1488,7 @@ class FoamSim {
       tsl.wgslFn(terrainHeightCode),
     ])
     const mat = new NodeMaterial()
+    mat.name = "oceanFoam"
     mat.lights = false
     mat.toneMapped = false
     mat.fragmentNode = fn(
@@ -1488,7 +1600,7 @@ class FilmFoamSim {
         depthBuffer: false,
         samples: 0,
       })
-      configureDataTarget(rt)
+      configureDataTarget(rt, THREE.RepeatWrapping)
       return rt
     })
     this.views = this.rts.map((rt) => rt.texture)
@@ -1507,6 +1619,7 @@ class FilmFoamSim {
       tsl.wgslFn(simBlendCode),
     ])
     const mat = new NodeMaterial()
+    mat.name = "oceanFilmFoam"
     mat.lights = false
     mat.toneMapped = false
     mat.fragmentNode = fn(
@@ -1608,21 +1721,26 @@ class ShoreRibbon {
     const simTexNode = texture(simTexture)
     const mainTableNode = texture(mainTableTexture)
     const sdfTexNode = surface.sdfTexNode
+    // 共享 include 节点：vertexFn / varyFn 同在顶点阶段，重复 wgslFn(code) 会生成两份 fn 定义
+    const ribbonWrapColFn = tsl.wgslFn(wrapColCode)
+    const ribbonSimRestSFn = tsl.wgslFn(simRestSCode)
+    const ribbonSimBlendFn = tsl.wgslFn(simBlendCode)
     const vertexFn = wgslFn(ribbonVertexCode, [
       tsl.wgslFn(layerUVCode),
-      tsl.wgslFn(wrapColCode),
-      tsl.wgslFn(simRestSCode),
-      tsl.wgslFn(simBlendCode),
+      ribbonWrapColFn,
+      ribbonSimRestSFn,
+      ribbonSimBlendFn,
       tsl.wgslFn(warpCellAtCode),
       tsl.wgslFn(coastSdfCode),
       tsl.wgslFn(terrainHeightCode),
       tsl.wgslFn(softClampCode),
     ])
     const varyFn = wgslFn(ribbonWaveVaryingsCode, [
-      tsl.wgslFn(wrapColCode),
-      tsl.wgslFn(simRestSCode),
-      tsl.wgslFn(simBlendCode),
+      ribbonWrapColFn,
+      ribbonSimRestSFn,
+      ribbonSimBlendFn,
     ])
+    const gridFn = wgslFn(ribbonGridXZCode)
     const fragmentFn = wgslFn(fragmentCode, oceanShadingDeps(tsl))
     const displaced4 = vertexFn(
       positionGeometry,
@@ -1661,9 +1779,17 @@ class ShoreRibbon {
     const st = vec2(band, col).toVarying("ribbonST")
     const waveXZ = extras.xy.toVarying("ribbonWaveXZ")
     const stretch = extras.z.toVarying("ribbonStretch")
+    const gridXZ = gridFn(
+      positionGeometry,
+      mainTableNode,
+      surface.slopeU,
+      this.simZBaseU,
+      this.simTCamU
+    ).toVarying("ribbonGridXZ")
     const worldOffset = modelWorldMatrix.mul(vec4(displaced, 1)).xyz
     const rte = originHighU.sub(cameraHighU).add(originLowU.sub(cameraLowU)).add(worldOffset)
     const mat = new NodeMaterial()
+    mat.name = "oceanRibbon"
     mat.lights = false
     mat.toneMapped = false
     mat.transparent = false
@@ -1673,6 +1799,7 @@ class ShoreRibbon {
     mat.fragmentNode = fragmentFn(
       displaced.toVarying("ribbonWorld"),
       waveXZ,
+      gridXZ,
       tsl.float(-1),
       st,
       stretch,
@@ -1703,6 +1830,8 @@ class ShoreRibbon {
     this.mesh.onBeforeRender = () => {
       rtc.update()
     }
+    // 原版在同一 pass 中先画 grid 再画 ribbon；Three.js 下用 renderOrder 保证 ribbon 覆盖接缝。
+    this.mesh.renderOrder = 1
     void waterSdf
     void seaHalf
   }
@@ -1747,7 +1876,6 @@ interface OceanParams {
 
 class OceanSurface {
   readonly mesh: THREE.Mesh
-  readonly landMesh: THREE.Mesh
   readonly material: any
   d: any[]
   s: any[]
@@ -1908,12 +2036,14 @@ class OceanSurface {
     const displaced = packed.xyz
     const cut = packed.w.toVarying("oceanCut")
     const waveXZ = xz.toVarying("oceanWaveXZ")
+    const gridXZ = xz.toVarying("oceanGridXZ")
     const st = vec2(-1000, 0).toVarying("oceanST")
     const stretch = tsl.float(1).toVarying("oceanStretch")
     const oceanWorld = displaced.toVarying("oceanWorld")
     const worldOffset = modelWorldMatrix.mul(vec4(displaced, 1)).xyz
     const rte = originHighU.sub(cameraHighU).add(originLowU.sub(cameraLowU)).add(worldOffset)
     const mat = new NodeMaterial()
+    mat.name = "oceanSurface"
     mat.lights = false
     mat.toneMapped = false
     mat.transparent = false
@@ -1923,6 +2053,7 @@ class OceanSurface {
     mat.fragmentNode = fragmentFn(
       oceanWorld,
       waveXZ,
+      gridXZ,
       cut,
       st,
       stretch,
@@ -1946,41 +2077,6 @@ class OceanSurface {
     )
     this.material = mat
 
-    const landVS = wgslFn(landVSCode, [
-      tsl.wgslFn(coastSdfCode),
-      tsl.wgslFn(terrainHeightCode),
-    ])
-    const landFS = wgslFn(landFSCode, [
-      tsl.wgslFn(coastSdfCode),
-      tsl.wgslFn(terrainHeightCode),
-      tsl.wgslFn(sunWarmthCode),
-      tsl.wgslFn(sunTintCode),
-      tsl.wgslFn(skyColorCode),
-    ])
-    const landPos = landVS(xz, this.sdfTexNode, this.sdfTexNode, this.seaHalfU, this.slopeU, this.seaDepthU)
-    const landWorld = landPos.toVarying("landWorld")
-    const landXZ = xz.toVarying("landXZ")
-    const landOffset = modelWorldMatrix.mul(vec4(landPos, 1)).xyz
-    const landRte = originHighU.sub(cameraHighU).add(originLowU.sub(cameraLowU)).add(landOffset)
-    const landMat = new NodeMaterial()
-    landMat.lights = false
-    landMat.toneMapped = false
-    landMat.transparent = false
-    landMat.depthWrite = true
-    landMat.positionNode = landPos
-    landMat.vertexNode = cameraProjectionMatrix.mul(viewRTEU).mul(vec4(landRte, 1))
-    landMat.fragmentNode = landFS(
-      landWorld,
-      landXZ,
-      this.cameraPosU,
-      this.sunDirU,
-      this.sdfTexNode,
-      this.sdfTexNode,
-      this.seaHalfU,
-      this.slopeU,
-      this.seaDepthU
-    )
-
     const syncCamera = (_renderer: unknown, _scene: unknown, camera: THREE.Camera) => {
       rtc.update()
       this.cameraPosU.value.copy(camera.position).applyMatrix4(this.invFull)
@@ -1995,15 +2091,7 @@ class OceanSurface {
     this.mesh.matrix.setPosition(0, 0, 0)
     this.mesh.matrixWorldNeedsUpdate = true
     this.mesh.onBeforeRender = syncCamera
-
-    this.landMesh = new THREE.Mesh(geometry, landMat)
-    this.landMesh.frustumCulled = false
-    this.landMesh.matrixAutoUpdate = false
-    this.landMesh.matrix.copy(this.fullMatrix)
-    this.landMesh.matrix.setPosition(0, 0, 0)
-    this.landMesh.matrixWorldNeedsUpdate = true
-    this.landMesh.onBeforeRender = syncCamera
-    this.landMesh.renderOrder = -1
+    this.mesh.renderOrder = 0
   }
 
   exportLayerUniforms() {
@@ -2035,22 +2123,23 @@ class OceanSurface {
 
     const spread = (params.spread * Math.PI) / 180
     let sq = 0
-    for (let i = 0; i < count; i++) sq += SCALE_RATIO ** (2 * i)
+    for (let i = 0; i < count; i++) sq += LAYER_RATIO ** (2 * i)
     const ampNorm = params.amplitude / Math.sqrt(sq)
     const waveDir = (params.waveDir * Math.PI) / 180
     let meanX = 0
     let meanZ = 0
     for (let i = 0; i < count; i++) {
-      const lambda = params.wavelength * SCALE_RATIO ** i
+      const lambda = params.wavelength * LAYER_RATIO ** i
       const tile = lambda * this.wavesPerTile
       const omega = Math.sqrt((GRAVITY * lambda) / (2 * Math.PI))
       this.phases[i] += (omega / tile) * dt
       const angle = waveDir + DIR_FRACS[i] * spread
       const dx = Math.cos(angle)
       const dz = Math.sin(angle)
-      const amp = ampNorm * SCALE_RATIO ** i
-      meanX += dx * amp
-      meanZ += dz * amp
+      const amp = ampNorm * LAYER_RATIO ** i
+      // 原版用振幅方差 ratio^(2i) 作为 lean 的方向权重，而不是线性振幅。
+      meanX += LAYER_RATIO ** (2 * i) * dx
+      meanZ += LAYER_RATIO ** (2 * i) * dz
       this.d[i].value.set(dx, dz, 1 / tile, amp)
       this.s[i].value.set(UV_OFFSETS[i][0] - this.phases[i], UV_OFFSETS[i][1], 0, 0)
     }
@@ -2148,6 +2237,29 @@ function setOceanStatus(text: string) {
   if (status) status.textContent = text
 }
 
+/** 开发态：把 WGSL 首条编译错误打到控制台（pipeline 报错往往只是次生信息）。 */
+function installOceanWgslDiagnostics(renderer: any) {
+  const backend = renderer.backend
+  if (!backend?.isWebGPUBackend || backend.__oceanWgslDiagnostics) return
+  backend.__oceanWgslDiagnostics = true
+  const origCreateProgram = backend.createProgram.bind(backend)
+  backend.createProgram = (program: any) => {
+    origCreateProgram(program)
+    const gpuModule = backend.get(program)?.module?.module as
+      | GPUShaderModule
+      | undefined
+    gpuModule?.getCompilationInfo?.().then((info) => {
+      for (const msg of info.messages) {
+        if (msg.type === "error" || msg.type === "warning") {
+          console.error(
+            `[Ocean WGSL ${program.stage}${program.name ? `:${program.name}` : ""}] L${msg.lineNum}:${msg.linePos} ${msg.message}`
+          )
+        }
+      }
+    })
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 入口
 // ---------------------------------------------------------------------------
@@ -2175,6 +2287,19 @@ async function main() {
 
   const rtcUniforms = new tellux.RTCAutoUniforms(viewer.camera.threeCamera)
   const renderer = viewer.renderer
+  if (!renderer.backend?.isWebGPUBackend) {
+    setOceanStatus(
+      "Ocean 示例需要 WebGPU。当前环境已回退 WebGL，wgslFn 着色器无法编译。"
+    )
+    console.error(
+      "Ocean example requires WebGPU. WebGPURenderer fell back to WebGL2; wgslFn NodeMaterials cannot compile on this path."
+    )
+    return
+  }
+  if (import.meta.env.DEV) {
+    Node.captureStackTrace = true
+    installOceanWgslDiagnostics(renderer)
+  }
   viewer.useDefaultRenderLoop = false
 
   let last = performance.now()
@@ -2197,7 +2322,14 @@ async function main() {
   ].forEach(bindSlider)
 
   const tex = buildOceanTextures()
-  const waveField = new WaveFieldSim(tsl, wgpu, tex.gravity, tex.gravitySize)
+  const waveField = new WaveFieldSim(
+    tsl,
+    wgpu,
+    tex.gravity,
+    tex.gravitySize,
+    tex.gravityCopyWeights,
+    tex.gravityCopySpeeds
+  )
   const capField = new WaveFieldSim(
     tsl,
     wgpu,
@@ -2217,6 +2349,7 @@ async function main() {
   let oceanHeight = OCEAN_HEIGHT_FALLBACK
   let polygonsLocalForCoast: Array<Array<Array<{ x: number; z: number }>>> = []
   let heightData: Float32Array | null = null
+  let heightRes = HEIGHTFIELD_RES
   try {
     const waterPolygons = await fetchOsmWaterPolygons(OCEAN_LON, OCEAN_LAT, OSM_WATER_ZOOM, SEA_HALF)
     const provisionalOrigin = viewer.cartographicToMatrix4([
@@ -2256,17 +2389,26 @@ async function main() {
   // 失败时保留 bakeWaterSdfTexture 里的程序化沙滩 fallback。
   setOceanStatus(t({ zh: "正在采样真实地形高度场…", en: "Sampling real terrain heightfield…" }))
   try {
-    heightData = await sampleLocalHeightfield(viewer, SEA_HALF, oceanHeight, HEIGHTFIELD_RES)
+    const heightSampled = await sampleLocalHeightfield(
+      viewer,
+      SEA_HALF,
+      oceanHeight,
+      HEIGHTFIELD_RES,
+      waterSdf.mask,
+      waterSdf.resolution
+    )
+    heightData = heightSampled.data
+    heightRes = heightSampled.resolution
     // 水陆 mask 改为基于真实地形高度阈值
     const heightMask = buildWaterMaskFromHeightData(
       heightData,
-      HEIGHTFIELD_RES,
+      heightRes,
       WATER_SDF_RES,
       SEA_HALF,
       WATER_LEVEL
     )
     waterSdf = bakeWaterSdfTexture(polygonsLocalForCoast, SEA_HALF, WATER_SDF_RES, 8, heightMask)
-    fillHeightfieldIntoSdf(waterSdf.texture, heightData, HEIGHTFIELD_RES, WATER_SDF_RES)
+    fillHeightfieldIntoSdf(waterSdf.texture, heightData, heightRes, WATER_SDF_RES)
     setOceanStatus("")
   } catch (error) {
     console.error(error)
@@ -2337,13 +2479,13 @@ async function main() {
     if (!heightData) return
     const mask = buildWaterMaskFromHeightData(
       heightData,
-      HEIGHTFIELD_RES,
+      heightRes,
       WATER_SDF_RES,
       SEA_HALF,
       WATER_LEVEL + offset
     )
     const nextSdf = bakeWaterSdfTexture(polygonsLocalForCoast, SEA_HALF, WATER_SDF_RES, 8, mask)
-    fillHeightfieldIntoSdf(nextSdf.texture, heightData, HEIGHTFIELD_RES, WATER_SDF_RES)
+    fillHeightfieldIntoSdf(nextSdf.texture, heightData, heightRes, WATER_SDF_RES)
     waterSdf = nextSdf
     foam.setSdf(waterSdf.texture, SEA_HALF)
     surface.sdfTexNode.value = waterSdf.texture
