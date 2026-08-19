@@ -646,7 +646,11 @@ fn coastSDF(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32) -> 
 
 export const terrainHeightCode = `
 fn terrainHeight(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32, slope: f32, seaDepth: f32) -> f32 {
-  return min(max(slope * coastSDF(xz, sdfTex, samp, seaHalf), -seaDepth), 3.0);
+  let uv = xz / (2.0 * seaHalf) + 0.5;
+  let inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+  let h = textureSampleLevel(sdfTex, samp, clamp(uv, vec2f(0.0), vec2f(1.0)), 0.0).g;
+  // G 通道已烘焙真实地形局部高度；patch 外 fallback 为 3m 高地
+  return mix(3.0, min(max(h, -seaDepth), 3.0), inside);
 }
 `
 

@@ -122,6 +122,8 @@ const OSM_WATER_ZOOM = 12
 const OSM_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 /** 水域 SDF 纹理分辨率；片元按距离场软裁岸线。 */
 const WATER_SDF_RES = 512
+/** 真实地形高度场采样分辨率；会双线性放大到 WATER_SDF_RES 写入 SDF 纹理 G 通道。 */
+const HEIGHTFIELD_RES = 64
 /** SDF 编码半径（纹理像素）；约 spread×(2×SEA_HALF/RES) 米。 */
 const WATER_SDF_SPREAD_PX = 8
 const GRAVITY = 9.81
@@ -1003,7 +1005,8 @@ function computeSignedDistanceField(mask: Uint8Array, width: number, height: num
 function bakeWaterSdfTexture(
   polygonsLocal: Array<Array<Array<{ x: number; z: number }>>>,
   seaHalf: number,
-  resolution = WATER_SDF_RES
+  resolution = WATER_SDF_RES,
+  seaDepth = 8
 ): { texture: THREE.DataTexture; spreadMeters: number; mask: Uint8Array; resolution: number; seaHalf: number } {
   const mask = new Uint8Array(resolution * resolution)
   if (polygonsLocal.length === 0) {
@@ -1022,7 +1025,10 @@ function bakeWaterSdfTexture(
   const data = new Float32Array(resolution * resolution * 4)
   for (let i = 0; i < signed.length; i++) {
     // Tellux EDT：水域为正；gpuocean coastSDF：海域为负（米）
-    data[i * 4] = -signed[i] * metersPerPx
+    const sd = -signed[i] * metersPerPx
+    data[i * 4] = sd
+    // G 通道先放程序化沙滩 fallback；真实地形高度场采样成功后覆盖
+    data[i * 4 + 1] = Math.min(Math.max(SLOPE * sd, -seaDepth), 3)
     data[i * 4 + 3] = 1
   }
   const texture = new THREE.DataTexture(data, resolution, resolution, THREE.RGBAFormat, THREE.FloatType)
@@ -1034,6 +1040,69 @@ function bakeWaterSdfTexture(
   texture.wrapT = THREE.ClampToEdgeWrapping
   texture.needsUpdate = true
   return { texture, spreadMeters: WATER_SDF_SPREAD_PX * metersPerPx, mask, resolution, seaHalf }
+}
+
+/**
+ * 用 Tellux 的 sampleHeightMostDetailed(source: 'terrain') 对水面 patch 做网格采样，
+ * 返回局部坐标高度（椭球高 - oceanHeight）。
+ */
+async function sampleLocalHeightfield(
+  viewer: {
+    sampleHeightMostDetailed: (
+      positions: Array<[number, number]>,
+      options?: { source?: "terrain" | "all" | "tileset" }
+    ) => Promise<Array<[number, number, number] | undefined>>
+  },
+  seaHalf: number,
+  oceanHeight: number,
+  resolution = HEIGHTFIELD_RES
+): Promise<Float32Array> {
+  const points: Array<[number, number]> = []
+  const cell = (2 * seaHalf) / resolution
+  for (let iy = 0; iy < resolution; iy++) {
+    for (let ix = 0; ix < resolution; ix++) {
+      const x = (ix + 0.5) * cell - seaHalf
+      const z = (iy + 0.5) * cell - seaHalf
+      points.push(oceanLocalToLonLat(x, z, OCEAN_LON, OCEAN_LAT))
+    }
+  }
+  const sampled = await viewer.sampleHeightMostDetailed(points, { source: "terrain" })
+  const heights = new Float32Array(resolution * resolution)
+  for (let i = 0; i < sampled.length; i++) {
+    const h = sampled[i]?.[2]
+    heights[i] = typeof h === "number" && Number.isFinite(h) ? h - oceanHeight : 0
+  }
+  return heights
+}
+
+/** 把低分辨率真实地形高度场双线性放大，写入 SDF 纹理的 G 通道。 */
+function fillHeightfieldIntoSdf(
+  texture: THREE.DataTexture,
+  heightData: Float32Array,
+  srcRes: number,
+  dstRes: number
+) {
+  const data = texture.image.data as Float32Array
+  const scale = srcRes / dstRes
+  for (let y = 0; y < dstRes; y++) {
+    for (let x = 0; x < dstRes; x++) {
+      const fx = (x + 0.5) * scale - 0.5
+      const fy = (y + 0.5) * scale - 0.5
+      const x0 = Math.min(Math.max(Math.floor(fx), 0), srcRes - 1)
+      const y0 = Math.min(Math.max(Math.floor(fy), 0), srcRes - 1)
+      const x1 = Math.min(x0 + 1, srcRes - 1)
+      const y1 = Math.min(y0 + 1, srcRes - 1)
+      const ax = Math.min(Math.max(fx - Math.floor(fx), 0), 1)
+      const ay = Math.min(Math.max(fy - Math.floor(fy), 0), 1)
+      const h =
+        heightData[y0 * srcRes + x0] * (1 - ax) * (1 - ay) +
+        heightData[y0 * srcRes + x1] * ax * (1 - ay) +
+        heightData[y1 * srcRes + x0] * (1 - ax) * ay +
+        heightData[y1 * srcRes + x1] * ax * ay
+      data[(y * dstRes + x) * 4 + 1] = h
+    }
+  }
+  texture.needsUpdate = true
 }
 
 function buildSeaGeometry(gridN: number): THREE.BufferGeometry {
@@ -2071,7 +2140,7 @@ async function main() {
 
   setOceanStatus(t({ zh: "正在读取 OSM 水域瓦片…", en: "Fetching OSM water tiles…" }))
   let waterSdf: {
-    texture: THREE.Texture
+    texture: THREE.DataTexture
     spreadMeters: number
     mask: Uint8Array
     resolution: number
@@ -2110,6 +2179,23 @@ async function main() {
       t({
         zh: "OSM 水域瓦片读取失败，已回退矩形水面",
         en: "OSM water tiles failed; using a rectangular sea patch",
+      })
+    )
+  }
+
+  // 用 Tellux 真实地形最高细节采样高度场，写入 SDF 纹理 G 通道；
+  // 失败时保留 bakeWaterSdfTexture 里的程序化沙滩 fallback。
+  setOceanStatus(t({ zh: "正在采样真实地形高度场…", en: "Sampling real terrain heightfield…" }))
+  try {
+    const heightData = await sampleLocalHeightfield(viewer, SEA_HALF, oceanHeight, HEIGHTFIELD_RES)
+    fillHeightfieldIntoSdf(waterSdf.texture, heightData, HEIGHTFIELD_RES, WATER_SDF_RES)
+    setOceanStatus("")
+  } catch (error) {
+    console.error(error)
+    setOceanStatus(
+      t({
+        zh: "真实地形高度场采样失败，使用程序化沙滩高度",
+        en: "Real terrain heightfield failed; using procedural fallback",
       })
     )
   }
@@ -2162,10 +2248,10 @@ async function main() {
     waterSdf,
     SEA_HALF
   )
-  viewer.scene.threeScene.add(surface.landMesh)
+  // 真实地形 mesh 直接作为岸线，不再添加程序化沙滩 landMesh
   viewer.scene.threeScene.add(surface.mesh)
   viewer.scene.threeScene.add(ribbon.mesh)
-  bindWaterToggle([surface.landMesh, surface.mesh, ribbon.mesh])
+  bindWaterToggle([surface.mesh, ribbon.mesh])
 
   const camLocal = new THREE.Vector3()
   const invOrigin = originMatrix.clone().invert()
@@ -2174,7 +2260,6 @@ async function main() {
     const params = readParams()
     const simDt = params.pause ? 0 : dt
     const waterVisible = el("toggle-water").checked
-    surface.landMesh.visible = waterVisible
     surface.mesh.visible = waterVisible
     ribbon.mesh.visible = waterVisible
     if (!waterVisible) return
