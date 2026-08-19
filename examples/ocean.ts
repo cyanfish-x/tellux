@@ -123,7 +123,7 @@ const OSM_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 /** 水域 SDF 纹理分辨率；片元按距离场软裁岸线。 */
 const WATER_SDF_RES = 512
 /** 真实地形高度场采样分辨率；会双线性放大到 WATER_SDF_RES 写入 SDF 纹理 G 通道。 */
-const HEIGHTFIELD_RES = 64
+const HEIGHTFIELD_RES = 128
 /** 水陆阈值：真实地形局部高度低于该值视为水域（米）。 */
 const WATER_LEVEL = 0
 /** SDF 编码半径（纹理像素）；约 spread×(2×SEA_HALF/RES) 米。 */
@@ -2193,6 +2193,7 @@ async function main() {
     "wavelength", "amplitude", "choppiness", "layers", "spread", "waveDir", "dispersion", "foam",
     "foamLife", "foamScale",
     "ripple", "rippleScale", "rippleAniso", "rippleBias", "sss", "depth", "caustics", "lean",
+    "waterLevelOffset",
   ].forEach(bindSlider)
 
   const tex = buildOceanTextures()
@@ -2215,6 +2216,7 @@ async function main() {
   }
   let oceanHeight = OCEAN_HEIGHT_FALLBACK
   let polygonsLocalForCoast: Array<Array<Array<{ x: number; z: number }>>> = []
+  let heightData: Float32Array | null = null
   try {
     const waterPolygons = await fetchOsmWaterPolygons(OCEAN_LON, OCEAN_LAT, OSM_WATER_ZOOM, SEA_HALF)
     const provisionalOrigin = viewer.cartographicToMatrix4([
@@ -2254,7 +2256,7 @@ async function main() {
   // 失败时保留 bakeWaterSdfTexture 里的程序化沙滩 fallback。
   setOceanStatus(t({ zh: "正在采样真实地形高度场…", en: "Sampling real terrain heightfield…" }))
   try {
-    const heightData = await sampleLocalHeightfield(viewer, SEA_HALF, oceanHeight, HEIGHTFIELD_RES)
+    heightData = await sampleLocalHeightfield(viewer, SEA_HALF, oceanHeight, HEIGHTFIELD_RES)
     // 水陆 mask 改为基于真实地形高度阈值
     const heightMask = buildWaterMaskFromHeightData(
       heightData,
@@ -2278,14 +2280,14 @@ async function main() {
 
   const originMatrix = viewer.cartographicToMatrix4([OCEAN_LON, OCEAN_LAT, oceanHeight])
   const geometry = buildSeaGeometry(GRID_N)
-  const coast = buildCoastFromWaterMask(
+  let coast = buildCoastFromWaterMask(
     waterSdf.mask,
     waterSdf.resolution,
     waterSdf.seaHalf,
     (x, z) => pointInWaterMask(waterSdf.mask, waterSdf.resolution, waterSdf.seaHalf, x, z)
   )
-  const chain = new ChainSim(coast)
-  const filmFoam = new FilmFoamSim(tsl, wgpu, chain.simTexture)
+  let chain = new ChainSim(coast)
+  let filmFoam = new FilmFoamSim(tsl, wgpu, chain.simTexture)
   foam.setSdf(waterSdf.texture, SEA_HALF)
 
   viewer.flyToTarget(
@@ -2312,7 +2314,7 @@ async function main() {
     waterSdf,
     SEA_HALF
   )
-  const ribbon = new ShoreRibbon(
+  let ribbon = new ShoreRibbon(
     tsl,
     wgpu,
     chain.simTexture,
@@ -2325,9 +2327,58 @@ async function main() {
     SEA_HALF
   )
   // 真实地形 mesh 直接作为岸线，不再添加程序化沙滩 landMesh
+  const waterMeshes: THREE.Object3D[] = [surface.mesh, ribbon.mesh]
   viewer.scene.threeScene.add(surface.mesh)
   viewer.scene.threeScene.add(ribbon.mesh)
-  bindWaterToggle([surface.mesh, ribbon.mesh])
+  bindWaterToggle(waterMeshes)
+
+  // 水位偏移滑杆：基于已采样的高度场重建 waterMask / SDF / coast / ribbon
+  const rebuildWaterline = (offset: number) => {
+    if (!heightData) return
+    const mask = buildWaterMaskFromHeightData(
+      heightData,
+      HEIGHTFIELD_RES,
+      WATER_SDF_RES,
+      SEA_HALF,
+      WATER_LEVEL + offset
+    )
+    const nextSdf = bakeWaterSdfTexture(polygonsLocalForCoast, SEA_HALF, WATER_SDF_RES, 8, mask)
+    fillHeightfieldIntoSdf(nextSdf.texture, heightData, HEIGHTFIELD_RES, WATER_SDF_RES)
+    waterSdf = nextSdf
+    foam.setSdf(waterSdf.texture, SEA_HALF)
+    surface.sdfTexNode.value = waterSdf.texture
+
+    coast = buildCoastFromWaterMask(
+      waterSdf.mask,
+      waterSdf.resolution,
+      waterSdf.seaHalf,
+      (x, z) => pointInWaterMask(waterSdf.mask, waterSdf.resolution, waterSdf.seaHalf, x, z)
+    )
+    chain = new ChainSim(coast)
+    filmFoam = new FilmFoamSim(tsl, wgpu, chain.simTexture)
+
+    viewer.scene.threeScene.remove(ribbon.mesh)
+    const idx = waterMeshes.indexOf(ribbon.mesh)
+    if (idx >= 0) waterMeshes.splice(idx, 1)
+    ribbon = new ShoreRibbon(
+      tsl,
+      wgpu,
+      chain.simTexture,
+      coast.mainTableTexture,
+      filmFoam.texture,
+      originMatrix,
+      rtcUniforms,
+      surface,
+      waterSdf,
+      SEA_HALF
+    )
+    viewer.scene.threeScene.add(ribbon.mesh)
+    waterMeshes.push(ribbon.mesh)
+  }
+
+  el("waterLevelOffset").addEventListener("input", () => {
+    rebuildWaterline(parseFloat(el("waterLevelOffset").value))
+  })
 
   const camLocal = new THREE.Vector3()
   const invOrigin = originMatrix.clone().invert()

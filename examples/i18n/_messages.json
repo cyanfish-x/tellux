@@ -771,6 +771,10 @@
     "浪峰倾斜",
     "Lean"
   ],
+  "example.ocean.label.waterLevelOffset": [
+    "水位偏移",
+    "Water level offset"
+  ],
   "example.atmosphere.panel.aria": [
     "大气与云控件",
     "Atmosphere & clouds controls"

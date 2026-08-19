@@ -194,6 +194,7 @@ export const zh: MessageTable = {
   'example.ocean.label.depth': '水深',
   'example.ocean.label.caustics': '焦散',
   'example.ocean.label.lean': '浪峰倾斜',
+  'example.ocean.label.waterLevelOffset': '水位偏移',
   'example.atmosphere.panel.aria': '大气与云控件',
   'example.atmosphere.panel.title': '体积云与大气',
   'example.atmosphere.folder.place': '地点',

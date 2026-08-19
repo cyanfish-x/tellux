@@ -677,8 +677,9 @@ fn terrainHeight(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32
   let c01 = textureLoad(sdfTex, vec2i(x0, y1), 0);
   let c11 = textureLoad(sdfTex, vec2i(x1, y1), 0);
   let h = mix(mix(c00, c10, a), mix(c01, c11, a), b).g;
-  // G 通道已烘焙真实地形局部高度；patch 外 fallback 为 3m 高地
-  return mix(3.0, min(max(h, -seaDepth), 3.0), inside);
+  // G 通道已烘焙真实地形局部高度；patch 外 fallback 为 3m 高地。
+  // 不再把真实地形上限压到 3m，岸线才能和真实地形 mesh 对齐。
+  return mix(3.0, max(h, -seaDepth), inside);
 }
 `
 

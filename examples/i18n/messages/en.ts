@@ -194,6 +194,7 @@ export const en: MessageTable = {
   'example.ocean.label.depth': 'Depth',
   'example.ocean.label.caustics': 'Caustics',
   'example.ocean.label.lean': 'Lean',
+  'example.ocean.label.waterLevelOffset': 'Water level offset',
   'example.atmosphere.panel.aria': 'Atmosphere & clouds controls',
   'example.atmosphere.panel.title': 'Volumetric clouds & atmosphere',
   'example.atmosphere.folder.place': 'Places',
