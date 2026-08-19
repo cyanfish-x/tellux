@@ -727,6 +727,50 @@
     "泡沫",
     "Foam"
   ],
+  "example.ocean.label.foamLife": [
+    "泡沫寿命",
+    "Foam life"
+  ],
+  "example.ocean.label.foamScale": [
+    "泡沫尺度",
+    "Foam scale"
+  ],
+  "example.ocean.folder.shading": [
+    "着色",
+    "Shading"
+  ],
+  "example.ocean.label.ripple": [
+    "毛细浪",
+    "Ripple"
+  ],
+  "example.ocean.label.rippleScale": [
+    "毛细尺度",
+    "Ripple scale"
+  ],
+  "example.ocean.label.rippleAniso": [
+    "毛细各向异性",
+    "Ripple aniso"
+  ],
+  "example.ocean.label.rippleBias": [
+    "毛细偏置",
+    "Ripple bias"
+  ],
+  "example.ocean.label.sss": [
+    "次表面散射",
+    "SSS"
+  ],
+  "example.ocean.label.depth": [
+    "水深",
+    "Depth"
+  ],
+  "example.ocean.label.caustics": [
+    "焦散",
+    "Caustics"
+  ],
+  "example.ocean.label.lean": [
+    "浪峰倾斜",
+    "Lean"
+  ],
   "example.atmosphere.panel.aria": [
     "大气与云控件",
     "Atmosphere & clouds controls"

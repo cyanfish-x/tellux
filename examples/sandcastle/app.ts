@@ -15,6 +15,7 @@ import {
   getSandcastleExample,
   sandcastleExamples,
 } from "./registry"
+import { expandLocalLibImports } from "./expand-local-lib-imports"
 import type {
   SandcastleEditorPane,
   SandcastleExample,
@@ -23,6 +24,12 @@ import type {
 } from "./types"
 
 const telluxSourceModules = import.meta.glob("../../src/**/*.ts", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>
+
+const exampleLibModules = import.meta.glob("../lib/**/*.ts", {
   eager: true,
   query: "?raw",
   import: "default",
@@ -434,11 +441,29 @@ async function getRegisteredTypeScriptWorker() {
   return monaco.languages.typescript.getTypeScriptWorker()
 }
 
+const sandcastleExpandedUri = monaco.Uri.parse(
+  "file:///tellux/examples/sandcastle-expanded.ts"
+)
+
 async function getCompiledJavascript() {
+  const source = expandLocalLibImports(
+    models.javascript.getValue(),
+    exampleLibModules
+  )
+  let expandedModel = monaco.editor.getModel(sandcastleExpandedUri)
+  if (!expandedModel) {
+    expandedModel = monaco.editor.createModel(
+      source,
+      "typescript",
+      sandcastleExpandedUri
+    )
+  } else {
+    expandedModel.setValue(source)
+  }
   const worker = await getRegisteredTypeScriptWorker()
-  const client = await worker(models.javascript.uri)
-  const output = await client.getEmitOutput(models.javascript.uri.toString())
-  return output.outputFiles[0]?.text ?? models.javascript.getValue()
+  const client = await worker(sandcastleExpandedUri)
+  const output = await client.getEmitOutput(sandcastleExpandedUri.toString())
+  return output.outputFiles[0]?.text ?? source
 }
 
 async function getCurrentPayload(runId: string): Promise<SandcastleRunPayload> {

@@ -124,13 +124,26 @@ function syncCollapseHeight(collapse: HTMLElement, open: boolean) {
   collapse.style.height = open ? 'auto' : '0px'
 }
 
+function getCollapseTargetHeight(collapse: HTMLElement, open: boolean): number {
+  if (!open) return 0
+  const inner = collapse.firstElementChild as HTMLElement | null
+  if (!inner) return 0
+
+  const natural = inner.scrollHeight
+  const maxHeight = getComputedStyle(inner).maxHeight
+  if (maxHeight && maxHeight !== 'none') {
+    const cap = parseFloat(maxHeight)
+    if (!Number.isNaN(cap)) return Math.min(natural, cap)
+  }
+  return natural
+}
+
 function runHeightTransition(
   collapse: HTMLElement,
   open: boolean,
   onDone: () => void
 ) {
-  const inner = collapse.firstElementChild as HTMLElement | null
-  const target = open ? (inner?.scrollHeight ?? 0) : 0
+  const target = getCollapseTargetHeight(collapse, open)
 
   collapse.style.overflow = 'hidden'
   if (open) {

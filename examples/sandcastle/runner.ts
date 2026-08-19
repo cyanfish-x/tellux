@@ -122,7 +122,11 @@ function removeOriginalModuleScripts() {
 function stripModuleDeclarations(code: string) {
   return code
     .replace(/^\s*import\s+["'][^"']+["'];?\s*$/gm, "")
-    .replace(/^\s*import[\s\S]*?\s+from\s+["'][^"']+["'];?\s*$/gm, "")
+    // 支持多行 named import；不能用 m 模式下的 `$`
+    .replace(
+      /^\s*import\s+(type\s+)?(\{[\s\S]*?\}|\*\s+as\s+[A-Za-z_$][\w$]*|[A-Za-z_$][\w$]*)\s+from\s+["'][^"']+["'];?/gm,
+      ""
+    )
     .replace(/^\s*export\s+\{\s*\};?\s*$/gm, "")
 }
 

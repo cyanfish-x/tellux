@@ -54,7 +54,7 @@
                 </label>
                 <label class="example-panel__row example-panel__row--slider example-panel__row--input">
                   <span class="example-panel__label" data-i18n="example.ocean.label.amplitude">振幅</span>
-                  <input id="amplitude" class="example-panel__slider" type="range" min="0" max="2" step="0.02" value="0.4" />
+                  <input id="amplitude" class="example-panel__slider" type="range" min="0" max="2" step="0.02" value="0.2" />
                   <span class="example-panel__value">0.4</span>
                 </label>
                 <label class="example-panel__row example-panel__row--slider example-panel__row--input">
@@ -86,6 +86,64 @@
                   <span class="example-panel__label" data-i18n="example.ocean.label.foam">泡沫</span>
                   <input id="foam" class="example-panel__slider" type="range" min="0" max="1" step="0.02" value="0.6" />
                   <span class="example-panel__value">0.6</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.foamLife">泡沫寿命</span>
+                  <input id="foamLife" class="example-panel__slider" type="range" min="0.5" max="12" step="0.5" value="4" />
+                  <span class="example-panel__value">4</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.foamScale">泡沫尺度</span>
+                  <input id="foamScale" class="example-panel__slider" type="range" min="0.5" max="3" step="0.05" value="1" />
+                  <span class="example-panel__value">1</span>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary" data-i18n="example.ocean.folder.shading">着色</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.ripple">毛细浪</span>
+                  <input id="ripple" class="example-panel__slider" type="range" min="0" max="0.6" step="0.01" value="0.2" />
+                  <span class="example-panel__value">0.2</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.rippleScale">毛细尺度</span>
+                  <input id="rippleScale" class="example-panel__slider" type="range" min="0.05" max="2.5" step="0.01" value="0.5" />
+                  <span class="example-panel__value">0.5</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.rippleAniso">毛细各向异性</span>
+                  <input id="rippleAniso" class="example-panel__slider" type="range" min="0" max="1" step="0.05" value="0.8" />
+                  <span class="example-panel__value">0.8</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.rippleBias">毛细偏置</span>
+                  <input id="rippleBias" class="example-panel__slider" type="range" min="0" max="1" step="0.05" value="0.8" />
+                  <span class="example-panel__value">0.8</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.sss">次表面散射</span>
+                  <input id="sss" class="example-panel__slider" type="range" min="0" max="1.5" step="0.05" value="1.5" />
+                  <span class="example-panel__value">1.5</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.depth">水深</span>
+                  <input id="depth" class="example-panel__slider" type="range" min="0.5" max="40" step="0.5" value="8" />
+                  <span class="example-panel__value">8</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.caustics">焦散</span>
+                  <input id="caustics" class="example-panel__slider" type="range" min="0" max="2" step="0.05" value="1" />
+                  <span class="example-panel__value">1</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.lean">浪峰倾斜</span>
+                  <input id="lean" class="example-panel__slider" type="range" min="0" max="3" step="0.05" value="0.5" />
+                  <span class="example-panel__value">0.5</span>
                 </label>
               </div>
             </div>

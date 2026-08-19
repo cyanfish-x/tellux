@@ -1576,6 +1576,7 @@ select.field__input {
   --ep-input: #2c3138;
   --ep-guide: #3a414b;
   --ep-font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --ep-chrome-h: 52px;
 
   position: absolute;
   top: 12px;
@@ -1583,7 +1584,7 @@ select.field__input {
   z-index: 10;
   width: min(300px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid var(--ep-border);
   border-radius: 8px;
   background: var(--ep-bg);
@@ -1692,6 +1693,32 @@ select.field__input {
 .example-panel__content,
 .leva-panel__content {
   min-height: 0;
+  max-height: calc(100vh - 24px - var(--ep-chrome-h));
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(142, 162, 150, 0.42) transparent;
+}
+
+.example-panel__content::-webkit-scrollbar,
+.leva-panel__content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.example-panel__content::-webkit-scrollbar-track,
+.leva-panel__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.example-panel__content::-webkit-scrollbar-thumb,
+.leva-panel__content::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(142, 162, 150, 0.35);
+}
+
+.example-panel__content::-webkit-scrollbar-thumb:hover,
+.leva-panel__content::-webkit-scrollbar-thumb:hover {
+  background: rgba(142, 162, 150, 0.55);
 }
 
 .example-panel__folder,

@@ -7,11 +7,15 @@
 //     wgslFn 原样内嵌,渲染壳换成 QuadMesh + RenderTarget / NodeMaterial
 //
 // 地形：有 token 时用 Cesium World Bathymetry（Ion 2426648）。
-// 水域岸线：OSM water 矢量瓦片 → 烘焙 SDF 纹理，片元软裁；海面高度取近岸陆地椭球高。
+// 水域岸线：OSM water 矢量 → 米制有符号 SDF（海为负，与 gpuocean 一致）。
+// 海面不透明；沙滩用同一条 SDF 的 land mesh，冲岸 ribbon 与海面共用完整 fs。
 //
 // 单文件约束:tellux 的 sandcastle 会自动收录 examples 根目录 .ts 并剥离
 // import,只注入 tellux / THREE / exampleMapServiceConfig / setupExamplePanels /
 // bootExampleI18n 以及 TSL / WEBGPU / getSunDirectionECEF / VectorTile / Pbf 等可选绑定。
+// `./lib/*` 例外：由 expandLocalLibImports 在编译前内联。
+//
+// 第 2 组冲岸：Coast 弧长表 / ChainSim / shore ribbon / film foam → examples/lib/ocean-shore.ts
 // ============================================================================
 
 import tellux from "../src"
@@ -25,7 +29,9 @@ import {
   uniform,
   texture,
   wgslFn,
+  vec2,
   vec4,
+  float as tslFloat,
   positionGeometry,
   modelWorldMatrix,
   cameraProjectionMatrix,
@@ -35,9 +41,41 @@ import { NodeMaterial, QuadMesh } from "three/webgpu"
 import { VectorTile as ImportedVectorTile } from "@mapbox/vector-tile"
 import ImportedPbf from "pbf"
 import { getSunDirectionECEF as importedGetSunDirectionECEF } from "@takram/three-atmosphere"
+import {
+  buildCoastFromWaterMask,
+  buildRibbonGeometry,
+  ChainSim,
+  coastSdfCode,
+  colTCode,
+  filmFoamCode,
+  filmFoamAtCode,
+  FOAM_RISE,
+  GRID_N,
+  landFragmentCode,
+  landVertexCode,
+  oceanShadingCode,
+  oceanVertexCode,
+  ribbonVertexCode,
+  ribbonWaveVaryingsCode,
+  sampleWaveLevel,
+  SIM_COLS,
+  simBlendCode,
+  simRestSCode,
+  skyColorCode,
+  SLOPE,
+  softClampCode,
+  sunTintCode,
+  sunWarmthCode,
+  terrainHeightCode,
+  WARP_CELL,
+  warpCellAtCode,
+  warpVertexCode,
+  wrapColCode,
+} from "./lib/ocean-shore"
 
 // sandcastle 沙盒里 import 全部被剥离,runner 会注入 TSL / WEBGPU / getSunDirectionECEF /
 // VectorTile / Pbf；真实页面上回退到上方静态 import。
+// `./lib/*` 由 Sandcastle expandLocalLibImports 在编译前内联。
 declare const TSL: any
 declare const WEBGPU: any
 declare const getSunDirectionECEF: typeof importedGetSunDirectionECEF
@@ -49,7 +87,9 @@ const tsl = typeof TSL !== "undefined" ? TSL : {
   uniform,
   texture,
   wgslFn,
+  vec2,
   vec4,
+  float: tslFloat,
   positionGeometry,
   modelWorldMatrix,
   cameraProjectionMatrix,
@@ -78,7 +118,6 @@ const OCEAN_LAT = 36.95
 /** 占位椭球高；真正海面高度会按近岸陆地采样校正（美东岸大地水准面约 -30 m）。 */
 const OCEAN_HEIGHT_FALLBACK = 0
 const SEA_HALF = 3000
-const GRID_N = 96
 const OSM_WATER_ZOOM = 12
 const OSM_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 /** 水域 SDF 纹理分辨率；片元按距离场软裁岸线。 */
@@ -86,7 +125,17 @@ const WATER_SDF_RES = 512
 /** SDF 编码半径（纹理像素）；约 spread×(2×SEA_HALF/RES) 米。 */
 const WATER_SDF_SPREAD_PX = 8
 const GRAVITY = 9.81
+const CAPILLARY_SIGMA_RHO = 7.4e-5
+const CAP_DISPERSION = 1.5
 const FOAM_SIZE = 512
+const FOAM_REGION = 80
+const CAP_ANGLES = [0.4, -0.8, 1.7]
+const CAP_ANISO_FRACS = [0, 0.45, -0.35]
+const CAP_SCALES = [1, 0.72, 0.52]
+const CAP_UV_OFFSETS = [
+  [0.19, 0.47], [0.61, 0.83], [0.07, 0.29],
+  [0.37, 0.71], [0.83, 0.13], [0.53, 0.59],
+]
 
 const SCALE_RATIO = 0.68
 const DIR_FRACS = [0, 0.9, -0.75, 0.45, -0.35, 0.7, -1, 0.2]
@@ -499,12 +548,15 @@ function buildOceanTextures() {
     for (let j = 0; j < m.length; j++) data[j * 4] = floatToHalf(m[j])
     return { data, width: s, height: s }
   })
-  const foamPattern = floatDataTexture(mips[0].data, pat.size, { repeat: false, mipmaps: mips.slice(1) })
+  // WebGPU DataTexture 的 mipmaps 需要包含 level 0，否则 base level 会被 mip1 覆盖，
+  // 泡沫图案会变成低分辨率块状。
+  const foamPattern = floatDataTexture(mips[0].data, pat.size, { repeat: true, mipmaps: mips })
   return {
     gravity,
     gravitySize: g.size,
     gravityWavesPerTile: g.wavesPerTile,
     gravityDispGrad: g.dispGradPerTexel,
+    gravityHeights: g.variants.map((v: { h: Float32Array }) => v.h) as Float32Array[],
     capillary,
     capillarySize: cap.size,
     capillaryWavesPerTile: cap.wavesPerTile,
@@ -535,190 +587,10 @@ fn waveFieldMain(uvc: vec2f,
 }
 `
 
-const vertexCode = `
-fn oceanVertex(xz: vec2f,
-               waveTex: texture_2d<f32>, samp: sampler,
-               d0: vec4f, s0: vec4f, d1: vec4f, s1: vec4f, d2: vec4f, s2: vec4f, d3: vec4f, s3: vec4f,
-               d4: vec4f, s4: vec4f, d5: vec4f, s5: vec4f, d6: vec4f, s6: vec4f, d7: vec4f, s7: vec4f,
-               numLayers: f32, choppiness: f32, dGrad: f32, hGrad: f32, ampInv: f32) -> vec3f {
-  var height = 0.0;
-  var disp = vec2f(0.0);
-  if (numLayers > 0.5) {
-    let dir = d0.xy; let invL = d0.z; let amp = d0.w;
-    let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s0.xy), 0.0);
-    height += amp * s.x;
-    disp += choppiness * amp * s.y * dir;
-  }
-  if (numLayers > 1.5) {
-    let dir = d1.xy; let invL = d1.z; let amp = d1.w;
-    let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s1.xy), 0.0);
-    height += amp * s.x;
-    disp += choppiness * amp * s.y * dir;
-  }
-  if (numLayers > 2.5) {
-    let dir = d2.xy; let invL = d2.z; let amp = d2.w;
-    let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s2.xy), 0.0);
-    height += amp * s.x;
-    disp += choppiness * amp * s.y * dir;
-  }
-  if (numLayers > 3.5) {
-    let dir = d3.xy; let invL = d3.z; let amp = d3.w;
-    let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s3.xy), 0.0);
-    height += amp * s.x;
-    disp += choppiness * amp * s.y * dir;
-  }
-  if (numLayers > 4.5) {
-    let dir = d4.xy; let invL = d4.z; let amp = d4.w;
-    let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s4.xy), 0.0);
-    height += amp * s.x;
-    disp += choppiness * amp * s.y * dir;
-  }
-  if (numLayers > 5.5) {
-    let dir = d5.xy; let invL = d5.z; let amp = d5.w;
-    let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s5.xy), 0.0);
-    height += amp * s.x;
-    disp += choppiness * amp * s.y * dir;
-  }
-  if (numLayers > 6.5) {
-    let dir = d6.xy; let invL = d6.z; let amp = d6.w;
-    let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s6.xy), 0.0);
-    height += amp * s.x;
-    disp += choppiness * amp * s.y * dir;
-  }
-  if (numLayers > 7.5) {
-    let dir = d7.xy; let invL = d7.z; let amp = d7.w;
-    let s = textureSampleLevel(waveTex, samp, layerUV(xz, dir, invL, s7.xy), 0.0);
-    height += amp * s.x;
-    disp += choppiness * amp * s.y * dir;
-  }
-  // gpuocean 与 Tellux 当地架都是 Y-up：X/Z 水平，Y 为波高。
-  // 不要写成 vec3(xz + disp, height)（那是 Z-up，海面会立起来）。
-  return vec3f(xz.x + disp.x, height, xz.y + disp.y);
-}
-`
-
-const fragmentCode = `
-fn oceanFragment(world: vec3f, waveXZ: vec2f,
-                 waveTex: texture_2d<f32>, foamTex: texture_2d<f32>, foamPatTex: texture_2d<f32>, samp: sampler,
-                 d0: vec4f, s0: vec4f, d1: vec4f, s1: vec4f, d2: vec4f, s2: vec4f, d3: vec4f, s3: vec4f,
-                 d4: vec4f, s4: vec4f, d5: vec4f, s5: vec4f, d6: vec4f, s6: vec4f, d7: vec4f, s7: vec4f,
-                 numLayers: f32, choppiness: f32, dGrad: f32, hGrad: f32, ampInv: f32,
-                 foamRegion: f32, foamScale: f32,
-                 cameraPos: vec3f, sunDir: vec3f,
-                 sdfTex: texture_2d<f32>, seaHalf: f32, sdfSpreadMeters: f32) -> vec4f {
-  // 用静水面 XZ 采样 SDF（不跟碎浪位移走），岸线才稳。
-  let maskUv = waveXZ / (2.0 * seaHalf) + 0.5;
-  let sdfRaw = textureSample(sdfTex, samp, maskUv).r;
-  let sd = (sdfRaw - 0.5) * 2.0 * sdfSpreadMeters;
-  let aa = max(fwidth(sd), sdfSpreadMeters * 0.02);
-  let waterAlpha = smoothstep(-aa, aa, sd);
-  if (waterAlpha < 0.01) {
-    discard;
-  }
-  var dPx = vec3f(1.0, 0.0, 0.0);
-  var dPz = vec3f(0.0, 0.0, 1.0);
-  if (numLayers > 0.5) {
-    let dir = d0.xy; let invL = d0.z; let amp = d0.w;
-    let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s0.xy));
-    let duvdx = vec2f(dir.x, -dir.y) * invL;
-    let duvdz = vec2f(dir.y, dir.x) * invL;
-    let grad = vec2f(s.z, s.w) * hGrad;
-    let dDdu = choppiness * amp * s.x * dGrad;
-    dPx += vec3f(dir.x * dDdu * duvdx.x, amp * dot(grad, duvdx), dir.y * dDdu * duvdx.x);
-    dPz += vec3f(dir.x * dDdu * duvdz.x, amp * dot(grad, duvdz), dir.y * dDdu * duvdz.x);
-  }
-  if (numLayers > 1.5) {
-    let dir = d1.xy; let invL = d1.z; let amp = d1.w;
-    let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s1.xy));
-    let duvdx = vec2f(dir.x, -dir.y) * invL;
-    let duvdz = vec2f(dir.y, dir.x) * invL;
-    let grad = vec2f(s.z, s.w) * hGrad;
-    let dDdu = choppiness * amp * s.x * dGrad;
-    dPx += vec3f(dir.x * dDdu * duvdx.x, amp * dot(grad, duvdx), dir.y * dDdu * duvdx.x);
-    dPz += vec3f(dir.x * dDdu * duvdz.x, amp * dot(grad, duvdz), dir.y * dDdu * duvdz.x);
-  }
-  if (numLayers > 2.5) {
-    let dir = d2.xy; let invL = d2.z; let amp = d2.w;
-    let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s2.xy));
-    let duvdx = vec2f(dir.x, -dir.y) * invL;
-    let duvdz = vec2f(dir.y, dir.x) * invL;
-    let grad = vec2f(s.z, s.w) * hGrad;
-    let dDdu = choppiness * amp * s.x * dGrad;
-    dPx += vec3f(dir.x * dDdu * duvdx.x, amp * dot(grad, duvdx), dir.y * dDdu * duvdx.x);
-    dPz += vec3f(dir.x * dDdu * duvdz.x, amp * dot(grad, duvdz), dir.y * dDdu * duvdz.x);
-  }
-  if (numLayers > 3.5) {
-    let dir = d3.xy; let invL = d3.z; let amp = d3.w;
-    let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s3.xy));
-    let duvdx = vec2f(dir.x, -dir.y) * invL;
-    let duvdz = vec2f(dir.y, dir.x) * invL;
-    let grad = vec2f(s.z, s.w) * hGrad;
-    let dDdu = choppiness * amp * s.x * dGrad;
-    dPx += vec3f(dir.x * dDdu * duvdx.x, amp * dot(grad, duvdx), dir.y * dDdu * duvdx.x);
-    dPz += vec3f(dir.x * dDdu * duvdz.x, amp * dot(grad, duvdz), dir.y * dDdu * duvdz.x);
-  }
-  if (numLayers > 4.5) {
-    let dir = d4.xy; let invL = d4.z; let amp = d4.w;
-    let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s4.xy));
-    let duvdx = vec2f(dir.x, -dir.y) * invL;
-    let duvdz = vec2f(dir.y, dir.x) * invL;
-    let grad = vec2f(s.z, s.w) * hGrad;
-    let dDdu = choppiness * amp * s.x * dGrad;
-    dPx += vec3f(dir.x * dDdu * duvdx.x, amp * dot(grad, duvdx), dir.y * dDdu * duvdx.x);
-    dPz += vec3f(dir.x * dDdu * duvdz.x, amp * dot(grad, duvdz), dir.y * dDdu * duvdz.x);
-  }
-  if (numLayers > 5.5) {
-    let dir = d5.xy; let invL = d5.z; let amp = d5.w;
-    let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s5.xy));
-    let duvdx = vec2f(dir.x, -dir.y) * invL;
-    let duvdz = vec2f(dir.y, dir.x) * invL;
-    let grad = vec2f(s.z, s.w) * hGrad;
-    let dDdu = choppiness * amp * s.x * dGrad;
-    dPx += vec3f(dir.x * dDdu * duvdx.x, amp * dot(grad, duvdx), dir.y * dDdu * duvdx.x);
-    dPz += vec3f(dir.x * dDdu * duvdz.x, amp * dot(grad, duvdz), dir.y * dDdu * duvdz.x);
-  }
-  if (numLayers > 6.5) {
-    let dir = d6.xy; let invL = d6.z; let amp = d6.w;
-    let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s6.xy));
-    let duvdx = vec2f(dir.x, -dir.y) * invL;
-    let duvdz = vec2f(dir.y, dir.x) * invL;
-    let grad = vec2f(s.z, s.w) * hGrad;
-    let dDdu = choppiness * amp * s.x * dGrad;
-    dPx += vec3f(dir.x * dDdu * duvdx.x, amp * dot(grad, duvdx), dir.y * dDdu * duvdx.x);
-    dPz += vec3f(dir.x * dDdu * duvdz.x, amp * dot(grad, duvdz), dir.y * dDdu * duvdz.x);
-  }
-  if (numLayers > 7.5) {
-    let dir = d7.xy; let invL = d7.z; let amp = d7.w;
-    let s = textureSample(waveTex, samp, layerUV(waveXZ, dir, invL, s7.xy));
-    let duvdx = vec2f(dir.x, -dir.y) * invL;
-    let duvdz = vec2f(dir.y, dir.x) * invL;
-    let grad = vec2f(s.z, s.w) * hGrad;
-    let dDdu = choppiness * amp * s.x * dGrad;
-    dPx += vec3f(dir.x * dDdu * duvdx.x, amp * dot(grad, duvdx), dir.y * dDdu * duvdx.x);
-    dPz += vec3f(dir.x * dDdu * duvdz.x, amp * dot(grad, duvdz), dir.y * dDdu * duvdz.x);
-  }
-  var n = normalize(cross(dPz, dPx));
-  let v = normalize(cameraPos - world);
-  if (dot(n, v) < 0.0) { n = -n; }
-  let fresnel = 0.02 + 0.98 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
-  let r = reflect(-v, n);
-  let t = pow(clamp(r.y, 0.0, 1.0), 0.6);
-  let horizon = vec3f(0.62, 0.72, 0.83);
-  let zenith = vec3f(0.11, 0.30, 0.60);
-  let skyC = mix(horizon, zenith, t) + vec3f(1.0, 0.97, 0.9) * pow(max(dot(r, sunDir), 0.0), 40.0) * 0.25;
-  let water = vec3f(0.004, 0.02, 0.05);
-  var color = mix(water, skyC, fresnel);
-  color += vec3f(1.0, 0.97, 0.9) * pow(max(dot(r, sunDir), 0.0), 600.0) * 8.0;
-  let fuv = waveXZ / (2.0 * foamRegion) + 0.5;
-  let foamRaw = textureSample(foamTex, samp, fuv).r;
-  let pat = textureSample(foamPatTex, samp, waveXZ / (5.0 * foamScale)).r;
-  let mask = smoothstep(0.0, 0.15, pat - (1.05 - 1.15 * foamRaw));
-  color = mix(color, vec3f(1.0, 0.97, 0.9) * 0.72, mask);
-  // gpuocean 的显示端 tonemap；Tellux 的 AgX 不再套一层（材质 toneMapped=false）。
-  color = 1.0 - exp(-1.8 * color);
-  return vec4f(color, waterAlpha);
-}
-`
+const vertexCode = oceanVertexCode
+const fragmentCode = oceanShadingCode
+const landVSCode = landVertexCode
+const landFSCode = landFragmentCode
 
 const foamCode = `
 fn foamMain(uvc: vec2f,
@@ -728,7 +600,7 @@ fn foamMain(uvc: vec2f,
             numLayers: f32, choppiness: f32, dGrad: f32, hGrad: f32, ampInv: f32,
             foamCX: f32, foamCZ: f32, foamDX: f32, foamDZ: f32,
             foamThreshold: f32, foamRegion: f32, foamDecay: f32, foamDecayG: f32, foamRise: f32,
-            seaDepth: f32) -> vec4f {
+            seaDepth: f32, sdfTex: texture_2d<f32>, seaHalf: f32, slope: f32, leanXY: vec2f) -> vec4f {
   var dxx = 1.0;
   var dxz = 0.0;
   var dzx = 0.0;
@@ -848,13 +720,22 @@ fn foamMain(uvc: vec2f,
     dzx += dir.x * dDdu * duvdz.x;
     dzz += dir.y * dDdu * duvdz.x;
   }
+  let eta = max(height * ampInv, 0.0);
+  let ls = (eta * eta + 2.0 * eta) / ((1.0 + eta) * (1.0 + eta));
+  dxx += leanXY.x * ls * gradH.x;
+  dxz += leanXY.y * ls * gradH.x;
+  dzx += leanXY.x * ls * gradH.y;
+  dzz += leanXY.y * ls * gradH.y;
   let jac = dxx * dzz - dxz * dzx;
-  let waterGate = 1.0;
-  let dNow = max(seaDepth, 0.05);
+  let ty = terrainHeight(xz, sdfTex, samp, seaHalf, slope, seaDepth);
+  let waterGate = smoothstep(0.0, 0.3, height - ty);
+  let dNow = max(-ty, 0.05);
   let genSurf = smoothstep(0.55, 0.9, height / dNow) * smoothstep(0.0, 0.5, dNow) * waterGate;
   let genR = max(smoothstep(foamThreshold, foamThreshold - 0.25, jac) * waterGate, genSurf);
   let genG = max(smoothstep(foamThreshold - 0.15, foamThreshold - 0.45, jac) * waterGate, genSurf);
-  var prev = textureSampleLevel(prevFoam, samp, uvc + vec2f(foamDX, foamDZ), 0.0);
+  var prevUV = uvc + vec2f(foamDX, foamDZ);
+  var prev = textureSampleLevel(prevFoam, samp, prevUV, 0.0);
+  if (any(prevUV < vec2f(0.0)) || any(prevUV > vec2f(1.0))) { prev = vec4f(0.0); }
   let smoothR = mix(genR, prev.b, foamRise);
   let smoothG = mix(genG, prev.a, foamRise);
   return vec4f(max(prev.r * foamDecay, smoothR), max(prev.g * foamDecayG, smoothG), smoothR, smoothG);
@@ -1122,9 +1003,8 @@ function computeSignedDistanceField(mask: Uint8Array, width: number, height: num
 function bakeWaterSdfTexture(
   polygonsLocal: Array<Array<Array<{ x: number; z: number }>>>,
   seaHalf: number,
-  resolution = WATER_SDF_RES,
-  spreadPx = WATER_SDF_SPREAD_PX
-): { texture: THREE.DataTexture; spreadMeters: number } {
+  resolution = WATER_SDF_RES
+): { texture: THREE.DataTexture; spreadMeters: number; mask: Uint8Array; resolution: number; seaHalf: number } {
   const mask = new Uint8Array(resolution * resolution)
   if (polygonsLocal.length === 0) {
     mask.fill(1)
@@ -1138,16 +1018,14 @@ function bakeWaterSdfTexture(
     }
   }
   const signed = computeSignedDistanceField(mask, resolution, resolution)
-  const data = new Uint8Array(resolution * resolution * 4)
-  for (let i = 0; i < resolution * resolution; i++) {
-    const encoded = 0.5 + 0.5 * Math.max(-1, Math.min(1, signed[i] / spreadPx))
-    const byte = Math.round(encoded * 255)
-    data[i * 4] = byte
-    data[i * 4 + 3] = 255
+  const metersPerPx = (2 * seaHalf) / resolution
+  const data = new Float32Array(resolution * resolution * 4)
+  for (let i = 0; i < signed.length; i++) {
+    // Tellux EDT：水域为正；gpuocean coastSDF：海域为负（米）
+    data[i * 4] = -signed[i] * metersPerPx
+    data[i * 4 + 3] = 1
   }
-  const texture = new THREE.DataTexture(data, resolution, resolution)
-  texture.format = THREE.RGBAFormat
-  texture.type = THREE.UnsignedByteType
+  const texture = new THREE.DataTexture(data, resolution, resolution, THREE.RGBAFormat, THREE.FloatType)
   texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
   texture.generateMipmaps = false
@@ -1155,21 +1033,20 @@ function bakeWaterSdfTexture(
   texture.wrapS = THREE.ClampToEdgeWrapping
   texture.wrapT = THREE.ClampToEdgeWrapping
   texture.needsUpdate = true
-  const metersPerPx = (2 * seaHalf) / resolution
-  return { texture, spreadMeters: spreadPx * metersPerPx }
+  return { texture, spreadMeters: WATER_SDF_SPREAD_PX * metersPerPx, mask, resolution, seaHalf }
 }
 
-function buildSeaGeometry(seaHalf: number, gridN: number): THREE.BufferGeometry {
+function buildSeaGeometry(gridN: number): THREE.BufferGeometry {
   const n = gridN
-  const cell = (2 * seaHalf) / n
+  const half = n / 2
   const positions = new Float32Array((n + 1) * (n + 1) * 3)
   const indices = new Uint32Array(n * n * 6)
   let p = 0
   for (let iz = 0; iz <= n; iz++) {
     for (let ix = 0; ix <= n; ix++) {
-      positions[p++] = (ix - n / 2) * cell
+      positions[p++] = (ix - half) * WARP_CELL
       positions[p++] = 0
-      positions[p++] = (iz - n / 2) * cell
+      positions[p++] = (iz - half) * WARP_CELL
     }
   }
   let t = 0
@@ -1199,6 +1076,8 @@ function buildSeaGeometry(seaHalf: number, gridN: number): THREE.BufferGeometry 
 class WaveFieldSim {
   texture: THREE.Texture
   size: number
+  /** CPU 副本，供 ChainSim sampleWaveLevel 使用（与 gpuocean WaveField.data 同形）。 */
+  data = new Float32Array(COPY_FACTORS.length * 4)
   private rt: THREE.RenderTarget
   private quad: any
   private copies: any[]
@@ -1244,6 +1123,10 @@ class WaveFieldSim {
         weight,
         0
       )
+      this.data.set(
+        [COPY_OFFSETS[i][0] - this.phases[i], COPY_OFFSETS[i][1] - this.phasesY[i], weight, 0],
+        i * 4
+      )
     }
   }
 
@@ -1257,6 +1140,27 @@ class WaveFieldSim {
 // ---------------------------------------------------------------------------
 // 泡沫模拟(ping-pong)
 // ---------------------------------------------------------------------------
+function oceanShadingDeps(tsl: any) {
+  return [
+    tsl.wgslFn(layerUVCode),
+    tsl.wgslFn(coastSdfCode),
+    tsl.wgslFn(terrainHeightCode),
+    tsl.wgslFn(sunWarmthCode),
+    tsl.wgslFn(sunTintCode),
+    tsl.wgslFn(skyColorCode),
+    tsl.wgslFn(wrapColCode),
+    tsl.wgslFn(colTCode),
+    tsl.wgslFn(simBlendCode),
+    tsl.wgslFn(filmFoamAtCode),
+  ]
+}
+
+function dummyFloatTex() {
+  const tex = new THREE.DataTexture(new Float32Array(4), 1, 1, THREE.RGBAFormat, THREE.FloatType)
+  tex.needsUpdate = true
+  return tex
+}
+
 class FoamSim {
   texture: THREE.Texture
   size: number
@@ -1275,6 +1179,18 @@ class FoamSim {
   private decayU: any
   private decayGU: any
   private riseU: any
+  private foamCXU: any
+  private foamCZU: any
+  private foamDXU: any
+  private foamDZU: any
+  private foamRegionU: any
+  private seaDepthU: any
+  private seaHalfU: any
+  private slopeU: any
+  private leanXYU: any
+  private sdfTexNode: any
+  private prevCenter = [0, 0]
+  private hasWindow = false
   private index = 0
 
   constructor(tsl: any, wgpu: any, waveTexture: THREE.Texture, noiseSize: number, dispGrad: number, size = FOAM_SIZE) {
@@ -1299,16 +1215,31 @@ class FoamSim {
     this.numLayersU = uniform(5)
     this.choppinessU = uniform(1.5)
     this.ampInvU = uniform(1)
-    this.hGradU = uniform(noiseSize * dispGrad)
-    this.dGradU = uniform(dispGrad)
+    // 与 gpuocean 一致：dGrad = size * dispGradPerTexel，hGrad = size
+    this.dGradU = uniform(noiseSize * dispGrad)
+    this.hGradU = uniform(noiseSize)
     this.thresholdU = uniform(0.6)
     this.decayU = uniform(0.99)
     this.decayGU = uniform(0.99)
     this.riseU = uniform(0.5)
+    this.foamCXU = uniform(0)
+    this.foamCZU = uniform(0)
+    this.foamDXU = uniform(0)
+    this.foamDZU = uniform(0)
+    this.foamRegionU = uniform(FOAM_REGION)
+    this.seaDepthU = uniform(8)
+    this.seaHalfU = uniform(SEA_HALF)
+    this.slopeU = uniform(SLOPE)
+    this.leanXYU = uniform(new THREE.Vector2())
+    this.sdfTexNode = texture(dummyFloatTex())
 
     this.prevTexNode = texture(this.views[0])
     const waveTexNode = texture(waveTexture)
-    const fn = wgslFn(foamCode, [tsl.wgslFn(layerUVCode)])
+    const fn = wgslFn(foamCode, [
+      tsl.wgslFn(layerUVCode),
+      tsl.wgslFn(coastSdfCode),
+      tsl.wgslFn(terrainHeightCode),
+    ])
     const mat = new NodeMaterial()
     mat.lights = false
     mat.toneMapped = false
@@ -1319,18 +1250,22 @@ class FoamSim {
       waveTexNode,
       ...this.d, ...this.s,
       this.numLayersU, this.choppinessU, this.dGradU, this.hGradU, this.ampInvU,
-      uniform(0), uniform(0), uniform(0), uniform(0),
+      this.foamCXU, this.foamCZU, this.foamDXU, this.foamDZU,
       this.thresholdU,
-      uniform(80),
+      this.foamRegionU,
       this.decayU,
       this.decayGU,
       this.riseU,
-      uniform(8)
+      this.seaDepthU,
+      this.sdfTexNode,
+      this.seaHalfU,
+      this.slopeU,
+      this.leanXYU
     )
     this.quad = new QuadMesh(mat)
   }
 
-  syncLayers(d: any[], s: any[], numLayers: number, choppiness: number, ampInv: number) {
+  syncLayers(d: any[], s: any[], numLayers: number, choppiness: number, ampInv: number, leanXY?: THREE.Vector2, seaDepth?: number) {
     for (let i = 0; i < 8; i++) {
       this.d[i].value.copy(d[i].value)
       this.s[i].value.copy(s[i].value)
@@ -1338,6 +1273,37 @@ class FoamSim {
     this.numLayersU.value = numLayers
     this.choppinessU.value = choppiness
     this.ampInvU.value = ampInv
+    if (leanXY) this.leanXYU.value.copy(leanXY)
+    if (seaDepth !== undefined) this.seaDepthU.value = seaDepth
+  }
+
+  setSdf(texture: THREE.Texture, seaHalf: number) {
+    this.sdfTexNode.value = texture
+    this.seaHalfU.value = seaHalf
+  }
+
+  setWindow(cx: number, cz: number, moving: boolean) {
+    const texel = (2 * FOAM_REGION) / this.size
+    const nx = Math.round(cx / texel) * texel
+    const nz = Math.round(cz / texel) * texel
+    if (!this.hasWindow) {
+      this.prevCenter = [nx, nz]
+      this.hasWindow = true
+    }
+    if (moving) {
+      this.foamDXU.value = (nx - this.prevCenter[0]) / (2 * FOAM_REGION)
+      this.foamDZU.value = (nz - this.prevCenter[1]) / (2 * FOAM_REGION)
+      this.prevCenter = [nx, nz]
+    } else {
+      this.foamDXU.value = 0
+      this.foamDZU.value = 0
+    }
+    this.foamCXU.value = nx
+    this.foamCZU.value = nz
+  }
+
+  get windowCenter() {
+    return this.prevCenter
   }
 
   setParams(foam: number, foamLife: number, dt: number) {
@@ -1359,63 +1325,119 @@ class FoamSim {
 }
 
 // ---------------------------------------------------------------------------
-// 海洋表面(网格 + NodeMaterial)
+// Film foam + shore ribbon（gpuocean 第 2 组）
 // ---------------------------------------------------------------------------
-interface OceanParams {
-  wavelength: number
-  amplitude: number
-  choppiness: number
-  layers: number
-  spread: number
-  waveDir: number
-  dispersion: number
+class FilmFoamSim {
+  texture: THREE.Texture
+  private views: THREE.Texture[]
+  private rts: THREE.RenderTarget[]
+  private quad: any
+  private prevTexNode: any
+  private simTexNode: any
+  private slopeU: any
+  private decayU: any
+  private decayGU: any
+  private riseU: any
+  private decaySwallowU: any
+  private simZShiftU: any
+  private index = 0
+
+  constructor(tsl: any, wgpu: any, simTexture: THREE.Texture) {
+    const { uniform, texture, wgslFn, uv } = tsl
+    const { NodeMaterial, QuadMesh } = wgpu
+    this.rts = [0, 1].map(() => {
+      const rt = new THREE.RenderTarget(128, SIM_COLS, {
+        format: THREE.RGBAFormat,
+        type: THREE.HalfFloatType,
+        depthBuffer: false,
+        samples: 0,
+      })
+      configureDataTarget(rt)
+      return rt
+    })
+    this.views = this.rts.map((rt) => rt.texture)
+    this.texture = this.views[0]
+    this.prevTexNode = texture(this.views[0])
+    this.simTexNode = texture(simTexture)
+    this.slopeU = uniform(SLOPE)
+    this.decayU = uniform(0.99)
+    this.decayGU = uniform(0.99)
+    this.riseU = uniform(0.5)
+    this.decaySwallowU = uniform(0.99)
+    this.simZShiftU = uniform(0)
+    const fn = wgslFn(filmFoamCode, [
+      tsl.wgslFn(wrapColCode),
+      tsl.wgslFn(simRestSCode),
+      tsl.wgslFn(simBlendCode),
+    ])
+    const mat = new NodeMaterial()
+    mat.lights = false
+    mat.toneMapped = false
+    mat.fragmentNode = fn(
+      uv(),
+      this.prevTexNode,
+      this.prevTexNode, // sampler → TSL 绑到第一个 texture（prevFoam）
+      this.simTexNode,
+      this.slopeU,
+      this.decayU,
+      this.decayGU,
+      this.riseU,
+      this.decaySwallowU,
+      this.simZShiftU
+    )
+    this.quad = new QuadMesh(mat)
+  }
+
+  setParams(foamLife: number, dt: number, simZShift: number) {
+    this.decayU.value = Math.exp(-dt / foamLife)
+    this.decayGU.value = Math.exp(-dt / (foamLife * 0.25))
+    this.riseU.value = Math.exp(-dt / FOAM_RISE)
+    this.decaySwallowU.value = Math.exp(-dt / 0.5)
+    this.simZShiftU.value = simZShift
+  }
+
+  render(renderer: any) {
+    const dst = this.index ^ 1
+    this.prevTexNode.value = this.views[this.index]
+    renderer.setRenderTarget(this.rts[dst])
+    renderer.render(this.quad, this.quad.camera)
+    renderer.setRenderTarget(null)
+    this.index = dst
+    this.texture = this.views[dst]
+  }
 }
 
-class OceanSurface {
+class ShoreRibbon {
   readonly mesh: THREE.Mesh
-  readonly material: any
-  private time = 0
-  private phases = new Float64Array(8)
-  private d: any[]
-  private s: any[]
-  private numLayersU: any
-  private choppinessU: any
-  private ampInvU: any
-  private sunDirU: any
-  private cameraPosU: any
-  private foamTexNode: any
-  private foamRegionU: any
-  private foamScaleU: any
+  private simZBaseU: any
+  private simTCamU: any
+  private filmFoamTexNode: any
   private hGradU: any
-  private dGradU: any
-  private wavesPerTile: number
-  private dispGrad: number
+  private waveKU: any
+  private ampInvU: any
+  private leanXYU: any
+  private seaHalfU: any
   private fullMatrix = new THREE.Matrix4()
   private invFull = new THREE.Matrix4()
-  private sunEcef = new THREE.Vector3()
-  private getSunDirectionECEF: (date: Date, target: THREE.Vector3) => THREE.Vector3
-  private viewer: any
+  private surface: any
 
   constructor(
     tsl: any,
     wgpu: any,
-    geometry: THREE.BufferGeometry,
-    waveTexture: THREE.Texture,
-    wavesPerTile: number,
-    dispGrad: number,
-    noiseSize: number,
+    simTexture: THREE.Texture,
+    mainTableTexture: THREE.Texture,
+    filmFoamTexture: THREE.Texture,
     originMatrix: THREE.Matrix4,
-    viewer: any,
-    foamPatternTexture: THREE.Texture,
     rtc: { uniforms: any; update: () => void },
-    getSunDirectionECEF: (date: Date, target: THREE.Vector3) => THREE.Vector3,
-    waterSdf: { texture: THREE.Texture; spreadMeters: number },
+    surface: any,
+    waterSdf: { texture: THREE.Texture },
     seaHalf: number
   ) {
     const {
       uniform,
       texture,
       wgslFn,
+      vec2,
       vec4,
       positionGeometry,
       modelWorldMatrix,
@@ -1423,27 +1445,16 @@ class OceanSurface {
       renderGroup,
     } = tsl
     const { NodeMaterial } = wgpu
-    this.wavesPerTile = wavesPerTile
-    this.dispGrad = dispGrad
-    this.viewer = viewer
-    this.getSunDirectionECEF = getSunDirectionECEF
-
-    this.d = Array.from({ length: 8 }, () => uniform(new THREE.Vector4()))
-    this.s = Array.from({ length: 8 }, () => uniform(new THREE.Vector4()))
-    this.numLayersU = uniform(5)
-    this.choppinessU = uniform(1.5)
-    this.ampInvU = uniform(1)
-    this.hGradU = uniform(noiseSize * dispGrad)
-    this.dGradU = uniform(dispGrad)
-    this.sunDirU = uniform(new THREE.Vector3(0.35, 0.72, -0.28).normalize())
-    this.cameraPosU = uniform(new THREE.Vector3(0, 700, 0))
-    const dummyFoam = new THREE.DataTexture(new Uint8Array(4), 1, 1)
-    dummyFoam.needsUpdate = true
-    this.foamTexNode = texture(dummyFoam)
-    this.foamRegionU = uniform(80)
-    this.foamScaleU = uniform(1)
-    const seaHalfU = uniform(seaHalf)
-    const sdfSpreadU = uniform(waterSdf.spreadMeters)
+    this.surface = surface
+    this.simZBaseU = surface.simZBaseU
+    this.simTCamU = uniform(0)
+    this.filmFoamTexNode = surface.filmFoamTexNode
+    this.filmFoamTexNode.value = filmFoamTexture
+    this.hGradU = surface.hGradU
+    this.waveKU = surface.waveKU
+    this.ampInvU = surface.ampInvU
+    this.leanXYU = surface.leanXYU
+    this.seaHalfU = surface.seaHalfU
 
     this.fullMatrix.copy(originMatrix)
     this.invFull.copy(this.fullMatrix).invert()
@@ -1457,45 +1468,389 @@ class OceanSurface {
     const cameraLowU = uniform(rtc.uniforms.u_cameraLow.value).setGroup(renderGroup)
     const viewRTEU = uniform(rtc.uniforms.u_viewMatrixRTE.value).setGroup(renderGroup)
 
-    const waveTexNode = texture(waveTexture)
-    const foamPatNode = texture(foamPatternTexture)
-    const sdfTexNode = texture(waterSdf.texture)
-    const vertexFn = wgslFn(vertexCode, [tsl.wgslFn(layerUVCode)])
-    const fragmentFn = wgslFn(fragmentCode, [tsl.wgslFn(layerUVCode)])
-    const restXZ = positionGeometry.xz.toVarying("oceanRestXZ")
-    const restPos = positionGeometry.toVarying("oceanRestPos")
-    const displaced = vertexFn(
-      positionGeometry.xz,
+    const waveTexNode = surface.waveTexNode
+    const simTexNode = texture(simTexture)
+    const mainTableNode = texture(mainTableTexture)
+    const sdfTexNode = surface.sdfTexNode
+    const vertexFn = wgslFn(ribbonVertexCode, [
+      tsl.wgslFn(layerUVCode),
+      tsl.wgslFn(wrapColCode),
+      tsl.wgslFn(simRestSCode),
+      tsl.wgslFn(simBlendCode),
+      tsl.wgslFn(warpCellAtCode),
+      tsl.wgslFn(coastSdfCode),
+      tsl.wgslFn(terrainHeightCode),
+      tsl.wgslFn(softClampCode),
+    ])
+    const varyFn = wgslFn(ribbonWaveVaryingsCode, [
+      tsl.wgslFn(wrapColCode),
+      tsl.wgslFn(simRestSCode),
+      tsl.wgslFn(simBlendCode),
+    ])
+    const fragmentFn = wgslFn(fragmentCode, oceanShadingDeps(tsl))
+    const displaced4 = vertexFn(
+      positionGeometry,
+      surface.cameraPosU,
       waveTexNode,
       waveTexNode,
-      ...this.d, ...this.s,
-      this.numLayersU, this.choppinessU, this.dGradU, this.hGradU, this.ampInvU
+      simTexNode,
+      mainTableNode,
+      sdfTexNode,
+      ...surface.d,
+      ...surface.s,
+      surface.numLayersU,
+      surface.choppinessU,
+      this.hGradU,
+      surface.slopeU,
+      surface.seaDepthU,
+      this.simZBaseU,
+      this.simTCamU,
+      this.seaHalfU,
+      this.waveKU,
+      this.ampInvU,
+      this.leanXYU
     )
-    // mesh.matrix 只留旋转（平移拆到 high/low）。RTE 与 applyRTCInstancing 相同：
-    // (originHigh - cameraHigh) + (originLow - cameraLow) + R * local
+    const extras = varyFn(
+      positionGeometry,
+      simTexNode,
+      mainTableNode,
+      surface.slopeU,
+      this.simZBaseU,
+      this.simTCamU
+    )
+    const displaced = displaced4.xyz
+    const packed = displaced4.w
+    const col = packed.floor()
+    const band = extras.w
+    const st = vec2(band, col).toVarying("ribbonST")
+    const waveXZ = extras.xy.toVarying("ribbonWaveXZ")
+    const stretch = extras.z.toVarying("ribbonStretch")
     const worldOffset = modelWorldMatrix.mul(vec4(displaced, 1)).xyz
     const rte = originHighU.sub(cameraHighU).add(originLowU.sub(cameraLowU)).add(worldOffset)
     const mat = new NodeMaterial()
     mat.lights = false
     mat.toneMapped = false
-    mat.transparent = true
+    mat.transparent = false
     mat.depthWrite = true
     mat.positionNode = displaced
     mat.vertexNode = cameraProjectionMatrix.mul(viewRTEU).mul(vec4(rte, 1))
     mat.fragmentNode = fragmentFn(
-      restPos,
-      restXZ,
+      displaced.toVarying("ribbonWorld"),
+      waveXZ,
+      tsl.float(-1),
+      st,
+      stretch,
       waveTexNode,
+      waveTexNode,
+      surface.foamTexNode,
+      surface.foamPatNode,
+      sdfTexNode,
+      surface.capTexNode,
+      this.filmFoamTexNode,
+      ...surface.d, ...surface.s,
+      surface.numLayersU, surface.choppinessU, surface.dGradU, surface.hGradU, surface.ampInvU,
+      surface.foamRegionU, surface.foamScaleU, surface.foamCXU, surface.foamCZU,
+      surface.foamThresholdU, surface.foamLifeU, surface.waveKU,
+      surface.cameraPosU, surface.sunDirU,
+      surface.seaHalfU, surface.slopeU, surface.seaDepthU,
+      ...surface.cd, ...surface.cs,
+      surface.leanXYU, surface.capHGradU, surface.rippleBiasU,
+      surface.sssU, surface.causticStrengthU, surface.causticScaleU, surface.timeU,
+      surface.simZBaseU, surface.islandArcStepU
+    )
+    this.mesh = new THREE.Mesh(buildRibbonGeometry(), mat)
+    this.mesh.frustumCulled = false
+    this.mesh.matrixAutoUpdate = false
+    this.mesh.matrix.copy(this.fullMatrix)
+    this.mesh.matrix.setPosition(0, 0, 0)
+    this.mesh.matrixWorldNeedsUpdate = true
+    this.mesh.onBeforeRender = () => {
+      rtc.update()
+    }
+    void waterSdf
+    void seaHalf
+  }
+
+  syncFromSurface(
+    params: { depth: number; foamScale: number },
+    chain: ChainSim,
+    filmFoam: THREE.Texture
+  ) {
+    this.surface.seaDepthU.value = params.depth
+    this.surface.foamScaleU.value = params.foamScale
+    this.simZBaseU.value = chain.zBase
+    this.simTCamU.value = chain.tCamSnap
+    this.surface.islandArcStepU.value = chain.islandArcStep
+    this.filmFoamTexNode.value = filmFoam
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 海洋表面(网格 + NodeMaterial)
+// ---------------------------------------------------------------------------
+interface OceanParams {
+  wavelength: number
+  amplitude: number
+  choppiness: number
+  layers: number
+  spread: number
+  waveDir: number
+  dispersion: number
+  ripple: number
+  rippleScale: number
+  rippleAniso: number
+  rippleBias: number
+  sss: number
+  depth: number
+  caustics: number
+  lean: number
+  foam: number
+  foamLife: number
+  foamScale: number
+}
+
+class OceanSurface {
+  readonly mesh: THREE.Mesh
+  readonly landMesh: THREE.Mesh
+  readonly material: any
+  d: any[]
+  s: any[]
+  cd: any[]
+  cs: any[]
+  numLayersU: any
+  choppinessU: any
+  ampInvU: any
+  sunDirU: any
+  cameraPosU: any
+  foamTexNode: any
+  foamPatNode: any
+  foamRegionU: any
+  foamScaleU: any
+  foamCXU: any
+  foamCZU: any
+  foamThresholdU: any
+  foamLifeU: any
+  waveKU: any
+  hGradU: any
+  dGradU: any
+  leanXYU: any
+  capHGradU: any
+  rippleBiasU: any
+  sssU: any
+  seaDepthU: any
+  seaHalfU: any
+  slopeU: any
+  causticStrengthU: any
+  causticScaleU: any
+  timeU: any
+  simZBaseU: any
+  islandArcStepU: any
+  waveTexNode: any
+  capTexNode: any
+  sdfTexNode: any
+  filmFoamTexNode: any
+  private time = 0
+  private phases = new Float64Array(8)
+  private capPhases = new Float64Array(6)
+  private wavesPerTile: number
+  private capWavesPerTile: number
+  private dispGrad: number
+  private fullMatrix = new THREE.Matrix4()
+  private invFull = new THREE.Matrix4()
+  private sunEcef = new THREE.Vector3()
+  private getSunDirectionECEF: (date: Date, target: THREE.Vector3) => THREE.Vector3
+  private viewer: any
+
+  constructor(
+    tsl: any,
+    wgpu: any,
+    geometry: THREE.BufferGeometry,
+    waveTexture: THREE.Texture,
+    capTexture: THREE.Texture,
+    wavesPerTile: number,
+    capWavesPerTile: number,
+    dispGrad: number,
+    noiseSize: number,
+    capSize: number,
+    originMatrix: THREE.Matrix4,
+    viewer: any,
+    foamPatternTexture: THREE.Texture,
+    rtc: { uniforms: any; update: () => void },
+    getSunDirectionECEF: (date: Date, target: THREE.Vector3) => THREE.Vector3,
+    waterSdf: { texture: THREE.Texture; spreadMeters: number },
+    seaHalf: number
+  ) {
+    const {
+      uniform,
+      texture,
+      wgslFn,
+      vec2,
+      vec4,
+      positionGeometry,
+      modelWorldMatrix,
+      cameraProjectionMatrix,
+      renderGroup,
+    } = tsl
+    const { NodeMaterial } = wgpu
+    this.wavesPerTile = wavesPerTile
+    this.capWavesPerTile = capWavesPerTile
+    this.dispGrad = dispGrad
+    this.viewer = viewer
+    this.getSunDirectionECEF = getSunDirectionECEF
+
+    this.d = Array.from({ length: 8 }, () => uniform(new THREE.Vector4()))
+    this.s = Array.from({ length: 8 }, () => uniform(new THREE.Vector4()))
+    this.cd = Array.from({ length: 6 }, () => uniform(new THREE.Vector4()))
+    this.cs = Array.from({ length: 6 }, () => uniform(new THREE.Vector4()))
+    this.numLayersU = uniform(5)
+    this.choppinessU = uniform(1.5)
+    this.ampInvU = uniform(1)
+    // 与 gpuocean 一致：dGrad = size * dispGradPerTexel，hGrad = size
+    this.dGradU = uniform(noiseSize * dispGrad)
+    this.hGradU = uniform(noiseSize)
+    this.leanXYU = uniform(new THREE.Vector2())
+    this.capHGradU = uniform(capSize)
+    this.rippleBiasU = uniform(0.8)
+    this.sssU = uniform(1.5)
+    this.seaDepthU = uniform(8)
+    this.causticStrengthU = uniform(1)
+    this.causticScaleU = uniform(1)
+    this.timeU = uniform(0)
+    this.sunDirU = uniform(new THREE.Vector3(0.35, 0.72, -0.28).normalize())
+    this.cameraPosU = uniform(new THREE.Vector3(0, 3, 0))
+    this.foamTexNode = texture(dummyFloatTex())
+    this.foamPatNode = texture(foamPatternTexture)
+    this.foamRegionU = uniform(FOAM_REGION)
+    this.foamScaleU = uniform(1)
+    this.foamCXU = uniform(0)
+    this.foamCZU = uniform(0)
+    this.foamThresholdU = uniform(0.6)
+    this.foamLifeU = uniform(3)
+    this.waveKU = uniform((2 * Math.PI) / 10)
+    this.seaHalfU = uniform(seaHalf)
+    this.slopeU = uniform(SLOPE)
+    this.simZBaseU = uniform(0)
+    this.islandArcStepU = uniform(1)
+    this.filmFoamTexNode = texture(dummyFloatTex())
+
+    this.fullMatrix.copy(originMatrix)
+    this.invFull.copy(this.fullMatrix).invert()
+    const origin = new THREE.Vector3().setFromMatrixPosition(this.fullMatrix)
+    const originHigh = new THREE.Vector3()
+    const originLow = new THREE.Vector3()
+    encodeEcef(origin, originHigh, originLow)
+    const originHighU = uniform(originHigh)
+    const originLowU = uniform(originLow)
+    const cameraHighU = uniform(rtc.uniforms.u_cameraHigh.value).setGroup(renderGroup)
+    const cameraLowU = uniform(rtc.uniforms.u_cameraLow.value).setGroup(renderGroup)
+    const viewRTEU = uniform(rtc.uniforms.u_viewMatrixRTE.value).setGroup(renderGroup)
+
+    this.waveTexNode = texture(waveTexture)
+    this.capTexNode = texture(capTexture)
+    this.sdfTexNode = texture(waterSdf.texture)
+    const warpFn = wgslFn(warpVertexCode)
+    const warped = warpFn(positionGeometry.xz, this.cameraPosU, this.seaHalfU)
+    const xz = warped.xy
+    const cell = warped.z
+    const vertexFn = wgslFn(vertexCode, [
+      tsl.wgslFn(layerUVCode),
+      tsl.wgslFn(coastSdfCode),
+      tsl.wgslFn(terrainHeightCode),
+      tsl.wgslFn(softClampCode),
+    ])
+    const fragmentFn = wgslFn(fragmentCode, oceanShadingDeps(tsl))
+    const packed = vertexFn(
+      xz,
+      cell,
+      this.waveTexNode,
+      this.waveTexNode,
+      this.sdfTexNode,
+      ...this.d, ...this.s,
+      this.numLayersU, this.choppinessU, this.hGradU, this.ampInvU, this.leanXYU,
+      this.seaHalfU, this.slopeU, this.seaDepthU, this.waveKU
+    )
+    const displaced = packed.xyz
+    const cut = packed.w.toVarying("oceanCut")
+    const waveXZ = xz.toVarying("oceanWaveXZ")
+    const st = vec2(-1000, 0).toVarying("oceanST")
+    const stretch = tsl.float(1).toVarying("oceanStretch")
+    const oceanWorld = displaced.toVarying("oceanWorld")
+    const worldOffset = modelWorldMatrix.mul(vec4(displaced, 1)).xyz
+    const rte = originHighU.sub(cameraHighU).add(originLowU.sub(cameraLowU)).add(worldOffset)
+    const mat = new NodeMaterial()
+    mat.lights = false
+    mat.toneMapped = false
+    mat.transparent = false
+    mat.depthWrite = true
+    mat.positionNode = displaced
+    mat.vertexNode = cameraProjectionMatrix.mul(viewRTEU).mul(vec4(rte, 1))
+    mat.fragmentNode = fragmentFn(
+      oceanWorld,
+      waveXZ,
+      cut,
+      st,
+      stretch,
+      this.waveTexNode,
+      this.waveTexNode,
       this.foamTexNode,
-      foamPatNode,
-      waveTexNode,
+      this.foamPatNode,
+      this.sdfTexNode,
+      this.capTexNode,
+      this.filmFoamTexNode,
       ...this.d, ...this.s,
       this.numLayersU, this.choppinessU, this.dGradU, this.hGradU, this.ampInvU,
-      this.foamRegionU, this.foamScaleU,
+      this.foamRegionU, this.foamScaleU, this.foamCXU, this.foamCZU,
+      this.foamThresholdU, this.foamLifeU, this.waveKU,
       this.cameraPosU, this.sunDirU,
-      sdfTexNode, seaHalfU, sdfSpreadU
+      this.seaHalfU, this.slopeU, this.seaDepthU,
+      ...this.cd, ...this.cs,
+      this.leanXYU, this.capHGradU, this.rippleBiasU,
+      this.sssU, this.causticStrengthU, this.causticScaleU, this.timeU,
+      this.simZBaseU, this.islandArcStepU
     )
     this.material = mat
+
+    const landVS = wgslFn(landVSCode, [
+      tsl.wgslFn(coastSdfCode),
+      tsl.wgslFn(terrainHeightCode),
+    ])
+    const landFS = wgslFn(landFSCode, [
+      tsl.wgslFn(coastSdfCode),
+      tsl.wgslFn(terrainHeightCode),
+      tsl.wgslFn(sunWarmthCode),
+      tsl.wgslFn(sunTintCode),
+      tsl.wgslFn(skyColorCode),
+    ])
+    const landPos = landVS(xz, this.sdfTexNode, this.sdfTexNode, this.seaHalfU, this.slopeU, this.seaDepthU)
+    const landWorld = landPos.toVarying("landWorld")
+    const landXZ = xz.toVarying("landXZ")
+    const landOffset = modelWorldMatrix.mul(vec4(landPos, 1)).xyz
+    const landRte = originHighU.sub(cameraHighU).add(originLowU.sub(cameraLowU)).add(landOffset)
+    const landMat = new NodeMaterial()
+    landMat.lights = false
+    landMat.toneMapped = false
+    landMat.transparent = false
+    landMat.depthWrite = true
+    landMat.positionNode = landPos
+    landMat.vertexNode = cameraProjectionMatrix.mul(viewRTEU).mul(vec4(landRte, 1))
+    landMat.fragmentNode = landFS(
+      landWorld,
+      landXZ,
+      this.cameraPosU,
+      this.sunDirU,
+      this.sdfTexNode,
+      this.sdfTexNode,
+      this.seaHalfU,
+      this.slopeU,
+      this.seaDepthU
+    )
+
+    const syncCamera = (_renderer: unknown, _scene: unknown, camera: THREE.Camera) => {
+      rtc.update()
+      this.cameraPosU.value.copy(camera.position).applyMatrix4(this.invFull)
+      this.getSunDirectionECEF(this.viewer.clock.currentTime, this.sunEcef)
+      this.sunDirU.value.copy(this.sunEcef).transformDirection(this.invFull).normalize()
+    }
 
     this.mesh = new THREE.Mesh(geometry, mat)
     this.mesh.frustumCulled = false
@@ -1503,12 +1858,16 @@ class OceanSurface {
     this.mesh.matrix.copy(this.fullMatrix)
     this.mesh.matrix.setPosition(0, 0, 0)
     this.mesh.matrixWorldNeedsUpdate = true
-    this.mesh.onBeforeRender = (_renderer, _scene, camera) => {
-      rtc.update()
-      this.cameraPosU.value.copy(camera.position).applyMatrix4(this.invFull)
-      this.getSunDirectionECEF(this.viewer.clock.currentTime, this.sunEcef)
-      this.sunDirU.value.copy(this.sunEcef).transformDirection(this.invFull).normalize()
-    }
+    this.mesh.onBeforeRender = syncCamera
+
+    this.landMesh = new THREE.Mesh(geometry, landMat)
+    this.landMesh.frustumCulled = false
+    this.landMesh.matrixAutoUpdate = false
+    this.landMesh.matrix.copy(this.fullMatrix)
+    this.landMesh.matrix.setPosition(0, 0, 0)
+    this.landMesh.matrixWorldNeedsUpdate = true
+    this.landMesh.onBeforeRender = syncCamera
+    this.landMesh.renderOrder = -1
   }
 
   exportLayerUniforms() {
@@ -1523,29 +1882,75 @@ class OceanSurface {
 
   update(dt: number, params: OceanParams) {
     this.time += dt
+    this.timeU.value = this.time
     const count = Math.round(params.layers)
     this.numLayersU.value = count
     this.choppinessU.value = params.choppiness
     this.ampInvU.value = 1 / Math.max(params.amplitude, 0.01)
+    this.rippleBiasU.value = params.rippleBias
+    this.sssU.value = params.sss
+    this.seaDepthU.value = params.depth
+    this.causticStrengthU.value = params.caustics
+    this.causticScaleU.value = params.rippleScale / 0.6
+    this.waveKU.value = (2 * Math.PI) / params.wavelength
+    this.foamScaleU.value = params.foamScale
+    this.foamThresholdU.value = params.foam
+    this.foamLifeU.value = params.foamLife
 
     const spread = (params.spread * Math.PI) / 180
     let sq = 0
     for (let i = 0; i < count; i++) sq += SCALE_RATIO ** (2 * i)
     const ampNorm = params.amplitude / Math.sqrt(sq)
     const waveDir = (params.waveDir * Math.PI) / 180
+    let meanX = 0
+    let meanZ = 0
     for (let i = 0; i < count; i++) {
       const lambda = params.wavelength * SCALE_RATIO ** i
       const tile = lambda * this.wavesPerTile
-      const omega = Math.sqrt((9.81 * lambda) / (2 * Math.PI))
+      const omega = Math.sqrt((GRAVITY * lambda) / (2 * Math.PI))
       this.phases[i] += (omega / tile) * dt
       const angle = waveDir + DIR_FRACS[i] * spread
-      this.d[i].value.set(Math.cos(angle), Math.sin(angle), 1 / tile, ampNorm * SCALE_RATIO ** i)
+      const dx = Math.cos(angle)
+      const dz = Math.sin(angle)
+      const amp = ampNorm * SCALE_RATIO ** i
+      meanX += dx * amp
+      meanZ += dz * amp
+      this.d[i].value.set(dx, dz, 1 / tile, amp)
       this.s[i].value.set(UV_OFFSETS[i][0] - this.phases[i], UV_OFFSETS[i][1], 0, 0)
+    }
+    const meanLen = Math.hypot(meanX, meanZ) || 1
+    this.leanXYU.value.set((params.lean * meanX) / meanLen, (params.lean * meanZ) / meanLen)
+
+    const capNorm = params.ripple / Math.sqrt(CAP_SCALES.length) / (2 * Math.PI)
+    const isoWeight = Math.sqrt(1 - params.rippleAniso)
+    const anisoWeight = Math.sqrt(params.rippleAniso)
+    for (let i = 0; i < 6; i++) {
+      const aniso = i >= CAP_ANGLES.length
+      const j = i % CAP_SCALES.length
+      const lambda = params.rippleScale * CAP_SCALES[j]
+      const tile = lambda * (aniso ? this.wavesPerTile : this.capWavesPerTile)
+      const k = (2 * Math.PI) / lambda
+      this.capPhases[i] += (Math.sqrt(GRAVITY / k + CAPILLARY_SIGMA_RHO * k) / tile) * dt
+      const angle = aniso
+        ? waveDir + CAP_ANISO_FRACS[j] * spread
+        : CAP_ANGLES[j]
+      this.cd[i].value.set(
+        Math.cos(angle),
+        Math.sin(angle),
+        1 / tile,
+        capNorm * lambda * (aniso ? anisoWeight : isoWeight)
+      )
+      this.cs[i].value.set(CAP_UV_OFFSETS[i][0] - this.capPhases[i], CAP_UV_OFFSETS[i][1], 0, 0)
     }
   }
 
   setFoamTexture(foamTexture: THREE.Texture) {
     this.foamTexNode.value = foamTexture
+  }
+
+  setFoamWindow(cx: number, cz: number) {
+    this.foamCXU.value = cx
+    this.foamCZU.value = cz
   }
 }
 
@@ -1553,7 +1958,6 @@ class OceanSurface {
 // UI 参数
 // ---------------------------------------------------------------------------
 interface UiParams extends OceanParams {
-  foam: number
   pause: boolean
 }
 
@@ -1570,6 +1974,16 @@ function readParams(): UiParams {
     waveDir: num("waveDir"),
     dispersion: num("dispersion"),
     foam: num("foam"),
+    ripple: num("ripple"),
+    rippleScale: num("rippleScale"),
+    rippleAniso: num("rippleAniso"),
+    rippleBias: num("rippleBias"),
+    sss: num("sss"),
+    depth: num("depth"),
+    caustics: num("caustics"),
+    lean: num("lean"),
+    foamLife: num("foamLife"),
+    foamScale: num("foamScale"),
     pause: el("pause").checked,
   }
 }
@@ -1583,10 +1997,11 @@ function bindSlider(id: string) {
   sync()
 }
 
-function bindWaterToggle(mesh: THREE.Object3D) {
+function bindWaterToggle(meshes: THREE.Object3D[]) {
   const input = el("toggle-water")
   const sync = () => {
-    mesh.visible = input.checked
+    const on = input.checked
+    for (const mesh of meshes) mesh.visible = on
   }
   input.addEventListener("change", sync)
   sync()
@@ -1638,15 +2053,32 @@ async function main() {
   }
   requestAnimationFrame(animate)
 
-  ;["wavelength", "amplitude", "choppiness", "layers", "spread", "waveDir", "dispersion", "foam"].forEach(bindSlider)
+  ;[
+    "wavelength", "amplitude", "choppiness", "layers", "spread", "waveDir", "dispersion", "foam",
+    "foamLife", "foamScale",
+    "ripple", "rippleScale", "rippleAniso", "rippleBias", "sss", "depth", "caustics", "lean",
+  ].forEach(bindSlider)
 
   const tex = buildOceanTextures()
   const waveField = new WaveFieldSim(tsl, wgpu, tex.gravity, tex.gravitySize)
+  const capField = new WaveFieldSim(
+    tsl,
+    wgpu,
+    Array.from({ length: COPY_FACTORS.length }, () => tex.capillary),
+    tex.capillarySize
+  )
   const foam = new FoamSim(tsl, wgpu, waveField.texture, tex.gravitySize, tex.gravityDispGrad)
 
   setOceanStatus(t({ zh: "正在读取 OSM 水域瓦片…", en: "Fetching OSM water tiles…" }))
-  let waterSdf: { texture: THREE.Texture; spreadMeters: number }
+  let waterSdf: {
+    texture: THREE.Texture
+    spreadMeters: number
+    mask: Uint8Array
+    resolution: number
+    seaHalf: number
+  }
   let oceanHeight = OCEAN_HEIGHT_FALLBACK
+  let polygonsLocalForCoast: Array<Array<Array<{ x: number; z: number }>>> = []
   try {
     const waterPolygons = await fetchOsmWaterPolygons(OCEAN_LON, OCEAN_LAT, OSM_WATER_ZOOM, SEA_HALF)
     const provisionalOrigin = viewer.cartographicToMatrix4([
@@ -1660,6 +2092,7 @@ async function main() {
       provisionalOrigin,
       OCEAN_HEIGHT_FALLBACK
     )
+    polygonsLocalForCoast = polygonsLocal
     setOceanStatus(t({ zh: "正在采样近岸海面高度…", en: "Sampling near-shore sea level…" }))
     oceanHeight = await resolveOceanHeightFromShore(
       viewer,
@@ -1682,11 +2115,20 @@ async function main() {
   }
 
   const originMatrix = viewer.cartographicToMatrix4([OCEAN_LON, OCEAN_LAT, oceanHeight])
-  const geometry = buildSeaGeometry(SEA_HALF, GRID_N)
+  const geometry = buildSeaGeometry(GRID_N)
+  const coast = buildCoastFromWaterMask(
+    waterSdf.mask,
+    waterSdf.resolution,
+    waterSdf.seaHalf,
+    (x, z) => pointInWaterPolygons(x, z, polygonsLocalForCoast)
+  )
+  const chain = new ChainSim(coast)
+  const filmFoam = new FilmFoamSim(tsl, wgpu, chain.simTexture)
+  foam.setSdf(waterSdf.texture, SEA_HALF)
 
   viewer.flyToTarget(
     { longitude: OCEAN_LON, latitude: OCEAN_LAT, height: oceanHeight },
-    { distance: 2800, pitch: -38, duration: 1.5 }
+    { distance: 20, pitch: -10, duration: 1.5 }
   )
 
   const surface = new OceanSurface(
@@ -1694,9 +2136,12 @@ async function main() {
     wgpu,
     geometry,
     waveField.texture,
+    capField.texture,
     tex.gravityWavesPerTile,
+    tex.capillaryWavesPerTile,
     tex.gravityDispGrad,
     tex.gravitySize,
+    tex.capillarySize,
     originMatrix,
     viewer,
     tex.foamPattern,
@@ -1705,28 +2150,83 @@ async function main() {
     waterSdf,
     SEA_HALF
   )
+  const ribbon = new ShoreRibbon(
+    tsl,
+    wgpu,
+    chain.simTexture,
+    coast.mainTableTexture,
+    filmFoam.texture,
+    originMatrix,
+    rtcUniforms,
+    surface,
+    waterSdf,
+    SEA_HALF
+  )
+  viewer.scene.threeScene.add(surface.landMesh)
   viewer.scene.threeScene.add(surface.mesh)
-  bindWaterToggle(surface.mesh)
+  viewer.scene.threeScene.add(ribbon.mesh)
+  bindWaterToggle([surface.landMesh, surface.mesh, ribbon.mesh])
+
+  const camLocal = new THREE.Vector3()
+  const invOrigin = originMatrix.clone().invert()
 
   oceanTick = (dt) => {
     const params = readParams()
+    const simDt = params.pause ? 0 : dt
     const waterVisible = el("toggle-water").checked
+    surface.landMesh.visible = waterVisible
     surface.mesh.visible = waterVisible
+    ribbon.mesh.visible = waterVisible
     if (!waterVisible) return
 
-    if (!params.pause) {
+    if (simDt > 0) {
       const lambda = params.wavelength
       const texFreq = Math.sqrt((GRAVITY * lambda) / (2 * Math.PI)) / (lambda * tex.gravityWavesPerTile)
-      waveField.update(dt, texFreq, params.dispersion)
+      waveField.update(simDt, texFreq, params.dispersion)
+      const capK = (2 * Math.PI) / params.rippleScale
+      const capSpeed = Math.sqrt(GRAVITY / capK + CAPILLARY_SIGMA_RHO * capK)
+      capField.update(simDt, capSpeed / (params.rippleScale * tex.capillaryWavesPerTile), CAP_DISPERSION)
     }
     waveField.render(renderer)
+    capField.render(renderer)
 
-    surface.update(dt, params)
+    // 暂停时也传 0，避免海面 phases/time/caustics 继续滚动
+    surface.update(simDt, params)
     const layers = surface.exportLayerUniforms()
-    foam.syncLayers(layers.d, layers.s, layers.numLayers, layers.choppiness, layers.ampInv)
-    if (!params.pause) foam.setParams(params.foam, 4, dt)
-    foam.render(renderer)
+    const layerCache: Array<{ dx: number; dz: number; invL: number; amp: number; su: number; sv: number }> = []
+    for (let i = 0; i < layers.numLayers; i++) {
+      const d = layers.d[i].value as THREE.Vector4
+      const s = layers.s[i].value as THREE.Vector4
+      layerCache.push({ dx: d.x, dz: d.y, invL: d.z, amp: d.w, su: s.x, sv: s.y })
+    }
+    camLocal.copy(viewer.camera.threeCamera.position).applyMatrix4(invOrigin)
+    chain.update(
+      simDt,
+      params,
+      (x, z) =>
+        sampleWaveLevel(x, z, tex.gravityHeights, waveField.data, layerCache, tex.gravitySize),
+      camLocal.x,
+      camLocal.z
+    )
+    foam.setWindow(camLocal.x, camLocal.z, simDt > 0)
+    surface.setFoamWindow(foam.windowCenter[0], foam.windowCenter[1])
+    if (simDt > 0) {
+      foam.setParams(params.foam, params.foamLife, simDt)
+      filmFoam.setParams(params.foamLife, simDt, chain.lastShift)
+      foam.syncLayers(
+        layers.d,
+        layers.s,
+        layers.numLayers,
+        layers.choppiness,
+        layers.ampInv,
+        surface.leanXYU.value,
+        params.depth
+      )
+      foam.render(renderer)
+      filmFoam.render(renderer)
+    }
     surface.setFoamTexture(foam.texture)
+    ribbon.syncFromSurface(params, chain, filmFoam.texture)
   }
 
   window.addEventListener("beforeunload", () => {
