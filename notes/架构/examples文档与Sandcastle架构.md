@@ -153,6 +153,9 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 - `GaussianSplatPlugin` → `3d-tiles-rendererjs-3dgs-plugin`
 - `Tree` → `@dgreenheck/ez-tree`
 - HISM helper binding → `examples/hism/shared.ts`
+- `TSL` / `WEBGPU` → `three/tsl`、`three/webgpu`
+- `getSunDirectionECEF` → `@takram/three-atmosphere`
+- `VectorTile` / `Pbf` → `@mapbox/vector-tile`、`pbf`（OSM 水域矢量瓦片）
 
 普通示例只加载 Tellux / Three.js 和通用 helper；专用依赖加载失败会进入 runner 现有的错误回传通道。新增专用注入能力时，应同时更新 binding 检测测试，避免重新扩大所有 Sandcastle 运行的首屏依赖图。
 

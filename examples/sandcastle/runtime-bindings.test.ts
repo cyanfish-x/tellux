@@ -12,7 +12,9 @@ describe('Sandcastle optional runtime bindings', () => {
       hism: false,
       tree: false,
       tsl: false,
-      webgpu: false
+      webgpu: false,
+      sunDirection: false,
+      vectorTile: false
     })
   })
 
@@ -44,6 +46,12 @@ describe('Sandcastle optional runtime bindings', () => {
     expect(detectOptionalRuntimeBindings(source).webgpu).toBe(true)
   })
 
+  it('detects getSunDirectionECEF used by atmosphere-aware examples', () => {
+    expect(detectOptionalRuntimeBindings(`
+      const dir = getSunDirectionECEF(date, target)
+    `).sunDirection).toBe(true)
+  })
+
   it('does not inject TSL / WEBGPU for examples that only use core THREE', () => {
     const result = detectOptionalRuntimeBindings(`
       import * as THREE from "three"
@@ -51,5 +59,13 @@ describe('Sandcastle optional runtime bindings', () => {
     `)
     expect(result.tsl).toBe(false)
     expect(result.webgpu).toBe(false)
+    expect(result.sunDirection).toBe(false)
+    expect(result.vectorTile).toBe(false)
+  })
+
+  it('detects VectorTile used by OSM water-mask examples', () => {
+    expect(detectOptionalRuntimeBindings(`
+      const tile = new VectorTile(new Pbf(bytes))
+    `).vectorTile).toBe(true)
   })
 })

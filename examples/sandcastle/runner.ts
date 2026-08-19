@@ -178,6 +178,9 @@ async function executeExampleScript(source: string) {
     "bootExampleI18n",
     "TSL",
     "WEBGPU",
+    "getSunDirectionECEF",
+    "VectorTile",
+    "Pbf",
     "__sandcastleImportMeta",
     `"use strict";\n${transformExampleScript(source)}\n//# sourceURL=tellux-sandcastle-example.js`
   )
@@ -208,13 +211,25 @@ async function executeExampleScript(source: string) {
     bootExampleI18nInRunner,
     optionalBindings.TSL,
     optionalBindings.WEBGPU,
+    optionalBindings.getSunDirectionECEF,
+    optionalBindings.VectorTile,
+    optionalBindings.Pbf,
     sandcastleImportMeta
   )
 }
 
 async function loadOptionalRuntimeBindings(source: string) {
   const required = detectOptionalRuntimeBindings(source)
-  const [gaussianSplatModule, treeModule, hismModule, tslModule, webgpuModule] = await Promise.all([
+  const [
+    gaussianSplatModule,
+    treeModule,
+    hismModule,
+    tslModule,
+    webgpuModule,
+    atmosphereModule,
+    vectorTileModule,
+    pbfModule,
+  ] = await Promise.all([
     required.gaussianSplat
       ? import("3d-tiles-rendererjs-3dgs-plugin")
       : null,
@@ -230,7 +245,20 @@ async function loadOptionalRuntimeBindings(source: string) {
     required.webgpu
       ? import("three/webgpu")
       : null,
+    required.sunDirection
+      ? import("@takram/three-atmosphere")
+      : null,
+    required.vectorTile
+      ? import("@mapbox/vector-tile")
+      : null,
+    required.vectorTile
+      ? import("pbf")
+      : null,
   ])
+
+  const PbfBinding = pbfModule
+    ? ((pbfModule as { default?: unknown }).default ?? pbfModule)
+    : undefined
 
   return {
     GaussianSplatPlugin: gaussianSplatModule?.GaussianSplatPlugin,
@@ -241,6 +269,9 @@ async function loadOptionalRuntimeBindings(source: string) {
     >,
     TSL: tslModule ?? undefined,
     WEBGPU: webgpuModule ?? undefined,
+    getSunDirectionECEF: atmosphereModule?.getSunDirectionECEF,
+    VectorTile: vectorTileModule?.VectorTile,
+    Pbf: PbfBinding,
   }
 }
 

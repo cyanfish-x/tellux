@@ -48,6 +48,7 @@ const categoryById: Record<string, string> = {
   "hism-forest": "HISM",
   "hism-compare": "HISM",
   "webgpu-basic": "Rendering",
+  ocean: "Rendering",
 }
 
 const tagByTerm: Array<[string, string]> = [
@@ -93,6 +94,9 @@ const tagByTerm: Array<[string, string]> = [
   ["wmts", "WMTS"],
   ["天地图", "Tianditu"],
   ["xyz", "XYZ"],
+  ["ocean", "Ocean"],
+  ["海洋", "Ocean"],
+  ["webgpu", "WebGPU"],
   ["体积云", "Clouds"],
   ["高斯", "3DGS"],
   ["地形", "Terrain"],

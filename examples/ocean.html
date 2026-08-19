@@ -4,50 +4,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ocean (gpuocean × tellux)</title>
+  <meta name="sandcastle-order" content="2.4" />
+  <title data-i18n="example.ocean.title">WebGPU 海洋</title>
   <link rel="stylesheet" href="./styles.css" />
-  <style>
-    #panel {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      z-index: 10;
-      padding: 10px 14px;
-      background: rgba(10, 20, 30, 0.72);
-      color: #eee;
-      border-radius: 8px;
-      font: 12px/1.9 system-ui, sans-serif;
-      user-select: none;
-      max-height: 80vh;
-      overflow: auto;
-    }
-    #panel summary { cursor: pointer; font-weight: 600; }
-    #panel label { display: grid; grid-template-columns: 84px 120px 40px; gap: 8px; align-items: center; }
-    #panel span { text-align: right; font-variant-numeric: tabular-nums; }
-    #error {
-      position: fixed; inset: 0; display: none; place-items: center; text-align: center;
-      background: #1a2633; color: #fff; font: 16px system-ui, sans-serif; padding: 2em; z-index: 20;
-    }
-  </style>
 </head>
 
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
+    <aside class="example-panel" data-i18n-attr="aria-label:example.ocean.panel.aria" aria-label="海洋控件">
+      <header class="example-panel__chrome">
+        <button
+          type="button"
+          class="example-panel__fold"
+          aria-expanded="true"
+          title="收起面板"
+          aria-label="收起面板"
+          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
+        ></button>
+        <span class="example-panel__title" data-i18n="example.ocean.panel.title">WebGPU 海洋</span>
+      </header>
+
+      <div class="example-panel__collapse">
+        <div class="example-panel__content">
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary" data-i18n="common.folder.display">显示</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.water">水域</span>
+                  <input id="toggle-water" class="example-panel__checkbox" type="checkbox" checked />
+                </label>
+                <label class="example-panel__row">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.pause">暂停</span>
+                  <input id="pause" class="example-panel__checkbox" type="checkbox" />
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary" data-i18n="example.ocean.folder.waves">海浪</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.wavelength">波长</span>
+                  <input id="wavelength" class="example-panel__slider" type="range" min="5" max="60" step="1" value="10" />
+                  <span class="example-panel__value">10</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.amplitude">振幅</span>
+                  <input id="amplitude" class="example-panel__slider" type="range" min="0" max="2" step="0.02" value="0.4" />
+                  <span class="example-panel__value">0.4</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.choppiness">碎浪</span>
+                  <input id="choppiness" class="example-panel__slider" type="range" min="0" max="3" step="0.05" value="1.5" />
+                  <span class="example-panel__value">1.5</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.layers">层数</span>
+                  <input id="layers" class="example-panel__slider" type="range" min="1" max="8" step="1" value="5" />
+                  <span class="example-panel__value">5</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.spread">散布</span>
+                  <input id="spread" class="example-panel__slider" type="range" min="0" max="90" step="1" value="40" />
+                  <span class="example-panel__value">40</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.waveDir">浪向</span>
+                  <input id="waveDir" class="example-panel__slider" type="range" min="-60" max="60" step="1" value="0" />
+                  <span class="example-panel__value">0</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.dispersion">频散</span>
+                  <input id="dispersion" class="example-panel__slider" type="range" min="0" max="2" step="0.05" value="1" />
+                  <span class="example-panel__value">1</span>
+                </label>
+                <label class="example-panel__row example-panel__row--slider example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.ocean.label.foam">泡沫</span>
+                  <input id="foam" class="example-panel__slider" type="range" min="0" max="1" step="0.02" value="0.6" />
+                  <span class="example-panel__value">0.6</span>
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary" data-i18n="common.folder.status">状态</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <p id="ocean-status" class="example-panel__status" aria-live="polite"></p>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </aside>
   </main>
-  <details id="panel" open>
-    <summary>ocean params</summary>
-    <label>wavelength <input id="wavelength" type="range" min="5" max="60" step="1" value="10"><span></span></label>
-    <label>amplitude <input id="amplitude" type="range" min="0" max="2" step="0.02" value="0.4"><span></span></label>
-    <label>choppiness <input id="choppiness" type="range" min="0" max="3" step="0.05" value="1.5"><span></span></label>
-    <label>layers <input id="layers" type="range" min="1" max="8" step="1" value="5"><span></span></label>
-    <label>spread <input id="spread" type="range" min="0" max="90" step="1" value="40"><span></span></label>
-    <label>waveDir <input id="waveDir" type="range" min="-60" max="60" step="1" value="0"><span></span></label>
-    <label>dispersion <input id="dispersion" type="range" min="0" max="2" step="0.05" value="1"><span></span></label>
-    <label>foam <input id="foam" type="range" min="0" max="1" step="0.02" value="0.6"><span></span></label>
-    <label>pause <input id="pause" type="checkbox"></label>
-  </details>
-  <div id="error"></div>
   <script type="module" src="./ocean.ts"></script>
 </body>
 

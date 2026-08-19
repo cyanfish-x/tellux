@@ -108,6 +108,10 @@ class WebGPURendererAdapter implements TelluxRendererAdapter {
       samples: rendererOptions.samples,
       forceWebGL: rendererOptions.forceWebGL
     })
+    // 对齐 WebGL：CPU float64 预乘 modelView，避免地球尺度 ECEF 在 GPU float32
+    // 上 view×world 导致地形瓦片抖动。见 notes/坑点记录/WebGPU地形瓦片modelView精度抖动坑点.md。
+    // 官方注明与 InstancedMesh / SkinnedMesh 不兼容；HISM 等走自有 RTC，需单独回归。
+    this.renderer.highPrecision = true
     this.ready = this.renderer.init().then(() => {
       if (this.disposed) return
       this.initialized = true

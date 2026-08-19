@@ -503,6 +503,14 @@
     "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
     "Full-page example. Edit JavaScript and HTML/CSS, then run again."
   ],
+  "example.ocean.registry.title": [
+    "WebGPU 海洋",
+    "WebGPU Ocean"
+  ],
+  "example.ocean.registry.description": [
+    "gpuocean 海浪着色 + 贴岸水面，地形使用 Cesium World Bathymetry（Ion 2426648）。",
+    "gpuocean wave shading with a coastline water mask on Cesium World Bathymetry (Ion 2426648)."
+  ],
   "example.atmosphere.registry.title": [
     "体积云与大气",
     "Volumetric Clouds & Atmosphere"
@@ -662,6 +670,62 @@
   "example.webgpu-basic.title": [
     "WebGPU 地球",
     "WebGPU Globe"
+  ],
+  "example.ocean.title": [
+    "WebGPU 海洋",
+    "WebGPU Ocean"
+  ],
+  "example.ocean.panel.aria": [
+    "海洋控件",
+    "Ocean controls"
+  ],
+  "example.ocean.panel.title": [
+    "WebGPU 海洋",
+    "WebGPU Ocean"
+  ],
+  "example.ocean.folder.waves": [
+    "海浪",
+    "Waves"
+  ],
+  "example.ocean.label.water": [
+    "水域",
+    "Water"
+  ],
+  "example.ocean.label.pause": [
+    "暂停",
+    "Pause"
+  ],
+  "example.ocean.label.wavelength": [
+    "波长",
+    "Wavelength"
+  ],
+  "example.ocean.label.amplitude": [
+    "振幅",
+    "Amplitude"
+  ],
+  "example.ocean.label.choppiness": [
+    "碎浪",
+    "Choppiness"
+  ],
+  "example.ocean.label.layers": [
+    "层数",
+    "Layers"
+  ],
+  "example.ocean.label.spread": [
+    "散布",
+    "Spread"
+  ],
+  "example.ocean.label.waveDir": [
+    "浪向",
+    "Wave dir"
+  ],
+  "example.ocean.label.dispersion": [
+    "频散",
+    "Dispersion"
+  ],
+  "example.ocean.label.foam": [
+    "泡沫",
+    "Foam"
   ],
   "example.atmosphere.panel.aria": [
     "大气与云控件",

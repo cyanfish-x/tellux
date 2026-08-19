@@ -1830,6 +1830,30 @@ select.field__input {
   cursor: pointer;
 }
 
+.example-panel__row--slider,
+.leva-row--slider {
+  grid-template-columns: 78px minmax(0, 1fr) 40px;
+  cursor: default;
+}
+
+.example-panel__slider,
+.leva-slider {
+  width: 100%;
+  min-width: 0;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--ep-accent);
+  background: transparent;
+}
+
+.example-panel__value,
+.leva-value {
+  color: var(--ep-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .example-panel__input,
 .example-panel__select,
 .leva-input {
