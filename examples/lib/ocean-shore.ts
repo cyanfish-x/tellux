@@ -1120,8 +1120,7 @@ fn oceanShading(
   let patFilm = mix(patFine, patCoarse, 1.0 - smoothstep(0.07, 0.4, stretch));
   let junctionFade = 1.0 - smoothstep(0.0, 6.0, st.x);
   let maskWave = smoothstep(0.0, 0.15, patWave - (1.05 - 1.15 * accR * junctionFade));
-  let wetAcc = (filmAcc.b + filmAcc.r * 0.8) * smoothstep(0.02, 0.08, column);
-  let maskFilm = smoothstep(0.0, 0.15, patFilm - (1.05 - 1.15 * wetAcc));
+  let maskFilm = smoothstep(0.0, 0.15, patFilm - (1.05 - 1.15 * (filmAcc.b + filmAcc.r * 0.8)));
   let foamMask = min(maskWave + maskFilm, 1.0);
   let foamColor = lightTint * mix(0.45, 1.0, sunLevel) * (0.72 + 0.22 * max(n.y, 0.0));
   color = mix(color, foamColor, foamMask);
