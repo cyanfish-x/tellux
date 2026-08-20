@@ -127,6 +127,8 @@ export const zh: MessageTable = {
   'example.basic.registry.description': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',
   'example.webgpu-basic.registry.title': 'WebGPU 地球',
   'example.webgpu-basic.registry.description': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',
+  'example.ocean-riyue-bay.registry.title': '日月湾 WebGPU 海洋',
+  'example.ocean-riyue-bay.registry.description': '流式真实地形驱动岸线、浅水破浪、泡沫与焦散的日月湾近岸海洋。',
   'example.atmosphere.registry.title': '体积云与大气',
   'example.atmosphere.registry.description': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',
   'example.3d-tiles.registry.title': '3D Tiles 加载',

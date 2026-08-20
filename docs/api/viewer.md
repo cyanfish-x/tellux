@@ -60,6 +60,12 @@ const viewer = await tellux.Viewer.create(container, {
 
 影像图层管理器。
 
+### `terrain`
+
+类型：`TerrainRuntime`
+
+地形运行时 facade。`terrain.set(options)` 切换地形，`terrain.options` 返回当前只读配置快照，`terrain.observeTiles(...)` 观察流式瓦片，`terrain.addMaterialDecorator(...)` 注册受控材质装饰器。旧的 `viewer.setTerrain(...)` 仍是 `viewer.terrain.set(...)` 的兼容别名。
+
 ### `hism`
 
 类型：`HismManager`
@@ -116,7 +122,14 @@ Tellux 是否接管动画循环。默认 `true`。设为 `false` 后需自行调
 viewer.on('click', (event) => {
   console.log(event.cartographic)
 })
+
+viewer.on('preRender', ({ deltaTime, time }) => {
+  // Tellux 已完成本帧地形/模型/实体更新，尚未提交最终 render。
+  updateCustomEffect(deltaTime, time)
+})
 ```
+
+`preRender` 在默认循环和手动 `viewer.render()` 中具有相同顺序。监听器按注册顺序执行、相同函数去重；返回的取消函数与 `off` 都可重复调用。监听器异常向上传播。需要逐帧接入的扩展应使用此事件，不要另建 `requestAnimationFrame`。
 
 ### `off(type, listener)`
 
@@ -140,7 +153,7 @@ viewer.on('click', (event) => {
 
 ### `setTerrain(terrain)`
 
-运行时切换 Cesium quantized-mesh 地形。传入 `null` 可回到无地形模式。
+运行时切换 Cesium quantized-mesh 地形。传入 `null` 可回到无地形模式。它是 `viewer.terrain.set(terrain)` 的兼容别名。
 
 ### `load3DTileset(options)`
 

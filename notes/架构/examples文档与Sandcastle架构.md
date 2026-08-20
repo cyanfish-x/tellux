@@ -153,6 +153,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 - `GaussianSplatPlugin` → `3d-tiles-rendererjs-3dgs-plugin`
 - `Tree` → `@dgreenheck/ez-tree`
 - HISM helper binding → `examples/hism/shared.ts`
+- `createRiyueBayOceanDemo` → `examples/ocean/index.ts`（同时注入参数面板 helper）
 
 普通示例只加载 Tellux / Three.js 和通用 helper；专用依赖加载失败会进入 runner 现有的错误回传通道。新增专用注入能力时，应同时更新 binding 检测测试，避免重新扩大所有 Sandcastle 运行的首屏依赖图。
 
@@ -172,6 +173,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 | Gaussian Splat | 包含 3DGS plugin / Spark 的异步能力 chunk | 5.5 MiB | 2 MiB |
 | TypeScript worker | worker 文件 | 6.25 MiB | 1.6 MiB |
 | editor worker | worker 文件 | 300 KiB | 100 KiB |
+| 日月湾 Ocean | 包含 `examples/ocean/` 的异步能力 chunk | 3.5 MiB | 1 MiB |
 
 入口预算只递归静态 `imports`，不把 `dynamicImports` 计入首屏；异步重能力有独立预算。这样既能阻止普通入口意外吃进专用依赖，又不会用整个多页站点的总产物体积掩盖责任边界。
 

@@ -503,6 +503,14 @@
     "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
     "Full-page example. Edit JavaScript and HTML/CSS, then run again."
   ],
+  "example.ocean-riyue-bay.registry.title": [
+    "日月湾 WebGPU 海洋",
+    "Riyue Bay WebGPU Ocean"
+  ],
+  "example.ocean-riyue-bay.registry.description": [
+    "流式真实地形驱动岸线、浅水破浪、泡沫与焦散的日月湾近岸海洋。",
+    "A Riyue Bay coastal ocean with streaming terrain-driven shoreline, breaking waves, foam, and caustics."
+  ],
   "example.atmosphere.registry.title": [
     "体积云与大气",
     "Volumetric Clouds & Atmosphere"

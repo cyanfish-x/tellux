@@ -57,6 +57,7 @@ const viewer = await tellux.Viewer.create(container, {
 viewer.scene          // 场景控制（大气/云/后处理）— 见 scene-effects.md
 viewer.camera         // 相机 — 见下文
 viewer.layers         // 影像图层管理器 — 见下文
+viewer.terrain        // 地形运行时：set / options / observeTiles / addMaterialDecorator
 viewer.controls       // 地球交互控制器（拖拽/滚轮）
 viewer.clock          // 场景时钟（驱动太阳方向）
 viewer.renderer       // 底层 Three.js renderer
@@ -230,6 +231,8 @@ viewer.setTerrain({ url: 'https://example.com/another/' })
 viewer.setTerrain(null)
 ```
 
+`viewer.setTerrain()` 是兼容入口；新代码也可使用 `viewer.terrain.set()`。需要消费流式 LOD 时，通过 `viewer.terrain.observeTiles(listener, { replay, rectangle })` 接收 `load | unload | reset`，只读或复制 `tile.model`，不要修改 Tellux 所有的 geometry / material / ArrayBuffer。需要替换地形材质时使用 `viewer.terrain.addMaterialDecorator()` 返回新材质和释放回调。
+
 `tileLoading` 调参：
 
 | 字段 | 默认 | 说明 |
@@ -379,6 +382,16 @@ function animate(time: number) {
 }
 requestAnimationFrame(animate)
 ```
+
+扩展模块需要在 Tellux 最终提交渲染前逐帧更新时，优先使用统一循环：
+
+```ts
+const off = viewer.on('preRender', ({ deltaTime, time }) => {
+  customManager.update(deltaTime, time)
+})
+```
+
+`preRender` 位于控制器、地形、模型、实体和遮挡更新之后、最终 render 之前；默认循环和手动 `viewer.render()` 时序一致。不要为扩展再创建独立 `requestAnimationFrame`。
 
 像素比与色调曝光（顶层属性）：
 

@@ -62,6 +62,50 @@ viewer.setTerrain({ url: 'https://example.com/terrain/' })
 viewer.setTerrain(null)
 ```
 
+## 流式地形运行时
+
+需要让植被、近岸海洋或分析模块消费动态 LOD 时，使用 `viewer.terrain`，不要直接依赖 3d-tiles-renderer 的内部 Tile 对象：
+
+```ts
+viewer.terrain.set({ type: 'cesium-ion', assetId: 1, apiToken })
+
+const stop = viewer.terrain.observeTiles((event) => {
+  if (event.type === 'load') {
+    console.log(event.tile.id, event.tile.parentId, event.tile.rectangle)
+  } else if (event.type === 'unload') {
+    // snapshot.model 即将失效
+  } else {
+    // 地形源切换、移除或 Viewer 销毁
+    console.log('terrain reset', event.sourceRevision)
+  }
+}, {
+  replay: true,
+  rectangle: { west: 110.1, south: 18.5, east: 110.3, north: 18.8 }
+})
+```
+
+`load` 快照按父级优先同步 replay，包含不透明 `id`、`parentId`、`sourceRevision`、LOD 深度、几何误差、虚拟瓦片标记、度制地理矩形、米制高程范围和只读 `model`。跨日期变更线的矩形允许 `west > east`。模型、材质、geometry 与 ArrayBuffer 始终归 Tellux 所有；观察者只能读取或复制，不能修改、销毁或转移。
+
+### 受控材质装饰器
+
+需要裁水、调试着色等材质级扩展时，使用装饰器返回新材质，不修改输入：
+
+```ts
+const removeDecorator = viewer.terrain.addMaterialDecorator(({ tile, mesh, material }) => {
+  const decorated = createDecoratedMaterial(tile, mesh, material)
+  return {
+    material: decorated,
+    dispose: () => decorated.dispose()
+  }
+})
+```
+
+多个装饰器按注册顺序组合。注销会先释放当前结果，再从原始材质重建剩余链；瓦片卸载、terrain reset 和 `viewer.destroy()` 也会恢复并释放装饰结果。单个装饰器失败不会破坏该 Mesh 上一层有效材质。
+
+::: warning 所有权边界
+装饰器不得修改传入材质、Mesh 或 geometry。只有自己返回的材质和资源由自己的 `dispose` 回调释放。
+:::
+
 ## 影像图层
 
 所有影像图层通过 `viewer.layers` 管理。`add(options)` 返回图层句柄，可以链式调用其方法。

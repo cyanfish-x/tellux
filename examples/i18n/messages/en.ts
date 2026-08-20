@@ -127,6 +127,8 @@ export const en: MessageTable = {
   'example.basic.registry.description': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',
   'example.webgpu-basic.registry.title': 'WebGPU Globe',
   'example.webgpu-basic.registry.description': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',
+  'example.ocean-riyue-bay.registry.title': 'Riyue Bay WebGPU Ocean',
+  'example.ocean-riyue-bay.registry.description': 'A Riyue Bay coastal ocean with streaming terrain-driven shoreline, breaking waves, foam, and caustics.',
   'example.atmosphere.registry.title': 'Volumetric Clouds & Atmosphere',
   'example.atmosphere.registry.description': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',
   'example.3d-tiles.registry.title': 'Load 3D Tiles',
