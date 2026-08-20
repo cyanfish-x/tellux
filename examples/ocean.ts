@@ -120,7 +120,7 @@ const SEA_HALF = 3000
 const OSM_WATER_ZOOM = 12
 const OSM_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 /** 水域 SDF 纹理分辨率；片元按距离场软裁岸线。 */
-const WATER_SDF_RES = 512
+const WATER_SDF_RES = 1024
 /** 真实地形高度场采样分辨率；会双线性放大到 WATER_SDF_RES 写入 SDF 纹理 G 通道。 */
 const HEIGHTFIELD_RES = 256
 /** 海岸线附近精细高度场分辨率；只在近岸带状区域采样，避免全量 512² 请求。 */

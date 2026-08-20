@@ -646,12 +646,12 @@ fn coastSDF(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32) -> 
   let inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
   let uvc = clamp(uv, vec2f(0.0), vec2f(1.0));
   // FloatType SDF 在 WebGPU 下不可 filter，textureLoad + 手动双线性
-  let res = 512.0;
+  let res = 1024.0;
   let p = uvc * res - 0.5;
   let x0 = i32(clamp(floor(p.x), 0.0, res - 1.0));
   let y0 = i32(clamp(floor(p.y), 0.0, res - 1.0));
-  let x1 = min(x0 + 1, 511);
-  let y1 = min(y0 + 1, 511);
+  let x1 = min(x0 + 1, 1023);
+  let y1 = min(y0 + 1, 1023);
   let a = p.x - floor(p.x);
   let b = p.y - floor(p.y);
   let c00 = textureLoad(sdfTex, vec2i(x0, y0), 0);
@@ -669,12 +669,12 @@ fn terrainHeight(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32
   let inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
   let uvc = clamp(uv, vec2f(0.0), vec2f(1.0));
   // FloatType SDF 在 WebGPU 下不可 filter，textureLoad + 手动双线性
-  let res = 512.0;
+  let res = 1024.0;
   let p = uvc * res - 0.5;
   let x0 = i32(clamp(floor(p.x), 0.0, res - 1.0));
   let y0 = i32(clamp(floor(p.y), 0.0, res - 1.0));
-  let x1 = min(x0 + 1, 511);
-  let y1 = min(y0 + 1, 511);
+  let x1 = min(x0 + 1, 1023);
+  let y1 = min(y0 + 1, 1023);
   let a = p.x - floor(p.x);
   let b = p.y - floor(p.y);
   let c00 = textureLoad(sdfTex, vec2i(x0, y0), 0);
@@ -846,7 +846,8 @@ fn oceanVertex(
   let wSea = 1.0 - smoothstep(-0.6, 0.1, ty0);
   let shallowAmp = clamp(1.0 / tanh(waveK * max(-ty0, 0.05)), 1.0, 2.5);
   let dispXZ = xz + disp * shallowAmp * wSea;
-  let ty = terrainHeight(dispXZ, sdfTex, samp, seaHalf, slope, seaDepth);
+  // 水面只跟水下地形（ty<=0）交互，避免位移采样到岸上正高度时把海面整片抬起
+  let ty = min(terrainHeight(dispXZ, sdfTex, samp, seaHalf, slope, seaDepth), 0.0);
   let sOff = coastSDF(xz, sdfTex, samp, seaHalf);
   let sJ0 = -${REST_DEPTH} / slope;
   var cut = sOff - (sJ0 - ${SIM_BAND}.0);
@@ -901,7 +902,8 @@ fn oceanShading(
   let anisoScale = mix(1.0, conc, rippleBias) * fade;
   ${unrollCapNormal()}
   var n = normalize(cross(dPz, dPx));
-  let ty = terrainHeight(world.xz, sdfTex, samp, seaHalf, slope, seaDepth);
+  // 水面只跟水下地形（ty<=0）交互，避免岸上正高度把水 column 顶起来
+  let ty = min(terrainHeight(world.xz, sdfTex, samp, seaHalf, slope, seaDepth), 0.0);
   let column = max(world.y - ty, 0.0);
   let waterM = smoothstep(0.025, 0.09, column);
   let eT = 0.5;
