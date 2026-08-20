@@ -192,6 +192,111 @@ export interface TiandituTerrainOptions extends TerrainRenderOptions {
 export type TerrainOptions = UrlTerrainOptions | CesiumIonTerrainOptions | TiandituTerrainOptions
 
 /**
+ * 地形瓦片的地理包围范围。经纬度单位为度，高程单位为米。
+ *
+ * Geographic bounds of a terrain tile. Longitudes and latitudes are in degrees;
+ * heights are in meters.
+ */
+export interface TerrainTileRectangle {
+  readonly west: number
+  readonly south: number
+  readonly east: number
+  readonly north: number
+  readonly minHeight: number
+  readonly maxHeight: number
+}
+
+/**
+ * 已加载地形瓦片的只读快照。
+ *
+ * `model` 及其 geometry、material 和 BufferAttribute 始终由 Tellux 所有。
+ * 观察者只能读取或同步复制所需数据，不能修改、销毁或转移底层 ArrayBuffer。
+ * 快照在对应 `unload` 或 `reset` 事件后失效。
+ *
+ * Read-only snapshot of a loaded terrain tile.
+ *
+ * Tellux retains ownership of `model`, its geometry, materials, and buffer
+ * attributes. Observers may inspect or synchronously copy data, but must not
+ * mutate, dispose, or transfer the underlying ArrayBuffers. The snapshot becomes
+ * invalid after its matching `unload` or a `reset` event.
+ */
+export interface TerrainTileSnapshot {
+  readonly id: string
+  readonly parentId: string | null
+  readonly sourceRevision: number
+  readonly depth: number
+  readonly geometricError: number
+  readonly isVirtual: boolean
+  readonly rectangle: TerrainTileRectangle
+  readonly model: THREE.Object3D
+}
+
+export interface TerrainTileLoadEvent {
+  readonly type: 'load'
+  readonly tile: TerrainTileSnapshot
+}
+
+export interface TerrainTileUnloadEvent {
+  readonly type: 'unload'
+  readonly tile: TerrainTileSnapshot
+}
+
+export interface TerrainTileResetEvent {
+  readonly type: 'reset'
+  readonly sourceRevision: number
+  readonly reason: 'source-change' | 'destroy'
+}
+
+/** 地形瓦片生命周期事件。Terrain tile lifecycle event. */
+export type TerrainTileEvent = TerrainTileLoadEvent | TerrainTileUnloadEvent | TerrainTileResetEvent
+
+/** 地理矩形过滤范围，经纬度单位为度。Geographic rectangle filter in degrees. */
+export interface TerrainTileObserverRectangle {
+  readonly west: number
+  readonly south: number
+  readonly east: number
+  readonly north: number
+}
+
+export interface TerrainTileObserverOptions {
+  /** 注册时是否同步回放已加载瓦片，默认 `true`。Synchronously replays loaded tiles on registration. */
+  readonly replay?: boolean
+  /** 可选地理范围过滤；`reset` 事件不受过滤影响。Optional geographic filter; reset is always delivered. */
+  readonly rectangle?: TerrainTileObserverRectangle
+}
+
+/** 地形瓦片事件监听函数。Terrain tile event listener. */
+export type TerrainTileListener = (event: TerrainTileEvent) => void
+
+/** 地形材质装饰上下文。Terrain material decoration context. */
+export interface TerrainMaterialDecoratorContext {
+  readonly tile: TerrainTileSnapshot
+  readonly mesh: THREE.Mesh
+  readonly material: THREE.Material | THREE.Material[]
+}
+
+/**
+ * 地形材质装饰结果。释放回调由 Tellux 在重建、卸载或注销时调用。
+ *
+ * Terrain material decoration result. Tellux invokes `dispose` when rebuilding,
+ * unloading, or unregistering the decoration.
+ */
+export interface TerrainMaterialDecoration {
+  readonly material: THREE.Material | THREE.Material[]
+  readonly dispose: () => void
+}
+
+/**
+ * 返回新材质的地形装饰器。不得修改输入材质、Mesh 或 geometry。
+ *
+ * Terrain decorator returning a replacement material. It must not mutate the
+ * input material, mesh, or geometry.
+ */
+export type TerrainMaterialDecorator = (
+  context: TerrainMaterialDecoratorContext
+) => TerrainMaterialDecoration | null | undefined
+
+/**
  * 场景 3D Tiles 图层瓦片加载参数，用于调整 LOD 和细化策略。
  *
  * Scene 3D Tiles layer loading options used to tune LOD and refinement behavior.
@@ -315,3 +420,4 @@ export interface CesiumIon3DTilesetOptions extends ThreeDTilesRenderOptions {
  * imagery overlay pipeline.
  */
 export type Load3DTilesetOptions = Url3DTilesetOptions | CesiumIon3DTilesetOptions
+import type * as THREE from 'three'

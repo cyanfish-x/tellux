@@ -39,6 +39,8 @@ import { ObjectPicker } from './sampling/ObjectPicker'
 import { ScenePicker } from './sampling/ScenePicker'
 import { Scene } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
+import { TerrainRuntime } from './tiles/TerrainRuntime'
+import { TerrainTileLifecycleManager } from './tiles/TerrainTileLifecycleManager'
 import {
   resolveModelMaterialMode,
   resolveSceneContentMaterialMode,
@@ -79,6 +81,7 @@ import type { GlobeControls } from '3d-tiles-renderer'
 
 export { Camera } from './Camera'
 export { Clock } from './Clock'
+export { TerrainRuntime } from './tiles/TerrainRuntime'
 export { Entity, type EntityContext } from './entities/Entity'
 export {
   PointGraphics,
@@ -209,8 +212,17 @@ export type {
   SampleHeightMostDetailedResult,
   SampleHeightOptions,
   TerrainRenderOptions,
+  TerrainMaterialDecoration,
+  TerrainMaterialDecorator,
+  TerrainMaterialDecoratorContext,
   TerrainOptions,
+  TerrainTileEvent,
+  TerrainTileListener,
   TerrainTileLoadingOptions,
+  TerrainTileObserverOptions,
+  TerrainTileObserverRectangle,
+  TerrainTileRectangle,
+  TerrainTileSnapshot,
   Scene3DTileLoadingOptions,
   ThreeDTilesRenderOptions,
   ViewerSurfaceMaterialOptions,
@@ -335,6 +347,12 @@ export class Viewer {
    * Imagery layer manager.
    */
   readonly layers: LayerManager
+  /**
+   * 地形运行时控制与流式瓦片观察门面。
+   *
+   * Runtime terrain control and streaming tile observation facade.
+   */
+  readonly terrain: TerrainRuntime
   /**
    * 底层 3D Tiles 渲染器。
    *
@@ -510,6 +528,7 @@ export class Viewer {
       this.gltfLoader = new GLTFLoader()
       this.gltfLoader.setDRACOLoader(this.dracoLoader)
 
+      const terrainLifecycle = new TerrainTileLifecycleManager()
       this.tilesets = new TilesetManager({
         scene: this.scene.threeScene,
         camera: this.threeCamera,
@@ -523,7 +542,8 @@ export class Viewer {
           sceneOptions.atmosphere.lighting.mode
         ),
         surfaceMaterialOptions: sceneOptions.surface.material,
-        sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode)
+        sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode),
+        terrainLifecycle
       })
       constructionScope.defer(() => this.tilesets.dispose())
       tilesets = this.tilesets
@@ -531,6 +551,13 @@ export class Viewer {
       this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.domElement, this.threeCamera, this.tilesets)
       this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
       constructionScope.defer(() => this.heightSampler.dispose())
+      this.terrain = new TerrainRuntime({
+        lifecycle: terrainLifecycle,
+        getOptions: () => this.tilesets.terrainOptions,
+        setTerrain: (terrain) => {
+          this.setTerrain(terrain)
+        }
+      })
       // 贴地分类 pass 仅 WebGL（依赖 setEffects 深度纹理链）；WebGPU 下为 null。
       this.groundClampPass = this.rendererAdapter.supportsWebGLEffects
         ? new GroundClampPass(this.threeCamera)

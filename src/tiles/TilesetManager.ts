@@ -18,6 +18,7 @@ import {
 } from './ImageryOverlayFactory'
 import { SurfaceTilesetFactory } from './SurfaceTilesetFactory'
 import { TerrainTilesetFactory } from './TerrainTilesetFactory'
+import type { TerrainTileLifecycleManager } from './TerrainTileLifecycleManager'
 import {
   SceneTilesetMaterialPlugin,
   SurfaceMaterialPlugin,
@@ -55,6 +56,7 @@ export interface TilesetManagerOptions {
   surfaceMaterialMode: ResolvedSurfaceMaterialMode
   surfaceMaterialOptions: SurfaceMaterialOptions
   sceneTilesetMaterialMode: SceneTilesetMaterialMode
+  terrainLifecycle: TerrainTileLifecycleManager
 }
 
 export class TilesetManager {
@@ -105,6 +107,7 @@ export class TilesetManager {
       this.activeTerrainTileset = this.createTerrainTileset(this.currentTerrain, this.currentImageryLayers)
       this.options.scene.add(this.activeTerrainTileset.group)
     }
+    this.options.terrainLifecycle.setTileset(this.activeTerrainTileset)
     this.syncSurfaceVisibility()
   }
 
@@ -334,6 +337,7 @@ export class TilesetManager {
 
   dispose() {
     this.invalidateHeightSamplingTilesetPool()
+    this.options.terrainLifecycle.dispose()
     this.sceneTilesets.forEach((tileset) => {
       this.options.scene.remove(tileset.group)
       tileset.dispose()
@@ -430,6 +434,8 @@ export class TilesetManager {
 
   private replaceTerrainTileset(nextTileset: TilesRenderer | null) {
     const previousTileset = this.activeTerrainTileset
+
+    this.options.terrainLifecycle.setTileset(nextTileset)
 
     if (previousTileset) {
       this.options.scene.remove(previousTileset.group)
