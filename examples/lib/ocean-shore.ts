@@ -14,6 +14,10 @@ export const SIM_SPAN = 24
 export const SIM_BAND = 4
 export const MAIN_TABLE_N = 2048
 export const MAIN_TABLE_STEP = 0.8
+/** 原版 authored coast 常量：SDF 烘焙范围与远场直线岸线。 */
+const SDF_SIZE = 512
+const SDF_EXTENT = 384
+const BASE_SHORE_X = 10
 export const RIBBON_SPAN = 28
 export const RIBBON_CELLS = 140
 export const FOAM_RISE = 0.08
@@ -50,8 +54,8 @@ export const WARP_CELL = 0.4
 export const WARP_LINEAR = 64
 export const WARP_GROWTH = 1.08
 export const GRID_N = 512
-/** 原版 ocean.wgsl：合成纹理最细一级相对名义层的反锯齿校正系数。 */
-const COPY_FINE = 1.75
+/** 原版 ocean.wgsl 没有该校正系数；置 1 保持原版衰减。 */
+const COPY_FINE = 1
 
 type Pt = { x: number; z: number }
 
@@ -306,6 +310,176 @@ export function buildCoastFromWaterMask(
       let bd = Infinity
       // 必须逐项搜索：原版步长 4 在真实海岸线重采样后会把 tCamSnap 量化成约 7.2m 一档，
       // 导致 ribbon/chain 窗口随相机移动出现明显跳变（岸边色带几何不稳定）。
+      for (let i = 0; i < MAIN_TABLE_N; i += 1) {
+        const d = (main.P[i * 2] - x) ** 2 + (main.P[i * 2 + 1] - z) ** 2
+        if (d < bd) {
+          bd = d
+          best = i
+        }
+      }
+      return (main as any).t0 + best * main.step
+    },
+    _sample4: sample4,
+  }
+  return coast
+}
+
+function mainlandX(z: number) {
+  const w = Math.min(Math.abs(z) / 330, 1)
+  const fade = 1 - w * w * (3 - 2 * w)
+  const curve = 0.6 * (6 * Math.sin(z * 0.041) + 3.5 * Math.sin(z * 0.093 + 1.7))
+  const cape = -26 * Math.exp(-(((z + 70) / 38) ** 2))
+  return BASE_SHORE_X + fade * (curve + cape)
+}
+
+function islandPoint(s: number): Pt {
+  const th = -s * 2 * Math.PI
+  const r = 20 + 3 * Math.sin(3 * th + 1)
+  return { x: -45 + Math.cos(th) * r, z: 15 + Math.sin(th) * r }
+}
+
+/**
+ * 原版 gpuocean authored coast：程序化大陆岸线 + 小岛，生成 SDF 纹理和弧长表。
+ * 用于直接还原原生效果，不依赖 OSM / 真实地形高度场。
+ */
+export function buildAuthoredCoast() {
+  const zSpan = ((MAIN_TABLE_N - 1) * MAIN_TABLE_STEP) / 2 + 40
+  const dense: Pt[] = []
+  for (let z = -zSpan; z <= zSpan; z += 0.5) dense.push({ x: mainlandX(z), z })
+  const main = resample(dense, MAIN_TABLE_N, false)
+  let center = 0
+  for (let i = 0; i < MAIN_TABLE_N; i++) {
+    if (Math.abs(main.P[i * 2 + 1]) < Math.abs(main.P[center * 2 + 1])) center = i
+  }
+  ;(main as any).t0 = -center * main.step
+
+  const islDense: Pt[] = []
+  for (let s = 0; s < 1; s += 1 / 512) islDense.push(islandPoint(s))
+  const island = resample(islDense, ISLAND_COLS, true)
+  const islandFine = resample(islDense, ISLAND_COLS * 4, true)
+
+  // 烘焙 SDF（与原版 coast.js 相同的暴力最近点 + 法线符号）
+  const pts: Array<{ x: number; z: number; nx: number; nz: number }> = []
+  for (let i = 0; i < MAIN_TABLE_N; i++) {
+    if (
+      Math.abs(main.P[i * 2]) < SDF_EXTENT + 60 &&
+      Math.abs(main.P[i * 2 + 1]) < SDF_EXTENT + 60
+    ) {
+      pts.push({ x: main.P[i * 2], z: main.P[i * 2 + 1], nx: main.N[i * 2], nz: main.N[i * 2 + 1] })
+    }
+  }
+  for (let i = 0; i < islandFine.P.length / 2; i++) {
+    pts.push({
+      x: islandFine.P[i * 2],
+      z: islandFine.P[i * 2 + 1],
+      nx: islandFine.N[i * 2],
+      nz: islandFine.N[i * 2 + 1],
+    })
+  }
+  const BUCKET = 24
+  const NB = Math.ceil((2 * (SDF_EXTENT + 80)) / BUCKET)
+  const buckets: Array<Array<{ x: number; z: number; nx: number; nz: number }>> = Array.from(
+    { length: NB * NB },
+    () => []
+  )
+  const bIndex = (x: number, z: number) => {
+    const bx = Math.min(Math.max(Math.floor((x + SDF_EXTENT + 80) / BUCKET), 0), NB - 1)
+    const bz = Math.min(Math.max(Math.floor((z + SDF_EXTENT + 80) / BUCKET), 0), NB - 1)
+    return bz * NB + bx
+  }
+  for (const p of pts) buckets[bIndex(p.x, p.z)].push(p)
+
+  const data = new Float32Array(SDF_SIZE * SDF_SIZE * 4)
+  const texel = (2 * SDF_EXTENT) / SDF_SIZE
+  for (let iz = 0; iz < SDF_SIZE; iz++) {
+    const z = -SDF_EXTENT + (iz + 0.5) * texel
+    for (let ix = 0; ix < SDF_SIZE; ix++) {
+      const x = -SDF_EXTENT + (ix + 0.5) * texel
+      let bd = Infinity
+      let bp: { x: number; z: number; nx: number; nz: number } | null = null
+      const bx = Math.floor((x + SDF_EXTENT + 80) / BUCKET)
+      const bz = Math.floor((z + SDF_EXTENT + 80) / BUCKET)
+      for (let ring = 0; ring < NB; ring++) {
+        if (bd < ((ring - 1) * BUCKET) ** 2 && ring > 1) break
+        for (let dz = -ring; dz <= ring; dz++) {
+          for (let dx = -ring; dx <= ring; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dz)) !== ring) continue
+            const cx = bx + dx
+            const cz = bz + dz
+            if (cx < 0 || cz < 0 || cx >= NB || cz >= NB) continue
+            for (const p of buckets[cz * NB + cx]) {
+              const d = (p.x - x) ** 2 + (p.z - z) ** 2
+              if (d < bd) {
+                bd = d
+                bp = p
+              }
+            }
+          }
+        }
+      }
+      let sd = Math.sqrt(bd)
+      if (bp && (x - bp.x) * bp.nx + (z - bp.z) * bp.nz < 0) sd = -sd
+      const i = iz * SDF_SIZE + ix
+      data[i * 4] = sd
+      data[i * 4 + 3] = 1
+    }
+  }
+  const sdfTexture = new THREE.DataTexture(data, SDF_SIZE, SDF_SIZE, THREE.RGBAFormat, THREE.FloatType)
+  sdfTexture.minFilter = THREE.LinearFilter
+  sdfTexture.magFilter = THREE.LinearFilter
+  sdfTexture.generateMipmaps = false
+  sdfTexture.colorSpace = THREE.NoColorSpace
+  sdfTexture.wrapS = THREE.ClampToEdgeWrapping
+  sdfTexture.wrapT = THREE.ClampToEdgeWrapping
+  sdfTexture.needsUpdate = true
+
+  const tableData = new Float32Array(MAIN_TABLE_N * 4)
+  for (let i = 0; i < MAIN_TABLE_N; i++) {
+    tableData[i * 4] = main.P[i * 2]
+    tableData[i * 4 + 1] = main.P[i * 2 + 1]
+    tableData[i * 4 + 2] = main.N[i * 2]
+    tableData[i * 4 + 3] = main.N[i * 2 + 1]
+  }
+  const mainTableTexture = new THREE.DataTexture(
+    tableData,
+    MAIN_TABLE_N,
+    1,
+    THREE.RGBAFormat,
+    THREE.FloatType
+  )
+  mainTableTexture.minFilter = THREE.NearestFilter
+  mainTableTexture.magFilter = THREE.NearestFilter
+  mainTableTexture.generateMipmaps = false
+  mainTableTexture.colorSpace = THREE.NoColorSpace
+  mainTableTexture.needsUpdate = true
+
+  const sample4 = new Float32Array(4)
+  const coast = {
+    main,
+    island,
+    islandArcStep: island.step,
+    mainTableTexture,
+    sampleMain(t: number, out: Float32Array) {
+      const f = (t - (main as any).t0) / main.step
+      const fc = Math.min(Math.max(f, 0), MAIN_TABLE_N - 1)
+      const j0 = Math.min(Math.floor(fc), MAIN_TABLE_N - 2)
+      const a = fc - j0
+      let px = main.P[j0 * 2] * (1 - a) + main.P[j0 * 2 + 2] * a
+      let pz = main.P[j0 * 2 + 1] * (1 - a) + main.P[j0 * 2 + 3] * a
+      const nx = main.N[j0 * 2] * (1 - a) + main.N[j0 * 2 + 2] * a
+      const nz = main.N[j0 * 2 + 1] * (1 - a) + main.N[j0 * 2 + 3] * a
+      const inv = 1 / Math.max(Math.hypot(nx, nz), 1e-6)
+      const over = (f - fc) * main.step
+      px += -nz * inv * over
+      pz += nx * inv * over
+      out[0] = px
+      out[1] = pz
+      out[2] = nx * inv
+      out[3] = nz * inv
+    },
+    nearestMainArc(x: number, z: number) {
+      let best = 0
+      let bd = Infinity
       for (let i = 0; i < MAIN_TABLE_N; i += 1) {
         const d = (main.P[i * 2] - x) ** 2 + (main.P[i * 2 + 1] - z) ** 2
         if (d < bd) {
@@ -642,49 +816,30 @@ export function buildRibbonGeometry(nx = RIBBON_CELLS, nz = RIBBON_GRID_N) {
 /** TSL wgslFn 每个依赖必须是单个 `fn`；常量直接烘焙进函数体。 */
 export const coastSdfCode = `
 fn coastSDF(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32) -> f32 {
-  let uv = xz / (2.0 * seaHalf) + 0.5;
-  let inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
+  let uv = xz / (2.0 * ${SDF_EXTENT}.0) + 0.5;
   let uvc = clamp(uv, vec2f(0.0), vec2f(1.0));
   // FloatType SDF 在 WebGPU 下不可 filter，textureLoad + 手动双线性
-  let res = 1024.0;
+  let res = ${SDF_SIZE}.0;
   let p = uvc * res - 0.5;
   let x0 = i32(clamp(floor(p.x), 0.0, res - 1.0));
   let y0 = i32(clamp(floor(p.y), 0.0, res - 1.0));
-  let x1 = min(x0 + 1, 1023);
-  let y1 = min(y0 + 1, 1023);
+  let x1 = min(x0 + 1, ${SDF_SIZE - 1});
+  let y1 = min(y0 + 1, ${SDF_SIZE - 1});
   let a = p.x - floor(p.x);
   let b = p.y - floor(p.y);
   let c00 = textureLoad(sdfTex, vec2i(x0, y0), 0);
   let c10 = textureLoad(sdfTex, vec2i(x1, y0), 0);
   let c01 = textureLoad(sdfTex, vec2i(x0, y1), 0);
   let c11 = textureLoad(sdfTex, vec2i(x1, y1), 0);
-  let sd = mix(mix(c00, c10, a), mix(c01, c11, a), b).r;
-  return mix(1000.0, sd, inside);
+  let baked = mix(mix(c00, c10, a), mix(c01, c11, a), b).r;
+  let far = smoothstep(${SDF_EXTENT - 48}.0, ${SDF_EXTENT - 8}.0, max(abs(xz.x), abs(xz.y)));
+  return mix(baked, xz.x - ${BASE_SHORE_X}.0, far);
 }
 `
 
 export const terrainHeightCode = `
 fn terrainHeight(xz: vec2f, sdfTex: texture_2d<f32>, samp: sampler, seaHalf: f32, slope: f32, seaDepth: f32) -> f32 {
-  let uv = xz / (2.0 * seaHalf) + 0.5;
-  let inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
-  let uvc = clamp(uv, vec2f(0.0), vec2f(1.0));
-  // FloatType SDF 在 WebGPU 下不可 filter，textureLoad + 手动双线性
-  let res = 1024.0;
-  let p = uvc * res - 0.5;
-  let x0 = i32(clamp(floor(p.x), 0.0, res - 1.0));
-  let y0 = i32(clamp(floor(p.y), 0.0, res - 1.0));
-  let x1 = min(x0 + 1, 1023);
-  let y1 = min(y0 + 1, 1023);
-  let a = p.x - floor(p.x);
-  let b = p.y - floor(p.y);
-  let c00 = textureLoad(sdfTex, vec2i(x0, y0), 0);
-  let c10 = textureLoad(sdfTex, vec2i(x1, y0), 0);
-  let c01 = textureLoad(sdfTex, vec2i(x0, y1), 0);
-  let c11 = textureLoad(sdfTex, vec2i(x1, y1), 0);
-  let h = mix(mix(c00, c10, a), mix(c01, c11, a), b).g;
-  // G 通道已烘焙真实地形局部高度；patch 外 fallback 为 3m 高地。
-  // 不再把真实地形上限压到 3m，岸线才能和真实地形 mesh 对齐。
-  return mix(3.0, max(h, -seaDepth), inside);
+  return min(max(slope * coastSDF(xz, sdfTex, samp, seaHalf), -seaDepth), 3.0);
 }
 `
 

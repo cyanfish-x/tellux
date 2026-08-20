@@ -42,6 +42,7 @@ import { VectorTile as ImportedVectorTile } from "@mapbox/vector-tile"
 import ImportedPbf from "pbf"
 import { getSunDirectionECEF as importedGetSunDirectionECEF } from "@takram/three-atmosphere"
 import {
+  buildAuthoredCoast,
   buildCoastFromWaterMask,
   buildRibbonGeometry,
   ChainSim,
@@ -116,7 +117,9 @@ const OCEAN_LON = -76.0
 const OCEAN_LAT = 36.95
 /** 占位椭球高；真正海面高度会按近岸陆地采样校正（美东岸大地水准面约 -30 m）。 */
 const OCEAN_HEIGHT_FALLBACK = 0
-const SEA_HALF = 3000
+const SEA_HALF = 20000
+/** 原生模式：使用 gpuocean 自带程序化海岸线，不依赖 OSM/真实地形高度场。 */
+const USE_AUTHORED_COAST = true
 const OSM_WATER_ZOOM = 12
 const OSM_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 /** 水域 SDF 纹理分辨率；片元按距离场软裁岸线。 */
@@ -144,17 +147,13 @@ const CAP_UV_OFFSETS = [
   [0.37, 0.71], [0.83, 0.13], [0.53, 0.59],
 ]
 
-/** 与 gpuocean/src/noise.js 一致：5 个重力波变体逐级变细的比例。 */
-const COPY_RATIO = 0.87
-/** 原版 ocean.js：由 8 层基础比例和 5 级 COPY_RATIO 组合出的层间比例。 */
-const LAYER_RATIO = (0.68 ** 7 / COPY_RATIO ** 4) ** 0.25
+const SCALE_RATIO = 0.68
 const DIR_FRACS = [0, 0.9, -0.75, 0.45, -0.35, 0.7, -1, 0.2]
 const UV_OFFSETS = [
   [0.11, 0.63], [0.42, 0.17], [0.78, 0.55], [0.05, 0.91],
   [0.33, 0.4], [0.66, 0.08], [0.9, 0.77], [0.24, 0.31],
 ]
 const COPY_FACTORS = [-0.65, -0.3, 0.1, 0.4, 0.7]
-const DISPERSION_JITTER = [0.55, -0.45, 0.3, -0.6, -0.37]
 const COPY_FACTORS_Y = [0.5, -0.35, -0.65, 0.2, 0.35]
 const COPY_OFFSETS = [
   [0.13, 0.71], [0.53, 0.29], [0.87, 0.61], [0.31, 0.07], [0.67, 0.43],
@@ -360,10 +359,10 @@ function wavesPerTile(h: Float32Array, hx: Float32Array, size: number) {
   return (size * Math.sqrt(hxSq / hSq)) / (2 * Math.PI)
 }
 
-function gravityChannels(size: number, opts: any, seed: number, angle: number, scale = 1) {
-  const sigmaAlong = (opts.sigmaAlong ?? 3) * scale
-  const sigmaAlongWide = (opts.sigmaAlongWide ?? 9) * scale
-  const sigmaCross = (opts.sigmaCross ?? 14) * scale
+function gravityChannels(size: number, opts: any, seed: number, angle: number) {
+  const sigmaAlong = opts.sigmaAlong ?? 3
+  const sigmaAlongWide = opts.sigmaAlongWide ?? 9
+  const sigmaCross = opts.sigmaCross ?? 14
   const random = mulberry32(seed)
 
   const n = size * size
@@ -422,29 +421,25 @@ function gravityChannels(size: number, opts: any, seed: number, angle: number, s
 
 function generateGravityNoiseData(opts: any = {}) {
   const size = opts.size ?? 256
-  const angles = opts.angles ?? [0, -10, 10, -5, 5].map((a) => (a * Math.PI) / 180)
-  const seeds = [12345, 23456, 34567, 45678, 56789]
+  const angles = opts.angles ?? [-10, -5, 0, 5, 10].map((a) => (a * Math.PI) / 180)
+  const seeds = [23456, 45678, 12345, 34567, 56789]
   const variants = angles.map((angle: number, i: number) =>
-    gravityChannels(size, opts, seeds[i], angle, COPY_RATIO ** i)
+    gravityChannels(size, opts, seeds[i], angle)
   )
-  // 与 gpuocean 一致：取第 0 个最粗变体的 sigmaD 作为统一归一化基准。
-  const sigmaD = variants[0].sigmaD
+  const center = angles.indexOf(0)
+  const sigmaD = variants[center].sigmaD
   const out: any[] = []
   for (const v of variants) {
     for (let i = 0; i < v.d.length; i++) v.d[i] /= -sigmaD
     const [hx, hy] = gradients(v.h, size)
     out.push({ h: v.h, d: v.d, hx, hy })
   }
-  const [hx0] = gradients(variants[0].h, size)
-  const wRaw = angles.map((_, k) => COPY_RATIO ** k)
-  const wSum = Math.sqrt(wRaw.reduce((a, w) => a + w * w, 0))
+  const [hx0] = gradients(variants[center].h, size)
   return {
     size,
     variants: out,
-    wavesPerTile: wavesPerTile(variants[0].h, hx0, size),
+    wavesPerTile: wavesPerTile(variants[center].h, hx0, size),
     dispGradPerTexel: -1 / sigmaD,
-    copyWeights: wRaw.map((w) => w / wSum),
-    copySpeeds: angles.map((_, k) => Math.sqrt(COPY_RATIO ** k) - 1),
   }
 }
 
@@ -574,8 +569,6 @@ function buildOceanTextures() {
     gravityWavesPerTile: g.wavesPerTile,
     gravityDispGrad: g.dispGradPerTexel,
     gravityHeights: g.variants.map((v: { h: Float32Array }) => v.h) as Float32Array[],
-    gravityCopyWeights: g.copyWeights as number[],
-    gravityCopySpeeds: g.copySpeeds as number[],
     capillary,
     capillarySize: cap.size,
     capillaryWavesPerTile: cap.wavesPerTile,
@@ -1342,7 +1335,7 @@ class WaveFieldSim {
     // 单纹理噪声（毛细波）走 COPY_FACTORS fallback。
     this.weights = copyWeights ?? COPY_FACTORS.map(() => 1 / Math.sqrt(COPY_FACTORS.length))
     this.base = copySpeeds ?? COPY_FACTORS.map(() => 0)
-    this.jitter = copySpeeds ? DISPERSION_JITTER : COPY_FACTORS
+    this.jitter = COPY_FACTORS
     this.copies = COPY_FACTORS.map(() => uniform(new THREE.Vector4()))
     const texNodes = noiseTextures.map((t) => texture(t))
     const fn = wgslFn(waveFieldCode)
@@ -2123,23 +2116,23 @@ class OceanSurface {
 
     const spread = (params.spread * Math.PI) / 180
     let sq = 0
-    for (let i = 0; i < count; i++) sq += LAYER_RATIO ** (2 * i)
+    for (let i = 0; i < count; i++) sq += SCALE_RATIO ** (2 * i)
     const ampNorm = params.amplitude / Math.sqrt(sq)
     const waveDir = (params.waveDir * Math.PI) / 180
     let meanX = 0
     let meanZ = 0
     for (let i = 0; i < count; i++) {
-      const lambda = params.wavelength * LAYER_RATIO ** i
+      const lambda = params.wavelength * SCALE_RATIO ** i
       const tile = lambda * this.wavesPerTile
       const omega = Math.sqrt((GRAVITY * lambda) / (2 * Math.PI))
       this.phases[i] += (omega / tile) * dt
       const angle = waveDir + DIR_FRACS[i] * spread
       const dx = Math.cos(angle)
       const dz = Math.sin(angle)
-      const amp = ampNorm * LAYER_RATIO ** i
+      const amp = ampNorm * SCALE_RATIO ** i
       // 原版用振幅方差 ratio^(2i) 作为 lean 的方向权重，而不是线性振幅。
-      meanX += LAYER_RATIO ** (2 * i) * dx
-      meanZ += LAYER_RATIO ** (2 * i) * dz
+      meanX += SCALE_RATIO ** (2 * i) * dx
+      meanZ += SCALE_RATIO ** (2 * i) * dz
       this.d[i].value.set(dx, dz, 1 / tile, amp)
       this.s[i].value.set(UV_OFFSETS[i][0] - this.phases[i], UV_OFFSETS[i][1], 0, 0)
     }
@@ -2326,9 +2319,7 @@ async function main() {
     tsl,
     wgpu,
     tex.gravity,
-    tex.gravitySize,
-    tex.gravityCopyWeights,
-    tex.gravityCopySpeeds
+    tex.gravitySize
   )
   const capField = new WaveFieldSim(
     tsl,
@@ -2338,7 +2329,6 @@ async function main() {
   )
   const foam = new FoamSim(tsl, wgpu, waveField.texture, tex.gravitySize, tex.gravityDispGrad)
 
-  setOceanStatus(t({ zh: "正在读取 OSM 水域瓦片…", en: "Fetching OSM water tiles…" }))
   let waterSdf: {
     texture: THREE.DataTexture
     spreadMeters: number
@@ -2350,79 +2340,99 @@ async function main() {
   let polygonsLocalForCoast: Array<Array<Array<{ x: number; z: number }>>> = []
   let heightData: Float32Array | null = null
   let heightRes = HEIGHTFIELD_RES
-  try {
-    const waterPolygons = await fetchOsmWaterPolygons(OCEAN_LON, OCEAN_LAT, OSM_WATER_ZOOM, SEA_HALF)
-    const provisionalOrigin = viewer.cartographicToMatrix4([
-      OCEAN_LON,
-      OCEAN_LAT,
-      OCEAN_HEIGHT_FALLBACK,
-    ])
-    const polygonsLocal = polygonsToLocal(
-      waterPolygons,
-      viewer,
-      provisionalOrigin,
-      OCEAN_HEIGHT_FALLBACK
-    )
-    polygonsLocalForCoast = polygonsLocal
-    setOceanStatus(t({ zh: "正在采样近岸海面高度…", en: "Sampling near-shore sea level…" }))
-    oceanHeight = await resolveOceanHeightFromShore(
-      viewer,
-      polygonsLocal,
-      OCEAN_LON,
-      OCEAN_LAT,
-      SEA_HALF
-    )
-    waterSdf = bakeWaterSdfTexture(polygonsLocal, SEA_HALF)
-    setOceanStatus("")
-  } catch (error) {
-    console.error(error)
-    waterSdf = bakeWaterSdfTexture([], SEA_HALF)
-    setOceanStatus(
-      t({
-        zh: "OSM 水域瓦片读取失败，已回退矩形水面",
-        en: "OSM water tiles failed; using a rectangular sea patch",
-      })
-    )
-  }
+  let authoredCoast: any = null
 
-  // 用 Tellux 真实地形最高细节采样高度场，写入 SDF 纹理 G 通道；
-  // 失败时保留 bakeWaterSdfTexture 里的程序化沙滩 fallback。
-  setOceanStatus(t({ zh: "正在采样真实地形高度场…", en: "Sampling real terrain heightfield…" }))
-  try {
-    const heightSampled = await sampleLocalHeightfield(
-      viewer,
-      SEA_HALF,
-      oceanHeight,
-      HEIGHTFIELD_RES,
-      waterSdf.mask,
-      waterSdf.resolution
-    )
-    heightData = heightSampled.data
-    heightRes = heightSampled.resolution
-    // 水陆 mask 改为基于真实地形高度阈值
-    const heightMask = buildWaterMaskFromHeightData(
-      heightData,
-      heightRes,
-      WATER_SDF_RES,
-      SEA_HALF,
-      WATER_LEVEL
-    )
-    waterSdf = bakeWaterSdfTexture(polygonsLocalForCoast, SEA_HALF, WATER_SDF_RES, 8, heightMask)
-    fillHeightfieldIntoSdf(waterSdf.texture, heightData, heightRes, WATER_SDF_RES)
+  if (USE_AUTHORED_COAST) {
+    // 原生模式：直接用 gpuocean 程序化海岸线，避免真实地形/mask 对齐问题。
+    authoredCoast = buildAuthoredCoast()
+    waterSdf = {
+      texture: authoredCoast.sdfTexture,
+      spreadMeters: 1.5,
+      mask: new Uint8Array(0),
+      resolution: 512,
+      seaHalf: 384,
+    }
+    oceanHeight = OCEAN_HEIGHT_FALLBACK
+    polygonsLocalForCoast = []
+    heightData = null
+    heightRes = 0
     setOceanStatus("")
-  } catch (error) {
-    console.error(error)
-    setOceanStatus(
-      t({
-        zh: "真实地形高度场采样失败，使用程序化沙滩高度",
-        en: "Real terrain heightfield failed; using procedural fallback",
-      })
-    )
+  } else {
+    setOceanStatus(t({ zh: "正在读取 OSM 水域瓦片…", en: "Fetching OSM water tiles…" }))
+    try {
+      const waterPolygons = await fetchOsmWaterPolygons(OCEAN_LON, OCEAN_LAT, OSM_WATER_ZOOM, SEA_HALF)
+      const provisionalOrigin = viewer.cartographicToMatrix4([
+        OCEAN_LON,
+        OCEAN_LAT,
+        OCEAN_HEIGHT_FALLBACK,
+      ])
+      const polygonsLocal = polygonsToLocal(
+        waterPolygons,
+        viewer,
+        provisionalOrigin,
+        OCEAN_HEIGHT_FALLBACK
+      )
+      polygonsLocalForCoast = polygonsLocal
+      setOceanStatus(t({ zh: "正在采样近岸海面高度…", en: "Sampling near-shore sea level…" }))
+      oceanHeight = await resolveOceanHeightFromShore(
+        viewer,
+        polygonsLocal,
+        OCEAN_LON,
+        OCEAN_LAT,
+        SEA_HALF
+      )
+      waterSdf = bakeWaterSdfTexture(polygonsLocal, SEA_HALF)
+      setOceanStatus("")
+    } catch (error) {
+      console.error(error)
+      waterSdf = bakeWaterSdfTexture([], SEA_HALF)
+      setOceanStatus(
+        t({
+          zh: "OSM 水域瓦片读取失败，已回退矩形水面",
+          en: "OSM water tiles failed; using a rectangular sea patch",
+        })
+      )
+    }
+
+    // 用 Tellux 真实地形最高细节采样高度场，写入 SDF 纹理 G 通道；
+    // 失败时保留 bakeWaterSdfTexture 里的程序化沙滩 fallback。
+    setOceanStatus(t({ zh: "正在采样真实地形高度场…", en: "Sampling real terrain heightfield…" }))
+    try {
+      const heightSampled = await sampleLocalHeightfield(
+        viewer,
+        SEA_HALF,
+        oceanHeight,
+        HEIGHTFIELD_RES,
+        waterSdf.mask,
+        waterSdf.resolution
+      )
+      heightData = heightSampled.data
+      heightRes = heightSampled.resolution
+      // 水陆 mask 改为基于真实地形高度阈值
+      const heightMask = buildWaterMaskFromHeightData(
+        heightData,
+        heightRes,
+        WATER_SDF_RES,
+        SEA_HALF,
+        WATER_LEVEL
+      )
+      waterSdf = bakeWaterSdfTexture(polygonsLocalForCoast, SEA_HALF, WATER_SDF_RES, 8, heightMask)
+      fillHeightfieldIntoSdf(waterSdf.texture, heightData, heightRes, WATER_SDF_RES)
+      setOceanStatus("")
+    } catch (error) {
+      console.error(error)
+      setOceanStatus(
+        t({
+          zh: "真实地形高度场采样失败，使用程序化沙滩高度",
+          en: "Real terrain heightfield failed; using procedural fallback",
+        })
+      )
+    }
   }
 
   const originMatrix = viewer.cartographicToMatrix4([OCEAN_LON, OCEAN_LAT, oceanHeight])
   const geometry = buildSeaGeometry(GRID_N)
-  let coast = buildCoastFromWaterMask(
+  let coast = authoredCoast ?? buildCoastFromWaterMask(
     waterSdf.mask,
     waterSdf.resolution,
     waterSdf.seaHalf,
