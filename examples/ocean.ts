@@ -2442,6 +2442,13 @@ async function main() {
   let filmFoam = new FilmFoamSim(tsl, wgpu, chain.simTexture)
   foam.setSdf(waterSdf.texture, SEA_HALF)
 
+  // 临时调试句柄：CDP 自动采集 drive/levelLP 幅度（定位后删除）
+  ;(window as any).__oceanDebug = {
+    chain,
+    surface: null as any,
+    readParams,
+  }
+
   viewer.flyToTarget(
     { longitude: OCEAN_LON, latitude: OCEAN_LAT, height: oceanHeight },
     { distance: 20, pitch: -10, duration: 1.5 }
