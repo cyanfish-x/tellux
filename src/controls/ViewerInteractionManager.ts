@@ -1,8 +1,8 @@
 import type { GlobeControls } from '3d-tiles-renderer'
 import type { Camera } from '../Camera'
 import type { Viewer } from '../Viewer'
+import { ViewerEventDispatcher } from '../events/ViewerEventDispatcher'
 import type {
-  AnyViewerEventListener,
   ScreenPosition,
   ViewerEventListener,
   ViewerEventMap,
@@ -27,18 +27,22 @@ export interface ViewerInteractionManagerOptions {
   ) => ViewerPickResult[]
   scheduleAnimationFrame?: (callback: FrameRequestCallback) => number
   cancelAnimationFrame?: (handle: number) => void
+  eventDispatcher?: ViewerEventDispatcher
 }
 
 const ENTITY_CLICK_PICK_TOLERANCE = 6
 const ENTITY_MOUSEMOVE_PICK_TOLERANCE = 4
 
 export class ViewerInteractionManager {
-  private readonly eventListeners = new Map<keyof ViewerEventMap, Set<AnyViewerEventListener>>()
+  private readonly events: ViewerEventDispatcher
+  private readonly ownsEventDispatcher: boolean
   private pendingMouseMove: MouseEvent | null = null
   private mouseMoveFrameHandle: number | null = null
   private isDisposed = false
 
   constructor(private readonly options: ViewerInteractionManagerOptions) {
+    this.events = options.eventDispatcher ?? new ViewerEventDispatcher(options.viewer)
+    this.ownsEventDispatcher = options.eventDispatcher === undefined
     this.options.domElement.addEventListener('pointerdown', this.handleCameraInteraction)
     this.options.domElement.addEventListener('wheel', this.handleCameraInteraction)
     this.options.domElement.addEventListener('pointerdown', this.enableAdjustHeight)
@@ -48,19 +52,12 @@ export class ViewerInteractionManager {
   }
 
   on<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
-    let listeners = this.eventListeners.get(type)
-    if (!listeners) {
-      listeners = new Set()
-      this.eventListeners.set(type, listeners)
-    }
-
-    listeners.add(listener as AnyViewerEventListener)
+    this.events.on(type, listener)
   }
 
   off<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
-    const listeners = this.eventListeners.get(type)
-    listeners?.delete(listener as AnyViewerEventListener)
-    if (type === 'mousemove' && listeners?.size === 0) {
+    this.events.off(type, listener)
+    if (type === 'mousemove' && !this.events.hasListeners(type)) {
       this.cancelPendingMouseMove()
     }
   }
@@ -75,7 +72,9 @@ export class ViewerInteractionManager {
     this.options.domElement.removeEventListener('wheel', this.enableAdjustHeight)
     this.options.domElement.removeEventListener('click', this.handleCanvasClick)
     this.options.domElement.removeEventListener('mousemove', this.handleCanvasMouseMove)
-    this.clearEventListeners()
+    if (this.ownsEventDispatcher) {
+      this.events.dispose()
+    }
   }
 
   private readonly handleCameraInteraction = () => {
@@ -127,7 +126,7 @@ export class ViewerInteractionManager {
   }
 
   private hasEventListeners(type: keyof ViewerEventMap) {
-    return Boolean(this.eventListeners.get(type)?.size)
+    return this.events.hasListeners(type)
   }
 
   private readonly handleCanvasClick = (originalEvent: MouseEvent) => {
@@ -154,13 +153,7 @@ export class ViewerInteractionManager {
   }
 
   private dispatchEvent<T extends keyof ViewerEventMap>(type: T, event: ViewerEventMap[T]) {
-    this.eventListeners.get(type)?.forEach((listener) => {
-      listener(event)
-    })
-  }
-
-  private clearEventListeners() {
-    this.eventListeners.clear()
+    this.events.dispatch(type, event)
   }
 
   private cancelPendingMouseMove() {

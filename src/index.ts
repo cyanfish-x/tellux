@@ -176,6 +176,7 @@ export {
   type ViewerEventMap,
   type ViewerMouseEvent,
   type ViewerMouseMoveEvent,
+  type ViewerPreRenderEvent,
   type ViewerRendererOptions,
   type ViewerRendererType,
   type ViewerAtmosphereLightingOptions,

@@ -78,6 +78,20 @@ export interface ViewerMouseMoveEvent extends ViewerMouseEvent {
 }
 
 /**
+ * Viewer 最终场景绘制前触发的帧事件。
+ *
+ * Frame event emitted immediately before the Viewer submits the final scene render.
+ */
+export interface ViewerPreRenderEvent extends ViewerEvent {
+  /** 事件类型。Event type. */
+  type: 'preRender'
+  /** 自上一帧起经过的秒数。Seconds elapsed since the previous frame. */
+  deltaTime: number
+  /** 当前高精度帧时间戳，单位为毫秒。Current high-resolution frame timestamp in milliseconds. */
+  time: number
+}
+
+/**
  * Viewer 支持的事件映射。
  *
  * Event map supported by Viewer.
@@ -85,6 +99,7 @@ export interface ViewerMouseMoveEvent extends ViewerMouseEvent {
 export interface ViewerEventMap {
   click: ViewerClickEvent
   mousemove: ViewerMouseMoveEvent
+  preRender: ViewerPreRenderEvent
 }
 
 /**

@@ -12,6 +12,7 @@ import { telluxConfig } from './config'
 import { TargetFlightController } from './controls/TargetFlightController'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
+import { ViewerEventDispatcher } from './events/ViewerEventDispatcher'
 import { LayerManager } from './LayerManager'
 import { HismManager } from './hism'
 import { HighlightManager } from './highlight'
@@ -224,6 +225,7 @@ export type {
   ViewerEventMap,
   ViewerMouseEvent,
   ViewerMouseMoveEvent,
+  ViewerPreRenderEvent,
   ViewerPickLayer,
   ViewerPickOptions,
   ViewerPickResult,
@@ -407,6 +409,7 @@ export class Viewer {
   private readonly heightSampler: HeightSampler
   private readonly targetFlights: TargetFlightController
   private readonly interactions: ViewerInteractionManager
+  private readonly events: ViewerEventDispatcher
   private readonly widgets: WidgetManager
   private readonly renderLoop: ViewerRenderLoop
   private isDestroyed = false
@@ -632,6 +635,9 @@ export class Viewer {
         getObjectRoot: () => this.scene.threeScene
       })
 
+      this.events = new ViewerEventDispatcher(this)
+      constructionScope.defer(() => this.events.dispose())
+
       this.interactions = new ViewerInteractionManager({
         viewer: this,
         camera: this.camera,
@@ -639,7 +645,8 @@ export class Viewer {
         domElement: this.renderer.domElement,
         pickCartographic: (position) => this.pickCartographic(position),
         pickNearest: (position, pickOptions) => this.pick(position, pickOptions),
-        pickAll: (position, pickOptions) => this.pickAll(position, pickOptions)
+        pickAll: (position, pickOptions) => this.pickAll(position, pickOptions),
+        eventDispatcher: this.events
       })
       constructionScope.defer(() => this.interactions.dispose())
 
@@ -769,7 +776,7 @@ export class Viewer {
    * Registers a Viewer event listener.
    */
   on<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
-    this.interactions.on(type, listener)
+    this.events.on(type, listener)
     return this
   }
 
@@ -779,7 +786,7 @@ export class Viewer {
    * Removes a Viewer event listener.
    */
   off<T extends keyof ViewerEventMap>(type: T, listener: ViewerEventListener<T>) {
-    this.interactions.off(type, listener)
+    this.events.off(type, listener)
     return this
   }
 
@@ -1103,6 +1110,7 @@ export class Viewer {
     this.isDestroyed = true
     this.camera.cancelFlight()
     this.renderLoop.dispose()
+    this.events.dispose()
     this.viewport.dispose()
     this.interactions.dispose()
     this.models.dispose()
@@ -1149,6 +1157,7 @@ export class Viewer {
     this.entitiesManager.update(deltaTime)
     this.entityRenderManager.beginFrame()
     this.symbolOcclusionPass?.beginFrame()
+    this.events.dispatch('preRender', { deltaTime, time })
     this.rendererAdapter.render(this.scene.threeScene, this.threeCamera)
     this.renderSymbolsAfterComposite()
   }
