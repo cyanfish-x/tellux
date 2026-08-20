@@ -490,6 +490,7 @@ export function buildAuthoredCoast() {
       return (main as any).t0 + best * main.step
     },
     _sample4: sample4,
+    sdfTexture,
   }
   return coast
 }
