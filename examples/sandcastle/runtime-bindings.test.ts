@@ -10,8 +10,18 @@ describe('Sandcastle optional runtime bindings', () => {
     `)).toEqual({
       gaussianSplat: false,
       hism: false,
+      ocean: false,
       tree: false
     })
+  })
+
+  it('loads the ocean binding only for the Riyue Bay factory', () => {
+    expect(detectOptionalRuntimeBindings(`
+      const demo = await createRiyueBayOceanDemo('viewer')
+    `).ocean).toBe(true)
+    expect(detectOptionalRuntimeBindings(`
+      const oceanColor = '#036'
+    `).ocean).toBe(false)
   })
 
   it('detects dedicated Gaussian, Tree, and HISM capabilities independently', () => {

@@ -24,6 +24,7 @@ const htmlInputs = {
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
   webgpuBasic: resolve(__dirname, "webgpu-basic.html"),
+  oceanRiyueBay: resolve(__dirname, "ocean-riyue-bay.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
   entities: resolve(__dirname, "entities.html"),
   symbol: resolve(__dirname, "symbol.html"),
@@ -92,6 +93,12 @@ export default defineConfig(({ mode }) => {
             select: selectFilesMatching(/^assets\/editor\.worker-.*\.js$/),
             maxBytes: 300 * KiB,
             maxGzipBytes: 100 * KiB,
+          },
+          {
+            name: "Riyue Bay Ocean optional capability",
+            select: selectChunksContainingModules(["/examples/ocean/"]),
+            maxBytes: 3.5 * MiB,
+            maxGzipBytes: 1 * MiB,
           },
         ],
         "tellux-assert-example-size-budgets"

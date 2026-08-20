@@ -48,6 +48,7 @@ const categoryById: Record<string, string> = {
   "hism-forest": "HISM",
   "hism-compare": "HISM",
   "webgpu-basic": "Rendering",
+  "ocean-riyue-bay": "Rendering",
 }
 
 const tagByTerm: Array<[string, string]> = [

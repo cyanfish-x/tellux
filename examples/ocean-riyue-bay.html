@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="sandcastle-order" content="4" />
+    <meta name="sandcastle-thumbnail" content="./images/terrain.png" />
+    <title>Tellux 日月湾 WebGPU 海洋</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+      <aside class="example-panel example-panel--wide" aria-label="日月湾海洋参数">
+        <header class="example-panel__chrome">
+          <button type="button" class="example-panel__fold" aria-expanded="true" title="收起面板" aria-label="收起面板"></button>
+          <span class="example-panel__title">日月湾 Ocean × Tellux</span>
+        </header>
+        <div class="example-panel__collapse">
+          <div class="example-panel__content">
+            <p id="ocean-status" class="example-panel__status" style="padding: 10px">正在初始化 WebGPU 与地形…</p>
+            <div id="ocean-controls"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+    <script type="module" src="./ocean-riyue-bay.ts"></script>
+  </body>
+</html>

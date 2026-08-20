@@ -1,5 +1,5 @@
 export type OceanQuality = 'high' | 'balanced'
-export type OceanDebugField = 'none' | 'height' | 'landMask' | 'sdf' | 'depth' | 'velocity' | 'foam' | 'revision'
+export type OceanDebugField = 'none' | 'height' | 'landMask' | 'sdf' | 'depth' | 'velocity' | 'foam' | 'revision' | 'timing'
 
 export type OriginalOceanParameterKey =
   | 'wavelength' | 'amplitude' | 'choppiness' | 'layers' | 'spread'

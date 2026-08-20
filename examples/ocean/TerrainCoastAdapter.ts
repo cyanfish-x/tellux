@@ -61,7 +61,7 @@ export class TerrainCoastAdapter {
 
   update(nowSeconds: number) {
     if (this.isDisposed || nowSeconds > this.blendingUntil) return
-    if (nowSeconds - this.lastComposeRequest < 0.1) return
+    if (nowSeconds - this.lastComposeRequest < 0.5) return
     this.lastComposeRequest = nowSeconds
     this.post({ type: 'compose', nowSeconds })
   }
@@ -117,11 +117,6 @@ export class TerrainCoastAdapter {
       return
     }
     this.options.onField(event.data)
-    this.options.onStatus?.(
-      `Terrain r${event.data.revision}: ${event.data.pageCount} pages, ` +
-      `${(event.data.cacheBytes / 1024 / 1024).toFixed(1)} MiB, ` +
-      `${event.data.composeMilliseconds.toFixed(1)} ms worker`
-    )
   }
 
   private post(message: TerrainFieldWorkerRequest) {

@@ -57,6 +57,7 @@ function handleRequest(request: TerrainFieldWorkerRequest) {
       config!.maxDepth = request.maxDepth
       config!.bathymetrySlope = request.bathymetrySlope
       config!.blendSeconds = request.blendSeconds
+      clipmap!.setBlendSeconds(request.blendSeconds)
       scheduleCompose()
       return
     case 'reset':

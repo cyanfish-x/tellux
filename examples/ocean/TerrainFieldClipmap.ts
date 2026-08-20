@@ -35,6 +35,10 @@ export class TerrainFieldClipmap {
     return this.byteLength
   }
 
+  setBlendSeconds(seconds: number) {
+    this.options.blendSeconds = Math.max(seconds, 0)
+  }
+
   upsert(page: TerrainHeightPage) {
     const previous = this.pages.get(page.id)
     if (previous) this.byteLength -= previous.bytes

@@ -14,6 +14,7 @@ export const HISM_RUNTIME_BINDING_NAMES = [
 export interface OptionalRuntimeBindings {
   gaussianSplat: boolean
   hism: boolean
+  ocean: boolean
   tree: boolean
 }
 
@@ -23,6 +24,7 @@ export function detectOptionalRuntimeBindings(
   return {
     gaussianSplat: hasIdentifier(source, 'GaussianSplatPlugin'),
     hism: HISM_RUNTIME_BINDING_NAMES.some((name) => hasIdentifier(source, name)),
+    ocean: hasIdentifier(source, 'createRiyueBayOceanDemo'),
     tree: hasIdentifier(source, 'Tree')
   }
 }

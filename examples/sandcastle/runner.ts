@@ -174,6 +174,8 @@ async function executeExampleScript(source: string) {
     "createHismDemoViewerOptions",
     "generateFastPlacements",
     "generatePoissonPlacements",
+    "createRiyueBayOceanDemo",
+    "mountRiyueBayOceanControls",
     "t",
     "bootExampleI18n",
     "__sandcastleImportMeta",
@@ -202,6 +204,8 @@ async function executeExampleScript(source: string) {
     ...HISM_RUNTIME_BINDING_NAMES.map(
       (name) => optionalBindings.hism[name]
     ),
+    optionalBindings.ocean.createRiyueBayOceanDemo,
+    optionalBindings.ocean.mountRiyueBayOceanControls,
     t,
     bootExampleI18nInRunner,
     sandcastleImportMeta
@@ -210,7 +214,7 @@ async function executeExampleScript(source: string) {
 
 async function loadOptionalRuntimeBindings(source: string) {
   const required = detectOptionalRuntimeBindings(source)
-  const [gaussianSplatModule, treeModule, hismModule] = await Promise.all([
+  const [gaussianSplatModule, treeModule, hismModule, oceanModule] = await Promise.all([
     required.gaussianSplat
       ? import("3d-tiles-rendererjs-3dgs-plugin")
       : null,
@@ -219,6 +223,9 @@ async function loadOptionalRuntimeBindings(source: string) {
       : null,
     required.hism
       ? import("../hism/shared")
+      : null,
+    required.ocean
+      ? import("../ocean")
       : null,
   ])
 
@@ -229,6 +236,10 @@ async function loadOptionalRuntimeBindings(source: string) {
       (typeof HISM_RUNTIME_BINDING_NAMES)[number],
       unknown
     >,
+    ocean: (oceanModule ?? {}) as {
+      createRiyueBayOceanDemo?: typeof import('../ocean').createRiyueBayOceanDemo
+      mountRiyueBayOceanControls?: typeof import('../ocean').mountRiyueBayOceanControls
+    },
   }
 }
 
