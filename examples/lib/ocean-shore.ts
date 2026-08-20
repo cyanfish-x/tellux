@@ -304,7 +304,9 @@ export function buildCoastFromWaterMask(
     nearestMainArc(x: number, z: number) {
       let best = 0
       let bd = Infinity
-      for (let i = 0; i < MAIN_TABLE_N; i += 4) {
+      // 必须逐项搜索：原版步长 4 在真实海岸线重采样后会把 tCamSnap 量化成约 7.2m 一档，
+      // 导致 ribbon/chain 窗口随相机移动出现明显跳变（岸边色带几何不稳定）。
+      for (let i = 0; i < MAIN_TABLE_N; i += 1) {
         const d = (main.P[i * 2] - x) ** 2 + (main.P[i * 2 + 1] - z) ** 2
         if (d < bd) {
           bd = d
