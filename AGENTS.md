@@ -63,6 +63,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 - 涉及镜头光晕、抖动、深度 / 法线效果、几何 pass、Hald LUT 或后处理管线集成时，先读 `notes/依赖能力备忘/takram-three-geospatial-effects能力备忘.md`。
 - 涉及项目主页、文档站点、示例站点或 Sandcastle 时，先读 `notes/架构/examples文档与Sandcastle架构.md`。
 - 涉及 `viewer.highlight`、后处理描边 Outline、3D Tiles feature 叠加高亮时，先读 `notes/架构/highlight统一高亮方案.md`。
+- 涉及 `gpuocean` 移植、流式地形驱动的岸线、`TerrainFieldClipmap`、近岸 `ShoreSolver` 或全球海洋演进时，先读 `notes/架构/海洋近岸模拟与流式地形架构.md`。
 - 涉及打包策略、`external` / `noExternal`、peerDependencies 取舍、three 单例或第三方依赖是否打入产物时，先读 `notes/依赖能力备忘/前置依赖打包策略备忘.md`。
 
 ## 公开 API 方向
