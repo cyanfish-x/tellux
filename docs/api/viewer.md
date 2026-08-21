@@ -129,7 +129,7 @@ viewer.on('preRender', ({ deltaTime, time }) => {
 })
 ```
 
-`preRender` 在默认循环和手动 `viewer.render()` 中具有相同顺序。监听器按注册顺序执行、相同函数去重；返回的取消函数与 `off` 都可重复调用。监听器异常向上传播。需要逐帧接入的扩展应使用此事件，不要另建 `requestAnimationFrame`。
+`preRender` 在默认循环和手动 `viewer.render()` 中具有相同顺序。监听器按注册顺序执行、相同函数去重；`on` / `off` 返回 Viewer 以支持链式调用，重复 `off` 同一函数是安全的。监听器异常向上传播。需要逐帧接入的扩展应使用此事件，不要另建 `requestAnimationFrame`。
 
 ### `off(type, listener)`
 

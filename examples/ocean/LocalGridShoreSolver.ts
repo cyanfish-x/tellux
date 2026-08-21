@@ -138,9 +138,18 @@ export class LocalGridShoreSolver {
     this.accumulator = 0
   }
 
+  /** Nodes are retained by the ocean material so Three releases their buffers with its geometry. */
+  get storageNodes() {
+    return [this.stateA, this.stateB, this.bed] as const
+  }
+
   dispose() {
+    if (this.isDisposed) return
     this.isDisposed = true
     this.accumulator = 0
+    this.computeAB.dispose()
+    this.computeBA.dispose()
+    releaseStorageAttributes(this.options.renderer, this.storageNodes.map((node) => node.value))
   }
 
   private createComputePass(
@@ -235,4 +244,24 @@ export class LocalGridShoreSolver {
     })().compute(this.width * this.height, [64])
     return pass
   }
+}
+
+type WebGPUAttributeRegistry = {
+  delete(attribute: StorageBufferNode<'vec4'>['value']): unknown
+}
+
+/**
+ * Three r184 exposes ComputeNode.dispose(), but has no public companion for
+ * standalone storage attributes. Keep the compatibility access isolated here;
+ * it releases renderer-owned buffer handles without accessing backend/device.
+ */
+function releaseStorageAttributes(
+  renderer: TelluxWebGPURenderer,
+  attributes: readonly StorageBufferNode<'vec4'>['value'][]
+) {
+  const registry = (renderer as TelluxWebGPURenderer & {
+    _attributes?: WebGPUAttributeRegistry
+  })._attributes
+  if (!registry) return
+  for (const attribute of attributes) registry.delete(attribute)
 }

@@ -8,15 +8,17 @@ import {
   float,
   Fn,
   max,
+  min,
   mix,
   normalLocal,
+  normalView,
   normalize,
   positionLocal,
+  positionViewDirection,
   sin,
   texture,
   uint,
   uniform,
-  uv,
   vec2,
   vec3
 } from 'three/tsl'
@@ -45,10 +47,13 @@ export class OceanSurface {
   private readonly dispersion = uniform(1)
   private readonly ripple = uniform(0.2)
   private readonly rippleScale = uniform(0.5)
+  private readonly rippleAnisotropy = uniform(0.8)
+  private readonly rippleBias = uniform(0.8)
   private readonly sss = uniform(1.5)
   private readonly caustics = uniform(1)
   private readonly foamScale = uniform(1)
   private readonly foamAmount = uniform(0.6)
+  private readonly lean = uniform(0.5)
   private readonly layerCount = uniform(5)
   private readonly handoverDepth = uniform(6)
   private readonly debugMode = uniform(0)
@@ -103,10 +108,13 @@ export class OceanSurface {
     this.dispersion.value = parameters.dispersion
     this.ripple.value = parameters.ripple
     this.rippleScale.value = parameters.rippleScale
+    this.rippleAnisotropy.value = parameters.rippleAniso
+    this.rippleBias.value = parameters.rippleBias
     this.sss.value = parameters.sss
     this.caustics.value = parameters.caustics
     this.foamScale.value = parameters.foamScale
     this.foamAmount.value = parameters.foam
+    this.lean.value = parameters.lean
     this.layerCount.value = parameters.layers
     this.handoverDepth.value = parameters.handoverDepth
     this.debugMode.value = debugModeIndex(parameters.debugField)
@@ -128,20 +136,32 @@ export class OceanSurface {
 
   private createWaterMaterial() {
     const material = new MeshPhysicalNodeMaterial({
-      transparent: false,
-      opacity: 1,
-      roughness: 0.3,
+      transparent: true,
+      opacity: 0.97,
+      roughness: 0.18,
       metalness: 0,
-      transmission: 0.04,
+      transmission: 0,
       thickness: 1.2,
       ior: 1.333,
+      clearcoat: 0.65,
+      clearcoatRoughness: 0.16,
       depthWrite: true,
       side: THREE.DoubleSide
     })
-    const fieldUv = vec2(uv().x, uv().y.oneMinus())
+    const extent = RIYUE_BAY_PRESET.extent
+    const fieldUv = vec2(
+      positionLocal.x.sub(extent.crossShoreMin).div(extent.crossShoreMax - extent.crossShoreMin),
+      positionLocal.z.sub(extent.alongshoreMin).div(extent.alongshoreMax - extent.alongshoreMin)
+    )
     const valid = texture(this.options.field.validity, fieldUv).r.greaterThan(0.5)
     const water = texture(this.options.field.shoreSdf, fieldUv).r.lessThan(1.5)
     material.maskNode = valid.and(water.or(this.debugMode.greaterThan(0.5)))
+    const crossShoreEdge = min(fieldUv.x, float(1).sub(fieldUv.x))
+      .mul(extent.crossShoreMax - extent.crossShoreMin)
+    const alongshoreEdge = min(fieldUv.y, float(1).sub(fieldUv.y))
+      .mul(extent.alongshoreMax - extent.alongshoreMin)
+    const edgeFade = clamp(min(crossShoreEdge, alongshoreEdge).div(64), 0, 1)
+    material.opacityNode = this.debugMode.greaterThan(0.5).select(1, mix(0.55, 0.97, edgeFade))
 
     const local = positionLocal
     const sampleWaves = Fn(([position]) => {
@@ -166,8 +186,14 @@ export class OceanSurface {
     const wave = sampleWaves(local)
     const shoreDistance = abs(texture(this.options.field.shoreSdf, fieldUv).r)
     const shallowGain = clamp(float(1).add(float(8).sub(texture(this.options.field.bedHeight, fieldUv).r.negate()).mul(0.035)), 1, 1.8)
-    const ripples = sin(local.x.mul(1.7).add(local.z.mul(1.23)).mul(this.rippleScale).add(this.time.mul(3)))
-      .mul(this.ripple).mul(clamp(shoreDistance.div(24), 0, 1))
+    const ripplePhase = local.x.mul(mix(1.7, 0.72, this.rippleAnisotropy))
+      .add(local.z.mul(mix(1.23, 2.05, this.rippleAnisotropy)))
+      .mul(this.rippleScale)
+      .add(this.time.mul(3))
+    const rippleWave = sin(ripplePhase)
+    const biasedRipple = mix(rippleWave, rippleWave.mul(abs(rippleWave)), this.rippleBias)
+    const ripples = biasedRipple.mul(this.ripple)
+      .mul(clamp(shoreDistance.div(24), 0, 1))
     const stateX = uint(clamp(fieldUv.x, 0, 0.999999).mul(this.options.solver.width))
     const stateY = uint(clamp(fieldUv.y, 0, 0.999999).mul(this.options.solver.height))
     const state = this.options.solver.state.element(stateY.mul(uint(this.options.solver.width)).add(stateX))
@@ -188,23 +214,41 @@ export class OceanSurface {
       local.z.add(wave.z.mul(this.choppiness).mul(0.08))
     )
     material.normalNode = normalize(
-      vec3(wave.y.negate().mul(0.24), 1, wave.z.negate().mul(0.24))
+      vec3(
+        wave.y.negate().mul(0.24)
+          .sub(cos(ripplePhase).mul(this.ripple).mul(this.rippleScale).mul(0.32)),
+        1,
+        wave.z.negate().mul(0.24)
+          .sub(cos(ripplePhase).mul(this.ripple).mul(this.rippleScale).mul(0.22))
+      )
         .add(normalLocal.mul(0.04))
     )
 
     const waterDepth = texture(this.options.field.bedHeight, fieldUv).r.negate().add(this.seaLevel)
     const depthFactor = clamp(waterDepth.div(14), 0, 1)
-    const baseWater = mix(color(0x168eaa), color(0x032f55), depthFactor)
+    const baseWater = mix(color(0x227f91), color(0x03273f), depthFactor)
     const nearShore = clamp(float(1).sub(shoreDistance.div(140)), 0, 1)
     const breakZone = clamp(float(1).sub(terrainDepth.div(1.75)), 0, 1)
     const crest = clamp(abs(wave.x).sub(this.amplitude.mul(0.88)).mul(4), 0, 1)
       .mul(this.sss).mul(this.foamAmount).mul(nearShore).mul(breakZone)
+    const seawardDistance = max(texture(this.options.field.shoreSdf, fieldUv).r.negate(), 0)
+    const breakerOffset = sin(local.z.mul(0.025).sub(this.time.mul(0.8)))
+      .mul(3).add(10).add(wave.x.mul(this.lean).mul(4))
+    const breakerBand = clamp(float(1).sub(abs(seawardDistance.sub(breakerOffset)).div(7)), 0, 1)
+      .mul(breakZone).mul(this.foamAmount)
+    const foamDetail = sin(local.x.mul(0.31).add(local.z.mul(0.27)).add(this.time.mul(1.4)))
+      .mul(sin(local.x.mul(0.13).sub(local.z.mul(0.37)).sub(this.time)))
+      .mul(0.22).add(0.78)
     const foam = clamp(
-      state.w.mul(this.foamScale).mul(nearShore).mul(0.2).add(crest.mul(shallowGain)),
+      state.w.mul(this.foamScale).mul(nearShore).mul(0.06)
+        .add(crest.mul(shallowGain))
+        .add(breakerBand.mul(foamDetail)),
       0,
       1
     )
-    const visualColor = mix(baseWater, color(0xe8f3ef), foam)
+    const fresnel = clamp(float(1).sub(abs(normalView.dot(positionViewDirection))), 0, 1).pow(3)
+    const reflectedWater = mix(baseWater, color(0x8bbdce), fresnel.mul(0.38))
+    const visualColor = mix(reflectedWater, color(0xeaf4ef), foam)
     const heightDebug = mix(color(0x10355a), color(0xffd166), clamp(texture(this.options.field.height, fieldUv).r.add(8).div(56), 0, 1))
     const landDebug = texture(this.options.field.landMask, fieldUv).r.greaterThan(0.5)
       .select(color(0xd9a441), color(0x126fa3))
@@ -236,10 +280,12 @@ export class OceanSurface {
     const noise = sin(local.x.mul(0.19).add(this.time))
       .mul(sin(local.z.mul(0.23).sub(this.time.mul(0.7))))
       .mul(0.5).add(0.5)
+    const storageLifetimeSentinel = this.options.solver.storageNodes[1].element(0).x
+      .add(this.options.solver.storageNodes[2].element(0).x).mul(0)
     material.colorNode = this.noiseView.greaterThan(0.5).select(
       mix(color(0x07111b), color(0xd8fbff), noise),
       this.debugMode.greaterThan(0.5).select(debugColor, visualColor)
-    )
+    ).add(storageLifetimeSentinel)
     material.roughnessNode = mix(float(0.12), float(0.42), foam)
     return material
   }
@@ -251,7 +297,11 @@ export class OceanSurface {
       metalness: 0,
       side: THREE.DoubleSide
     })
-    const fieldUv = vec2(uv().x, uv().y.oneMinus())
+    const extent = RIYUE_BAY_PRESET.extent
+    const fieldUv = vec2(
+      positionLocal.x.sub(extent.crossShoreMin).div(extent.crossShoreMax - extent.crossShoreMin),
+      positionLocal.z.sub(extent.alongshoreMin).div(extent.alongshoreMax - extent.alongshoreMin)
+    )
     const valid = texture(this.options.field.validity, fieldUv).r.greaterThan(0.5)
     const water = texture(this.options.field.landMask, fieldUv).r.lessThan(0.5)
     material.maskNode = valid.and(water)

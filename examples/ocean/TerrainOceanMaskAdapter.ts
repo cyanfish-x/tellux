@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { MeshStandardNodeMaterial } from 'three/webgpu'
-import { positionWorld, texture, uniform, vec2, vec4 } from 'three/tsl'
+import { min, positionWorld, texture, uniform, vec2, vec4 } from 'three/tsl'
 import type { Viewer } from '../../src'
 import { RIYUE_BAY_PRESET } from './RiyueBayPreset'
 import type { TerrainFieldTextures } from './TerrainFieldTextures'
@@ -43,10 +43,15 @@ export class TerrainOceanMaskAdapter {
     const outside = fieldUv.x.lessThan(0).or(fieldUv.x.greaterThan(1))
       .or(fieldUv.y.lessThan(0)).or(fieldUv.y.greaterThan(1))
     const valid = texture(field.validity, fieldUv).r.greaterThan(0.5)
+    const crossShoreEdge = min(fieldUv.x, fieldUv.x.oneMinus())
+      .mul(extent.crossShoreMax - extent.crossShoreMin)
+    const alongshoreEdge = min(fieldUv.y, fieldUv.y.oneMinus())
+      .mul(extent.alongshoreMax - extent.alongshoreMin)
+    const domainOverlap = min(crossShoreEdge, alongshoreEdge).lessThan(64)
     // Keep a narrow overlap under the generated water so rasterization and
     // fragment-mask sampling cannot expose a black one-cell crack at the shore.
     const landOrShoreOverlap = texture(field.shoreSdf, fieldUv).r.greaterThan(-24)
-    material.maskNode = outside.or(valid.not()).or(landOrShoreOverlap)
+    material.maskNode = outside.or(valid.not()).or(domainOverlap).or(landOrShoreOverlap)
     return material
   }
 }

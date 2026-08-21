@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { TelluxWebGPURenderer, Viewer } from '../../src'
+import type { TelluxWebGPURenderer, Viewer, ViewerPreRenderEvent } from '../../src'
 import { LocalGridShoreSolver } from './LocalGridShoreSolver'
 import { OceanSurface } from './OceanSurface'
 import type { OceanParameters } from './parameters'
@@ -26,7 +26,11 @@ export class OceanManager {
   private readonly sun = new THREE.DirectionalLight(0xfff3d6, 4.5)
   private readonly ambient = new THREE.HemisphereLight(0xbde8ff, 0x253642, 1.35)
   private readonly previousBackground: THREE.Color | THREE.Texture | null
-  private readonly unsubscribePreRender: () => void
+  /** 进入海洋前的 highPrecision，dispose 时还原。 */
+  private readonly previousHighPrecision: boolean
+  private readonly handlePreRender = (event: ViewerPreRenderEvent) => {
+    this.update(event.deltaTime, event.time / 1000)
+  }
   private isDisposed = false
 
   constructor(private readonly options: OceanManagerOptions) {
@@ -34,6 +38,11 @@ export class OceanManager {
       throw new Error('Riyue Bay Ocean requires the Tellux WebGPU renderer.')
     }
     this.parameters = options.parameters
+    const renderer = options.viewer.renderer as TelluxWebGPURenderer
+    // ECEF 大坐标下 GPU float32 modelView 会抖；CPU 64-bit MV 缓解海面抖动。
+    // 与 InstancedMesh / SkinnedMesh 不兼容，故仅在海洋生命周期内开启。
+    this.previousHighPrecision = renderer.highPrecision
+    renderer.highPrecision = true
     this.previousBackground = options.viewer.scene.threeScene.background
     options.viewer.scene.threeScene.background = new THREE.Color(0x8ec9df)
     this.root.name = 'RiyueBayOceanRoot'
@@ -47,9 +56,7 @@ export class OceanManager {
     options.viewer.scene.threeScene.add(this.root)
     this.root.add(this.sun, this.sun.target, this.ambient)
     this.rebuildRuntime()
-    this.unsubscribePreRender = options.viewer.on('preRender', (event) => {
-      this.update(event.deltaTime, event.time / 1000)
-    })
+    options.viewer.on('preRender', this.handlePreRender)
   }
 
   setParameters(patch: Partial<OceanParameters>) {
@@ -68,10 +75,12 @@ export class OceanManager {
   dispose() {
     if (this.isDisposed) return
     this.isDisposed = true
-    this.unsubscribePreRender()
+    this.options.viewer.off('preRender', this.handlePreRender)
     this.disposeRuntime()
     this.options.viewer.scene.threeScene.remove(this.root)
     this.options.viewer.scene.threeScene.background = this.previousBackground
+    ;(this.options.viewer.renderer as TelluxWebGPURenderer).highPrecision =
+      this.previousHighPrecision
     this.root.remove(this.sun, this.sun.target, this.ambient)
   }
 
