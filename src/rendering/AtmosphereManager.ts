@@ -761,4 +761,3 @@ export class AtmosphereManager {
     })
   }
 }
-

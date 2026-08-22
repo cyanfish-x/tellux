@@ -270,6 +270,25 @@ viewer.remove3DTileset('city')
 - `materialMode: 'unlit'`：强制不受光材质，用于 post-process 光照场景（默认随光照模式）。
 - `creasedNormals: true`：为摄影测量瓦片重生成折痕法线，改善后处理光照边缘（增加加载 CPU 成本）。
 
+`pointCloudShading`（Cesium 形点云着色；Tellux 默认关闭 attenuation / EDL）：
+
+```ts
+viewer.load3DTileset({
+  type: 'cesium-ion',
+  apiToken,
+  assetId: 43978,
+  pointCloudShading: {
+    attenuation: true,
+    eyeDomeLighting: true,
+    maximumAttenuation: 8,
+  },
+})
+
+layer.pointCloudShading.eyeDomeLightingStrength = 1.2
+```
+
+无法线点云按 unlit 处理：保留原始顶点色，不重建法线，也不接受场景光照。WebGL 全屏 AgX output pass 下由引擎自动做显示色逆变换，避免 Viewer 曝光把点色冲白；这属于颜色管理，不是光照。attenuation 调节点大小；EDL 仅按深度增强轮廓。EDL 依赖 WebGL 后处理，WebGPU 下不可用或降级；不宣称与 Cesium 渲染结果像素一致。
+
 `tileLoading`（场景 3D Tiles LOD）：
 
 ```ts

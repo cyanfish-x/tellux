@@ -42,7 +42,37 @@ const layer = viewer.load3DTileset({
 })
 ```
 
-Cesium Ion 上的 Melbourne Point Cloud（asset `43978`）这类资源使用 legacy `pnts` 点云瓦片，且常带 Draco 压缩。Tellux 默认的 `/draco/` 完整 decoder 可以解码这类数据。点云按屏幕像素大小绘制（默认 4px）；Three.js 自带的距离衰减会把地球尺度下的点缩到几乎看不见。完整可运行示例见 [`point-cloud-3d-tiles.html`](../../point-cloud-3d-tiles.html)。
+Cesium Ion 上的 Melbourne Point Cloud（asset `43978`）这类资源使用 legacy `pnts` 点云瓦片，且常带 Draco 压缩。Tellux 默认的 `/draco/` 完整 decoder 可以解码这类数据。
+
+点云通过 Cesium 形 `pointCloudShading` 控制着色（实现跟 Tellux 大气管线，**不是**像素级复刻 Cesium）：
+
+```ts
+const layer = viewer.load3DTileset({
+  type: 'cesium-ion',
+  apiToken,
+  assetId: 43978,
+  pointCloudShading: {
+    attenuation: true,
+    geometricErrorScale: 1,
+    maximumAttenuation: 8,
+    eyeDomeLighting: true,
+    normalShading: true
+  }
+})
+
+// 运行时
+layer.pointCloudShading.eyeDomeLighting = false
+```
+
+| 字段 | Tellux 默认 | 说明 |
+|------|-------------|------|
+| `attenuation` | `false` | 按瓦片 `geometricError` 调屏幕点大小 |
+| `eyeDomeLighting` | `false`（Cesium 文档常为 `true`） | 独立 mask + 深度 EDL；**仅 WebGL** |
+| `normalShading` | `true` | 有几何 `normal` 时接受场景光照；无法线时始终 unlit，`false` 可强制 unlit |
+| `baseResolution` | — | 瓦片缺少有效 `geometricError` 时的 attenuation 回退值 |
+| `backFaceCulling` | — | 类型预留，当前 no-op |
+
+Melbourne asset `43978` 的抽样 `pnts` 只声明 `POSITION` / `RGB`，没有 `NORMAL`；Cesium 对这类数据也不会重建法线，而是使用 unlit 材质。Tellux 采用相同语义：无法线点保留原始顶点色，不接受太阳、昼夜或大气辐照，也不让空气透视再次洗色；WebGL 全屏 AgX output pass 下会自动做显示色逆变换，避免 Viewer 曝光把点色冲白。该变换属于颜色管理，不会注入光照或改写点数据；体积感仍由可选的 attenuation 和深度 EDL 提供。完整示例见 [`point-cloud-3d-tiles.html`](../../point-cloud-3d-tiles.html)。
 
 ## 定位到 3D Tiles
 

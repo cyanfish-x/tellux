@@ -9,7 +9,7 @@
 - 设置纯红 `#ff0000`，实际显示成橘色。
 - 设置 `#38bdf8`、`#ffd166` 等饱和色，显示色与目标色明显对不上。
 
-偏色程度随 `toneMappingExposure` 增大而加剧（默认曝光 10 放大效应明显）。
+偏色程度随 `toneMappingExposure` 增大而加剧；当前默认曝光为 `5`，已足以放大这种输出阶段偏色。
 
 ## 容易误判的方向
 
@@ -69,7 +69,7 @@ Tellux 在 `Viewer.ts` 设置 `renderer.toneMapping = THREE.AgXToneMapping`，�
    sRGB→linear → REC2020 → pow(1/2.2) → AgX outset 逆 → contrast 逆（单调多项式二分）→ log2 逆 → AgX inset 逆 → linear-sRGB，最后除以 exposure。
    得到的 linear 色可能含负分量（饱和色常见），但经 AgX 正向计算后显示色与目标一致。
 
-2. **矩阵必须解析求逆**：three.js 源码里 AgX 的 inset/outset 矩阵、REC2020/sRGB 矩阵的数值**并非严格互逆**，硬编码配对矩阵做反求会引入误差。必须用 `invertMat3` 对每个矩阵解析求逆后再用。
+2. **矩阵必须解析求逆并保持 GLSL 方向**：three.js 源码里 AgX 的 inset/outset 矩阵、REC2020/sRGB 矩阵的数值**并非严格互逆**，硬编码配对矩阵做反求会引入误差。必须用 `invertMat3` 对每个矩阵解析求逆后再用；同时 GLSL `mat3(vec3, vec3, vec3)` 参数按列传入，拷到 CPU 行主序数组前必须转置。此前直接照抄 `LINEAR_SRGB_TO_LINEAR_REC2020` / `LINEAR_REC2020_TO_LINEAR_SRGB` 的构造器分组，会使补偿后颜色偏绿。
 
 3. **必须传 `THREE.Color` 实例而非 hex/number**：反求结果含负分量，`getHex()` 会把负值裁成 0（丢失信息）。所以 `resolveColor` 返回 `THREE.Color`，`createPointMaterial` 等构造参数也从 `number` 改成 `THREE.Color`，全程直接传 Color 实例。
 
@@ -84,18 +84,9 @@ Tellux 在 `Viewer.ts` 设置 `renderer.toneMapping = THREE.AgXToneMapping`，�
 
 反求正确性用"正向回代"验证：把反求出的 material linear 色 × exposure 后再走一遍正向 AgX + sRGB OETF，得到的显示 hex 应与目标 hex 一致。
 
-离线脚本和端到端测试结果（exposure=10）：
+当前回归测试以 three.js 正向 AgX 实现为基准，覆盖中性灰、低饱和点云色和绿色植被色；断言回代显示值接近目标显示色。不要把某个版本计算出的预补偿数值抄进文档作为长期基准：Three 升级、曝光变化或矩阵方向修复都会让中间值变化。clamp 步骤不可逆，极高饱和度色仍可能有极轻微损失。
 
-| 目标色   | 反求 material linear      | 正向回代显示色 |
-|----------|---------------------------|----------------|
-| #ff0000  | [0.182, -0.032, -0.019]   | #ff0000 ✓      |
-| #00ff00  | [-0.069, 0.330, -0.023]   | #00ff00 ✓      |
-| #0000ff  | [-0.009, -0.024, 0.163]   | #0000ff ✓      |
-| #38bdf8  | [-0.024, 0.056, 0.209]    | #38bdf8 ✓      |
-| #ffd166  | [0.111, 0.627, -0.064]    | #ffd166 ✓      |
-| #f472b6  | [0.156, 0.010, 0.055]     | #f472b6 ✓      |
-
-clamp 步骤不可逆，极高饱和度色有极轻微损失，但屏幕取色器基本无差。
+点云使用相同的 AgX 数学，但因每个 tile 可能有数百万个顶点，不能逐点 CPU 反求；详见 [点云 unlit 与 post-process 大气坑点](./点云unlit与post-process大气坑点.md)。
 
 ## 快速排查清单
 

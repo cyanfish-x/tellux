@@ -3,16 +3,66 @@ import { EffectPass, NormalPass, OutlineEffect, SMAAEffect } from 'postprocessin
 import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effects'
 import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects } from '../effects'
 import type { Scene } from '../Scene'
+import type { PointCloudEdlAggregate } from '../tiles/PointCloudShadingController'
 import type { AtmosphereManager } from './AtmosphereManager'
 import { applyLensFlareAppearanceState } from './lensFlareAppearance'
+import { PointCloudEdlPass } from './PointCloudEdlEffect'
 
 const CLOUD_RENDER_MAX_HEIGHT = 27000
+
+/**
+ * 法线 pass 专用材质：
+ *
+ * - 普通网格沿用 MeshNormalMaterial 的法线输出；
+ * - 对带 aPointSize 的点云（Tellux `applyPointCloudMaterialStyle` 写入）按屏幕像素
+ *   大小绘制；
+ * - 仅当点云有几何 normal 且 `normalShading=true` 时写真实法线；
+ * - 其他点云写 `vec4(0)`：RGB 触发大气的退化法线/unlit 语义，alpha 作为明确的
+ *   后处理排除标记，使原始点色不再被空气透视二次改变。
+ *
+ * EDL 使用 {@link PointCloudEdlPass} 自己的独立 mask，不把 EDL mask 叠进本 pass。
+ *
+ * 依赖 MeshNormalMaterial 源码字符串 hook，升级 three 时需回归本文件。
+ */
+function createPointCloudAwareNormalMaterial() {
+  const material = new THREE.MeshNormalMaterial()
+  material.customProgramCacheKey = () => 'tellux-point-cloud-normal-v4'
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#define NORMAL',
+        '#define NORMAL\nattribute float aPointSize;\nattribute float aTelluxPointNormalEnabled;\nvarying float vTelluxPoint;\nvarying float vTelluxPointNormalEnabled;'
+      )
+      .replace(
+        '#include <project_vertex>',
+        `#include <project_vertex>
+        vTelluxPoint = aPointSize > 0.0 ? 1.0 : 0.0;
+        vTelluxPointNormalEnabled = aTelluxPointNormalEnabled > 0.5 ? 1.0 : 0.0;
+        gl_PointSize = max(aPointSize, 1.0);`
+      )
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#define NORMAL',
+        '#define NORMAL\nvarying float vTelluxPoint;\nvarying float vTelluxPointNormalEnabled;'
+      )
+      .replace(
+        'gl_FragColor = vec4( normalize( normal ) * 0.5 + 0.5, diffuseColor.a );',
+        `if (vTelluxPoint > 0.5 && vTelluxPointNormalEnabled < 0.5) {
+          gl_FragColor = vec4(0.0);
+        } else {
+          gl_FragColor = vec4( normalize( normal ) * 0.5 + 0.5, diffuseColor.a );
+        }`
+      )
+  }
+  return material
+}
 
 export class PostProcessingManager {
   private readonly effectAdapters: ThreeEffectPass[] = []
   private readonly normalAdapter: ThreeEffectPass
   private readonly cloudAtmosphereAdapter: ThreeEffectPass
   private readonly atmosphereAdapter: ThreeEffectPass
+  private readonly pointCloudEdlPass: PointCloudEdlPass
   private readonly lensFlareEffect: LensFlareEffect
   private readonly lensFlareAdapter: ThreeEffectPass
   private readonly smaaAdapter: ThreeEffectPass
@@ -31,9 +81,13 @@ export class PostProcessingManager {
     private readonly entityRenderer?: ThreeEffectPass,
     private readonly groundClampPass?: ThreeEffectPass,
     private readonly symbolOcclusionPass?: ThreeEffectPass,
-    outlineEffect?: OutlineEffect | null
+    outlineEffect?: OutlineEffect | null,
+    private readonly getPointCloudEdlState?: () => PointCloudEdlAggregate
   ) {
     const normalPass = new NormalPass(threeScene, this.camera)
+    ;(normalPass as unknown as {
+      renderPass: { overrideMaterial: THREE.Material }
+    }).renderPass.overrideMaterial = createPointCloudAwareNormalMaterial()
     this.configureNormalPass(normalPass)
     this.atmosphere.aerialPerspectiveEffect.normalBuffer = normalPass.texture
 
@@ -46,6 +100,7 @@ export class PostProcessingManager {
       () => this.camera
     )
     this.normalAdapter = new EffectPassAdapter(normalPass, () => this.camera)
+    this.pointCloudEdlPass = new PointCloudEdlPass(threeScene, this.camera)
     this.lensFlareEffect = new LensFlareEffect()
     this.lensFlareAdapter = new EffectPassAdapter(
       new EffectPass(this.camera, this.lensFlareEffect),
@@ -61,6 +116,7 @@ export class PostProcessingManager {
       this.normalAdapter,
       this.cloudAtmosphereAdapter,
       this.atmosphereAdapter,
+      this.pointCloudEdlPass,
       this.lensFlareAdapter,
       this.smaaAdapter,
       this.ditheringAdapter
@@ -88,6 +144,14 @@ export class PostProcessingManager {
 
   private syncEffects(currentHeight: number | null, forceRecompile: boolean) {
     this.syncLensFlareSettings()
+    const edl = this.getPointCloudEdlState?.() ?? {
+      enabled: false,
+      strength: 1,
+      radius: 1
+    }
+    this.pointCloudEdlPass.enabled = edl.enabled
+    this.pointCloudEdlPass.setStrength(edl.strength)
+    this.pointCloudEdlPass.setRadius(edl.radius)
 
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.atmosphere.show
@@ -103,7 +167,10 @@ export class PostProcessingManager {
       this.scene.postProcess.lensFlare.enabled,
       this.scene.postProcess.smaa.enabled,
       this.scene.postProcess.dithering.enabled,
-      outlineEnabled
+      outlineEnabled,
+      edl.enabled,
+      edl.strength,
+      edl.radius
     ].join(':')
 
     this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
@@ -123,6 +190,10 @@ export class PostProcessingManager {
       nextEffects.push(this.cloudAtmosphereAdapter)
     } else if (shouldRenderAtmosphere) {
       nextEffects.push(this.atmosphereAdapter)
+    }
+    if (edl.enabled) {
+      // EDL 在大气成图之后：自定义 pass 两侧取深度，needsSwap=false，避免 Effect 绑不到深度。
+      nextEffects.push(this.pointCloudEdlPass)
     }
     if (this.entityRenderer) {
       // 透明实体在大气之后合成：实体不写深度，若排在大气前，大气的天空分支会把背景

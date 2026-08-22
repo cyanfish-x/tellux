@@ -1,6 +1,5 @@
 import type { TilesetLayer } from "../src"
 import tellux from "../src"
-import * as THREE from "three"
 import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { setupExamplePanels } from "./example-panel"
@@ -17,6 +16,9 @@ const flyToCityButton =
   document.querySelector<HTMLButtonElement>("#fly-to-city")
 const pointSizeInput =
   document.querySelector<HTMLInputElement>("#point-size")
+const attenuationInput =
+  document.querySelector<HTMLInputElement>("#point-attenuation")
+const edlInput = document.querySelector<HTMLInputElement>("#point-edl")
 
 const MELBOURNE_POINT_CLOUD_ASSET_ID = "43978"
 const DEFAULT_ASSET_ID =
@@ -36,7 +38,15 @@ if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (!assetIdInput || !tokenInput || !loadButton || !flyToCityButton || !pointSizeInput) {
+if (
+  !assetIdInput ||
+  !tokenInput ||
+  !loadButton ||
+  !flyToCityButton ||
+  !pointSizeInput ||
+  !attenuationInput ||
+  !edlInput
+) {
   throw new Error("Point cloud controls not found.")
 }
 
@@ -73,37 +83,29 @@ tokenInput.placeholder = DEFAULT_ION_TOKEN
   ? t({ zh: "留空使用默认 token", en: "Leave empty to use default token" })
   : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
 
+attenuationInput.checked = true
+edlInput.checked = true
+
 let activeLayer: TilesetLayer | null = null
 
 function setStatus(message: string) {
   if (statusElement) statusElement.textContent = message
 }
 
-function getPointSize() {
+function getMaximumAttenuation() {
   const size = Number.parseFloat(pointSizeInput.value)
-  return Number.isFinite(size) ? Math.min(16, Math.max(1, size)) : 4
+  return Number.isFinite(size) ? Math.min(32, Math.max(1, size)) : 8
 }
 
-function stylePointCloud(root: THREE.Object3D) {
-  const size = getPointSize()
-  root.traverse((object) => {
-    if (!(object as THREE.Points).isPoints) return
-    const material = (object as THREE.Points).material
-    const materials = Array.isArray(material) ? material : [material]
-    for (const item of materials) {
-      if (!(item instanceof THREE.PointsMaterial)) continue
-      item.size = size
-      item.sizeAttenuation = false
-      item.toneMapped = false
-      item.needsUpdate = true
-    }
-  })
-}
-
-function applyPointSizeToLoadedTiles() {
-  activeLayer?.tileset.forEachLoadedModel((scene) => {
-    stylePointCloud(scene)
-  })
+function syncPointCloudShading() {
+  if (!activeLayer) return
+  const shading = activeLayer.pointCloudShading
+  shading.attenuation = attenuationInput.checked
+  shading.eyeDomeLighting = edlInput.checked
+  shading.eyeDomeLightingStrength = 0.55
+  shading.eyeDomeLightingRadius = 1.0
+  shading.maximumAttenuation = getMaximumAttenuation()
+  shading.geometricErrorScale = 1
 }
 
 function flyToMelbourne() {
@@ -142,10 +144,15 @@ function loadPointCloudTileset() {
     id: "example-point-cloud-3d-tiles",
     assetId,
     apiToken,
-  })
-
-  activeLayer.tileset.addEventListener("load-model", (event) => {
-    stylePointCloud(event.scene)
+    pointCloudShading: {
+      attenuation: attenuationInput.checked,
+      eyeDomeLighting: edlInput.checked,
+      eyeDomeLightingStrength: 0.55,
+      eyeDomeLightingRadius: 1.0,
+      geometricErrorScale: 1,
+      maximumAttenuation: getMaximumAttenuation(),
+      normalShading: true,
+    },
   })
 
   activeLayer.tileset.addEventListener("load-error", (event) => {
@@ -178,15 +185,17 @@ function loadPointCloudTileset() {
 
   setStatus(
     t({
-      zh: "已加载点云 3D Tiles。等待瓦片细化中...",
-      en: "Point cloud 3D Tiles loaded. Waiting for tile refinement...",
+      zh: "已加载点云 3D Tiles（Tellux pointCloudShading：attenuation / EDL）。等待瓦片细化中...",
+      en: "Point cloud 3D Tiles loaded (Tellux pointCloudShading: attenuation / EDL). Waiting for tile refinement...",
     })
   )
 }
 
 loadButton.addEventListener("click", loadPointCloudTileset)
 flyToCityButton.addEventListener("click", flyToMelbourne)
-pointSizeInput.addEventListener("input", applyPointSizeToLoadedTiles)
+pointSizeInput.addEventListener("input", syncPointCloudShading)
+attenuationInput.addEventListener("change", syncPointCloudShading)
+edlInput.addEventListener("change", syncPointCloudShading)
 
 if (DEFAULT_ION_TOKEN) {
   loadPointCloudTileset()

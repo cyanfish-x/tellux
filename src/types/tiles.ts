@@ -1,4 +1,5 @@
 import type { TilesRenderer } from '3d-tiles-renderer'
+import type { PointCloudShading } from '../tiles/PointCloudShading'
 
 /**
  * 已加载 3D Tiles 图层的控制句柄。
@@ -10,6 +11,13 @@ export interface TilesetLayer {
   readonly id: string
   /** 底层 3D Tiles renderer。Underlying 3D Tiles renderer. */
   readonly tileset: TilesRenderer
+  /**
+   * 点云着色（Cesium 形 API）。非点云图层修改通常无可见效果。
+   *
+   * Point-cloud shading (Cesium-shaped API). Changes usually have no visible
+   * effect on non-point-cloud layers.
+   */
+  readonly pointCloudShading: PointCloudShading
   /** 是否显示该图层。Whether the layer is visible. */
   show: boolean
   /**

@@ -129,6 +129,10 @@ export { Scene } from './Scene'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
 export { telluxConfig, type TelluxConfig } from './config'
 export { AtmosphereLightingMode } from './types'
+export {
+  DEFAULT_POINT_CLOUD_SHADING,
+  resolvePointCloudShading
+} from './types/pointCloudShading'
 export { DebugSettingsPanel, Timeline, type DebugSettingsPanelOptions, type TimelineOptions } from './widgets'
 export type { TelluxRenderer, TelluxWebGLRenderer, TelluxWebGPURenderer } from './rendering/RendererAdapter'
 export type {
@@ -197,6 +201,8 @@ export type {
   MVTImagerySourceOptions,
   MVTFeatureProperties,
   MVTFeatureStyle,
+  PointCloudShadingOptions,
+  ResolvedPointCloudShading,
   MVTGetStyleCallback,
   Picked3DTilesFeature,
   PickedObject,
@@ -520,7 +526,8 @@ export class Viewer {
           sceneOptions.atmosphere.lighting.mode
         ),
         surfaceMaterialOptions: sceneOptions.surface.material,
-        sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode)
+        sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode),
+        onPointCloudEdlChange: () => this.postProcessing?.applyEffects()
       })
       constructionScope.defer(() => this.tilesets.dispose())
       tilesets = this.tilesets
@@ -667,7 +674,8 @@ export class Viewer {
             this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
             this.groundClampPass ?? undefined,
             this.symbolOcclusionPass ?? undefined,
-            this.highlightManager.outlineEffect
+            this.highlightManager.outlineEffect,
+            () => this.tilesets.getPointCloudEdlState()
           )
         : null
       constructionScope.defer(() => this.postProcessing?.dispose())
@@ -1255,6 +1263,7 @@ export class Viewer {
     return {
       id: layer.id,
       tileset: layer.tileset,
+      pointCloudShading: layer.pointCloudShading,
       get show() {
         return layer.show
       },

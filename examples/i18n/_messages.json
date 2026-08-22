@@ -1016,12 +1016,20 @@
     "Go to Melbourne"
   ],
   "example.point-cloud-3d-tiles.label.pointSize": [
-    "点大小（像素）",
-    "Point size (px)"
+    "最大点大小（像素）",
+    "Maximum point size (px)"
+  ],
+  "example.point-cloud-3d-tiles.label.attenuation": [
+    "geometricError 点大小衰减",
+    "geometricError point attenuation"
+  ],
+  "example.point-cloud-3d-tiles.label.edl": [
+    "Eye Dome Lighting",
+    "Eye Dome Lighting"
   ],
   "example.point-cloud-3d-tiles.hint": [
-    "默认加载 Cesium Ion Melbourne Point Cloud（asset 43978）。Three.js 默认点大小在地球尺度下几乎看不见，这里按屏幕像素绘制。",
-    "Loads Cesium Ion Melbourne Point Cloud (asset 43978) by default. Three.js default point size is nearly invisible at globe scale, so points are drawn in screen pixels."
+    "默认加载 Cesium Ion Melbourne Point Cloud（asset 43978）。该数据无法线，按 unlit 保留原始点色；示例只额外打开 attenuation / EDL（库默认二者为 false，EDL 仅 WebGL）。",
+    "Loads Cesium Ion Melbourne Point Cloud (asset 43978) by default. It has no normals, so Tellux preserves source point colors as unlit; this example only enables attenuation / EDL (both default to false, and EDL is WebGL-only)."
   ],
   "example.terrain.docTitle": [
     "Tellux 天地图地形热切换",

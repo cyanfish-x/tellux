@@ -75,7 +75,7 @@ export function patchStarsRendering(starsMaterial: StarsMaterial) {
       '  float telluxStarPointRadius = dot(telluxStarPoint, telluxStarPoint);',
       '  if (telluxStarPointRadius > 1.0) {',
       '    discard;',
-      '  }',
+      `  }`,
       '  float telluxStarSoftMask = 1.0 - smoothstep(0.18, 1.0, telluxStarPointRadius);',
       '  float telluxStarBrightness = max(max(vColor.r, vColor.g), vColor.b);',
       '  float telluxStarVisibility = smoothstep(0.006, 0.035, telluxStarBrightness);',
@@ -204,7 +204,7 @@ export function patchAerialPerspectiveShader(effect: AerialPerspectiveEffect, ni
       '',
       `  if (!degenerateNormal) {`,
       `    radiance *= ${POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM};`,
-      `  }`,
+      '  }',
       `  if (!degenerateNormal && (${POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM} > 0.0 || ${POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM} > 0.0)) {`,
       '    vec3 telluxNightDiffuse = inputColor.rgb * albedoScale * RECIPROCAL_PI;',
       '    float telluxNightMoonDiffuse = max(dot(normalize(normalECEF), moonDirection), 0.0);',
@@ -224,7 +224,35 @@ export function patchAerialPerspectiveShader(effect: AerialPerspectiveEffect, ni
 
   const shaderWithNightLighting =
     withPostProcessNightLighting === shaderWithNightSky ? shaderWithNightSky : withPostProcessNightLighting
-  const patchedShader = shaderWithNightLighting.replace(
+
+  // 无法线点云是 unlit 内容：NormalPass 用零 alpha 明确标记这类像素，避免全局
+  // 空气透视在材质着色之后再次改变原始 RGB。这里只做后处理排除，不重建法线、
+  // 不注入近似光照；有真实法线且启用 normalShading 的点云仍走标准大气路径。
+  const withUnlitPointCloudMask = shaderWithNightLighting.replace(
+    '  #if defined(TRANSMITTANCE) || defined(INSCATTER)\n  applyTransmittanceInscatter(positionECEF, shadowLength, radiance);\n  #endif // defined(TRANSMITTANCE) || defined(INSCATTER)',
+    [
+      '  #ifdef HAS_NORMALS',
+      '  bool telluxUnlitPointCloud = degenerateNormal && texture(normalBuffer, uv).a < 0.5;',
+      '  #else // HAS_NORMALS',
+      '  bool telluxUnlitPointCloud = false;',
+      '  #endif // HAS_NORMALS',
+      '',
+      '  #if defined(TRANSMITTANCE) || defined(INSCATTER)',
+      '  if (!telluxUnlitPointCloud) {',
+      '    applyTransmittanceInscatter(positionECEF, shadowLength, radiance);',
+      '  }',
+      '  #endif // defined(TRANSMITTANCE) || defined(INSCATTER)'
+    ].join('\n')
+  )
+  if (withUnlitPointCloudMask === shaderWithNightLighting) {
+    console.warn('Tellux atmosphere shader patch failed: unlit point-cloud mask hook was not found.')
+  }
+
+  const shaderWithUnlitPointCloudMask =
+    withUnlitPointCloudMask === shaderWithNightLighting
+      ? shaderWithNightLighting
+      : withUnlitPointCloudMask
+  const patchedShader = shaderWithUnlitPointCloudMask.replace(
     'radiance = radiance + inscatter;',
     [
       'vec3 telluxGlobeNormal = normalize(positionECEF / vEllipsoidRadiiSquared);',
@@ -235,7 +263,7 @@ export function patchAerialPerspectiveShader(effect: AerialPerspectiveEffect, ni
     ].join('\n  ')
   )
 
-  if (patchedShader === shaderWithNightLighting) {
+  if (patchedShader === shaderWithUnlitPointCloudMask) {
     console.warn('Tellux atmosphere shader patch failed: inscatter intensity hook was not found.')
     shaderEffect.setChanged()
     return

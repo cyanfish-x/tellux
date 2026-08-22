@@ -69,9 +69,9 @@ function invertMat3(m: Mat3): Mat3 {
 // 取自 three.module.js tonemapping_pars_fragment（行主序化）。
 // From three.module.js tonemapping_pars_fragment (row-major).
 const M_SRGB2REC2020: Mat3 = [
-  0.6274, 0.0691, 0.0164,
-  0.3293, 0.9195, 0.0880,
-  0.0433, 0.0113, 0.8956
+  0.6274, 0.3293, 0.0433,
+  0.0691, 0.9195, 0.0113,
+  0.0164, 0.0880, 0.8956
 ]
 const M_AGX_INSET: Mat3 = [
   0.856627153315983, 0.0951212405381588, 0.0482516061458583,
@@ -84,9 +84,9 @@ const M_AGX_OUTSET: Mat3 = [
   -0.14132976349843826, -0.11060664309660294, 1.2519364065950405
 ]
 const M_REC20202SRGB: Mat3 = [
-  1.6605, -0.1246, -0.0182,
-  -0.5876, 1.1329, -0.1006,
-  -0.0728, -0.0083, 1.1187
+  1.6605, -0.5876, -0.0728,
+  -0.1246, 1.1329, -0.0083,
+  -0.0182, -0.1006, 1.1187
 ]
 
 // 解析求逆（three.js 的 outset/inset 数值并非严格互逆，必须解析求逆）。
@@ -137,7 +137,7 @@ function srgbOETFInv(enc: number): number {
  * that AgX will map back to the target. The result is not clamped and may have
  * negative components; use it directly as THREE.Color linear components.
  */
-function invertAgx(targetEncoded: Vec3, exposure: number): Vec3 {
+export function invertAgxEncodedColor(targetEncoded: Vec3, exposure: number): Vec3 {
   const targetLinear: Vec3 = [
     srgbOETFInv(targetEncoded[0]),
     srgbOETFInv(targetEncoded[1]),
@@ -226,7 +226,7 @@ export function resolveColor(
     srgbEncode(source.g),
     srgbEncode(source.b)
   ]
-  const inverted = invertAgx(encoded, state.exposure)
+  const inverted = invertAgxEncodedColor(encoded, state.exposure)
   return new THREE.Color(inverted[0], inverted[1], inverted[2])
 }
 

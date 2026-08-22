@@ -61,7 +61,7 @@ Viewer(options)
   ├─ RendererAdapter.create(options)
   │   ├─ type: 'webgl' → WebGLRendererAdapter (含 setEffects 能力)
   │   └─ type: 'webgpu' → WebGPURendererAdapter (需异步 init)
-  └─ 设置 toneMapping = AgXToneMapping, exposure = 10
+  └─ 设置 toneMapping = AgXToneMapping, exposure = 5
 ```
 
 关键点：
@@ -466,7 +466,29 @@ setEffects 顺序（不可交换；大气会 swap，透明实体还依赖 swap �
    └─ dithering.enabled = true
 ```
 
-### 9.2 EffectPassAdapter
+### 9.2 最终输出与颜色语义
+
+`renderer.setEffects()` 在场景写入 HalfFloat 缓冲时临时使用 `NoToneMapping`；effect chain 完成后，Three 的 `WebGLOutput` 才对整帧执行 `renderer.toneMapping`（默认 AgX）和 `outputColorSpace`（sRGB）。因此在这条路径中 `material.toneMapped = false` 不能让某个材质绕过最终输出。
+
+Three `Material.toneMapped` 的官方契约按渲染路径区分如下；它不是跨管线通用的“最终输出豁免”开关：
+
+| 渲染路径 | `material.toneMapped = false` | 原因 |
+|---|---|---|
+| WebGL 直接渲染到 canvas | 可按材质绕过 | 色调映射发生在该材质的场景渲染阶段 |
+| 渲染到 RenderTarget、后处理或 `renderer.setEffects()` | 被忽略，不能绕过 | 最终全屏 output 对整帧统一做色调映射 |
+| `WebGPURenderer` | 被忽略，不能绕过 | Three 在最终输出链统一处理所有材质；不能把 WebGPU 当作材质级豁免路径 |
+
+因此 WebGPU 将来实现显示色保持时，必须在 TSL / `RenderPipeline` 建立等价的预补偿节点；不能把 WebGL 的 `onBeforeCompile` LUT patch 或 `toneMapped=false` 当作降级方案。
+
+| 颜色语义 | 典型对象 | 在最终 AgX 前的处理 |
+|---|---|---|
+| scene-referred HDR / radiance | PBR 模型、受大气后处理的地表 | 按线性 HDR 进入 chain，接受最终 AgX |
+| 用户指定显示色 | entity、highlight | `ToneMappingColorResolver` 反求 AgX，保证目标显示色 |
+| 数据源显示色 | 无法线 `pnts` 顶点 RGB | `PointCloudColorTransform` 用 33³ AgX 逆向 LUT 预补偿，并随曝光同步 |
+
+后两类不是“关闭色调映射”，而是让它们能够穿过不可按材质豁免的全屏 output。不能靠全局调低曝光、`toneMapped=false`、弱环境光或伪法线解决。点云的具体排查和升级回归见 [点云 unlit 与 post-process 大气坑点](../../notes/坑点记录/点云unlit与post-process大气坑点.md)。
+
+### 9.3 EffectPassAdapter
 
 每个 `EffectPass` 通过 `EffectPassAdapter` 适配为 Three.js `Effect` 接口：
 
@@ -475,7 +497,7 @@ setEffects 顺序（不可交换；大气会 swap，透明实体还依赖 swap �
 - **camera settings 同步**：每帧将 camera near/far 同步到 pass 的 fullscreenMaterial
 - **deltaTime 传递**：用于时间相关的效果（云动画）
 
-### 9.3 WebGPU 无后处理
+### 9.4 WebGPU 无后处理
 
 WebGPU 模式下 `supportsWebGLEffects = false`，`PostProcessingManager` 不会被创建。大气效果完全在 `WebGPUAtmosphereManager` 的 TSL 节点图中完成，无 LensFlare / SMAA / Dithering。
 

@@ -46,18 +46,26 @@
                 <button class="example-panel__button" id="load-tileset" type="button" data-i18n="example.point-cloud-3d-tiles.btn.load">加载点云</button>
                 <button class="example-panel__button example-panel__button--ghost" id="fly-to-city" type="button" data-i18n="example.point-cloud-3d-tiles.btn.flyTo">定位到墨尔本</button>
                 <label class="example-panel__row example-panel__row--input">
-                  <span class="example-panel__label" data-i18n="example.point-cloud-3d-tiles.label.pointSize">点大小（像素）</span>
+                  <span class="example-panel__label" data-i18n="example.point-cloud-3d-tiles.label.pointSize">最大点大小（像素）</span>
                   <input
                     id="point-size"
                     class="example-panel__input"
                     type="number"
                     min="1"
-                    max="16"
+                    max="32"
                     step="1"
-                    value="4"
+                    value="8"
                   />
                 </label>
-                <p class="example-panel__hint" data-i18n="example.point-cloud-3d-tiles.hint">默认加载 Cesium Ion Melbourne Point Cloud（asset 43978）。Three.js 默认点大小在地球尺度下几乎看不见，这里按屏幕像素绘制。</p>
+                <label class="example-panel__row">
+                  <input id="point-attenuation" type="checkbox" checked />
+                  <span class="example-panel__label" data-i18n="example.point-cloud-3d-tiles.label.attenuation">geometricError 点大小衰减</span>
+                </label>
+                <label class="example-panel__row">
+                  <input id="point-edl" type="checkbox" checked />
+                  <span class="example-panel__label" data-i18n="example.point-cloud-3d-tiles.label.edl">Eye Dome Lighting</span>
+                </label>
+                <p class="example-panel__hint" data-i18n="example.point-cloud-3d-tiles.hint">默认加载 Cesium Ion Melbourne Point Cloud（asset 43978）。该数据无法线，按 unlit 保留原始点色；示例只额外打开 attenuation / EDL（库默认二者为 false，EDL 仅 WebGL）。</p>
               </div>
             </div>
           </details>

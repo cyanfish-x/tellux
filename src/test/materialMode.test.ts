@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   applyMaterialModeToObject,
+  applyPointCloudMaterialStyle,
   applySurfaceMaterialModeToObject
 } from '../materials/materialMode'
 
@@ -104,5 +105,37 @@ describe('material mode helpers', () => {
     expect(pointMaterial.sizeAttenuation).toBe(false)
     expect(pointMaterial.toneMapped).toBe(false)
     expect(pointMaterial.size).toBeGreaterThan(1)
+  })
+
+  it('writes point cloud screen size into aPointSize attribute for normal pass coverage', () => {
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3 * 3), 3))
+    const material = new THREE.PointsMaterial()
+    const points = new THREE.Points(geometry, material)
+
+    applyPointCloudMaterialStyle(points, { size: 6 })
+
+    const pointSize = geometry.getAttribute('aPointSize')
+    expect(pointSize).toBeDefined()
+    expect(pointSize?.count).toBe(3)
+    expect(pointSize?.getX(0)).toBe(6)
+    expect(pointSize?.getX(1)).toBe(6)
+    expect(pointSize?.getX(2)).toBe(6)
+  })
+
+  it('normalizes Float32 color attributes stored in 0-255 range', () => {
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3))
+    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array([128, 64, 32]), 3))
+    const material = new THREE.PointsMaterial()
+    const points = new THREE.Points(geometry, material)
+
+    applyPointCloudMaterialStyle(points)
+
+    const color = geometry.getAttribute('color') as THREE.BufferAttribute
+    expect(color.getX(0)).toBeCloseTo(128 / 255, 5)
+    expect(color.getY(0)).toBeCloseTo(64 / 255, 5)
+    expect(color.getZ(0)).toBeCloseTo(32 / 255, 5)
+    expect(material.vertexColors).toBe(true)
   })
 })

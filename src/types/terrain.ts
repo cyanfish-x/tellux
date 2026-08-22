@@ -1,3 +1,5 @@
+import type { PointCloudShadingOptions } from './pointCloudShading'
+
 /**
  * 地形瓦片加载参数，用于调整地形 LOD 和影像贴图质量。
  *
@@ -253,6 +255,13 @@ export interface ThreeDTilesRenderOptions {
    * memory cost while tiles load.
    */
   creasedNormals?: boolean
+  /**
+   * 点云着色（Cesium 形字段）。默认关闭 attenuation / EDL；示例中可显式打开。
+   *
+   * Point-cloud shading (Cesium-shaped fields). Attenuation and EDL default off;
+   * examples may enable them explicitly.
+   */
+  pointCloudShading?: PointCloudShadingOptions
   /**
    * 3D Tiles 瓦片加载参数。
    *

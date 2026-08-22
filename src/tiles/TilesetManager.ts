@@ -27,6 +27,13 @@ import {
   type SceneTilesetMaterialMode,
   type TileModelProcessingOptions
 } from './TilesetModelPlugins'
+import {
+  PointCloudShadingController,
+  aggregatePointCloudEdl,
+  attachPointCloudShadingController,
+  type PointCloudEdlAggregate
+} from './PointCloudShadingController'
+import { PointCloudColorTransform } from './PointCloudColorTransform'
 import type {
   Load3DTilesetOptions,
   HeightSamplingSource,
@@ -55,6 +62,7 @@ export interface TilesetManagerOptions {
   surfaceMaterialMode: ResolvedSurfaceMaterialMode
   surfaceMaterialOptions: SurfaceMaterialOptions
   sceneTilesetMaterialMode: SceneTilesetMaterialMode
+  onPointCloudEdlChange?: () => void
 }
 
 export class TilesetManager {
@@ -63,6 +71,8 @@ export class TilesetManager {
   private readonly sceneTilesets = new Map<string, TilesRenderer>()
   private readonly sceneTilesetOptions = new Map<string, Load3DTilesetOptions>()
   private readonly sceneTilesetMaterialPlugins = new WeakMap<TilesRenderer, SceneTilesetMaterialPlugin>()
+  private readonly pointCloudShadingControllers = new Map<string, PointCloudShadingController>()
+  private readonly pointCloudColorTransform: PointCloudColorTransform | null
   private readonly surfaceMaterialPlugins = new WeakMap<TilesRenderer, SurfaceMaterialPlugin>()
   private readonly heightSamplingAdapter = new TilesetSamplingAdapter()
   private readonly heightSamplingTilesetPool: HeightSamplingTilesetPool
@@ -76,6 +86,12 @@ export class TilesetManager {
   private sceneTilesetId = 0
 
   constructor(private readonly options: TilesetManagerOptions) {
+    this.pointCloudColorTransform = 'isWebGLRenderer' in options.renderer
+      ? new PointCloudColorTransform(() => ({
+          toneMapping: options.renderer.toneMapping,
+          exposure: options.renderer.toneMappingExposure
+        }))
+      : null
     this.heightSamplingTilesetPool = new HeightSamplingTilesetPool({
       isReusable: (tileset) => this.heightSamplingAdapter.isReusableForHeightSampling(tileset)
     })
@@ -199,6 +215,7 @@ export class TilesetManager {
     const tileset = this.createSceneTileset(options)
     this.registerCommonTilesetPlugins(tileset, this.getSceneTilesetModelProcessingOptions(options))
     this.registerSceneTilesetMaterialPlugins(tileset, options)
+    const pointCloudShading = this.registerPointCloudShadingController(id, tileset, options)
     this.sceneTilesets.set(id, tileset)
     this.sceneTilesetOptions.set(id, { ...options, id })
     this.options.scene.add(tileset.group)
@@ -206,6 +223,7 @@ export class TilesetManager {
     return {
       id,
       tileset,
+      pointCloudShading,
       get show() {
         return tileset.group.visible
       },
@@ -230,8 +248,14 @@ export class TilesetManager {
     tileset.dispose()
     this.sceneTilesets.delete(id)
     this.sceneTilesetOptions.delete(id)
+    this.pointCloudShadingControllers.delete(id)
+    this.options.onPointCloudEdlChange?.()
     this.invalidateHeightSamplingTilesetPool()
     return true
+  }
+
+  getPointCloudEdlState(): PointCloudEdlAggregate {
+    return aggregatePointCloudEdl(this.pointCloudShadingControllers.values())
   }
 
   createHeightSamplingTilesets(source: HeightSamplingSource = 'all'): HeightSamplingTilesetEntry[] {
@@ -314,10 +338,12 @@ export class TilesetManager {
   }
 
   update() {
+    this.pointCloudColorTransform?.update()
     this.tileset.update()
-    this.sceneTilesets.forEach((tileset) => {
+    this.sceneTilesets.forEach((tileset, id) => {
       if (tileset.group.visible) {
         tileset.update()
+        this.pointCloudShadingControllers.get(id)?.update()
       }
     })
   }
@@ -340,8 +366,32 @@ export class TilesetManager {
     })
     this.sceneTilesets.clear()
     this.sceneTilesetOptions.clear()
+    this.pointCloudShadingControllers.clear()
+    this.pointCloudColorTransform?.dispose()
     this.activeTerrainTileset?.dispose()
     this.activeSurfaceTileset.dispose()
+  }
+
+  private registerPointCloudShadingController(
+    id: string,
+    tileset: TilesRenderer,
+    options: Load3DTilesetOptions
+  ) {
+    const controller = new PointCloudShadingController({
+      initial: options.pointCloudShading,
+      getCamera: () => this.options.camera,
+      getViewportSize: () => {
+        this.options.renderer.getSize(this.rendererSize)
+        return this.rendererSize
+      },
+      getErrorTarget: () => tileset.errorTarget,
+      colorTransform: this.pointCloudColorTransform ?? undefined,
+      onEdlChange: () => this.options.onPointCloudEdlChange?.()
+    })
+    attachPointCloudShadingController(tileset, controller)
+    this.pointCloudShadingControllers.set(id, controller)
+    this.options.onPointCloudEdlChange?.()
+    return controller.shading
   }
 
   private createSurfaceTileset(layers: ImageryLayer[] = []) {

@@ -51,6 +51,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 
 - 涉及 Viewer 创建流程、每帧渲染流程、TilesetManager、地形 / 影像 / surface tileset 生命周期时，先读 `notes/架构/项目架构.md`。
 - 涉及历史 bug、容易误判的实现方向、渲染循环抢占和高度采样副作用时，先读 `notes/坑点记录/项目坑点记录.md`。
+- 涉及 3D Tiles 点云颜色发白、法线、unlit、`pointCloudShading`（EDL / attenuation）时，先读 `notes/坑点记录/点云unlit与post-process大气坑点.md`。
 - 涉及 WebGPU 影像瓦片颠倒、错缝或 `WebGPUTerrainOverlayPlugin` 贴图时，先读 `notes/坑点记录/WebGPU影像ImageBitmap二次翻转坑点.md`。
 - 涉及 `Scene` 运行时控制对象、`AtmosphereManager` 状态同步、大气用户态和底层 effect/light 状态边界时，先读 `notes/坑点记录/Scene与AtmosphereManager双状态坑点.md`。
 - 涉及实体（点 / 折线 / 多边形）颜色显示偏色、`toneMapped` 失效、`setEffects` 后处理管线或 AgX 反求补偿时，先读 `notes/坑点记录/实体颜色被AgX色调映射压扁坑点.md`。

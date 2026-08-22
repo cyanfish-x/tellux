@@ -13,7 +13,7 @@ Tellux 是一个基于 Three.js 的 ESM TypeScript 库，用于在网页里构�
 
 - 初始化 `tellux.Viewer`、配置场景 / 相机 / 渲染器
 - 加载或切换地形、影像图层（XYZ / WMS / WMTS / MVT / GeoJSON / Cesium Ion）
-- 加载 3D Tiles 或在经纬度放置 glTF 模型
+- 加载 3D Tiles 或在经纬度放置 glTF 模型（点云可用 Cesium 形 `pointCloudShading`）
 - 配置大气、光照模式、体积云、后处理
 - 相机飞行 / 定位、鼠标交互、拾取、高度采样
 - HISM 大规模实例化（森林、岩石场、多 LOD、实例拾取）
