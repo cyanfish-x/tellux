@@ -24,6 +24,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.frontend-debug/
 
 # Local AI / editor tool state（含 debug 日志，可能带本机敏感信息）
 .cursor/
@@ -45,3 +46,5 @@ benchmark-results/
 
 # MSDF atlas 生成脚本的中间产物
 scripts/charset.txt
+
+
