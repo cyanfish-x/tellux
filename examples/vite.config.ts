@@ -24,6 +24,7 @@ const htmlInputs = {
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
   webgpuBasic: resolve(__dirname, "webgpu-basic.html"),
+  waterArea: resolve(__dirname, "water-area.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
   entities: resolve(__dirname, "entities.html"),
   symbol: resolve(__dirname, "symbol.html"),
@@ -86,6 +87,12 @@ export default defineConfig(({ mode }) => {
             select: selectFilesMatching(/^assets\/ts\.worker-.*\.js$/),
             maxBytes: 6.25 * MiB,
             maxGzipBytes: 1.6 * MiB,
+          },
+          {
+            name: "Water Area worker",
+            select: selectFilesMatching(/^assets\/worker-.*\.js$/),
+            maxBytes: 256 * KiB,
+            maxGzipBytes: 80 * KiB,
           },
           {
             name: "editor worker",

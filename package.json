@@ -76,6 +76,7 @@
     "@commitlint/cli": "^21.2.0",
     "@commitlint/config-conventional": "^21.2.0",
     "@dgreenheck/ez-tree": "^1.1.0",
+    "@mapbox/point-geometry": "^1.1.0",
     "@mapbox/vector-tile": "^2.0.5",
     "@sparkjsdev/spark": "^2.1.0",
     "@takram/three-atmosphere": "0.19.1",
@@ -92,6 +93,7 @@
     "msdf-bmfont-xml": "^2.8.0",
     "pbf": "^4.0.2",
     "postprocessing": "6.39.1",
+    "protomaps-leaflet": "^5.1.0",
     "rimraf": "^6.0.1",
     "three": "^0.184.0",
     "typescript": "~5.2.2",
@@ -99,7 +101,8 @@
     "vitepress": "^1.6.4",
     "vitest": "^2.1.9",
     "playwright": "^1.49.0",
-    "tencentcloud-sdk-nodejs-cdn": "^4.1.200"
+    "tencentcloud-sdk-nodejs-cdn": "^4.1.200",
+    "workerpool": "^10.0.3"
   },
   "dependencies": {
     "@mapbox/tiny-sdf": "^2.2.0",

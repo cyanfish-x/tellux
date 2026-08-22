@@ -174,6 +174,7 @@ async function executeExampleScript(source: string) {
     "createHismDemoViewerOptions",
     "generateFastPlacements",
     "generatePoissonPlacements",
+    "createWaterAreaDemo",
     "t",
     "bootExampleI18n",
     "__sandcastleImportMeta",
@@ -202,6 +203,7 @@ async function executeExampleScript(source: string) {
     ...HISM_RUNTIME_BINDING_NAMES.map(
       (name) => optionalBindings.hism[name]
     ),
+    optionalBindings.createWaterAreaDemo,
     t,
     bootExampleI18nInRunner,
     sandcastleImportMeta
@@ -210,17 +212,21 @@ async function executeExampleScript(source: string) {
 
 async function loadOptionalRuntimeBindings(source: string) {
   const required = detectOptionalRuntimeBindings(source)
-  const [gaussianSplatModule, treeModule, hismModule] = await Promise.all([
-    required.gaussianSplat
-      ? import("3d-tiles-rendererjs-3dgs-plugin")
-      : null,
-    required.tree
-      ? import("@dgreenheck/ez-tree")
-      : null,
-    required.hism
-      ? import("../hism/shared")
-      : null,
-  ])
+  const [gaussianSplatModule, treeModule, hismModule, waterAreaModule] =
+    await Promise.all([
+      required.gaussianSplat
+        ? import("3d-tiles-rendererjs-3dgs-plugin")
+        : null,
+      required.tree
+        ? import("@dgreenheck/ez-tree")
+        : null,
+      required.hism
+        ? import("../hism/shared")
+        : null,
+      required.waterArea
+        ? import("../water-area/createWaterAreaDemo")
+        : null,
+    ])
 
   return {
     GaussianSplatPlugin: gaussianSplatModule?.GaussianSplatPlugin,
@@ -229,6 +235,7 @@ async function loadOptionalRuntimeBindings(source: string) {
       (typeof HISM_RUNTIME_BINDING_NAMES)[number],
       unknown
     >,
+    createWaterAreaDemo: waterAreaModule?.createWaterAreaDemo,
   }
 }
 

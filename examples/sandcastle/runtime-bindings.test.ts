@@ -10,7 +10,8 @@ describe('Sandcastle optional runtime bindings', () => {
     `)).toEqual({
       gaussianSplat: false,
       hism: false,
-      tree: false
+      tree: false,
+      waterArea: false
     })
   })
 
@@ -24,6 +25,16 @@ describe('Sandcastle optional runtime bindings', () => {
     expect(detectOptionalRuntimeBindings(`
       const placements = generatePoissonPlacements(options)
     `).hism).toBe(true)
+  })
+
+  it('detects the water-area helper without widening the base runner graph', () => {
+    expect(detectOptionalRuntimeBindings(`
+      const demo = await createWaterAreaDemo({ viewer, apiToken })
+    `).waterArea).toBe(true)
+
+    expect(detectOptionalRuntimeBindings(`
+      const water = { area: 128 }
+    `).waterArea).toBe(false)
   })
 
   it('does not confuse generic shared helpers with HISM helpers', () => {

@@ -108,6 +108,10 @@ class WebGPURendererAdapter implements TelluxRendererAdapter {
       samples: rendererOptions.samples,
       forceWebGL: rendererOptions.forceWebGL
     })
+    // Earth-scale ECEF transforms lose visible precision when the GPU multiplies
+    // separate 32-bit model and view matrices. Three.js computes their combined
+    // model-view and normal-view matrices with CPU 64-bit precision in this mode.
+    this.renderer.highPrecision = true
     this.ready = this.renderer.init().then(() => {
       if (this.disposed) return
       this.initialized = true

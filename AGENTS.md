@@ -36,6 +36,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 - 项目级备忘、调研记录、架构草稿和维护说明放在 `notes/`。
 - `examples/public/docs/` 是 VitePress 构建产物，不要手动编辑。
 - 新增普通示例时，通常需要同时关注示例 HTML/TS、`examples/vite.config.ts` 的入口注册，以及 Sandcastle registry 的分类/标题/描述规则。
+- 项目已经封装通用示例 UI 面板（`examples/example-panel.ts` + `examples/styles.css` 的 `.example-panel*` 体系）。示例需要参数或交互面板时应优先完整复用其 DOM 契约、控件类名和 `setupExamplePanels()`，不要只复用外层类名后另写一套内部结构或样式；现有能力不足时优先扩展通用面板并同步架构文档。
 - 修改 Sandcastle 时先区分主应用和 runner：`app.ts` 负责编辑器、示例列表、运行控制和日志；`runner.ts` 负责 iframe 内执行当前 payload。
 
 ## notes 快速索引
@@ -53,6 +54,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 - 涉及历史 bug、容易误判的实现方向、渲染循环抢占和高度采样副作用时，先读 `notes/坑点记录/项目坑点记录.md`。
 - 涉及 3D Tiles 点云颜色发白、法线、unlit、`pointCloudShading`（EDL / attenuation）时，先读 `notes/坑点记录/点云unlit与post-process大气坑点.md`。
 - 涉及 WebGPU 影像瓦片颠倒、错缝或 `WebGPUTerrainOverlayPlugin` 贴图时，先读 `notes/坑点记录/WebGPU影像ImageBitmap二次翻转坑点.md`。
+- 涉及 WebGPU ECEF 大数坐标抖动、Three.js `highPrecision`、`InstancedMesh` / `SkinnedMesh` 精度边界时，先读 `notes/坑点记录/WebGPU地球大数坐标精度抖动坑点.md`。
 - 涉及 `Scene` 运行时控制对象、`AtmosphereManager` 状态同步、大气用户态和底层 effect/light 状态边界时，先读 `notes/坑点记录/Scene与AtmosphereManager双状态坑点.md`。
 - 涉及实体（点 / 折线 / 多边形）颜色显示偏色、`toneMapped` 失效、`setEffects` 后处理管线或 AgX 反求补偿时，先读 `notes/坑点记录/实体颜色被AgX色调映射压扁坑点.md`。
 - 涉及 `sampleHeightMostDetailed`、地形高度采样、离屏采样、采样专用 tileset、LoadRegionPlugin 或 raycast 高度求交时，先读 `notes/实现链路/sampleHeightMostDetailed实现链路.md`。

@@ -2114,5 +2114,45 @@
   "example.hism-compare.status.ready": [
     "模板就绪。选择模式与数量后点击「生成并测速」。",
     "Templates ready. Choose mode/count then Generate & benchmark."
+  ],
+  "example.water-area.registry.title": [
+    "WebGPU 水域渲染",
+    "WebGPU Water Area"
+  ],
+  "example.water-area.registry.description": [
+    "使用 OSM Shortbread MVT Worker 遮罩为 Google Photorealistic 3D Tiles 渲染水域材质。",
+    "Render water materials on Google Photorealistic 3D Tiles with worker-generated OSM Shortbread MVT masks."
+  ],
+  "example.water-area.docTitle": [
+    "Tellux WebGPU 水域渲染",
+    "Tellux WebGPU Water Area"
+  ],
+  "example.water-area.panel.aria": [
+    "WebGPU 水域渲染控件",
+    "WebGPU water-area controls"
+  ],
+  "example.water-area.panel.title": [
+    "水域渲染",
+    "Water Area"
+  ],
+  "example.water-area.folder.effect": [
+    "效果",
+    "Effect"
+  ],
+  "example.water-area.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.water-area.label.showMask": [
+    "显示水域 Mask 效果",
+    "Show water mask effect"
+  ],
+  "example.water-area.hint.tokenReload": [
+    "修改 Token 后按 Enter 重新加载案例。",
+    "Press Enter after changing the token to reload the example."
+  ],
+  "example.water-area.attr.aria": [
+    "地图数据来源",
+    "Map data attribution"
   ]
 }

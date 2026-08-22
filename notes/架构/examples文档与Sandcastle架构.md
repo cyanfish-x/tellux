@@ -171,6 +171,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 | Tree | 包含 `@dgreenheck/ez-tree` 的异步能力 chunk | 4.25 MiB | 3.2 MiB |
 | Gaussian Splat | 包含 3DGS plugin / Spark 的异步能力 chunk | 5.5 MiB | 2 MiB |
 | TypeScript worker | worker 文件 | 6.25 MiB | 1.6 MiB |
+| Water Area worker | 水域 MVT 解码与遮罩栅格化 worker 文件 | 256 KiB | 80 KiB |
 | editor worker | worker 文件 | 300 KiB | 100 KiB |
 
 入口预算只递归静态 `imports`，不把 `dynamicImports` 计入首屏；异步重能力有独立预算。这样既能阻止普通入口意外吃进专用依赖，又不会用整个多页站点的总产物体积掩盖责任边界。
