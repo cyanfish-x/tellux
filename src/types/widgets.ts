@@ -51,6 +51,7 @@ export interface DebugSettingsPanelOptions {
   resolutionScale?: number
   lensFlare?: boolean
   smaa?: boolean
+  taa?: boolean
   dithering?: boolean
   showFps?: boolean
 }

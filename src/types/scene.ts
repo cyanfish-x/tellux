@@ -454,6 +454,13 @@ export interface ViewerPostProcessOptions {
    */
   smaa?: boolean | ViewerPostProcessStageOptions
   /**
+   * WebGPU TAA 时间抗锯齿配置，默认 `false`。传入 `boolean` 时等价于 `{ enabled }`。
+   *
+   * WebGPU TAA options. Defaults to `false`. A `boolean` is treated as
+   * `{ enabled }`.
+   */
+  taa?: boolean | ViewerPostProcessStageOptions
+  /**
    * 抖动配置。传入 `boolean` 时等价于 `{ enabled }`。
    *
    * Dithering options. A `boolean` is treated as `{ enabled }`.

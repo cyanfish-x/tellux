@@ -156,6 +156,7 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
     postProcess: {
       lensFlare: resolveLensFlareOptions(options?.postProcess?.lensFlare),
       smaa: resolvePostProcessStageOptions(options?.postProcess?.smaa, true),
+      taa: resolvePostProcessStageOptions(options?.postProcess?.taa, false),
       dithering: resolvePostProcessStageOptions(options?.postProcess?.dithering, false),
       toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 5
     },

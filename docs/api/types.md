@@ -109,6 +109,7 @@ const viewer = new Viewer(container, {
         quality: 'medium'
       },
       smaa: { enabled: true },
+      taa: { enabled: false },
       dithering: { enabled: false }
     }
   }
@@ -126,6 +127,7 @@ viewer.scene.clouds.coverage = 0.35
 viewer.scene.surface.materialMode = 'standard'
 viewer.scene.surface.material.roughness = 0.9
 viewer.scene.postProcess.smaa.enabled = true
+viewer.scene.postProcess.taa.enabled = true // WebGPU
 viewer.toneMappingExposure = 8
 ```
 
@@ -281,8 +283,8 @@ const viewer = new tellux.Viewer(container, {
       }
     },
 
-    // 后处理（SMAA / 光晕 / 抖动为 WebGL 专属，WebGPU 模式下不渲染）
-    // lensFlare / smaa / dithering 也可传 boolean，等价于 { enabled }
+    // 后处理（TAA 仅 WebGPU；SMAA / 光晕 / 抖动为 WebGL 专属）
+    // lensFlare / smaa / taa / dithering 也可传 boolean，等价于 { enabled }
     postProcess: {
       toneMappingExposure: 10, // 色调映射曝光，默认 10；运行时也可用 viewer.toneMappingExposure 调整
       lensFlare: {
@@ -295,6 +297,7 @@ const viewer = new tellux.Viewer(container, {
         quality: 'medium'      // 光晕质量档位 'low' | 'medium' | 'high'，默认 medium
       },
       smaa: { enabled: true },      // 是否启用 SMAA 抗锯齿，默认 true
+      taa: { enabled: false },      // 是否启用 WebGPU TAA，默认 false
       dithering: { enabled: false } // 是否启用抖动（减少色带），默认 false
     }
   },
@@ -332,7 +335,7 @@ const viewer = new tellux.Viewer(container, {
 
 - **领域边界**：scene 内部按 atmosphere / clouds / surface / postProcess / highlight 分组，而不是用前缀字段拍平。新增同领域能力时会扩展对应分组对象，而非新增顶层前缀字段。
 - **单位**：对外 API 统一使用度和米——经纬度、heading / pitch / roll 用度，高度、裁剪面、云层高度用米；角半径（`sunAngularRadius` 等）是弧度。
-- **WebGPU 限制**：`clouds` 以及 `postProcess` 的 SMAA / 镜头光晕 / 抖动在 WebGPU 模式下不渲染，调整开关无视觉效果；`sky.stars` 已支持，并沿用其 `show`、`intensity` 和 `pointSize` 配置。
+- **WebGPU 限制**：`clouds` 以及 `postProcess` 的 SMAA / 镜头光晕 / 抖动在 WebGPU 模式下不渲染，调整开关无视觉效果；`taa` 是唯一已接入的 WebGPU 后处理阶段，默认关闭，启用时会使用高精度速度 MRT 和深度重投影历史帧；`sky.stars` 已支持，并沿用其 `show`、`intensity` 和 `pointSize` 配置。
 - **Entity 透明**：`scene.entities.transparency.mode` 默认 `auto`；WebGL 后处理管线可用时使用 weighted blended OIT，WebGPU 或不支持时退回 `sorted`。`weighted-oit` 能减少 entity 之间随视角跳变的排序异常，但它是工程近似，不是逐片元严格排序；`sorted` 保留 Three.js 默认透明排序路径，便于兼容和排查。
 - **作用范围**：`surface` 只影响 Viewer 管理的基础地球和地形；`load3DTileset` / `addModel` 加载的内容有自己的材质模式（见「光照模式与参数」）。
 

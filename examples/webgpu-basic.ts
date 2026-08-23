@@ -36,6 +36,9 @@ async function main() {
       clouds: {
         show: false,
       },
+      postProcess: {
+        taa: true,
+      },
     },
   })
 

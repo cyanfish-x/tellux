@@ -121,12 +121,15 @@ export class PostProcessSettings {
   readonly lensFlare: LensFlareSettings
   /** SMAA 抗锯齿后处理阶段。SMAA anti-aliasing post-processing stage. */
   readonly smaa: PostProcessStage
+  /** TAA 时间抗锯齿后处理阶段。TAA temporal anti-aliasing post-processing stage. */
+  readonly taa: PostProcessStage
   /** 抖动后处理阶段。Dithering post-processing stage. */
   readonly dithering: PostProcessStage
 
   constructor(options: ResolvedSceneOptions['postProcess'], onChange: () => void) {
     this.lensFlare = new LensFlareSettings(options.lensFlare, onChange)
     this.smaa = new PostProcessStage(options.smaa.enabled, onChange)
+    this.taa = new PostProcessStage(options.taa.enabled, onChange)
     this.dithering = new PostProcessStage(options.dithering.enabled, onChange)
   }
 }

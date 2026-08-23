@@ -110,6 +110,9 @@ export interface ResolvedSceneOptions {
     smaa: {
       enabled: boolean
     }
+    taa: {
+      enabled: boolean
+    }
     dithering: {
       enabled: boolean
     }

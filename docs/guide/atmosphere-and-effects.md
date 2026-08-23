@@ -185,6 +185,7 @@ viewer.scene.surface.material.useRoughnessMap = false
 
 ```ts
 viewer.scene.postProcess.smaa.enabled = true
+viewer.scene.postProcess.taa.enabled = true // WebGPU
 viewer.scene.postProcess.lensFlare.enabled = true
 viewer.scene.postProcess.lensFlare.intensity = 0.005
 viewer.scene.postProcess.lensFlare.threshold.level = 10
@@ -195,6 +196,7 @@ viewer.scene.postProcess.dithering.enabled = false
 | 阶段 | 说明 |
 | --- | --- |
 | `smaa.enabled` | SMAA 抗锯齿。 |
+| `taa.enabled` | WebGPU 时间抗锯齿（TAA）。使用高精度运动矢量和深度重投影历史帧；默认 `false`。 |
 | `lensFlare.enabled` / `intensity` / `threshold` / `quality` | 镜头光晕开关、强度、亮部阈值与质量档。 |
 | `dithering.enabled` | 抖动，减少色带。 |
 
@@ -204,6 +206,6 @@ viewer.scene.postProcess.dithering.enabled = false
 viewer.toneMappingExposure = 10
 ```
 
-::: warning WebGPU 限制
-SMAA、镜头光晕、抖动等是 WebGL 专属后处理，在 **WebGPU 模式下不渲染**。WebGPU 模式下调整这些开关没有视觉效果。
+::: warning WebGPU 后处理边界
+`taa` 是当前唯一已接入的 WebGPU 后处理阶段；它会增加一个高精度 velocity MRT 和两张随绘制缓冲尺寸变化的历史纹理。SMAA、镜头光晕和抖动仍是 WebGL 专属，在 WebGPU 模式下调整这些开关没有视觉效果。由于 TAA 会累积历史，动态材质或逐实例动画需要单独验证运动矢量质量。
 :::

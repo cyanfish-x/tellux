@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import { mrt, normalView, output, pass, velocity } from 'three/tsl'
+import { highpVelocity } from '@takram/three-geospatial/webgpu'
+import { mrt, normalView, output, pass } from 'three/tsl'
 import { RenderPipeline, type Node } from 'three/webgpu'
 
 import type { TelluxRendererAdapter, TelluxWebGPURenderer } from './RendererAdapter'
@@ -40,6 +41,15 @@ export interface WebGPUPostProcessingGraph {
 }
 
 /**
+ * 可注册后处理阶段的 WebGPU 图内部契约。
+ *
+ * Internal WebGPU graph contract that accepts post-processing stages.
+ */
+export interface WebGPUPostProcessingStageGraph extends WebGPUPostProcessingGraph {
+  addStage(stage: WebGPUPostProcessStage): () => void
+}
+
+/**
  * WebGPU 后处理图的组合根。
  *
  * 它是唯一设置 renderer delegate 和持有 `RenderPipeline` 的对象。大气、描边等
@@ -48,7 +58,7 @@ export interface WebGPUPostProcessingGraph {
  * Composition root for the WebGPU post-processing graph. It exclusively owns
  * the renderer delegate and RenderPipeline; features contribute nodes only.
  */
-export class WebGPUPostProcessingManager implements WebGPUPostProcessingGraph {
+export class WebGPUPostProcessingManager implements WebGPUPostProcessingStageGraph {
   readonly scenePass: WebGPUPostProcessScenePass
 
   private readonly renderPipeline: RenderPipeline
@@ -169,7 +179,9 @@ export class WebGPUPostProcessingManager implements WebGPUPostProcessingGraph {
     this.scenePass.setMRT(attachments.size === 0 ? null : mrt({
       output,
       ...(attachments.has('normal') ? { normal: normalView } : {}),
-      ...(attachments.has('velocity') ? { velocity } : {})
+      // takram 0.9.1 is runtime-compatible with Three r184, but its Node
+      // declaration still uses the pre-r184 update signature.
+      ...(attachments.has('velocity') ? { velocity: highpVelocity as unknown as Node } : {})
     }))
   }
 

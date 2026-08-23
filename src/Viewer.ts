@@ -31,6 +31,7 @@ import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { WebGPUAtmosphereManager } from './rendering/WebGPUAtmosphereManager'
 import { WebGPUPostProcessingManager } from './rendering/WebGPUPostProcessingManager'
+import { WebGPUTemporalAntialiasManager } from './rendering/WebGPUTemporalAntialiasManager'
 import { CartographicPicker } from './sampling/CartographicPicker'
 import { EntityPicker } from './sampling/EntityPicker'
 import { HeightSampler } from './sampling/HeightSampler'
@@ -406,6 +407,7 @@ export class Viewer {
   private readonly atmosphere: ViewerAtmosphereManager | null
   private readonly postProcessing: PostProcessingManager | null
   private readonly webgpuPostProcessing: WebGPUPostProcessingManager | null
+  private readonly webgpuTemporalAntialias: WebGPUTemporalAntialiasManager | null
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
@@ -484,12 +486,14 @@ export class Viewer {
       constructionScope.defer(() => this.transparentOverlayTexture.dispose())
 
       let highlightManager: HighlightManager | null = null
+      let webgpuTemporalAntialias: WebGPUTemporalAntialiasManager | null = null
       this.scene = new Scene(
         sceneOptions,
         (state) => atmosphere?.applyAtmosphereState(state),
         (state) => atmosphere?.applyCloudsState(state),
         () => {
           postProcessing?.applyEffects()
+          webgpuTemporalAntialias?.setEnabled(this.scene.postProcess.taa.enabled)
           if (atmosphere instanceof WebGPUAtmosphereManager) {
             atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
           }
@@ -511,11 +515,17 @@ export class Viewer {
           )
         : null
       constructionScope.defer(() => this.webgpuPostProcessing?.dispose())
+      this.webgpuTemporalAntialias = this.webgpuPostProcessing
+        ? new WebGPUTemporalAntialiasManager(this.webgpuPostProcessing, this.threeCamera)
+        : null
+      constructionScope.defer(() => this.webgpuTemporalAntialias?.dispose())
+      webgpuTemporalAntialias = this.webgpuTemporalAntialias
       this.atmosphere = this.createAtmosphereManager(() => postProcessing?.applyEffects())
       constructionScope.defer(() => this.atmosphere?.dispose())
       atmosphere = this.atmosphere
       this.atmosphere?.addLightSourcesTo(this.scene.threeScene)
       this.scene.syncRuntimeEffects()
+      this.webgpuTemporalAntialias?.setEnabled(this.scene.postProcess.taa.enabled)
       this.clock = new Clock(() => this.atmosphere?.updateSunDirection(this.clock.currentTime))
 
       this.dracoLoader = new DRACOLoader()
@@ -1137,6 +1147,7 @@ export class Viewer {
     this.targetFlights.dispose()
 
     this.postProcessing?.dispose()
+    this.webgpuTemporalAntialias?.dispose()
     this.atmosphere?.dispose()
     this.webgpuPostProcessing?.dispose()
     this.transparentOverlayTexture.dispose()

@@ -7,7 +7,7 @@ import {
 } from '../rendering/WebGPUPostProcessingManager'
 import type { TelluxRendererAdapter, TelluxWebGPURenderer } from '../rendering/RendererAdapter'
 
-const { renderPipelineInstances, scenePasses, tsl } = vi.hoisted(() => ({
+const { renderPipelineInstances, scenePasses, takram, tsl } = vi.hoisted(() => ({
   renderPipelineInstances: [] as Array<{
     outputNode: unknown
     needsUpdate: boolean
@@ -25,6 +25,9 @@ const { renderPipelineInstances, scenePasses, tsl } = vi.hoisted(() => ({
     normalView: { name: 'normal-view' },
     output: { name: 'output' },
     velocity: { name: 'velocity' }
+  },
+  takram: {
+    highpVelocity: { name: 'highp-velocity' }
   }
 }))
 
@@ -60,6 +63,8 @@ vi.mock('three/tsl', () => ({
     return scenePass
   })
 }))
+
+vi.mock('@takram/three-geospatial/webgpu', () => takram)
 
 function createAdapter() {
   let delegate: ((scene: THREE.Object3D, camera: THREE.Camera) => void) | null = null
@@ -174,13 +179,13 @@ describe('WebGPUPostProcessingManager', () => {
     expect(tsl.mrt).toHaveBeenLastCalledWith({
       output: tsl.output,
       normal: tsl.normalView,
-      velocity: tsl.velocity
+      velocity: takram.highpVelocity
     })
 
     removeNormal()
     expect(tsl.mrt).toHaveBeenLastCalledWith({
       output: tsl.output,
-      velocity: tsl.velocity
+      velocity: takram.highpVelocity
     })
 
     removeVelocity()

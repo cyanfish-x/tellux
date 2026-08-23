@@ -200,8 +200,10 @@ Tellux 当前管线顺序由 `PostProcessingManager.applyEffects()` 控制：
 - 增加 depth / normal debug view。
 - 评估 `GeometryPass` 用于更完整的材质和 G-buffer 调试。
 - 评估 `createHaldLookupTexture` 用于色彩分级（`scene.postProcess.colorGrading`）。
-- WebGPU 下 SMAA / 镜头光晕 / 抖动当前不渲染，文档需持续声明。Tellux 已有
-  `WebGPUPostProcessingManager` 作为 TSL 图组合基础设施，已具备按需 `normal` /
-  `velocity` MRT、stage resize/dispose 和唯一最终输出排序；但它不使这些 WebGL 效果
-  自动兼容。每项效果仍需单独实现 WebGPU node / pass，并声明所需附件。
+- WebGPU 下 SMAA / 镜头光晕 / 抖动当前不渲染，文档需持续声明。TAA 已接入为
+  `WebGPUTemporalAntialiasManager`：在 `WebGPUPostProcessingManager` 的共享图中声明
+  `velocity` MRT，使用 takram `highpVelocity` 输出地球尺度稳定的运动矢量，并将
+  `temporalAntialias(scene color, depth, velocity, camera)` 排在大气合成之后、最终输出之前。
+  TAA 的 history render targets 由该阶段持有，resize、关闭和图销毁时释放。其他效果
+  仍不会因图基础设施存在而自动兼容，必须各自实现 WebGPU node / pass 并声明附件。
 

@@ -128,6 +128,11 @@ export function buildDebugSettingsControls(
     "SMAA",
     settings.smaa ?? viewer.scene.postProcess.smaa.enabled
   )
+  const taaToggle = createSwitchControl(
+    "taa",
+    "TAA（WebGPU）",
+    settings.taa ?? viewer.scene.postProcess.taa.enabled
+  )
   const ditheringToggle = createSwitchControl(
     "dithering",
     "抖动",
@@ -485,6 +490,7 @@ export function buildDebugSettingsControls(
         fpsToggle.element,
         lensFlareToggle.element,
         smaaToggle.element,
+        taaToggle.element,
         ditheringToggle.element,
       ],
       false
@@ -526,6 +532,7 @@ export function buildDebugSettingsControls(
     cloudToggle,
     lensFlareToggle,
     smaaToggle,
+    taaToggle,
     ditheringToggle,
     fpsToggle,
     coverageControl,
