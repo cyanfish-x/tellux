@@ -30,11 +30,11 @@ export const DEFAULT_WATER_AREA_APPEARANCE: Readonly<ResolvedWaterAreaAppearance
     show: true,
     color: '#06172d',
     colorMix: 0.8,
-    roughness: 0.34,
-    waveStrength: 0.22,
-    waveScale: 1,
-    waveSpeed: 1,
-    waveDirection: 35
+    roughness: 0.1,
+    waveStrength: 0.6,
+    waveScale: 0.6,
+    waveSpeed: 0.5,
+    waveDirection: 160
   })
 
 function normalizeNumber(

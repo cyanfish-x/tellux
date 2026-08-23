@@ -6,13 +6,18 @@ import {
 } from './WaterAreaAppearance'
 
 describe('normalizeWaterAreaAppearance', () => {
-  it('uses conservative defaults for omitted appearance fields', () => {
+  it('uses the calibrated water-area defaults for omitted appearance fields', () => {
     expect(normalizeWaterAreaAppearance()).toEqual(
       DEFAULT_WATER_AREA_APPEARANCE
     )
     expect(DEFAULT_WATER_AREA_APPEARANCE).toMatchObject({
-      roughness: 0.34,
-      waveStrength: 0.22
+      color: '#06172d',
+      colorMix: 0.8,
+      roughness: 0.1,
+      waveStrength: 0.6,
+      waveScale: 0.6,
+      waveSpeed: 0.5,
+      waveDirection: 160
     })
   })
 

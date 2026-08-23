@@ -10,15 +10,17 @@ import {
   normalizeWaterAreaAppearance,
   type ResolvedWaterAreaAppearance,
 } from "./water-area/WaterAreaAppearance"
-import { DEFAULT_WATER_AREA_WAVE_ORIGIN } from "./water-area/WaterAreaWaveFrame"
 
 const WATER_AREA_VIEW = {
-  ...DEFAULT_WATER_AREA_WAVE_ORIGIN,
-  height: 100000,
-  heading: 69,
-  pitch: -38,
-  roll: 0,
+  latitude: 70.33265443539143,
+  longitude: -111.98797078872424,
+  height: 9.695092168450186,
+  heading: 59.96441952219868,
+  pitch: -0.006222642164159085,
+  roll: -1.6056301420929017e-7,
 }
+
+const WATER_AREA_UTC_TIME = new Date(Date.UTC(2026, 7, 23, 11, 51, 18))
 
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
@@ -102,7 +104,7 @@ async function main() {
 
   ;(window as any).viewer = viewer
   viewer.tileset.group.visible = false
-  viewer.clock.currentTime = new Date(Date.UTC(2026, 5, 19, 2, 42))
+  viewer.clock.currentTime = WATER_AREA_UTC_TIME
 
   tokenInput.value = ""
   tokenInput.placeholder = DEFAULT_ION_TOKEN
