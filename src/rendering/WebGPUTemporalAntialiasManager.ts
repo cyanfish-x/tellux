@@ -54,6 +54,7 @@ export class WebGPUTemporalAntialiasManager {
 
     this.removeStage = this.postProcessing.addStage({
       id: 'temporal-antialias',
+      order: 200,
       sceneAttachments: ['velocity'],
       compose: (input, context) => this.compose(input, context),
       setSize: (width, height, pixelRatio) => this.setSize(width, height, pixelRatio),

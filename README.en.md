@@ -96,9 +96,9 @@ Cesium Ion is an optional data service. Tellux APIs support both self-hosted URL
 - Control a WGS84 globe using longitude, latitude, height, heading, pitch, and roll, with flights, picking, and height sampling.
 - Load Cesium quantized-mesh terrain, XYZ, WMS, WMTS, Cesium Ion imagery, and draped GeoJSON and MVT vector overlays.
 - Load URL- or Cesium Ion-based 3D Tiles, plus glTF / GLB models with animation and ground alignment.
-- Build geospatial scenes with atmospheric sky, aerial perspective, volumetric clouds, day-night lighting, SMAA, lens flare, and dithering; enable TAA on demand with WebGPU.
+- Build geospatial scenes with atmospheric sky, aerial perspective, volumetric clouds, day-night lighting, SMAA, lens flare, and dithering; WebGPU supports lens flare and optional TAA.
 - Interoperate with Three.js scenes, objects, coordinate conversion, and custom render loops.
-- Use WebGL by default. The experimental WebGPU renderer supports the base globe, terrain, imagery, 3D Tiles, models, picking, atmosphere, and optional TAA; see [Known limitations](https://tellux.cyanfish.site/docs/guide/limitations).
+- Use WebGL by default. The experimental WebGPU renderer supports the base globe, terrain, imagery, 3D Tiles, models, picking, atmosphere, lens flare, and optional TAA; see [Known limitations](https://tellux.cyanfish.site/docs/guide/limitations).
 
 ## 🛠️ Development
 

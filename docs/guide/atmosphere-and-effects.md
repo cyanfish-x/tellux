@@ -8,7 +8,7 @@ Tellux 把视觉氛围相关的能力组织在 `viewer.scene` 下，分为大气
 viewer.scene.atmosphere          // 大气天空、空气透视、光照、夜景、星空、云影
 viewer.scene.clouds              // 体积云
 viewer.scene.surface             // 基础地球表面材质
-viewer.scene.postProcess         // 后处理开关（镜头光晕、SMAA、抖动）
+viewer.scene.postProcess         // 后处理开关（镜头光晕、TAA、SMAA、抖动）
 ```
 
 每个领域都遵循「初始化配置与运行时入口同构」的原则：`ViewerOptions.scene.xxx` 的字段结构和 `viewer.scene.xxx` 的属性一一对应。
@@ -207,5 +207,5 @@ viewer.toneMappingExposure = 10
 ```
 
 ::: warning WebGPU 后处理边界
-`taa` 是当前唯一已接入的 WebGPU 后处理阶段；它会增加一个高精度 velocity MRT 和两张随绘制缓冲尺寸变化的历史纹理。SMAA、镜头光晕和抖动仍是 WebGL 专属，在 WebGPU 模式下调整这些开关没有视觉效果。由于 TAA 会累积历史，动态材质或逐实例动画需要单独验证运动矢量质量。
+WebGPU 已接入 LensFlare 与 TAA：LensFlare 基于 HDR 亮部提取、模糊和特征合成，并在 TAA 之前运行；TAA 会增加一个高精度 velocity MRT 和两张随绘制缓冲尺寸变化的历史纹理。SMAA 和抖动仍是 WebGL 专属，在 WebGPU 模式下调整这些开关没有视觉效果。由于 TAA 会累积历史，动态材质或逐实例动画需要单独验证运动矢量质量。
 :::

@@ -23,6 +23,12 @@ export type WebGPUSceneAttachment = 'normal' | 'velocity'
  */
 export interface WebGPUPostProcessStage {
   readonly id: string
+  /**
+   * 阶段执行顺序，数值越小越靠前；未指定时为 `0`。
+   *
+   * Stage execution order. Lower values run first; unspecified is `0`.
+   */
+  readonly order?: number
   readonly sceneAttachments?: readonly WebGPUSceneAttachment[]
   compose(input: WebGPUPostProcessNode, context: WebGPUPostProcessStageContext): WebGPUPostProcessNode
   setSize?(width: number, height: number, pixelRatio: number): void
@@ -160,7 +166,7 @@ export class WebGPUPostProcessingManager implements WebGPUPostProcessingStageGra
       scenePass: this.scenePass,
       camera: this.camera
     }
-    for (const stage of this.stages.values()) {
+    for (const stage of this.getOrderedStages()) {
       output = stage.compose(output, context)
     }
 
@@ -188,6 +194,10 @@ export class WebGPUPostProcessingManager implements WebGPUPostProcessingStageGra
   private syncStageSize(stage: WebGPUPostProcessStage) {
     if (!stage.setSize || this.width === 0 || this.height === 0) return
     stage.setSize(this.width, this.height, this.pixelRatio)
+  }
+
+  private getOrderedStages() {
+    return [...this.stages.values()].sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
   }
 
   private validateSceneAttachments(stage: WebGPUPostProcessStage) {

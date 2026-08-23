@@ -16,10 +16,10 @@ WebGPU 初版为了让 `AerialPerspectiveNode` 输出到屏幕，由 `WebGPUAtmo
 
 1. 它创建并持有唯一的 `scenePass`、`RenderPipeline` 和 renderer delegate。
 2. `WebGPUAtmosphereManager` 只创建带 `AtmosphereContext` 的空气透视 / 天空合成节点，并通过 `setSceneCompositor()` 注册为场景合成阶段；关闭大气时图直接输出 `scenePass`。
-3. 后续效果以具名 `WebGPUPostProcessStage` 按注册顺序组合，输入是前一阶段的颜色节点；所有阶段共享同一个 `scenePass`，从而共享场景颜色和深度来源。
+3. 后续效果以具名 `WebGPUPostProcessStage` 按显式 `order`（相同 order 保留注册顺序）组合，输入是前一阶段的颜色节点；所有阶段共享同一个 `scenePass`，从而共享场景颜色和深度来源。
 4. stage 可按需声明 `normal`、`velocity` 场景附件。图从活动 stage 汇总需求，并仅在需要时以 Three.js `mrt({ output, ... })` 配置共享 `scenePass`；颜色和深度始终可用，当前没有需求时不启用 MRT。
 5. 图向已注册 stage 转发容器 CSS 尺寸和 renderer pixel ratio，并在移除或图销毁时调用 stage 的 `dispose()`；图本身负责销毁其创建的 `scenePass` 和 `RenderPipeline`。大气保留自己的资源所有权，销毁时先注销 scene compositor。
-6. 当前不把任何 WebGL `postprocessing` 效果伪装成 WebGPU 已支持；SMAA、镜头光晕、抖动、体积云、OIT 和 EDL 仍需各自以 TSL / WebGPU pass 方式接入。
+6. 当前不把任何 WebGL `postprocessing` 效果伪装成 WebGPU 已支持；LensFlare 已作为 TSL stage 接入并排在 TAA 前，SMAA、抖动、体积云、OIT 和 EDL 仍需各自以 TSL / WebGPU pass 方式接入。
 
 ## 被否决的方案
 

@@ -63,7 +63,7 @@ viewer.scene.atmosphere.sky.stars.intensity = 1
 viewer.scene.atmosphere.sky.sunAngularRadius = 0.004675   // 弧度！
 ```
 
-> **星空在 WebGPU 模式下不渲染。**
+> 星空在 WebGPU 模式下已支持，并沿用 `show`、`intensity` 与 `pointSize` 配置。
 
 ### 夜景（太阳落山后的补光）
 
@@ -125,11 +125,12 @@ viewer.scene.postProcess.smaa.enabled = true
 viewer.scene.postProcess.lensFlare.enabled = true
 viewer.scene.postProcess.lensFlare.intensity = 0.005
 viewer.scene.postProcess.lensFlare.quality = 'medium'
+viewer.scene.postProcess.taa.enabled = true // WebGPU，默认 false
 viewer.scene.postProcess.dithering.enabled = false
 viewer.toneMappingExposure = 10
 ```
 
-> **SMAA / 镜头光晕 / 抖动在 WebGPU 模式下不渲染**，WebGPU 下调这些开关无视觉效果。
+> WebGPU 已支持镜头光晕与 TAA，且固定为 LensFlare → TAA；SMAA / 抖动在 WebGPU 模式下仍不渲染，调这些开关无视觉效果。
 
 ## 完整初始化示例
 

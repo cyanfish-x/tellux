@@ -34,9 +34,9 @@ Tellux 不存在 `@takram/three-geospatial` 的正式版本滞后：当前锁定
 
 | 能力 | 上游实现 | Tellux 现状与缺口 | 建议边界 |
 | --- | --- | --- | --- |
-| 高精度速度 + TAA | `HighpVelocityNode` + `TemporalAntialiasNode` | WebGPU 只有单一 scene pass，没有 velocity MRT、历史缓冲或抗锯齿阶段 | 新建 WebGPU post-process graph manager；TAA 必须与 ECEF 高精度 velocity 一起接入，不能复用 WebGL SMAA API 假装等价 |
-| 抖动 | `dithering` node | WebGPU 无 Dithering；当前 `PostProcessingManager` 仅创建于 WebGL | 将现有 `scene.postProcess.dithering` 映射为 node graph 的最终输出阶段 |
-| 镜头光晕 | `LensFlareNode`（含 WebGPU glare） | WebGPU 无 LensFlare，现有 `LensFlareEffect` 仅 WebGL | 复用 `scene.postProcess.lensFlare` 领域对象；独立定义两端质量档位的可比语义 |
+| 高精度速度 + TAA | `HighpVelocityNode` + `TemporalAntialiasNode` | 已接入 `highpVelocity` MRT 与 TAA history stage | 使用 `scene.postProcess.taa`，保持独立于 WebGL SMAA |
+| 抖动 | `dithering` node | WebGPU 无 Dithering；当前 `PostProcessingManager` 仅创建于 WebGL | 保持不接入：暗部视觉噪声收益不稳定，现有 API 默认关闭 |
+| 镜头光晕 | `LensFlareNode`（含 WebGPU glare） | 已接入 `WebGPULensFlareManager`，复用现有 LensFlare API | order 100，运行在 TAA 之前；质量档映射内部中间纹理分辨率 |
 
 这四项应先形成一个独立的 `WebGPUPostProcessingManager`（负责 MRT、历史 RT、resize、dispose 和输出排序），再逐项加入节点；不要把 TAA / LensFlare 继续堆进 `WebGPUAtmosphereManager`。
 
@@ -84,7 +84,7 @@ WaterAreaManager
 
 ## 推荐接入顺序
 
-1. **WebGPU 后处理图基础设施**：先做 MRT、resize、资源释放和最终输出排序，再接高精度 velocity + TAA；随后接 dithering 和 LensFlare。
+1. **WebGPU 后处理图基础设施**：已完成 MRT、resize、资源释放和最终输出排序，并接入高精度 velocity + TAA、LensFlare。dithering 经暗部视觉评估不排期，保留 WebGL 默认关闭能力。
 2. **WebGPU 光柱与透明空气透视**：必须先完成 CSM / OIT / NodeMaterial 的责任划分和回归矩阵，不适合跳过图基础设施直接实现。
 3. **Water Area**：按上面的三层 adapter 先做数据源无关 MVP；与 GPUOcean 保持组合关系，而不是互相替代。
 4. **多层 / 自定义云资源、LUT 和 debug pass**：只由明确产品需求驱动；`webgpu/clouds` 在上游完成可用 cloud effect 前不排期。

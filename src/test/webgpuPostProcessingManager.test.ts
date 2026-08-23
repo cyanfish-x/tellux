@@ -133,6 +133,37 @@ describe('WebGPUPostProcessingManager', () => {
     expect(pipeline.outputNode).toBe(manager.scenePass)
   })
 
+  it('orders stages by explicit order instead of their registration time', () => {
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera()
+    const renderer = { getPixelRatio: () => 1 } as unknown as TelluxWebGPURenderer
+    const adapter = createAdapter()
+    const manager = new WebGPUPostProcessingManager(adapter.adapter, renderer, scene, camera)
+    const trace: string[] = []
+
+    manager.addStage({
+      id: 'temporal-antialias',
+      order: 200,
+      compose: (input) => {
+        trace.push('taa')
+        return input
+      }
+    })
+    manager.addStage({
+      id: 'lens-flare',
+      order: 100,
+      compose: (input) => {
+        trace.push('lens-flare')
+        return input
+      }
+    })
+
+    trace.length = 0
+    manager.setSceneCompositor({ name: 'atmosphere' } as never)
+
+    expect(trace).toEqual(['lens-flare', 'taa'])
+  })
+
   it('owns the WebGPU render delegate for the composed graph lifecycle', () => {
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera()

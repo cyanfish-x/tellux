@@ -325,8 +325,13 @@ WebGPUAtmosphereManager(postProcessingGraph, renderer, scene, camera)
   ├─ outputNode = context(aerialPerspective, { getAtmosphere })
   └─ postProcessingGraph.setSceneCompositor(outputNode)
 
+WebGPULensFlareManager(postProcessingGraph)
+  ├─ 注册 ordered stage：lens-flare（order 100）
+  ├─ LensFlareNode(input) → HDR threshold / blur / ghost / halo / glare
+  └─ stage dispose → 释放 LensFlare 中间资源
+
 WebGPUTemporalAntialiasManager(postProcessingGraph, camera)
-  ├─ 注册 ordered stage：temporal-antialias
+  ├─ 注册 ordered stage：temporal-antialias（order 200）
   ├─ 请求 velocity MRT（takram highpVelocity）
   ├─ temporalAntialias(scene color, depth, velocity, camera)
   └─ stage resize / dispose → 历史纹理尺寸 / 生命周期
@@ -335,7 +340,7 @@ WebGPUTemporalAntialiasManager(postProcessingGraph, camera)
 - 大气仍以内联 TSL 节点完成，但不再拥有最终渲染入口
 - `WebGPUPostProcessingManager` 允许后续效果以有序 node stage 追加到大气之后、最终输出之前。stage 声明所需的 `normal` / `velocity` MRT 附件，并接收统一的 `setSize(width, height, pixelRatio)` 与 `dispose()` 生命周期回调。
 - 图销毁时先由 feature 注销 scene compositor，再由图销毁其 `scenePass`、`RenderPipeline` 和仍已注册 stage；stage 不得单独接管 renderer delegate 或自行做最终输出转换。
-- 功能子集：无体积云、无 LensFlare/SMAA/Dithering；TAA 是唯一已接入的 WebGPU 后处理阶段，默认关闭。后处理图基础设施不使其他 WebGL 效果自动可用
+- 功能子集：无体积云、无 SMAA/Dithering；LensFlare 和默认关闭的 TAA 已接入。后处理图基础设施不使其他 WebGL 效果自动可用
 - 无夜间复杂光照（仅支持 moonScattering toggle）
 
 ### 6.3 星空渲染
@@ -518,7 +523,7 @@ WebGPU 模式下 `supportsWebGLEffects = false`，WebGL 的 `PostProcessingManag
 scenePass → atmosphere compositor (optional) → ordered WebGPU stages → RenderPipeline output (AgX + sRGB)
 ```
 
-图的默认顺序为 `scenePass → atmosphere compositor (optional) → ordered WebGPU stages → RenderPipeline output`。当前已接入的具体阶段是可选 TAA：它请求 takram `highpVelocity` 作为 velocity MRT，并使用深度与历史颜色进行重投影；历史纹理由 stage 持有并在 resize / disable / graph dispose 时释放。LensFlare / SMAA / Dithering 尚未实现。新效果必须作为 `WebGPUPostProcessStage` 返回颜色节点，不能创建第二个 scene pass 或接管 renderer delegate。
+图的默认顺序为 `scenePass → atmosphere compositor (optional) → LensFlare (optional) → TAA (optional) → RenderPipeline output`。LensFlare 复用 takram `LensFlareNode` 的 HDR threshold、blur、ghost、halo 和 glare 中间资源，并映射 Tellux 既有的强度、阈值与质量档；TAA 请求 takram `highpVelocity` 作为 velocity MRT，并使用深度与历史颜色进行重投影。两者专属资源由各自 stage 持有并在 disable / graph dispose 时释放，TAA history 还会在 resize 时重建。SMAA / Dithering 尚未实现。新效果必须作为 `WebGPUPostProcessStage` 返回颜色节点，不能创建第二个 scene pass 或接管 renderer delegate。
 
 ---
 
@@ -785,7 +790,7 @@ Tellux 不修改 Takram 等第三方库源码，而是在运行时通过 shader 
 |---|---|---|
 | 大气散射 | AerialPerspectiveEffect (后处理) | AerialPerspectiveNode (TSL 内联) |
 | 体积云 | CloudsEffect (后处理) | ❌ 不支持 |
-| 后处理 chain | Normal → Cloud+Atmo → Atmo → LensFlare → SMAA → Dithering | scenePass → 可选大气 → TAA（可选）→ output；LensFlare / SMAA / Dithering 未接入 |
+| 后处理 chain | Normal → Cloud+Atmo → Atmo → LensFlare → SMAA → Dithering | scenePass → 可选大气 → LensFlare（可选）→ TAA（可选）→ output；SMAA / Dithering 未接入 |
 | 星空 | StarsMaterial + patch | StarsNode（加载 Tellux `stars.bin` 后启用） |
 | 夜间光照 | 完整 (moon + ambient + color + transition) | 仅 moonScattering toggle |
 | 光照模式 | post-process / light-source | post-process / light-source |

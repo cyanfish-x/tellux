@@ -16,7 +16,7 @@ WebGPU 是实验能力，以下能力在 WebGPU 模式下**不渲染或不支持
 | --- | --- |
 | 体积云 | 不渲染（应设 `clouds.show: false`） |
 | 星空 | 支持 `sky.stars.show`、`intensity` 与 `pointSize` |
-| 后处理 | TAA 支持；SMAA / 镜头光晕 / 抖动不渲染，调整开关无视觉效果 |
+| 后处理 | LensFlare 与 TAA 支持；SMAA / 抖动不渲染，调整开关无视觉效果 |
 | 瓦片 LOD 淡入淡出 | 不可用，瓦片为直接切换（pop） |
 | 大气散射调试参数 | 部分参数不映射，`light-source` 光照模式支持更完整 |
 

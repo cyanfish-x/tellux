@@ -118,7 +118,7 @@ await viewer.ready
 viewer.render()
 ```
 
-WebGPU 支持目前是实验能力。基础地球、3D Tiles、地形、影像、模型、拾取、大气天空 / 空气透视和星空会走 WebGPU 管线；体积云以及 SMAA、镜头光晕、抖动等 WebGL 后处理会降级为不渲染。`scene.postProcess.taa` 是已支持的 WebGPU 时间抗锯齿，默认关闭，启用后会使用高精度运动矢量和深度重投影历史画面。星空沿用 `scene.atmosphere.sky.stars` 的 `show`、`intensity` 与 `pointSize` 配置。WebGPU 大气首版使用 Takram node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射。
+WebGPU 支持目前是实验能力。基础地球、3D Tiles、地形、影像、模型、拾取、大气天空 / 空气透视和星空会走 WebGPU 管线；体积云以及 SMAA、抖动等 WebGL 后处理会降级为不渲染。`scene.postProcess.lensFlare` 已复用同一套强度、阈值与质量档 API；`scene.postProcess.taa` 是已支持的时间抗锯齿，默认关闭，启用后会使用高精度运动矢量和深度重投影历史画面。两者的图顺序为 LensFlare → TAA。星空沿用 `scene.atmosphere.sky.stars` 的 `show`、`intensity` 与 `pointSize` 配置。WebGPU 大气首版使用 Takram node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射。
 
 ## 事件
 
