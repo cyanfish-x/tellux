@@ -145,8 +145,8 @@ async function main() {
     setStatus(
       showInput.checked
         ? t({
-            zh: "水域外观已显示：MVT Mask 在 8 个 LIFO Worker 中生成，双尺度波纹由 WebGPU 材质驱动。",
-            en: "Water appearance shown: eight LIFO workers generate MVT masks and the WebGPU material drives dual-scale waves.",
+            zh: "水域外观已显示：MVT Mask 在 8 个 LIFO Worker 中生成，Valve 双相位波纹由 WebGPU 材质驱动。",
+            en: "Water appearance shown: eight LIFO workers generate MVT masks and the WebGPU material drives Valve dual-phase waves.",
           })
         : t({
             zh: "水域外观已隐藏；瓦片、Worker 与 Mask 缓存保持运行。",

@@ -10,10 +10,12 @@
 - [ ] 验证 tile 边界和 LOD 切换没有相位接缝。
 - [x] 运行 `pnpm type-check`。
 
-## Task 2：双尺度动态法线与 PBR 外观
+## Task 2：Valve / Three.js Water2 双相位法线与 PBR 外观
 
 - [x] 固定并本地化 Three.js r184 Water2 双法线纹理，记录来源、许可证链接和校验值。
-- [x] 实现两套尺度、方向、速度和相位的 normal 采样。
+- [x] 两张法线贴图使用同一 ENU 主流向和同一空间尺度。
+- [x] 实现相隔半周期的 A/B 相位、周期回绕和三角形交叉淡入权重。
+- [x] 增加相位间距、回绕连续性和速度倍率的单元测试。
 - [x] 在 ENU 切平面合成法线并转换到 view space。
 - [x] 按 Water Area Mask 与椭球法线混合。
 - [x] 增加远距离高频衰减。
@@ -34,7 +36,7 @@
 ## Checkpoint A：材质链路
 
 - [ ] ENU 波纹坐标稳定。
-- [ ] 双尺度 normal 无 tile 接缝。
+- [ ] Valve 双相位 normal 无 tile 接缝或周期复位跳变。
 - [x] 现有 Mask、8 Worker、LIFO 和 cache 路径没有变化。
 - [x] 聚焦测试与类型检查通过。
 

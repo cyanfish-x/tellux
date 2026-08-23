@@ -594,9 +594,10 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 - 效果控制：`WaterAreaDemo.show` 通过所有水域材质共享的 TSL uniform 即时控制水色、波纹和镜面贡献；隐藏效果时保留 3D Tiles、Worker 和 Mask 缓存，不重建 shader 或 tileset。
 - 外观状态：案例级 `WaterAreaAppearance` 统一管理 `show`、`color`、`colorMix`、`roughness`、`waveStrength`、`waveScale`、`waveSpeed` 和 `waveDirection`；初始化 `appearance` 与运行时 `demo.appearance` 同构，所有已加载和后加载材质共享同一组 uniforms。
 - 波纹坐标：以固定案例中心建立 ECEF/ENU frame；锚点每帧在 CPU 双精度下转换到 view space，再与 Three.js `highPrecision` 生成的 `positionView` 做小量级相减，避免在 shader 中直接对约 6,000 km 的 ECEF 坐标做高频运算。
-- 动态法线：案例默认固定复用 Three.js r184 Water2 的两张 512 × 512 法线贴图，分别进行宏观/细节采样；资源以 `NoColorSpace`、RepeatWrapping、mipmap、三线性与各向异性过滤配置，并由 `WaterAreaEffect` 成对释放。原整数频率生成纹理只保留为测试/直接构造后备；使用 TSL `time` 动画，不新增 `requestAnimationFrame`、材质遍历或独立渲染循环。
+- 动态法线：案例默认固定复用 Three.js r184 Water2 的两张 512 × 512 法线贴图，并对齐 Valve / Water2 的核心流动逻辑：同一 ENU 基础 UV、同一主流向、A/B 相位恒差半周期、三角形权重交叉淡入，从而隐藏周期 reset；不再把两张贴图作为不同方向的宏观/细节层。资源以 `NoColorSpace`、RepeatWrapping、mipmap、三线性与各向异性过滤配置，并由 `WaterAreaEffect` 成对释放。原整数频率生成纹理只保留为测试/直接构造后备；流动相位由共享的 TSL render-group uniform 每次 render 推进并回绕在小范围内，运行时修改速度不会造成相位跳变，也不新增 `requestAnimationFrame`、材质遍历或独立渲染循环。
+- 流向边界：Water2 的 flow map 是可选输入；当前案例没有河道/海流矢量场，使用它的固定 `flowDirection` 分支。该版本解决的是统一流向与周期复位连续性，不等于已经支持沿弯曲河道变化的空间流场。
 - 资源合规：两张贴图的固定上游路径、Three.js MIT 许可证链接和 SHA-256 记录在 `examples/water-area/assets/NOTICE.md`；上游未为图片单独列出来源声明，严格商业发行前应补齐独立授权或替换为自有/CC0 资源。
-- 远景过滤：宏观层和细节层分别按 view-space 距离衰减，纹理使用 repeat、线性过滤和 mipmap，降低远景高频闪烁风险。
+- 远景过滤：双相位合成后的整体法线扰动按 view-space 距离衰减，纹理使用 repeat、线性过滤和 mipmap，降低远景高频闪烁风险。
 - PBR 边界：继续使用 `MeshPhysicalNodeMaterial` 的 `ior = 1.33`、roughness 与 AtmosphereLight 产生 Fresnel 和太阳高光，没有叠加第二套假 Fresnel 或额外反射 Pass。
 - Worker 链路：固定 `maxWorkers: 8`、`queueStrategy: 'lifo'`、module Worker；MVT 下载、选择性解析和 `OffscreenCanvas` 栅格化均在 Worker 内执行。
 - 示例面板：环境 Token 存在时默认加载；保留 Token 输入框作为运行时覆盖入口，修改后按 Enter 重新加载；继续复用通用 `.example-panel`，支持水色、颜色混合、粗糙度和波纹参数即时调整，Token 重载后保留当前 appearance。
@@ -608,8 +609,8 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 
 已完成验证：
 
-- Water Area 聚焦测试：6 个测试文件、17 个测试通过，覆盖水陆分类、Worker Pool、材质替换、共享外观状态、法线纹理和 ENU frame。
-- 全量 `vitest`：61 个测试文件、227 个测试通过。
+- Water Area 聚焦测试：7 个测试文件、22 个测试通过，覆盖水陆分类、Worker Pool、材质替换、共享外观状态、Valve 双相位流动、法线纹理和 ENU frame。
+- 全量 `vitest`：62 个测试文件、232 个测试通过。
 - `pnpm type-check` 通过。
 - 水域案例严格 TypeScript 检查通过。
 - `pnpm build:examples` 通过，水域独立页面、动态能力 chunk 和 Worker 产物均已生成且满足预算。
@@ -628,8 +629,8 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 - Viewer 统一开启 Three.js `WebGPURenderer.highPrecision`，避免 ECEF 大数坐标在水面高光中表现为可见抖动；实例化与骨骼对象仍遵循独立精度方案。
 - 一个固定地区和固定 3D Tiles 数据源。
 - 一个明确配置的 Shortbread MVT 水域数据源。
-- 支持共享的 show、color、colorMix、roughness 和双尺度 normal wave 参数。
-- 波纹使用固定 ENU 米制坐标和 TSL 时间，仅改变片元法线，不做顶点位移。
+- 支持共享的 show、color、colorMix、roughness 和 Valve 双相位 normal wave 参数。
+- 波纹使用固定 ENU 米制坐标和共享 TSL render-group 相位，仅改变片元法线，不做顶点位移。
 - 不做额外反射 Pass、折射、泡沫、水线和独立水面 Mesh。
 - 不新增独立 render loop。
 

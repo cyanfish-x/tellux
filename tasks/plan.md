@@ -14,7 +14,7 @@
 
 在现有 OSM Shortbread MVT 水域 Mask 和 Google Photorealistic 3D Tiles 材质替换链路上，增加第一版可见、连续、可调的水面外观：
 
-1. 水面具有持续运动的双尺度法线波纹。
+1. 水面具有持续运动且周期复位不可见的 Valve / Water2 双相位法线波纹。
 2. 波纹在相机移动、瓦片加载和 LOD 切换时保持地理位置稳定，不随瓦片 UV 重置。
 3. 继续使用 `MeshPhysicalNodeMaterial` 的 IOR、粗糙度和镜面 BRDF 表达 Fresnel 与太阳高光，不重复实现第二套不守恒的高光模型。
 4. 水色、粗糙度、波浪强度、尺度、速度和方向可以在现有通用参数面板中实时调整。
@@ -66,29 +66,32 @@ WaterAreaDemo
 
 只有浏览器视觉和性能验收通过后，才评估是否提取到 `src/`。这样可以避免尚未稳定的波纹坐标、参数范围和光照语义提前扩散成公共 API。
 
-### 2. 使用 Three.js Water2 双法线资源进行双尺度采样
+### 2. 使用 Valve / Three.js Water2 双相位流动
 
-实际实现固定复用 Three.js r184 Water2 案例的 `Water_1_M_Normal.jpg` 与 `Water_2_M_Normal.jpg`。两张资源随 Tellux 案例本地打包，在同一材质中分别承担宏观层和细节层，并使用不同尺度、方向、速度和相位采样：
+实际实现固定复用 Three.js r184 Water2 案例的 `Water_1_M_Normal.jpg` 与 `Water_2_M_Normal.jpg`。两张资源随 Tellux 案例本地打包，在同一 ENU 基础 UV 上使用同一流向和尺度，分别承担相隔半周期的 A/B 动画相位：
 
 ```text
-宏观波纹 normal sample A
-          +
-细节波纹 normal sample B
+A 相位 normal sample ─┐
+                     ├─ 三角形权重交叉淡入
+B 相位 normal sample ─┘
+          （相位恒差半周期）
           ↓
-切平面法线合成
-          ↓
-按距离衰减细节频段
+切平面法线 + 距离衰减
           ↓
 按 Water Area Mask 与椭球法线混合
 ```
 
-选择双资源双采样的原因：
+选择该方案的原因：
 
-- 比多层程序化噪声更容易控制 shader 成本和视觉频率。
+- 对齐 Valve Water Flow 与 Three.js r184 `Water2Mesh` 的核心周期逻辑。
 - 不需要每帧 compute，也不增加 RenderTarget。
-- 两套不同的已创作频谱能减少单张周期高度场产生的规则条纹和方格感。
-- 通过旋转、缩放和相位偏移避免明显同向滚动。
+- A/B 相位恒差半周期，在一个相位回绕时由另一个相位接管，隐藏 reset 跳变。
+- 两张法线贴图不再反向或大角度交叉滚动，运动由一个地理主流向统一控制。
 - 资源固定到 Three.js r184，不在运行时热链 GitHub，也不随上游 `dev` 分支漂移。
+
+这一版是刻意隔离的 Valve 基线，不叠加 Unity 的 simulation bands，也不叠加 Unreal 的方向扩散。后续实验必须作为独立增量加入，视觉效果不成立时可以单独丢弃。
+
+Three.js Water2 同时支持 `flowMap` 和固定 `flowDirection`。当前 Water Area 尚无河道/海流矢量场输入，因此本阶段明确使用固定 `flowDirection` 分支；双相位与交叉淡入逻辑保持一致，但不宣称已经实现空间变化的流场。真实弯曲河流流向需要后续单独提供 flow map 或矢量场数据。
 
 纹理按 `NoColorSpace` 数据纹理处理，并启用 RepeatWrapping、mipmap、三线性与各向异性过滤。其生命周期归 `WaterAreaEffect` 所有，在案例销毁时成对释放。`WaterAreaNormalTexture.ts` 中的确定性生成纹理仅保留为无 DOM 测试和直接构造材质时的后备输入，不再是案例默认视觉资源。资源来源、许可证链接和校验值记录在 `examples/water-area/assets/NOTICE.md`；若后续进入严格商业发行，需要重新确认图片资产的独立来源声明或替换为自有/CC0 资源。
 
@@ -100,23 +103,23 @@ WaterAreaDemo
 
 1. 使用固定地点作为 wave origin。
 2. 将片元相对 origin 的位置投影到 east/north 方向。
-3. 用 ENU 米制坐标计算两层 normal UV。
+3. 用 ENU 米制坐标计算共享的基础 normal UV。
 4. 将合成后的切平面法线转换到 view space。
 
 坐标计算必须优先使用 camera-relative/view-space 量，避免直接把约 6,000 km 的 ECEF 坐标乘以高频纹理尺度。Viewer 已开启 Three.js WebGPU `highPrecision`，但这不等于可以忽略 shader 中的大数相减风险。
 
 如果固定 ENU 方案在相机平移时仍出现 phase swimming 或亚像素抖动，应先修正坐标链路；不得以屏幕空间 UV 或每瓦片随机相位掩盖问题。
 
-### 4. 动画复用 Three.js TSL 时间节点
+### 4. 动画复用 Three.js render-group uniform
 
-波纹相位使用 Three.js TSL 渲染组的 `time` / render update 语义。禁止新增：
+波纹相位使用 `WaterAreaEffect` 共享的 TSL uniform，并通过 `renderGroup.onRenderUpdate` 每次 render 推进一次。相位始终回绕在 `0..0.15`，既对齐 Water2 的小范围 `flowConfig`，也避免把长期运行后的大时间值带进 shader；运行时修改速度只改变后续推进量，不会让当前相位跳变。禁止新增：
 
 - `requestAnimationFrame`。
 - 第二个 canvas 或 renderer。
 - 为每个 tile 注册 JS 帧回调。
 - 每帧遍历所有水域材质更新 uniform。
 
-所有 `WaterAreaNodeMaterial` 继续共享同一个 `WaterAreaEffect`，已加载和后加载瓦片必须观察到相同参数与动画时间。
+所有 `WaterAreaNodeMaterial` 继续共享同一个 `WaterAreaEffect`，已加载和后加载瓦片必须观察到相同参数与流动相位。
 
 ### 5. Fresnel 和太阳高光优先复用现有 PBR
 
@@ -124,18 +127,18 @@ WaterAreaDemo
 
 - `ior = 1.33`。
 - 水域 roughness。
-- 双尺度动态 normal。
+- Valve 双相位动态 normal。
 - 现有 AtmosphereLight 的太阳直射光与 sky light。
 
 不额外叠加一个独立的 `pow(1 - N·V, 5)` 颜色项，也不添加不受粗糙度和能量约束的假高光。只有浏览器证据证明现有 AtmosphereLight 无法产生可接受的太阳高光时，才单独提出补充方案。
 
 ### 6. 距离过滤属于第一阶段
 
-细波纹在远距离容易产生闪烁和摩尔纹。材质需要根据相机到片元的距离或屏幕导数逐步降低高频层的强度：
+重复法线在远距离容易产生闪烁和摩尔纹。材质需要根据相机到片元的距离逐步降低法线扰动强度：
 
-- 近景：宏观层 + 细节层。
-- 中景：宏观层为主。
-- 远景：回退到接近椭球法线的低频高光。
+- 近景：完整双相位法线扰动。
+- 中景：逐渐衰减扰动强度。
+- 远景：回退到接近椭球法线的平滑高光。
 
 该衰减只能降低波纹强度，不能改变 Mask 边界或让水域在远景消失。
 
@@ -150,11 +153,11 @@ WaterAreaDemo
 | `colorMix` | 原摄影测量颜色向主水色混合的比例 | `0..1` |
 | `roughness` | 水面微表面粗糙度 | `0.05..0.8` |
 | `waveStrength` | 动态法线总强度 | `0..1` |
-| `waveScale` | 两个频段的整体米制尺度倍率 | 正数，使用有限上下限 |
-| `waveSpeed` | 两个频段的整体时间倍率 | `0..2` 左右，具体默认值经视觉调试确定 |
+| `waveScale` | 双相位共享基础 UV 的米制尺度倍率 | 正数，使用有限上下限 |
+| `waveSpeed` | Water2 流动相位的时间倍率 | `0..2` 左右，具体默认值经视觉调试确定 |
 | `waveDirection` | 主波向，地理方位角，顺时针从北开始 | `0..360` 度 |
 
-两层波纹之间的尺度比、速度比和方向偏移先作为材质内部常量，避免第一版面板变成底层 shader 调试器。只有视觉验收证明单一控制不足时，再增加高级分组。
+周期长度、半周期间距和基础相位速度按 Three.js r184 Water2 固定为材质内部常量，避免第一版面板变成底层 shader 调试器。只有视觉验收证明单一控制不足时，再把 Unity bands 或 Unreal 方向扩散作为独立实验加入。
 
 初始化和运行时使用同一对象形状：
 
@@ -198,7 +201,7 @@ demo.appearance.waveStrength = 0.5
 ```text
 任务 1：ENU 波纹坐标与 TSL 编译验证
     │
-    ├── 任务 2：双尺度法线与 PBR 外观
+    ├── 任务 2：Valve 双相位法线与 PBR 外观
     │       │
     │       └── 任务 3：共享 appearance 状态和案例接口
     │               │
@@ -237,13 +240,13 @@ demo.appearance.waveStrength = 0.5
 
 **规模：** M，2–3 个文件。
 
-### Task 2：实现双尺度动态法线和 PBR 外观
+### Task 2：实现 Valve / Water2 双相位动态法线和 PBR 外观
 
-**描述：** 加入 Three.js Water2 的两张法线资源，以两套尺度、方向、速度采样并合成切平面法线；使用 Mask 与椭球法线混合，增加远距离高频衰减，继续由现有物理材质负责 Fresnel 和太阳高光。
+**描述：** 加入 Three.js Water2 的两张法线资源，以同一基础 UV 和主流向采样相隔半周期的 A/B 相位，并按三角形权重交叉淡入；使用 Mask 与椭球法线混合，增加远距离衰减，继续由现有物理材质负责 Fresnel 和太阳高光。
 
 **验收标准：**
 
-- [ ] 水域具有不明显重复的双尺度运动，陆地和扣除结构不受影响。
+- [ ] 水域运动方向统一，周期回绕没有可见 reset，陆地和扣除结构不受影响。
 - [ ] 远景没有明显摩尔纹、闪烁或破碎高光。
 - [ ] `show = false` 时动态法线、颜色和水域高光贡献一并关闭。
 
@@ -295,7 +298,7 @@ demo.appearance.waveStrength = 0.5
 ### Checkpoint A：材质链路
 
 - [ ] ENU 波纹坐标已通过相机运动验证。
-- [ ] 双尺度 normal 没有 tile 接缝。
+- [ ] Valve 双相位 normal 没有 tile 接缝或周期复位跳变。
 - [x] 现有 Mask、8 Worker 和 overlay 生命周期未被修改。
 - [x] 聚焦测试和类型检查通过。
 
@@ -371,8 +374,8 @@ demo.appearance.waveStrength = 0.5
 | 场景 | 需要观察的结果 |
 | --- | --- |
 | 当前默认 100 km 镜头 | 大范围水域有连续、克制的运动高光，不出现密集闪烁 |
-| 中距离斜视 | 双尺度波纹方向可辨，水面仍保持整体平滑 |
-| 近距离观察 | 细节层可见，但不暴露纹理方格和重复周期 |
+| 中距离斜视 | 主流向可辨，两张贴图不再表现为交叉流动 |
+| 近距离观察 | A/B 交叉淡入不出现周期复位、明显脉冲或纹理方格 |
 | 相机平移/旋转 | 波纹固定在地表，不粘屏、不跳相位 |
 | LOD 加载/替换 | 新旧 tile 的颜色、波纹和参数一致 |
 | 岸线与结构物 | Mask 边界保持原有精度，桥梁、码头、水坝不受影响 |
@@ -386,7 +389,7 @@ demo.appearance.waveStrength = 0.5
 | ECEF 大数导致波纹抖动 | 高 | 固定 ENU anchor、camera-relative/view-space 投影；坐标验证先于视觉堆叠 |
 | 使用 overlay UV 造成 tile 接缝 | 高 | overlay UV 仅采 Mask；波纹统一使用 ENU 米制坐标 |
 | 动态 normal 方向与椭球切平面不一致 | 高 | 明确 east/north/up 基向量和 view-space 转换，使用法线可视化检查 |
-| 高频 normal 在远景闪烁 | 中 | 距离或导数衰减细节层；必要时提高 roughness，而不是增加后处理模糊 |
+| 高频 normal 在远景闪烁 | 中 | 按距离衰减整体扰动；必要时提高 roughness，而不是增加后处理模糊 |
 | 自定义 Fresnel 与 PBR 重复计能 | 中 | 第一版只使用 MeshPhysicalNodeMaterial 现有 IOR/BRDF |
 | 法线资源色彩空间或翻转错误 | 中 | 使用线性数据纹理、固定 wrap、单独验证方向；不复用 Mask 的 ImageBitmap 翻转规则 |
 | Three.js 示例图片缺少独立资产来源声明 | 中 | 固定 r184、记录仓库 MIT 许可证和 SHA-256；严格商业发布前替换为自有/CC0 资源或补齐独立授权 |

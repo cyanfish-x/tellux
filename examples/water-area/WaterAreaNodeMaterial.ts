@@ -12,7 +12,6 @@ import {
   renderGroup,
   smoothstep,
   texture,
-  time,
   uniform,
   vec2,
   vec3,
@@ -40,12 +39,18 @@ import {
   createWaterAreaWaveFrame,
   type WaterAreaWaveFrame
 } from './WaterAreaWaveFrame'
+import {
+  VALVE_WATER_FLOW_CYCLE,
+  VALVE_WATER_FLOW_HALF_CYCLE,
+  advanceValveWaterFlowPhase
+} from './WaterAreaFlow'
 
 const DEFAULT_WAVE_FRAME = createWaterAreaWaveFrame(
   DEFAULT_WATER_AREA_WAVE_ORIGIN.longitude,
   DEFAULT_WATER_AREA_WAVE_ORIGIN.latitude
 )
 const DEGREES_TO_RADIANS = Math.PI / 180
+const VALVE_WATER_NORMAL_SCALE_METERS = 700
 
 function createFallbackWaterAreaNormalTextures(): WaterAreaNormalTextures {
   return [
@@ -102,6 +107,7 @@ export class WaterAreaEffect implements WaterAreaAppearance {
   readonly originViewNode
   readonly eastECEFNode
   readonly northECEFNode
+  readonly flowPhaseNode
   readonly normalTextures: WaterAreaNormalTextures
 
   constructor(
@@ -119,6 +125,15 @@ export class WaterAreaEffect implements WaterAreaAppearance {
       })
     this.eastECEFNode = uniform(waveFrame.eastECEF.clone())
     this.northECEFNode = uniform(waveFrame.northECEF.clone())
+    this.flowPhaseNode = uniform(0)
+      .setGroup(renderGroup)
+      .onRenderUpdate((frame, self) => {
+        self.value = advanceValveWaterFlowPhase(
+          self.value,
+          frame.deltaTime,
+          this.waveSpeedNode.value
+        )
+      })
     this.normalTextures = normalTextures
     this.assign(options)
   }
@@ -236,8 +251,8 @@ export class WaterAreaEffect implements WaterAreaAppearance {
 }
 
 function createWaterAreaNormalNode(effect: WaterAreaEffect): Node {
-  const macroNormalTextureNode = texture(effect.normalTextures[0])
-  const detailNormalTextureNode = texture(effect.normalTextures[1])
+  const phase0NormalTextureNode = texture(effect.normalTextures[0])
+  const phase1NormalTextureNode = texture(effect.normalTextures[1])
   const eastView = cameraViewMatrix
     .mul(vec4(effect.eastECEFNode, 0)).xyz.normalize()
   const northView = cameraViewMatrix
@@ -254,44 +269,36 @@ function createWaterAreaNormalNode(effect: WaterAreaEffect): Node {
     directionRadians.sin(),
     directionRadians.cos()
   )
-  const perpendicular = vec2(direction.y.negate(), direction.x)
-  const macroPosition = vec2(
-    positionENU.dot(perpendicular),
-    positionENU.dot(direction)
+  // Keep both samples half a cycle apart and crossfade between them. This
+  // mirrors Three.js r184 Water2Mesh and hides the visible reset that a
+  // single distorted normal sample would produce.
+  // Source: https://github.com/mrdoob/three.js/blob/r184/examples/jsm/objects/Water2Mesh.js
+  const phase0 = effect.flowPhaseNode
+  const phase1 = effect.flowPhaseNode
+    .add(VALVE_WATER_FLOW_HALF_CYCLE)
+    .div(VALVE_WATER_FLOW_CYCLE)
+    .fract()
+    .mul(VALVE_WATER_FLOW_CYCLE)
+  const phaseBlend = phase0
+    .sub(VALVE_WATER_FLOW_HALF_CYCLE)
+    .abs()
+    .div(VALVE_WATER_FLOW_HALF_CYCLE)
+  const baseUV = positionENU.div(
+    effect.waveScaleNode.mul(VALVE_WATER_NORMAL_SCALE_METERS)
   )
-  const detailDirection = vec2(
-    directionRadians.add(1.37).sin(),
-    directionRadians.add(1.37).cos()
-  )
-  const detailPerpendicular = vec2(
-    detailDirection.y.negate(),
-    detailDirection.x
-  )
-  const detailPosition = vec2(
-    positionENU.dot(detailPerpendicular),
-    positionENU.dot(detailDirection)
-  )
-  const animationTime = time.mul(effect.waveSpeedNode)
-  const macroUV = macroPosition
-    .div(effect.waveScaleNode.mul(1400))
-    .add(direction.mul(animationTime.mul(0.018)))
-  const detailUV = detailPosition
-    .div(effect.waveScaleNode.mul(180))
-    .add(detailDirection.mul(animationTime.mul(-0.043)))
-  const macroNormal = macroNormalTextureNode
-    .sample(macroUV)
+  const phase0Normal = phase0NormalTextureNode
+    .sample(baseUV.add(direction.mul(phase0)))
     .xyz.mul(2)
     .sub(1)
-  const detailNormal = detailNormalTextureNode
-    .sample(detailUV)
+  const phase1Normal = phase1NormalTextureNode
+    .sample(baseUV.add(direction.mul(phase1)))
     .xyz.mul(2)
     .sub(1)
+  const flowNormal = mix(phase0Normal, phase1Normal, phaseBlend)
   const distance = positionView.length()
-  const macroFade = smoothstep(160_000, 650_000, distance).oneMinus()
-  const detailFade = smoothstep(30_000, 180_000, distance).oneMinus()
-  const slope = macroNormal.xy
-    .mul(macroFade.mul(0.48))
-    .add(detailNormal.xy.mul(detailFade.mul(0.2)))
+  const distanceFade = smoothstep(160_000, 650_000, distance).oneMinus()
+  const slope = flowNormal.xy
+    .mul(distanceFade.mul(0.62))
     .mul(effect.waveStrengthNode)
   const tangentNormal = vec3(slope, 1).normalize()
   const upView = ellipsoidNormalView
