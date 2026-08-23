@@ -116,7 +116,7 @@ await viewer.ready
 viewer.render()
 ```
 
-WebGPU 支持目前是实验能力。基础地球、3D Tiles、地形、影像、模型、拾取和大气天空 / 空气透视会走 WebGPU 管线；体积云、星空和 WebGL 后处理效果仍会降级为不渲染。WebGPU 大气首版使用 Takram node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射。
+WebGPU 支持目前是实验能力。基础地球、3D Tiles、地形、影像、模型、拾取、大气天空 / 空气透视和星空会走 WebGPU 管线；体积云和 WebGL 后处理效果仍会降级为不渲染。星空沿用 `scene.atmosphere.sky.stars` 的 `show`、`intensity` 与 `pointSize` 配置。WebGPU 大气首版使用 Takram node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射。
 
 ## 事件
 

@@ -200,5 +200,8 @@ Tellux 当前管线顺序由 `PostProcessingManager.applyEffects()` 控制：
 - 增加 depth / normal debug view。
 - 评估 `GeometryPass` 用于更完整的材质和 G-buffer 调试。
 - 评估 `createHaldLookupTexture` 用于色彩分级（`scene.postProcess.colorGrading`）。
-- WebGPU 下 SMAA / 镜头光晕 / 抖动当前不渲染，文档需持续声明。
+- WebGPU 下 SMAA / 镜头光晕 / 抖动当前不渲染，文档需持续声明。Tellux 已有
+  `WebGPUPostProcessingManager` 作为 TSL 图组合基础设施，已具备按需 `normal` /
+  `velocity` MRT、stage resize/dispose 和唯一最终输出排序；但它不使这些 WebGL 效果
+  自动兼容。每项效果仍需单独实现 WebGPU node / pass，并声明所需附件。
 

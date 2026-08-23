@@ -332,7 +332,7 @@ const viewer = new tellux.Viewer(container, {
 
 - **领域边界**：scene 内部按 atmosphere / clouds / surface / postProcess / highlight 分组，而不是用前缀字段拍平。新增同领域能力时会扩展对应分组对象，而非新增顶层前缀字段。
 - **单位**：对外 API 统一使用度和米——经纬度、heading / pitch / roll 用度，高度、裁剪面、云层高度用米；角半径（`sunAngularRadius` 等）是弧度。
-- **WebGPU 限制**：`clouds`、`sky.stars` 以及 `postProcess` 的 SMAA / 镜头光晕 / 抖动在 WebGPU 模式下不渲染，调整开关无视觉效果。
+- **WebGPU 限制**：`clouds` 以及 `postProcess` 的 SMAA / 镜头光晕 / 抖动在 WebGPU 模式下不渲染，调整开关无视觉效果；`sky.stars` 已支持，并沿用其 `show`、`intensity` 和 `pointSize` 配置。
 - **Entity 透明**：`scene.entities.transparency.mode` 默认 `auto`；WebGL 后处理管线可用时使用 weighted blended OIT，WebGPU 或不支持时退回 `sorted`。`weighted-oit` 能减少 entity 之间随视角跳变的排序异常，但它是工程近似，不是逐片元严格排序；`sorted` 保留 Three.js 默认透明排序路径，便于兼容和排查。
 - **作用范围**：`surface` 只影响 Viewer 管理的基础地球和地形；`load3DTileset` / `addModel` 加载的内容有自己的材质模式（见「光照模式与参数」）。
 
@@ -351,7 +351,7 @@ const viewer = await tellux.Viewer.create(container, {
 `type` 取值对应 `ViewerRendererType`：
 
 - `webgl`（默认）：使用 Three.js `WebGLRenderer`，完整支持大气、云、星空和后处理效果。
-- `webgpu`（实验性）：使用 Three.js `WebGPURenderer`。基础地球、3D Tiles、地形、影像、模型、拾取和大气天空 / 空气透视走 WebGPU 管线；体积云、星空和 WebGL 专属后处理效果仍会降级为不渲染。
+- `webgpu`（实验性）：使用 Three.js `WebGPURenderer`。基础地球、3D Tiles、地形、影像、模型、拾取以及大气天空 / 空气透视 / 星空走 WebGPU 管线；体积云和 WebGL 专属后处理效果仍会降级为不渲染。
 
 WebGPU renderer 需要异步初始化。推荐用 `Viewer.create(...)`，它会在返回前等待 `viewer.ready`；若使用 `new Viewer(...)` 并接入外部手动渲染循环，建议先 `await viewer.ready` 再调用 `viewer.render()`。WebGPU 模式目前不会在不支持的环境上自动回退 WebGL，需要应用层自行检测后再决定 `type`，或使用 `renderer.forceWebGL` 让 WebGPURenderer 走 Three.js 的 WebGL2 fallback backend。
 

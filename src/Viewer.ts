@@ -30,6 +30,7 @@ import {
 import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { WebGPUAtmosphereManager } from './rendering/WebGPUAtmosphereManager'
+import { WebGPUPostProcessingManager } from './rendering/WebGPUPostProcessingManager'
 import { CartographicPicker } from './sampling/CartographicPicker'
 import { EntityPicker } from './sampling/EntityPicker'
 import { HeightSampler } from './sampling/HeightSampler'
@@ -404,6 +405,7 @@ export class Viewer {
   private readonly viewport: ViewportResizeManager
   private readonly atmosphere: ViewerAtmosphereManager | null
   private readonly postProcessing: PostProcessingManager | null
+  private readonly webgpuPostProcessing: WebGPUPostProcessingManager | null
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
@@ -500,6 +502,15 @@ export class Viewer {
           postProcessing?.applyEffects()
         }
       )
+      this.webgpuPostProcessing = this.rendererType === 'webgpu'
+        ? new WebGPUPostProcessingManager(
+            this.rendererAdapter,
+            this.renderer as TelluxWebGPURenderer,
+            this.scene.threeScene,
+            this.threeCamera
+          )
+        : null
+      constructionScope.defer(() => this.webgpuPostProcessing?.dispose())
       this.atmosphere = this.createAtmosphereManager(() => postProcessing?.applyEffects())
       constructionScope.defer(() => this.atmosphere?.dispose())
       atmosphere = this.atmosphere
@@ -573,7 +584,8 @@ export class Viewer {
         container: this.container,
         camera: this.threeCamera,
         renderer: this.rendererAdapter,
-        tilesets: this.tilesets
+        tilesets: this.tilesets,
+        onResize: (width, height) => this.webgpuPostProcessing?.setSize(width, height)
       })
       constructionScope.defer(() => this.viewport.dispose())
       this.camera.setView(cameraOptions)
@@ -1126,6 +1138,7 @@ export class Viewer {
 
     this.postProcessing?.dispose()
     this.atmosphere?.dispose()
+    this.webgpuPostProcessing?.dispose()
     this.transparentOverlayTexture.dispose()
     this.tilesets.dispose()
     this.controls.dispose()
@@ -1285,8 +1298,11 @@ export class Viewer {
     }
 
     if (this.rendererType === 'webgpu') {
+      if (!this.webgpuPostProcessing) {
+        throw new Error('WebGPU post-processing graph must be created before the atmosphere manager.')
+      }
       return new WebGPUAtmosphereManager(
-        this.rendererAdapter,
+        this.webgpuPostProcessing,
         this.renderer as TelluxWebGPURenderer,
         this.scene.threeScene,
         this.threeCamera

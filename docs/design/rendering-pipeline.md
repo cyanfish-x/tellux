@@ -309,20 +309,27 @@ updateLightSources()
 [src/rendering/WebGPUAtmosphereManager.ts](../src/rendering/WebGPUAtmosphereManager.ts) 使用 TSL (Three.js Shading Language)：
 
 ```
-WebGPUAtmosphereManager(rendererAdapter, renderer, scene, camera)
+WebGPUPostProcessingManager(rendererAdapter, renderer, scene, camera)
+  ├─ scenePass = pass(scene, camera) → 共享场景颜色 / 深度来源
+  │   └─ 按 active stage 的需求启用 MRT：normal / velocity（无需求时关闭）
+  ├─ RenderPipeline(renderer, graphOutput) → 唯一最终输出
+  └─ renderer delegate → 唯一 WebGPU 渲染入口
+
+WebGPUAtmosphereManager(postProcessingGraph, renderer, scene, camera)
   ├─ AtmosphereContext → 大气参数
   ├─ registerAtmosphereLightNode() → 注册自定义光源类型
-  ├─ scenePass = pass(scene, camera) → TSL 场景 pass
   ├─ skyNode = sky() → TSL 天空节点
+  │   └─ 加载 Tellux `stars.bin` 后替换 StarsNode，再按 sky.stars 状态启用
   ├─ aerialPerspectiveNode = aerialPerspective(scenePass, depth, null)
   │   └─ skyNode 挂载到 aerialPerspective
   ├─ outputNode = context(aerialPerspective, { getAtmosphere })
-  └─ RenderPipeline(renderer, outputNode) → 替代默认渲染
+  └─ postProcessingGraph.setSceneCompositor(outputNode)
 ```
 
-- 无独立后处理 pass — 大气效果内联到渲染管线中
-- 无 `setEffects` — 通过 `setRenderDelegate` 完全接管渲染
-- 功能子集：无体积云、无 LensFlare/SMAA/Dithering
+- 大气仍以内联 TSL 节点完成，但不再拥有最终渲染入口
+- `WebGPUPostProcessingManager` 允许后续效果以有序 node stage 追加到大气之后、最终输出之前。stage 声明所需的 `normal` / `velocity` MRT 附件，并接收统一的 `setSize(width, height, pixelRatio)` 与 `dispose()` 生命周期回调。
+- 图销毁时先由 feature 注销 scene compositor，再由图销毁其 `scenePass`、`RenderPipeline` 和仍已注册 stage；stage 不得单独接管 renderer delegate 或自行做最终输出转换。
+- 功能子集：无体积云、无 LensFlare/SMAA/Dithering；后处理图基础设施不等于这些效果已经可用
 - 无夜间复杂光照（仅支持 moonScattering toggle）
 
 ### 6.3 星空渲染
@@ -497,9 +504,15 @@ Three `Material.toneMapped` 的官方契约按渲染路径区分如下；它不�
 - **camera settings 同步**：每帧将 camera near/far 同步到 pass 的 fullscreenMaterial
 - **deltaTime 传递**：用于时间相关的效果（云动画）
 
-### 9.4 WebGPU 无后处理
+### 9.4 WebGPU 后处理图基础设施
 
-WebGPU 模式下 `supportsWebGLEffects = false`，`PostProcessingManager` 不会被创建。大气效果完全在 `WebGPUAtmosphereManager` 的 TSL 节点图中完成，无 LensFlare / SMAA / Dithering。
+WebGPU 模式下 `supportsWebGLEffects = false`，WebGL 的 `PostProcessingManager` 不会被创建。`WebGPUPostProcessingManager` 使用一个共享 `scenePass`、一个 `RenderPipeline` 和一个 renderer delegate 组合 TSL 图：
+
+```
+scenePass → atmosphere compositor (optional) → ordered WebGPU stages → RenderPipeline output (AgX + sRGB)
+```
+
+当前只有大气 / 天空合成阶段；无 LensFlare / SMAA / Dithering。新效果必须作为 `WebGPUPostProcessStage` 返回颜色节点，不能创建第二个 scene pass 或接管 renderer delegate。
 
 ---
 
@@ -766,8 +779,8 @@ Tellux 不修改 Takram 等第三方库源码，而是在运行时通过 shader 
 |---|---|---|
 | 大气散射 | AerialPerspectiveEffect (后处理) | AerialPerspectiveNode (TSL 内联) |
 | 体积云 | CloudsEffect (后处理) | ❌ 不支持 |
-| 后处理 chain | Normal → Cloud+Atmo → Atmo → LensFlare → SMAA → Dithering | 无独立后处理 |
-| 星空 | StarsMaterial + patch | ❌ 不支持 (showStars = false) |
+| 后处理 chain | Normal → Cloud+Atmo → Atmo → LensFlare → SMAA → Dithering | scenePass → 可选大气 → 可扩展 node stage → output（当前无具体效果） |
+| 星空 | StarsMaterial + patch | StarsNode（加载 Tellux `stars.bin` 后启用） |
 | 夜间光照 | 完整 (moon + ambient + color + transition) | 仅 moonScattering toggle |
 | 光照模式 | post-process / light-source | post-process / light-source |
 | OIT 实体 | sorted / weighted-oit | 仅 sorted |

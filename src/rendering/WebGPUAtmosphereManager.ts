@@ -1,12 +1,13 @@
 import * as THREE from 'three'
-import { context, pass } from 'three/tsl'
-import { RenderPipeline, type Node, type WebGPURenderer } from 'three/webgpu'
+import { context } from 'three/tsl'
+import { type Node, type WebGPURenderer } from 'three/webgpu'
 import {
   AerialPerspectiveNode,
   AtmosphereContext,
   AtmosphereLight,
   AtmosphereLightNode,
   SkyNode,
+  StarsNode,
   aerialPerspective,
   sky
 } from '@takram/three-atmosphere/webgpu'
@@ -18,9 +19,12 @@ import {
 } from '@takram/three-atmosphere'
 
 import type { AtmosphereRuntimeState, CloudRuntimeState } from './AtmosphereRuntimeState'
-import type { TelluxRendererAdapter, TelluxWebGPURenderer } from './RendererAdapter'
+import { getTelluxAssetUrl } from '../config'
+import type { TelluxWebGPURenderer } from './RendererAdapter'
 import { normalizeAtmosphereRuntimeState } from '../scene/SceneValueNormalization'
 import type { AtmosphereLightingMode } from '../types'
+import { AtmosphereTextureLoader } from './AtmosphereTextureLoader'
+import type { WebGPUPostProcessingGraph } from './WebGPUPostProcessingManager'
 
 type WebGPUNode = Node
 type AtmosphereParameterNodeInput<T> = {
@@ -41,15 +45,17 @@ type LightNodeLibrary = WebGPURenderer['library'] & {
   addLight?: (lightNodeClass: typeof AtmosphereLightNode, lightClass: typeof AtmosphereLight) => void
 }
 
-type ScenePass = ReturnType<typeof pass>
+// WebGPU StarsNode consumes physical luminance, whereas Tellux exposes the
+// existing display-space multiplier used by the WebGL StarsMaterial. Compensate
+// for the atmosphere luminance normalization so intensity: 1 remains visible.
+const WEBGPU_STARS_VISUAL_LUMINANCE = 10
+const FALLBACK_WEBGPU_STARS_INTENSITY_SCALE = 800_000
 
 export class WebGPUAtmosphereManager {
   readonly atmosphereContext = new AtmosphereContext()
   readonly sunLightSource = new AtmosphereLight(1, 'sun')
   readonly moonLightSource = new AtmosphereLight(1, 'moon')
 
-  private readonly renderPipeline: RenderPipeline
-  private readonly scenePass: ScenePass
   private readonly aerialPerspectiveNode: AerialPerspectiveNode
   private readonly skyNode: SkyNode
   private readonly outputNode: WebGPUNode
@@ -62,37 +68,45 @@ export class WebGPUAtmosphereManager {
   private readonly moonDirection = new THREE.Vector3()
   private readonly inertialToECEFMatrix = new THREE.Matrix4()
   private readonly moonFixedToECIMatrix = new THREE.Matrix4()
+  private readonly textureLoader = new AtmosphereTextureLoader()
   private lightSourceScene: THREE.Scene | null = null
   private currentShowAtmosphere = true
   private currentLightingMode: AtmosphereLightingMode = 'post-process'
   private currentSunLight = true
   private currentSkyLight = true
+  private currentStarsVisible = true
+  private currentStarsIntensity = FALLBACK_WEBGPU_STARS_INTENSITY_SCALE
+  private currentStarsPointSize = 1
+  private starsReady = false
+  private isStarsLoading = false
   private isDisposed = false
 
   constructor(
-    private readonly rendererAdapter: TelluxRendererAdapter,
+    private readonly postProcessing: WebGPUPostProcessingGraph,
     private readonly renderer: TelluxWebGPURenderer,
-    private readonly threeScene: THREE.Scene,
+    threeScene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera
   ) {
     this.registerAtmosphereLightNode()
 
     this.atmosphereContext.camera = camera
     this.captureAtmosphereDefaults()
-    this.scenePass = pass(threeScene, camera)
-    this.scenePass.contextNode = this.createAtmosphereContextNode()
+    const scenePass = this.postProcessing.scenePass
+    scenePass.contextNode = this.createAtmosphereContextNode()
     this.skyNode = sky() as unknown as SkyNode
+    // SkyNode creates its default StarsNode with an upstream URL. Keep it out
+    // of the graph until Tellux has replaced it with the configured local asset.
+    // Source: https://github.com/takram-design-engineering/three-geospatial/blob/b012ad06d858fc035d88aacfd73f092f93c994e4/packages/atmosphere/src/webgpu/SkyNode.ts
     this.skyNode.showStars = false
     this.aerialPerspectiveNode = aerialPerspective(
-      this.scenePass,
-      this.scenePass.getTextureNode('depth'),
+      scenePass,
+      scenePass.getTextureNode('depth'),
       null
     )
     const aerialPerspectiveNode = this.aerialPerspectiveNode as AerialPerspectiveNodeWithCompatibleSky
     aerialPerspectiveNode.skyNode = this.skyNode as unknown as WebGPUNode
     this.outputNode = this.withAtmosphereContext(this.aerialPerspectiveNode)
-    this.renderPipeline = new RenderPipeline(renderer, this.outputNode)
-    this.rendererAdapter.setRenderDelegate(() => this.render())
+    this.postProcessing.setSceneCompositor(this.outputNode)
 
     this.sunLightSource.visible = false
     this.moonLightSource.visible = false
@@ -133,8 +147,11 @@ export class WebGPUAtmosphereManager {
       0.1
     )
     this.skyNode.moonNode.intensity.value = Math.max(0, this.toFinite(state.lunarRadianceScale, 1))
-    this.skyNode.starsNode.intensity.value = Math.max(0, this.toFinite(state.starsIntensity, 1))
-    this.skyNode.starsNode.pointSize.value = Math.max(0, this.toFinite(state.starsPointSize, 1))
+    this.currentStarsVisible = state.starsVisible
+    this.currentStarsIntensity =
+      Math.max(0, this.toFinite(state.starsIntensity, 1)) * this.getWebGPUStarsIntensityScale()
+    this.currentStarsPointSize = Math.max(0, this.toFinite(state.starsPointSize, 1))
+    this.syncStarsState()
     this.applyAtmosphereParameters(state)
     this.applyLightingMode(state.lightingMode, state.sunLight, state.skyLight)
     this.sunLightSource.intensity = Math.max(0, this.toFinite(state.sunLightIntensity, 1))
@@ -151,12 +168,27 @@ export class WebGPUAtmosphereManager {
 
     this.currentShowAtmosphere = visible
     this.syncLightSourceVisibility()
-    this.markPipelineDirty()
+    this.postProcessing.setSceneCompositor(visible ? this.outputNode : null)
   }
 
   setPostProcessMaterialLights(_enabled: boolean) {}
 
-  loadTextures() {}
+  loadTextures() {
+    if (this.isDisposed || this.isStarsLoading || this.starsReady) return
+
+    this.isStarsLoading = true
+    this.textureLoader.loadBuffer(getTelluxAssetUrl('stars'), (buffer) => {
+      if (this.isDisposed) return
+
+      const previousStarsNode = this.skyNode.starsNode
+      this.skyNode.starsNode = new StarsNode(buffer)
+      previousStarsNode.dispose()
+      this.starsReady = true
+      this.isStarsLoading = false
+      this.syncStarsState()
+      this.markPipelineDirty()
+    })
+  }
 
   updateSunDirection(currentTime: Date) {
     getSunDirectionECEF(currentTime, this.sunDirection)
@@ -185,20 +217,12 @@ export class WebGPUAtmosphereManager {
     if (this.isDisposed) return
 
     this.isDisposed = true
-    this.rendererAdapter.setRenderDelegate(null)
+    this.postProcessing.setSceneCompositor(null)
     this.removeLightSourcesFromScene()
-    this.renderPipeline.dispose()
+    this.textureLoader.dispose()
+    this.skyNode.starsNode.dispose()
     this.aerialPerspectiveNode.dispose()
     this.atmosphereContext.dispose()
-  }
-
-  private render() {
-    if (this.currentShowAtmosphere) {
-      this.renderPipeline.render()
-      return
-    }
-
-    this.renderer.render(this.threeScene, this.camera)
   }
 
   private applyLightingMode(mode: AtmosphereLightingMode, sunLight: boolean, skyLight: boolean) {
@@ -218,12 +242,26 @@ export class WebGPUAtmosphereManager {
     this.moonLightSource.indirect.value = false
   }
 
+  private syncStarsState() {
+    this.skyNode.starsNode.intensity.value = this.currentStarsIntensity
+    this.skyNode.starsNode.pointSize.value = this.currentStarsPointSize
+    this.skyNode.showStars = this.starsReady && this.currentStarsVisible
+  }
+
+  private getWebGPUStarsIntensityScale() {
+    const luminanceScale = this.atmosphereContext.parameters.luminanceScale
+    if (Number.isFinite(luminanceScale) && luminanceScale > 0) {
+      return WEBGPU_STARS_VISUAL_LUMINANCE / luminanceScale
+    }
+    return FALLBACK_WEBGPU_STARS_INTENSITY_SCALE
+  }
+
   private withAtmosphereContext(node: unknown): WebGPUNode {
     return context(node as WebGPUNode, this.createAtmosphereContext()) as WebGPUNode
   }
 
-  private createAtmosphereContextNode(): ScenePass['contextNode'] {
-    return context(this.createAtmosphereContext()) as ScenePass['contextNode']
+  private createAtmosphereContextNode(): WebGPUPostProcessingGraph['scenePass']['contextNode'] {
+    return context(this.createAtmosphereContext()) as WebGPUPostProcessingGraph['scenePass']['contextNode']
   }
 
   private createAtmosphereContext() {
@@ -231,7 +269,7 @@ export class WebGPUAtmosphereManager {
   }
 
   private markPipelineDirty() {
-    this.renderPipeline.needsUpdate = true
+    this.postProcessing.invalidate()
   }
 
   private registerAtmosphereLightNode() {
