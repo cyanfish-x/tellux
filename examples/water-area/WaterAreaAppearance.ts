@@ -30,9 +30,9 @@ export const DEFAULT_WATER_AREA_APPEARANCE: Readonly<ResolvedWaterAreaAppearance
     show: true,
     color: '#06172d',
     colorMix: 0.8,
-    roughness: 0.1,
-    waveStrength: 0.6,
-    waveScale: 0.6,
+    roughness: 0.11,
+    waveStrength: 0.8,
+    waveScale: 0.3,
     waveSpeed: 0.5,
     waveDirection: 160
   })
