@@ -2139,13 +2139,49 @@
     "效果",
     "Effect"
   ],
+  "example.water-area.folder.appearance": [
+    "外观",
+    "Appearance"
+  ],
+  "example.water-area.folder.waves": [
+    "波纹",
+    "Waves"
+  ],
   "example.water-area.folder.status": [
     "状态",
     "Status"
   ],
-  "example.water-area.label.showMask": [
-    "显示水域 Mask 效果",
-    "Show water mask effect"
+  "example.water-area.label.showAppearance": [
+    "显示水域外观",
+    "Show water appearance"
+  ],
+  "example.water-area.label.color": [
+    "水色",
+    "Water color"
+  ],
+  "example.water-area.label.colorMix": [
+    "颜色混合",
+    "Color mix"
+  ],
+  "example.water-area.label.roughness": [
+    "粗糙度",
+    "Roughness"
+  ],
+  "example.water-area.label.waveStrength": [
+    "强度",
+    "Strength"
+  ],
+  "example.water-area.label.waveScale": [
+    "尺度",
+    "Scale"
+  ],
+  "example.water-area.label.waveSpeed": [
+    "速度",
+    "Speed"
+  ],
+  "example.water-area.label.waveDirection": [
+    "方向（°）",
+    "Direction (°)"
   ],
   "example.water-area.hint.tokenReload": [
     "修改 Token 后按 Enter 重新加载案例。",

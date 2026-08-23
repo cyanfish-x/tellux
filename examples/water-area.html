@@ -40,11 +40,55 @@
                   <input id="ion-token" class="example-panel__input" type="password" autocomplete="off" spellcheck="false" />
                 </div>
                 <label class="example-panel__row">
-                  <span class="example-panel__label" data-i18n="example.water-area.label.showMask">显示水域 Mask 效果</span>
+                  <span class="example-panel__label" data-i18n="example.water-area.label.showAppearance">显示水域外观</span>
                   <input id="water-area-show" class="example-panel__checkbox" type="checkbox" checked disabled />
                 </label>
                 <p class="example-panel__hint">WebGPU · OSM Shortbread MVT · 8 Workers</p>
                 <p class="example-panel__hint" data-i18n="example.water-area.hint.tokenReload">修改 Token 后按 Enter 重新加载案例。</p>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary" data-i18n="example.water-area.folder.appearance">外观</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.water-area.label.color">水色</span>
+                  <input id="water-area-color" class="example-panel__input" type="color" value="#06172d" />
+                </label>
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.water-area.label.colorMix">颜色混合</span>
+                  <input id="water-area-color-mix" class="example-panel__input" type="number" min="0" max="1" step="0.05" value="0.8" />
+                </label>
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.water-area.label.roughness">粗糙度</span>
+                  <input id="water-area-roughness" class="example-panel__input" type="number" min="0.05" max="0.8" step="0.01" value="0.34" />
+                </label>
+              </div>
+            </div>
+          </details>
+
+          <details class="example-panel__folder" open>
+            <summary class="example-panel__folder-summary" data-i18n="example.water-area.folder.waves">波纹</summary>
+            <div class="example-panel__folder-collapse">
+              <div class="example-panel__folder-body">
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.water-area.label.waveStrength">强度</span>
+                  <input id="water-area-wave-strength" class="example-panel__input" type="number" min="0" max="1" step="0.01" value="0.22" />
+                </label>
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.water-area.label.waveScale">尺度</span>
+                  <input id="water-area-wave-scale" class="example-panel__input" type="number" min="0.25" max="4" step="0.05" value="1" />
+                </label>
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.water-area.label.waveSpeed">速度</span>
+                  <input id="water-area-wave-speed" class="example-panel__input" type="number" min="0" max="2" step="0.05" value="1" />
+                </label>
+                <label class="example-panel__row example-panel__row--input">
+                  <span class="example-panel__label" data-i18n="example.water-area.label.waveDirection">方向（°）</span>
+                  <input id="water-area-wave-direction" class="example-panel__input" type="number" min="0" max="360" step="1" value="35" />
+                </label>
               </div>
             </div>
           </details>

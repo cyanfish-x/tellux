@@ -153,8 +153,9 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 - `GaussianSplatPlugin` → `3d-tiles-rendererjs-3dgs-plugin`
 - `Tree` → `@dgreenheck/ez-tree`
 - HISM helper binding → `examples/hism/shared.ts`
+- Water Area helper、默认参数和归一化函数 → `examples/water-area/sandcastleBindings.ts`
 
-普通示例只加载 Tellux / Three.js 和通用 helper；专用依赖加载失败会进入 runner 现有的错误回传通道。新增专用注入能力时，应同时更新 binding 检测测试，避免重新扩大所有 Sandcastle 运行的首屏依赖图。
+普通示例只加载 Tellux / Three.js 和通用 helper；专用依赖加载失败会进入 runner 现有的错误回传通道。新增专用注入能力时，应把同一领域的运行时值成组维护在 `*_RUNTIME_BINDING_NAMES` 与专用 re-export 模块中，并同步更新 binding 检测测试。只注入入口函数、遗漏示例导入的默认参数或 helper，会在 import 被剥离后产生 `ReferenceError`。
 
 ## 构建体积预算
 

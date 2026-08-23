@@ -583,7 +583,7 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 
 这会把“水域识别”“材质替换”和“水动力模拟”混成一个无法独立验证的交付。首版应先验证 mask 与 3D Tiles 材质集成，再决定是否组合独立 Ocean 能力。
 
-## Tellux 案例落地状态（2026-08-22）
+## Tellux 案例落地状态（更新于 2026-08-23）
 
 当前已完成 Sandcastle 案例级实现，尚未进入 `src/` 或公共 API：
 
@@ -591,10 +591,16 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 - 案例装配：`examples/water-area/createWaterAreaDemo.ts`。
 - 遮罩链路：`WaterAreaTilesOverlay`、`WaterAreaImageSource`、`WaterAreaOverlayPlugin`。
 - WebGPU 材质：`WaterAreaMaterialPlugin`、`WaterAreaNodeMaterial`、`wrapWaterAreaNodeMaterial`。
-- 效果控制：`WaterAreaDemo.show` 通过所有水域材质共享的 TSL uniform 即时控制 Mask 贡献；隐藏效果时保留 3D Tiles、Worker 和 Mask 缓存，不重建 shader 或 tileset。
+- 效果控制：`WaterAreaDemo.show` 通过所有水域材质共享的 TSL uniform 即时控制水色、波纹和镜面贡献；隐藏效果时保留 3D Tiles、Worker 和 Mask 缓存，不重建 shader 或 tileset。
+- 外观状态：案例级 `WaterAreaAppearance` 统一管理 `show`、`color`、`colorMix`、`roughness`、`waveStrength`、`waveScale`、`waveSpeed` 和 `waveDirection`；初始化 `appearance` 与运行时 `demo.appearance` 同构，所有已加载和后加载材质共享同一组 uniforms。
+- 波纹坐标：以固定案例中心建立 ECEF/ENU frame；锚点每帧在 CPU 双精度下转换到 view space，再与 Three.js `highPrecision` 生成的 `positionView` 做小量级相减，避免在 shader 中直接对约 6,000 km 的 ECEF 坐标做高频运算。
+- 动态法线：案例默认固定复用 Three.js r184 Water2 的两张 512 × 512 法线贴图，分别进行宏观/细节采样；资源以 `NoColorSpace`、RepeatWrapping、mipmap、三线性与各向异性过滤配置，并由 `WaterAreaEffect` 成对释放。原整数频率生成纹理只保留为测试/直接构造后备；使用 TSL `time` 动画，不新增 `requestAnimationFrame`、材质遍历或独立渲染循环。
+- 资源合规：两张贴图的固定上游路径、Three.js MIT 许可证链接和 SHA-256 记录在 `examples/water-area/assets/NOTICE.md`；上游未为图片单独列出来源声明，严格商业发行前应补齐独立授权或替换为自有/CC0 资源。
+- 远景过滤：宏观层和细节层分别按 view-space 距离衰减，纹理使用 repeat、线性过滤和 mipmap，降低远景高频闪烁风险。
+- PBR 边界：继续使用 `MeshPhysicalNodeMaterial` 的 `ior = 1.33`、roughness 与 AtmosphereLight 产生 Fresnel 和太阳高光，没有叠加第二套假 Fresnel 或额外反射 Pass。
 - Worker 链路：固定 `maxWorkers: 8`、`queueStrategy: 'lifo'`、module Worker；MVT 下载、选择性解析和 `OffscreenCanvas` 栅格化均在 Worker 内执行。
-- 示例面板：环境 Token 存在时默认加载；保留 Token 输入框作为运行时覆盖入口，修改后按 Enter 重新加载；复选框控制水域 Mask 效果显隐。
-- Sandcastle：只有源码命中 `createWaterAreaDemo` 时才动态加载水域模块，普通 runner 初始依赖图不包含水域实现。
+- 示例面板：环境 Token 存在时默认加载；保留 Token 输入框作为运行时覆盖入口，修改后按 Enter 重新加载；继续复用通用 `.example-panel`，支持水色、颜色混合、粗糙度和波纹参数即时调整，Token 重载后保留当前 appearance。
+- Sandcastle：源码命中任一 Water Area runtime binding 时，runner 才动态加载 `sandcastleBindings.ts`；案例 helper、默认参数、归一化函数和默认 ENU 锚点成组注入，普通 runner 初始依赖图不包含水域实现。
 - 依赖：`workerpool`、`protomaps-leaflet`、`@mapbox/point-geometry` 暂时仅作为案例开发依赖。
 - 构建预算：水域 Worker 独立限制为 256 KiB raw / 80 KiB gzip；当前产物约 165 KiB raw。
 
@@ -602,13 +608,13 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 
 已完成验证：
 
-- 水陆分类、材质替换、Worker Pool 配置和 Sandcastle binding 共 12 个聚焦测试通过。
-- 全量 `vitest`：57 个测试文件、216 个测试通过。
+- Water Area 聚焦测试：6 个测试文件、17 个测试通过，覆盖水陆分类、Worker Pool、材质替换、共享外观状态、法线纹理和 ENU frame。
+- 全量 `vitest`：61 个测试文件、227 个测试通过。
 - `pnpm type-check` 通过。
 - 水域案例严格 TypeScript 检查通过。
 - `pnpm build:examples` 通过，水域独立页面、动态能力 chunk 和 Worker 产物均已生成且满足预算。
 
-尚未完成浏览器视觉验收和 WebGPU 性能采样；在这两项通过前，不应把案例标记为已完成公共能力，也不应开始设计稳定公开 API。
+尚未完成浏览器视觉验收和 WebGPU 性能采样。自动化验证不能证明法线在真实 GPU 上没有接缝、shader 编译 warning、远景闪烁或参数观感问题；在固定镜头、近景、相机运动和 60 秒 P95 帧时间验收通过前，不应把案例标记为已完成公共能力，也不应开始设计稳定公开 API。
 
 ## 推荐实施阶段
 
@@ -622,8 +628,9 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 - Viewer 统一开启 Three.js `WebGPURenderer.highPrecision`，避免 ECEF 大数坐标在水面高光中表现为可见抖动；实例化与骨骼对象仍遵循独立精度方案。
 - 一个固定地区和固定 3D Tiles 数据源。
 - 一个明确配置的 Shortbread MVT 水域数据源。
-- 支持 show、color、roughness、specularIntensity、ior。
-- 不做波浪、反射、折射和泡沫。
+- 支持共享的 show、color、colorMix、roughness 和双尺度 normal wave 参数。
+- 波纹使用固定 ENU 米制坐标和 TSL 时间，仅改变片元法线，不做顶点位移。
+- 不做额外反射 Pass、折射、泡沫、水线和独立水面 Mesh。
 - 不新增独立 render loop。
 
 ### 阶段 2：内部边界收口

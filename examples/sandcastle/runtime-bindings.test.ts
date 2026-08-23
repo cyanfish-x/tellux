@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { detectOptionalRuntimeBindings } from './runtime-bindings'
+import {
+  detectOptionalRuntimeBindings,
+  WATER_AREA_RUNTIME_BINDING_NAMES
+} from './runtime-bindings'
 
 describe('Sandcastle optional runtime bindings', () => {
   it('keeps ordinary examples on the base runner graph', () => {
@@ -35,6 +38,19 @@ describe('Sandcastle optional runtime bindings', () => {
     expect(detectOptionalRuntimeBindings(`
       const water = { area: 128 }
     `).waterArea).toBe(false)
+  })
+
+  it('injects every runtime value imported by the water-area example', () => {
+    expect(WATER_AREA_RUNTIME_BINDING_NAMES).toEqual([
+      'createWaterAreaDemo',
+      'DEFAULT_WATER_AREA_APPEARANCE',
+      'normalizeWaterAreaAppearance',
+      'DEFAULT_WATER_AREA_WAVE_ORIGIN'
+    ])
+
+    expect(detectOptionalRuntimeBindings(`
+      const origin = DEFAULT_WATER_AREA_WAVE_ORIGIN
+    `).waterArea).toBe(true)
   })
 
   it('does not confuse generic shared helpers with HISM helpers', () => {

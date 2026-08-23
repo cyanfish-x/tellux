@@ -5,10 +5,15 @@ import {
   createWaterAreaDemo,
   type WaterAreaDemo,
 } from "./water-area/createWaterAreaDemo"
+import {
+  DEFAULT_WATER_AREA_APPEARANCE,
+  normalizeWaterAreaAppearance,
+  type ResolvedWaterAreaAppearance,
+} from "./water-area/WaterAreaAppearance"
+import { DEFAULT_WATER_AREA_WAVE_ORIGIN } from "./water-area/WaterAreaWaveFrame"
 
 const WATER_AREA_VIEW = {
-  latitude: 69.3782,
-  longitude: -112.2525,
+  ...DEFAULT_WATER_AREA_WAVE_ORIGIN,
   height: 100000,
   heading: 69,
   pitch: -38,
@@ -26,13 +31,45 @@ async function main() {
   const tokenInput = document.querySelector<HTMLInputElement>("#ion-token")
   const showInput =
     document.querySelector<HTMLInputElement>("#water-area-show")
+  const colorInput =
+    document.querySelector<HTMLInputElement>("#water-area-color")
+  const colorMixInput = document.querySelector<HTMLInputElement>(
+    "#water-area-color-mix"
+  )
+  const roughnessInput = document.querySelector<HTMLInputElement>(
+    "#water-area-roughness"
+  )
+  const waveStrengthInput = document.querySelector<HTMLInputElement>(
+    "#water-area-wave-strength"
+  )
+  const waveScaleInput = document.querySelector<HTMLInputElement>(
+    "#water-area-wave-scale"
+  )
+  const waveSpeedInput = document.querySelector<HTMLInputElement>(
+    "#water-area-wave-speed"
+  )
+  const waveDirectionInput = document.querySelector<HTMLInputElement>(
+    "#water-area-wave-direction"
+  )
   const statusElement =
     document.querySelector<HTMLElement>("#water-area-status")
   const attributionsElement = document.querySelector<HTMLElement>(
     "#google-attributions"
   )
 
-  if (!tokenInput || !showInput || !statusElement || !attributionsElement) {
+  if (
+    !tokenInput ||
+    !showInput ||
+    !colorInput ||
+    !colorMixInput ||
+    !roughnessInput ||
+    !waveStrengthInput ||
+    !waveScaleInput ||
+    !waveSpeedInput ||
+    !waveDirectionInput ||
+    !statusElement ||
+    !attributionsElement
+  ) {
     throw new Error("Water-area controls not found.")
   }
 
@@ -76,6 +113,9 @@ async function main() {
     : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
 
   let activeDemo: WaterAreaDemo | null = null
+  let appearanceState: ResolvedWaterAreaAppearance = {
+    ...DEFAULT_WATER_AREA_APPEARANCE,
+  }
   let attributionFrame = 0
   let reloading = false
 
@@ -105,14 +145,31 @@ async function main() {
     setStatus(
       showInput.checked
         ? t({
-            zh: "水域 Mask 效果已显示：MVT 在 8 个 LIFO Worker 中解码与栅格化。",
-            en: "Water mask effect shown: MVT decoding and rasterization run in eight LIFO workers.",
+            zh: "水域外观已显示：MVT Mask 在 8 个 LIFO Worker 中生成，双尺度波纹由 WebGPU 材质驱动。",
+            en: "Water appearance shown: eight LIFO workers generate MVT masks and the WebGPU material drives dual-scale waves.",
           })
         : t({
-            zh: "水域 Mask 效果已隐藏；瓦片、Worker 与 Mask 缓存保持运行。",
-            en: "Water mask effect hidden; tiles, workers, and the mask cache remain active.",
+            zh: "水域外观已隐藏；瓦片、Worker 与 Mask 缓存保持运行。",
+            en: "Water appearance hidden; tiles, workers, and the mask cache remain active.",
           })
     )
+  }
+
+  const readAppearanceControls = (): ResolvedWaterAreaAppearance =>
+    normalizeWaterAreaAppearance({
+      show: showInput.checked,
+      color: colorInput.value,
+      colorMix: colorMixInput.valueAsNumber,
+      roughness: roughnessInput.valueAsNumber,
+      waveStrength: waveStrengthInput.valueAsNumber,
+      waveScale: waveScaleInput.valueAsNumber,
+      waveSpeed: waveSpeedInput.valueAsNumber,
+      waveDirection: waveDirectionInput.valueAsNumber,
+    })
+
+  const applyAppearanceControls = (): void => {
+    appearanceState = readAppearanceControls()
+    activeDemo?.appearance.assign(appearanceState)
   }
 
   const reloadWaterArea = async (): Promise<void> => {
@@ -138,7 +195,7 @@ async function main() {
       activeDemo = createWaterAreaDemo({
         viewer,
         apiToken,
-        show: showInput.checked,
+        appearance: appearanceState,
       })
       ;(window as any).waterAreaDemo = activeDemo
       showInput.disabled = false
@@ -154,10 +211,20 @@ async function main() {
   }
 
   showInput.addEventListener("change", () => {
-    if (!activeDemo) return
-    activeDemo.show = showInput.checked
+    applyAppearanceControls()
     renderEffectStatus()
   })
+  for (const input of [
+    colorInput,
+    colorMixInput,
+    roughnessInput,
+    waveStrengthInput,
+    waveScaleInput,
+    waveSpeedInput,
+    waveDirectionInput,
+  ]) {
+    input.addEventListener("input", applyAppearanceControls)
+  }
   tokenInput.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return
     event.preventDefault()

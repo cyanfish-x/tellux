@@ -102,4 +102,61 @@ describe('WaterAreaMaterialPlugin', () => {
     expect(nextMaterial.waterAreaEffect).toBe(firstMaterial.waterAreaEffect)
     expect(nextMaterial.waterAreaEffect.show).toBe(false)
   })
+
+  it('shares normalized appearance updates with loaded and future tile materials', () => {
+    const firstMesh = new Mesh(
+      new BoxGeometry(),
+      new MeshStandardMaterial()
+    )
+    const plugin = new WaterAreaMaterialPlugin({
+      color: '#123456',
+      waveStrength: 0.25
+    })
+
+    plugin.processTileModel(firstMesh)
+    const firstMaterial = firstMesh.material as WaterAreaNodeMaterial
+
+    expect(plugin.appearance.color).toBe('#123456')
+    expect(firstMaterial.waterAreaEffect.waveStrength).toBe(0.25)
+
+    plugin.appearance.waveStrength = 4
+    plugin.appearance.waveDirection = -15
+
+    const nextMesh = new Mesh(
+      new BoxGeometry(),
+      new MeshStandardMaterial()
+    )
+    plugin.processTileModel(nextMesh)
+    const nextMaterial = nextMesh.material as WaterAreaNodeMaterial
+
+    expect(firstMaterial.waterAreaEffect.waveStrength).toBe(1)
+    expect(nextMaterial.waterAreaEffect).toBe(firstMaterial.waterAreaEffect)
+    expect(nextMaterial.waterAreaEffect.waveDirection).toBe(345)
+  })
+
+  it('preserves unrelated appearance fields during partial assignment', () => {
+    const plugin = new WaterAreaMaterialPlugin({
+      color: '#123456',
+      waveScale: 2
+    })
+
+    plugin.appearance.assign({ roughness: 0.4 })
+
+    expect(plugin.appearance.color).toBe('#123456')
+    expect(plugin.appearance.waveScale).toBe(2)
+    expect(plugin.appearance.roughness).toBe(0.4)
+  })
+
+  it('disposes both normal textures owned by the shared effect', () => {
+    const plugin = new WaterAreaMaterialPlugin()
+    const [first, second] = plugin.appearance.normalTextures
+    const disposeFirst = vi.spyOn(first, 'dispose')
+    const disposeSecond = vi.spyOn(second, 'dispose')
+
+    plugin.dispose()
+
+    expect(first).not.toBe(second)
+    expect(disposeFirst).toHaveBeenCalledOnce()
+    expect(disposeSecond).toHaveBeenCalledOnce()
+  })
 })

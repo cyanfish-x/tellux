@@ -19,6 +19,7 @@ import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
 import type { BootExampleI18nOptions } from "../i18n"
 import {
   HISM_RUNTIME_BINDING_NAMES,
+  WATER_AREA_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
 } from "./runtime-bindings"
 import exampleStyles from "../styles.css?raw"
@@ -174,7 +175,7 @@ async function executeExampleScript(source: string) {
     "createHismDemoViewerOptions",
     "generateFastPlacements",
     "generatePoissonPlacements",
-    "createWaterAreaDemo",
+    ...WATER_AREA_RUNTIME_BINDING_NAMES,
     "t",
     "bootExampleI18n",
     "__sandcastleImportMeta",
@@ -203,7 +204,9 @@ async function executeExampleScript(source: string) {
     ...HISM_RUNTIME_BINDING_NAMES.map(
       (name) => optionalBindings.hism[name]
     ),
-    optionalBindings.createWaterAreaDemo,
+    ...WATER_AREA_RUNTIME_BINDING_NAMES.map(
+      (name) => optionalBindings.waterArea[name]
+    ),
     t,
     bootExampleI18nInRunner,
     sandcastleImportMeta
@@ -224,7 +227,7 @@ async function loadOptionalRuntimeBindings(source: string) {
         ? import("../hism/shared")
         : null,
       required.waterArea
-        ? import("../water-area/createWaterAreaDemo")
+        ? import("../water-area/sandcastleBindings")
         : null,
     ])
 
@@ -235,7 +238,12 @@ async function loadOptionalRuntimeBindings(source: string) {
       (typeof HISM_RUNTIME_BINDING_NAMES)[number],
       unknown
     >,
-    createWaterAreaDemo: waterAreaModule?.createWaterAreaDemo,
+    waterArea: (waterAreaModule ?? {}) as Partial<
+      Pick<
+        typeof import("../water-area/sandcastleBindings"),
+        (typeof WATER_AREA_RUNTIME_BINDING_NAMES)[number]
+      >
+    >,
   }
 }
 

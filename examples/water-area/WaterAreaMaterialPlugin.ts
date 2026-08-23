@@ -11,6 +11,9 @@ import {
   WaterAreaEffect,
   WaterAreaNodeMaterial
 } from './WaterAreaNodeMaterial'
+import type { WaterAreaAppearanceOptions } from './WaterAreaAppearance'
+import type { WaterAreaNormalTextures } from './WaterAreaNormalTexture'
+import type { WaterAreaWaveFrame } from './WaterAreaWaveFrame'
 
 type BaseColorMaterialState = Material & {
   color?: Color
@@ -55,7 +58,23 @@ function replaceMaterial(
 export class WaterAreaMaterialPlugin {
   readonly name = 'TELLUX_WATER_AREA_MATERIAL_PLUGIN'
   readonly priority = -1000
-  private readonly waterAreaEffect = new WaterAreaEffect()
+  private readonly waterAreaEffect: WaterAreaEffect
+
+  constructor(
+    options: WaterAreaAppearanceOptions = {},
+    waveFrame?: WaterAreaWaveFrame,
+    normalTextures?: WaterAreaNormalTextures
+  ) {
+    this.waterAreaEffect = new WaterAreaEffect(
+      options,
+      waveFrame,
+      normalTextures
+    )
+  }
+
+  get appearance(): WaterAreaEffect {
+    return this.waterAreaEffect
+  }
 
   get show(): boolean {
     return this.waterAreaEffect.show
@@ -84,5 +103,9 @@ export class WaterAreaMaterialPlugin {
             this.waterAreaEffect
           )
     })
+  }
+
+  dispose(): void {
+    this.waterAreaEffect.dispose()
   }
 }
