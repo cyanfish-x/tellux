@@ -51,6 +51,7 @@
 - [x] 同步 `examples/i18n/_messages.json`。
 - [x] 重新生成中英文词典。
 - [ ] 在独立示例和 Sandcastle 中检查通用面板。
+- [x] 将用户提供的水域渲染截图配置为 Sandcastle 案例封面。
 
 ## Task 5：完整验收
 

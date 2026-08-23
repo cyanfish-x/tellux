@@ -600,7 +600,7 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 - 远景过滤：双相位合成后的整体法线扰动按 view-space 距离衰减，纹理使用 repeat、线性过滤和 mipmap，降低远景高频闪烁风险。
 - PBR 边界：继续使用 `MeshPhysicalNodeMaterial` 的 `ior = 1.33`、roughness 与 AtmosphereLight 产生 Fresnel 和太阳高光，没有叠加第二套假 Fresnel 或额外反射 Pass。
 - Worker 链路：固定 `maxWorkers: 8`、`queueStrategy: 'lifo'`、module Worker；MVT 下载、选择性解析和 `OffscreenCanvas` 栅格化均在 Worker 内执行。
-- 示例面板：环境 Token 存在时默认加载；保留 Token 输入框作为运行时覆盖入口，修改后按 Enter 重新加载；继续复用通用 `.example-panel`，支持水色、颜色混合、粗糙度和波纹参数即时调整，Token 重载后保留当前 appearance。
+- 示例面板：环境 Token 存在时默认加载；保留 Token 输入框作为运行时覆盖入口，修改后按 Enter 重新加载；继续复用通用 `.example-panel`，支持水色、颜色混合、粗糙度和波纹参数即时调整，Token 重载后保留当前 appearance。Sandcastle 封面使用用户提供的水域渲染截图 `https://picture.cyanfish.site/20260823161153657.png`。
 - Sandcastle：源码命中任一 Water Area runtime binding 时，runner 才动态加载 `sandcastleBindings.ts`；案例 helper、默认参数、归一化函数和默认 ENU 锚点成组注入，普通 runner 初始依赖图不包含水域实现。
 - 依赖：`workerpool`、`protomaps-leaflet`、`@mapbox/point-geometry` 暂时仅作为案例开发依赖。
 - 构建预算：水域 Worker 独立限制为 256 KiB raw / 80 KiB gzip；当前产物约 165 KiB raw。
