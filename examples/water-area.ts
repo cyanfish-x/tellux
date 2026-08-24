@@ -10,14 +10,19 @@ import {
   normalizeWaterAreaAppearance,
   type ResolvedWaterAreaAppearance,
 } from "./water-area/WaterAreaAppearance"
+import {
+  DEFAULT_WATER_AREA_OPTICS,
+  normalizeWaterAreaOptics,
+  type ResolvedWaterAreaOptics,
+} from "./water-area/WaterAreaOptics"
 
 const WATER_AREA_VIEW = {
-  latitude: 70.33265443539143,
-  longitude: -111.98797078872424,
-  height: 9.695092168450186,
-  heading: 59.96441952219868,
-  pitch: -0.006222642164159085,
-  roll: -1.6056301420929017e-7,
+  "latitude": 57.01944780700264,
+  "longitude": -132.91669016841638,
+  "height": 404.4714851389597,
+  "heading": 57.090078519217464,
+  "pitch": 1.7434647918138277,
+  "roll": -0.000009369041331049295
 }
 
 const WATER_AREA_UTC_TIME = new Date(Date.UTC(2026, 7, 23, 11, 51, 18))
@@ -53,6 +58,24 @@ async function main() {
   const waveDirectionInput = document.querySelector<HTMLInputElement>(
     "#water-area-wave-direction"
   )
+  const environmentInput = document.querySelector<HTMLInputElement>(
+    "#water-area-environment"
+  )
+  const environmentIntensityInput =
+    document.querySelector<HTMLInputElement>(
+      "#water-area-environment-intensity"
+    )
+  const reflectionInput = document.querySelector<HTMLInputElement>(
+    "#water-area-reflection"
+  )
+  const reflectionIntensityInput =
+    document.querySelector<HTMLInputElement>(
+      "#water-area-reflection-intensity"
+    )
+  const reflectionDebugInput =
+    document.querySelector<HTMLInputElement>(
+      "#water-area-reflection-debug"
+    )
   const statusElement =
     document.querySelector<HTMLElement>("#water-area-status")
   const attributionsElement = document.querySelector<HTMLElement>(
@@ -69,6 +92,11 @@ async function main() {
     !waveScaleInput ||
     !waveSpeedInput ||
     !waveDirectionInput ||
+    !environmentInput ||
+    !environmentIntensityInput ||
+    !reflectionInput ||
+    !reflectionIntensityInput ||
+    !reflectionDebugInput ||
     !statusElement ||
     !attributionsElement
   ) {
@@ -100,24 +128,30 @@ async function main() {
         toneMappingExposure: 5,
       },
     },
+    widgets: {
+      timeline: true
+    }
   })
 
-  ;(window as any).viewer = viewer
+    ; (window as any).viewer = viewer
   viewer.tileset.group.visible = false
   viewer.clock.currentTime = WATER_AREA_UTC_TIME
 
   tokenInput.value = ""
   tokenInput.placeholder = DEFAULT_ION_TOKEN
     ? t({
-        zh: "留空使用 VITE_CESIUM_ION_TOKEN",
-        en: "Leave empty to use VITE_CESIUM_ION_TOKEN",
-      })
+      zh: "留空使用 VITE_CESIUM_ION_TOKEN",
+      en: "Leave empty to use VITE_CESIUM_ION_TOKEN",
+    })
     : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
 
   let activeDemo: WaterAreaDemo | null = null
   let appearanceState: ResolvedWaterAreaAppearance = {
     ...DEFAULT_WATER_AREA_APPEARANCE,
   }
+  let opticsState: ResolvedWaterAreaOptics = normalizeWaterAreaOptics(
+    DEFAULT_WATER_AREA_OPTICS
+  )
   let attributionFrame = 0
   let reloading = false
 
@@ -144,16 +178,25 @@ async function main() {
   }
 
   const renderEffectStatus = (): void => {
+    if (reflectionDebugInput.checked) {
+      setStatus(
+        t({
+          zh: "反射调试已开启：右上角 Canvas 正在显示反射相机的实时离屏画面。",
+          en: "Reflection debug is on: the top-right canvas shows the live reflection-camera target.",
+        })
+      )
+      return
+    }
     setStatus(
       showInput.checked
         ? t({
-            zh: "水域外观已显示：MVT Mask 在 8 个 LIFO Worker 中生成，Valve 双相位波纹由 WebGPU 材质驱动。",
-            en: "Water appearance shown: eight LIFO workers generate MVT masks and the WebGPU material drives Valve dual-phase waves.",
-          })
+          zh: `水域外观已显示：动态天空环境${environmentInput.checked ? "开启" : "关闭"}，法线扰动场景反射${reflectionInput.checked ? "开启" : "关闭"}。`,
+          en: `Water appearance shown: dynamic sky environment ${environmentInput.checked ? "on" : "off"}; normal-distorted scene reflection ${reflectionInput.checked ? "on" : "off"}.`,
+        })
         : t({
-            zh: "水域外观已隐藏；瓦片、Worker 与 Mask 缓存保持运行。",
-            en: "Water appearance hidden; tiles, workers, and the mask cache remain active.",
-          })
+          zh: "水域外观已隐藏；瓦片、Worker 与 Mask 缓存保持运行。",
+          en: "Water appearance hidden; tiles, workers, and the mask cache remain active.",
+        })
     )
   }
 
@@ -174,11 +217,40 @@ async function main() {
     activeDemo?.appearance.assign(appearanceState)
   }
 
+  const readOpticsControls = (): ResolvedWaterAreaOptics =>
+    normalizeWaterAreaOptics({
+      environment: {
+        enabled: environmentInput.checked,
+        intensity: environmentIntensityInput.valueAsNumber,
+      },
+      reflection: {
+        enabled: reflectionInput.checked,
+        intensity: reflectionIntensityInput.valueAsNumber,
+        resolutionScale: opticsState.reflection.resolutionScale,
+        debugView: reflectionDebugInput.checked,
+      },
+    })
+
+  const applyOpticsControls = (): void => {
+    opticsState = readOpticsControls()
+    activeDemo?.optics.assign(opticsState)
+    renderEffectStatus()
+  }
+
+  const setOpticsControlsDisabled = (disabled: boolean): void => {
+    environmentInput.disabled = disabled
+    environmentIntensityInput.disabled = disabled
+    reflectionInput.disabled = disabled
+    reflectionIntensityInput.disabled = disabled
+    reflectionDebugInput.disabled = disabled
+  }
+
   const reloadWaterArea = async (): Promise<void> => {
     if (reloading) return
     const apiToken = tokenInput.value.trim() || DEFAULT_ION_TOKEN
     if (!apiToken) {
       showInput.disabled = true
+      setOpticsControlsDisabled(true)
       setStatus(
         t({
           zh: "请输入 Cesium Ion token 后按 Enter，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。",
@@ -191,6 +263,7 @@ async function main() {
     reloading = true
     tokenInput.disabled = true
     showInput.disabled = true
+    setOpticsControlsDisabled(true)
     try {
       await activeDemo?.dispose()
       activeDemo = null
@@ -198,9 +271,11 @@ async function main() {
         viewer,
         apiToken,
         appearance: appearanceState,
+        optics: opticsState,
       })
-      ;(window as any).waterAreaDemo = activeDemo
+        ; (window as any).waterAreaDemo = activeDemo
       showInput.disabled = false
+      setOpticsControlsDisabled(false)
       renderEffectStatus()
     } catch (error) {
       showInput.disabled = true
@@ -227,6 +302,11 @@ async function main() {
   ]) {
     input.addEventListener("input", applyAppearanceControls)
   }
+  environmentInput.addEventListener("change", applyOpticsControls)
+  reflectionInput.addEventListener("change", applyOpticsControls)
+  reflectionDebugInput.addEventListener("change", applyOpticsControls)
+  environmentIntensityInput.addEventListener("input", applyOpticsControls)
+  reflectionIntensityInput.addEventListener("input", applyOpticsControls)
   tokenInput.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return
     event.preventDefault()
@@ -238,6 +318,7 @@ async function main() {
     await reloadWaterArea()
   } else {
     showInput.disabled = true
+    setOpticsControlsDisabled(true)
     setStatus(
       t({
         zh: "输入 Cesium Ion token 后按 Enter 加载 Water Area 案例。",

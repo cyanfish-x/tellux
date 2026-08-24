@@ -15,6 +15,8 @@ export const WATER_AREA_RUNTIME_BINDING_NAMES = [
   'createWaterAreaDemo',
   'DEFAULT_WATER_AREA_APPEARANCE',
   'normalizeWaterAreaAppearance',
+  'DEFAULT_WATER_AREA_OPTICS',
+  'normalizeWaterAreaOptics',
   'DEFAULT_WATER_AREA_WAVE_ORIGIN'
 ] as const
 

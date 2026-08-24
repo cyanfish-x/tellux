@@ -8,9 +8,14 @@ import type {
   WaterAreaAppearanceOptions
 } from './WaterAreaAppearance'
 import { createWaterAreaNormalTextures } from './WaterAreaNormalTexture'
+import { WaterAreaReflectionCanvasPreview } from './WaterAreaReflectionCanvasPreview'
+import type {
+  WaterAreaOptics,
+  WaterAreaOpticsOptions
+} from './WaterAreaOptics'
 import {
-  DEFAULT_WATER_AREA_WAVE_ORIGIN,
-  createWaterAreaWaveFrame
+  createWaterAreaWaveFrame,
+  resolveWaterAreaWaveOrigin
 } from './WaterAreaWaveFrame'
 import { disposeWaterAreaWorkerPool } from './worker/pool'
 
@@ -21,6 +26,7 @@ export interface CreateWaterAreaDemoOptions {
   id?: string
   show?: boolean
   appearance?: WaterAreaAppearanceOptions
+  optics?: WaterAreaOpticsOptions
   waveOrigin?: {
     longitude: number
     latitude: number
@@ -31,6 +37,7 @@ export interface WaterAreaDemo {
   layer: TilesetLayer
   show: boolean
   appearance: WaterAreaAppearance
+  optics: WaterAreaOptics
   dispose(): Promise<void>
 }
 
@@ -41,8 +48,19 @@ export function createWaterAreaDemo({
   id = 'water-area-google-photorealistic',
   show,
   appearance = {},
-  waveOrigin = DEFAULT_WATER_AREA_WAVE_ORIGIN
+  optics = {},
+  waveOrigin
 }: CreateWaterAreaDemoOptions): WaterAreaDemo {
+  const previewContainer = viewer.renderer.domElement.parentElement
+  if (!previewContainer || viewer.rendererType !== 'webgpu') {
+    throw new Error(
+      'Water Area reflection preview requires the WebGPU viewer container.'
+    )
+  }
+  const resolvedWaveOrigin = resolveWaterAreaWaveOrigin(
+    waveOrigin,
+    viewer.camera.getState()
+  )
   const layer = viewer.load3DTileset({
     type: 'cesium-ion',
     id,
@@ -57,10 +75,11 @@ export function createWaterAreaDemo({
       show: show ?? appearance.show
     },
     createWaterAreaWaveFrame(
-      waveOrigin.longitude,
-      waveOrigin.latitude
+      resolvedWaveOrigin.longitude,
+      resolvedWaveOrigin.latitude
     ),
-    createWaterAreaNormalTextures()
+    createWaterAreaNormalTextures(),
+    optics
   )
   const overlayPlugin = new WaterAreaOverlayPlugin({
     overlays: [overlay],
@@ -69,11 +88,22 @@ export function createWaterAreaDemo({
 
   layer.tileset.registerPlugin(materialPlugin)
   layer.tileset.registerPlugin(overlayPlugin)
+  viewer.scene.threeScene.add(materialPlugin.optics.reflectionTarget)
+  materialPlugin.optics.setReflectionDebugPreview(
+    new WaterAreaReflectionCanvasPreview(
+      viewer.renderer,
+      previewContainer,
+      materialPlugin.optics.sampleReflection(
+        materialPlugin.optics.reflectionNode.uvNode
+      )
+    )
+  )
 
   let disposed = false
   return {
     layer,
     appearance: materialPlugin.appearance,
+    optics: materialPlugin.optics,
     get show(): boolean {
       return materialPlugin.show
     },

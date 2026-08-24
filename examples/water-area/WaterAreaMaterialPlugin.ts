@@ -13,6 +13,7 @@ import {
 } from './WaterAreaNodeMaterial'
 import type { WaterAreaAppearanceOptions } from './WaterAreaAppearance'
 import type { WaterAreaNormalTextures } from './WaterAreaNormalTexture'
+import type { WaterAreaOpticsOptions } from './WaterAreaOptics'
 import type { WaterAreaWaveFrame } from './WaterAreaWaveFrame'
 
 type BaseColorMaterialState = Material & {
@@ -63,17 +64,23 @@ export class WaterAreaMaterialPlugin {
   constructor(
     options: WaterAreaAppearanceOptions = {},
     waveFrame?: WaterAreaWaveFrame,
-    normalTextures?: WaterAreaNormalTextures
+    normalTextures?: WaterAreaNormalTextures,
+    opticsOptions: WaterAreaOpticsOptions = {}
   ) {
     this.waterAreaEffect = new WaterAreaEffect(
       options,
       waveFrame,
-      normalTextures
+      normalTextures,
+      opticsOptions
     )
   }
 
   get appearance(): WaterAreaEffect {
     return this.waterAreaEffect
+  }
+
+  get optics() {
+    return this.waterAreaEffect.optics
   }
 
   get show(): boolean {

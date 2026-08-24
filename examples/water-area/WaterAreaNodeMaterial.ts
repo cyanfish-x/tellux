@@ -18,7 +18,12 @@ import {
   vec4
 } from 'three/tsl'
 import { Color, Vector3 } from 'three'
-import { MeshPhysicalNodeMaterial, type Node } from 'three/webgpu'
+import {
+  EnvironmentNode,
+  MeshPhysicalNodeMaterial,
+  type Node,
+  type NodeBuilder
+} from 'three/webgpu'
 
 import { getAtmosphereContext } from '@takram/three-atmosphere/webgpu'
 
@@ -34,6 +39,9 @@ import {
   type ResolvedWaterAreaAppearance,
   type WaterAreaAppearanceOptions
 } from './WaterAreaAppearance'
+import type { WaterAreaOpticsOptions } from './WaterAreaOptics'
+import { WaterAreaOpticsEffect } from './WaterAreaOpticsEffect'
+import { WaterAreaEnvironmentNode } from './WaterAreaEnvironmentNode'
 import {
   DEFAULT_WATER_AREA_WAVE_ORIGIN,
   createWaterAreaWaveFrame,
@@ -109,11 +117,13 @@ export class WaterAreaEffect implements WaterAreaAppearance {
   readonly northECEFNode
   readonly flowPhaseNode
   readonly normalTextures: WaterAreaNormalTextures
+  readonly optics: WaterAreaOpticsEffect
 
   constructor(
     options: WaterAreaAppearanceOptions = {},
     readonly waveFrame: WaterAreaWaveFrame = DEFAULT_WAVE_FRAME,
-    normalTextures = createFallbackWaterAreaNormalTextures()
+    normalTextures = createFallbackWaterAreaNormalTextures(),
+    opticsOptions: WaterAreaOpticsOptions = {}
   ) {
     const originECEF = waveFrame.originECEF.clone()
     this.originViewNode = uniform(new Vector3())
@@ -135,6 +145,7 @@ export class WaterAreaEffect implements WaterAreaAppearance {
         )
       })
     this.normalTextures = normalTextures
+    this.optics = new WaterAreaOpticsEffect(opticsOptions, waveFrame)
     this.assign(options)
   }
 
@@ -144,6 +155,7 @@ export class WaterAreaEffect implements WaterAreaAppearance {
 
   set show(value: boolean) {
     this.weightNode.value = value ? 1 : 0
+    this.optics.setEffectVisible(value)
   }
 
   get color(): string {
@@ -244,6 +256,7 @@ export class WaterAreaEffect implements WaterAreaAppearance {
   }
 
   dispose(): void {
+    this.optics.dispose()
     for (const normalTexture of this.normalTextures) {
       normalTexture.dispose()
     }
@@ -318,11 +331,48 @@ export class WaterAreaNodeMaterial extends MeshPhysicalNodeMaterial {
   override metalness = 0
   readonly waterAreaEffect: WaterAreaEffect
   private readonly waterAreaNormalNode: Node
+  private readonly waterAreaEnvironmentNode: WaterAreaEnvironmentNode
 
   constructor(waterAreaEffect = new WaterAreaEffect()) {
     super()
     this.waterAreaEffect = waterAreaEffect
     const effectMask = waterAreaEffect.maskNode
+    const waterNormalNode = createWaterAreaNormalNode(waterAreaEffect)
+    const optics = waterAreaEffect.optics
+    // SkyEnvironmentNode returns a linear HDR PMREM node. Keep it local to
+    // water fragments so scene-wide PBR materials retain their current light.
+    // Source: https://github.com/takram-design-engineering/three-geospatial/blob/atmosphere%400.19.1/packages/atmosphere/src/webgpu/SkyEnvironmentNode.ts
+    this.envNode = optics.environmentNode.mul(
+      effectMask.mul(optics.environmentWeightNode)
+    )
+    this.waterAreaEnvironmentNode = new WaterAreaEnvironmentNode(
+      this.envNode
+    )
+
+    // ReflectorNode renders a local tangent-plane view into a shared texture.
+    // Keep a ReflectorNode clone in the graph so Three schedules the shared
+    // capture, while its referenceNode follows the stable current-camera
+    // texture. Offset screen UV by the animated wave normal.
+    // Source: https://github.com/mrdoob/three.js/blob/r184/src/nodes/utils/ReflectorNode.js
+    const reflectionOffset = waterNormalNode
+      .sub(ellipsoidNormalView)
+      .xy.mul(0.035)
+    const reflectionSampler = optics.sampleReflection(
+      optics.reflectionNode.uvNode.add(reflectionOffset)
+    )
+    const viewDirection = positionView.negate().normalize()
+    const facing = waterNormalNode.dot(viewDirection).max(0)
+    const fresnel = facing
+      .oneMinus()
+      .pow(5)
+      .mul(0.98)
+      .add(0.02)
+    const reflectionContribution = reflectionSampler.rgb.mul(
+      fresnel
+        .mul(effectMask)
+        .mul(optics.reflectionWeightNode)
+    )
+    this.emissiveNode = reflectionContribution
     this.colorNode = mix(
       // Three's MaterialNode declaration does not currently expose the full
       // TSL node extension surface even though it is a vec4 node at runtime.
@@ -338,7 +388,7 @@ export class WaterAreaNodeMaterial extends MeshPhysicalNodeMaterial {
     this.specularIntensityNode = mix(0, 1, effectMask)
     this.waterAreaNormalNode = mix(
       normalView,
-      createWaterAreaNormalNode(waterAreaEffect),
+      waterNormalNode,
       effectMask
     ).normalize()
     this.castShadowNode = Fn(() => {
@@ -351,5 +401,11 @@ export class WaterAreaNodeMaterial extends MeshPhysicalNodeMaterial {
 
   override setupNormal(): Node {
     return this.waterAreaNormalNode
+  }
+
+  override setupEnvironment(
+    _builder: NodeBuilder
+  ): EnvironmentNode | null {
+    return this.waterAreaEnvironmentNode
   }
 }

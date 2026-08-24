@@ -10,6 +10,7 @@ import {
 } from 'three'
 
 import { WaterAreaMaterialPlugin } from './WaterAreaMaterialPlugin'
+import { WaterAreaEnvironmentNode } from './WaterAreaEnvironmentNode'
 import { WaterAreaNodeMaterial } from './WaterAreaNodeMaterial'
 
 describe('WaterAreaMaterialPlugin', () => {
@@ -90,6 +91,7 @@ describe('WaterAreaMaterialPlugin', () => {
 
     expect(plugin.show).toBe(false)
     expect(firstMaterial.waterAreaEffect.show).toBe(false)
+    expect(plugin.optics.reflectionCaptureEnabled).toBe(false)
     expect(firstMesh.visible).toBe(true)
 
     const nextMesh = new Mesh(
@@ -101,6 +103,10 @@ describe('WaterAreaMaterialPlugin', () => {
 
     expect(nextMaterial.waterAreaEffect).toBe(firstMaterial.waterAreaEffect)
     expect(nextMaterial.waterAreaEffect.show).toBe(false)
+
+    plugin.show = true
+
+    expect(plugin.optics.reflectionCaptureEnabled).toBe(true)
   })
 
   it('shares normalized appearance updates with loaded and future tile materials', () => {
@@ -134,6 +140,38 @@ describe('WaterAreaMaterialPlugin', () => {
     expect(nextMaterial.waterAreaEffect.waveDirection).toBe(345)
   })
 
+  it('shares one environment and reflector resource across every tile material', () => {
+    const firstMesh = new Mesh(
+      new BoxGeometry(),
+      new MeshStandardMaterial()
+    )
+    const nextMesh = new Mesh(
+      new BoxGeometry(),
+      new MeshStandardMaterial()
+    )
+    const plugin = new WaterAreaMaterialPlugin()
+
+    plugin.processTileModel(firstMesh)
+    plugin.processTileModel(nextMesh)
+
+    const firstMaterial = firstMesh.material as WaterAreaNodeMaterial
+    const nextMaterial = nextMesh.material as WaterAreaNodeMaterial
+    expect(firstMaterial.waterAreaEffect.optics).toBe(plugin.optics)
+    expect(nextMaterial.waterAreaEffect.optics).toBe(plugin.optics)
+    expect(firstMaterial.envNode).not.toBeNull()
+    expect(firstMaterial.setupEnvironment({} as never)).toBeInstanceOf(
+      WaterAreaEnvironmentNode
+    )
+    expect(firstMaterial.emissiveNode).not.toBeNull()
+    expect(firstMaterial.emissiveNode).not.toMatchObject({
+      isBypassNode: true
+    })
+    expect(nextMaterial.envNode).not.toBeNull()
+    expect(nextMaterial.emissiveNode).not.toBeNull()
+
+    plugin.dispose()
+  })
+
   it('preserves unrelated appearance fields during partial assignment', () => {
     const plugin = new WaterAreaMaterialPlugin({
       color: '#123456',
@@ -152,11 +190,21 @@ describe('WaterAreaMaterialPlugin', () => {
     const [first, second] = plugin.appearance.normalTextures
     const disposeFirst = vi.spyOn(first, 'dispose')
     const disposeSecond = vi.spyOn(second, 'dispose')
+    const disposeEnvironment = vi.spyOn(
+      plugin.optics.environmentNode,
+      'dispose'
+    )
+    const disposeReflection = vi.spyOn(
+      plugin.optics.reflectionNode,
+      'dispose'
+    )
 
     plugin.dispose()
 
     expect(first).not.toBe(second)
     expect(disposeFirst).toHaveBeenCalledOnce()
     expect(disposeSecond).toHaveBeenCalledOnce()
+    expect(disposeEnvironment).toHaveBeenCalledOnce()
+    expect(disposeReflection).toHaveBeenCalledOnce()
   })
 })

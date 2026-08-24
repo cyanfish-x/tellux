@@ -45,11 +45,14 @@ describe('Sandcastle optional runtime bindings', () => {
       'createWaterAreaDemo',
       'DEFAULT_WATER_AREA_APPEARANCE',
       'normalizeWaterAreaAppearance',
+      'DEFAULT_WATER_AREA_OPTICS',
+      'normalizeWaterAreaOptics',
       'DEFAULT_WATER_AREA_WAVE_ORIGIN'
     ])
 
     expect(detectOptionalRuntimeBindings(`
       const origin = DEFAULT_WATER_AREA_WAVE_ORIGIN
+      const optics = normalizeWaterAreaOptics(DEFAULT_WATER_AREA_OPTICS)
     `).waterArea).toBe(true)
   })
 

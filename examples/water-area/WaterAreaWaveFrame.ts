@@ -8,10 +8,26 @@ export interface WaterAreaWaveFrame {
   upECEF: Vector3
 }
 
+export interface WaterAreaWaveOrigin {
+  longitude: number
+  latitude: number
+}
+
 export const DEFAULT_WATER_AREA_WAVE_ORIGIN = Object.freeze({
-  longitude: -112.2525,
-  latitude: 69.3782
+  longitude: -111.98797078872424,
+  latitude: 70.33265443539143
 })
+
+export function resolveWaterAreaWaveOrigin(
+  waveOrigin: WaterAreaWaveOrigin | undefined,
+  cameraOrigin: WaterAreaWaveOrigin
+): WaterAreaWaveOrigin {
+  const origin = waveOrigin ?? cameraOrigin
+  return {
+    longitude: origin.longitude,
+    latitude: origin.latitude
+  }
+}
 
 /**
  * 从经纬度建立固定的 ECEF/ENU 波纹坐标框架。
