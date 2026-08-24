@@ -103,7 +103,7 @@ const tagByTerm: Array<[string, string]> = [
   ["飞行", "Flight"],
 ]
 
-const excludedHtmlFiles = new Set(["index", "sandcastle"])
+const excludedHtmlFiles = new Set(["index", "sandcastle", "gallery"])
 const defaultExampleId = "basic"
 
 function getFileId(path: string) {

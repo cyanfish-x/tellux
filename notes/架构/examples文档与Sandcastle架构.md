@@ -94,7 +94,7 @@ Sandcastle 是一个可编辑、可运行示例的交互页面，设计上分成
 注册流程大致是：
 
 1. 扫描 HTML 示例文件。
-2. 排除 `index.html` 和 `sandcastle.html`。
+2. 排除 `index.html`、`sandcastle.html` 和 `gallery.html`（社区作品 gallery 页，不是可编辑示例）。
 3. 从 HTML 中找到对应的 `<script type="module" src="...">`。
 4. 读取同名 TypeScript 示例源码。
 5. 移除原始 module script，生成可编辑的 HTML 内容。
