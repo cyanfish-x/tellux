@@ -25,16 +25,19 @@ export interface CommunityShowcaseItem {
 
 export const communityShowcase: CommunityShowcaseItem[] = [
   {
-    id: "test-entry",
-    title: { zh: "测试案例：智慧城市数字孪生", en: "Test case: Smart city digital twin" },
-    description: {
-      zh: "这是一个用于验证展示页效果的测试条目，正式收录前会被替换。",
-      en: "A test entry to verify the showcase page; will be replaced before publishing.",
+    id: "three-player-controller-3dtiles",
+    title: {
+      zh: "Google 实景 3D Tiles 第三人称漫游",
+      en: "Photorealistic 3D Tiles Third-Person Explorer",
     },
-    cover: "https://picture.cyanfish.site/202607211408198.png",
-    url: "https://example.com",
-    tags: ["测试", "数字孪生"],
-    author: "Tellux",
-    date: "2026-08-05",
+    description: {
+      zh: "基于 Tellux 与 Google Photorealistic 3D Tiles 的第三人称漫游 demo，支持 WASD 行走、跳跃、冲刺与飞行切换。",
+      en: "Third-person exploration demo built with Tellux and Google Photorealistic 3D Tiles — walk, jump, sprint, and toggle fly mode with WASD.",
+    },
+    cover: "https://picture.cyanfish.site/20260824205429102.png",
+    url: "https://hh-hang.github.io/three-player-controller/3dtilesScene.html",
+    tags: ["3D Tiles", "Google", "漫游"],
+    author: "hh-hang",
+    date: "2026-08-24",
   },
 ]
