@@ -18,7 +18,7 @@ describe('createWaterAreaWaveFrame', () => {
     expect(frame.northECEF.dot(frame.upECEF)).toBeCloseTo(0)
   })
 
-  it('uses the current camera location when no explicit reflection origin is provided', () => {
+  it('uses the current camera location when no explicit wave origin is provided', () => {
     expect(
       resolveWaterAreaWaveOrigin(undefined, {
         longitude: -132.91669016841638,

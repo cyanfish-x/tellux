@@ -8,29 +8,6 @@
   <meta name="sandcastle-thumbnail" content="https://picture.cyanfish.site/20260823222559818.png" />
   <title data-i18n="example.water-area.docTitle">Tellux WebGPU 水域渲染</title>
   <link rel="stylesheet" href="./styles.css" />
-  <style>
-    .water-area-reflection-preview {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      z-index: 9;
-      width: min(34vw, 512px);
-      height: auto;
-      border: 1px solid rgba(226, 232, 240, 0.38);
-      border-radius: 8px;
-      background: #000;
-      box-shadow: 0 18px 48px rgba(2, 6, 23, 0.42);
-      pointer-events: none;
-    }
-
-    @media (max-width: 720px) {
-      .water-area-reflection-preview {
-        top: 10px;
-        right: 10px;
-        width: min(46vw, 320px);
-      }
-    }
-  </style>
 </head>
 
 <body>
@@ -117,7 +94,7 @@
           </details>
 
           <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary" data-i18n="example.water-area.folder.optics">倒影</summary>
+            <summary class="example-panel__folder-summary" data-i18n="example.water-area.folder.optics">环境</summary>
             <div class="example-panel__folder-collapse">
               <div class="example-panel__folder-body">
                 <label class="example-panel__row">
@@ -128,19 +105,6 @@
                   <span class="example-panel__label" data-i18n="example.water-area.label.environmentIntensity">环境强度</span>
                   <input id="water-area-environment-intensity" class="example-panel__input" type="number" min="0" max="2" step="0.05" value="1" disabled />
                 </label>
-                <label class="example-panel__row">
-                  <span class="example-panel__label" data-i18n="example.water-area.label.reflection">场景反射</span>
-                  <input id="water-area-reflection" class="example-panel__checkbox" type="checkbox" checked disabled />
-                </label>
-                <label class="example-panel__row example-panel__row--input">
-                  <span class="example-panel__label" data-i18n="example.water-area.label.reflectionIntensity">反射强度</span>
-                  <input id="water-area-reflection-intensity" class="example-panel__input" type="number" min="0" max="1" step="0.05" value="0.65" disabled />
-                </label>
-                <label class="example-panel__row">
-                  <span class="example-panel__label" data-i18n="example.water-area.label.reflectionDebug">显示反射相机画面</span>
-                  <input id="water-area-reflection-debug" class="example-panel__checkbox" type="checkbox" disabled />
-                </label>
-                <p class="example-panel__hint" data-i18n="example.water-area.hint.reflection">场景反射使用当前水域中心的 WGS84 切平面，并由双相位波纹法线扰动。</p>
               </div>
             </div>
           </details>

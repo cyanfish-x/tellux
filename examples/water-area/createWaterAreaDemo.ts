@@ -8,7 +8,6 @@ import type {
   WaterAreaAppearanceOptions
 } from './WaterAreaAppearance'
 import { createWaterAreaNormalTextures } from './WaterAreaNormalTexture'
-import { WaterAreaReflectionCanvasPreview } from './WaterAreaReflectionCanvasPreview'
 import type {
   WaterAreaOptics,
   WaterAreaOpticsOptions
@@ -51,11 +50,8 @@ export function createWaterAreaDemo({
   optics = {},
   waveOrigin
 }: CreateWaterAreaDemoOptions): WaterAreaDemo {
-  const previewContainer = viewer.renderer.domElement.parentElement
-  if (!previewContainer || viewer.rendererType !== 'webgpu') {
-    throw new Error(
-      'Water Area reflection preview requires the WebGPU viewer container.'
-    )
+  if (viewer.rendererType !== 'webgpu') {
+    throw new Error('Water Area requires a WebGPU viewer.')
   }
   const resolvedWaveOrigin = resolveWaterAreaWaveOrigin(
     waveOrigin,
@@ -88,16 +84,6 @@ export function createWaterAreaDemo({
 
   layer.tileset.registerPlugin(materialPlugin)
   layer.tileset.registerPlugin(overlayPlugin)
-  viewer.scene.threeScene.add(materialPlugin.optics.reflectionTarget)
-  materialPlugin.optics.setReflectionDebugPreview(
-    new WaterAreaReflectionCanvasPreview(
-      viewer.renderer,
-      previewContainer,
-      materialPlugin.optics.sampleReflection(
-        materialPlugin.optics.reflectionNode.uvNode
-      )
-    )
-  )
 
   let disposed = false
   return {

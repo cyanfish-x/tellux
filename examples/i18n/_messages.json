@@ -2148,8 +2148,8 @@
     "Waves"
   ],
   "example.water-area.folder.optics": [
-    "倒影",
-    "Reflections"
+    "环境",
+    "Environment"
   ],
   "example.water-area.folder.status": [
     "状态",
@@ -2194,22 +2194,6 @@
   "example.water-area.label.environmentIntensity": [
     "环境强度",
     "Environment intensity"
-  ],
-  "example.water-area.label.reflection": [
-    "场景反射",
-    "Scene reflection"
-  ],
-  "example.water-area.label.reflectionIntensity": [
-    "反射强度",
-    "Reflection intensity"
-  ],
-  "example.water-area.label.reflectionDebug": [
-    "显示反射相机画面",
-    "Show reflection camera"
-  ],
-  "example.water-area.hint.reflection": [
-    "场景反射使用当前水域中心的 WGS84 切平面，并由双相位波纹法线扰动。",
-    "Scene reflection uses the WGS84 tangent plane at the water-area center and is distorted by the dual-phase wave normal."
   ],
   "example.water-area.hint.tokenReload": [
     "修改 Token 后按 Enter 重新加载案例。",

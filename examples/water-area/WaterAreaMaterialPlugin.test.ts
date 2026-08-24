@@ -91,7 +91,6 @@ describe('WaterAreaMaterialPlugin', () => {
 
     expect(plugin.show).toBe(false)
     expect(firstMaterial.waterAreaEffect.show).toBe(false)
-    expect(plugin.optics.reflectionCaptureEnabled).toBe(false)
     expect(firstMesh.visible).toBe(true)
 
     const nextMesh = new Mesh(
@@ -103,10 +102,6 @@ describe('WaterAreaMaterialPlugin', () => {
 
     expect(nextMaterial.waterAreaEffect).toBe(firstMaterial.waterAreaEffect)
     expect(nextMaterial.waterAreaEffect.show).toBe(false)
-
-    plugin.show = true
-
-    expect(plugin.optics.reflectionCaptureEnabled).toBe(true)
   })
 
   it('shares normalized appearance updates with loaded and future tile materials', () => {
@@ -140,7 +135,7 @@ describe('WaterAreaMaterialPlugin', () => {
     expect(nextMaterial.waterAreaEffect.waveDirection).toBe(345)
   })
 
-  it('shares one environment and reflector resource across every tile material', () => {
+  it('shares one sky environment resource across every tile material', () => {
     const firstMesh = new Mesh(
       new BoxGeometry(),
       new MeshStandardMaterial()
@@ -162,12 +157,9 @@ describe('WaterAreaMaterialPlugin', () => {
     expect(firstMaterial.setupEnvironment({} as never)).toBeInstanceOf(
       WaterAreaEnvironmentNode
     )
-    expect(firstMaterial.emissiveNode).not.toBeNull()
-    expect(firstMaterial.emissiveNode).not.toMatchObject({
-      isBypassNode: true
-    })
+    expect(firstMaterial.emissiveNode).toBeNull()
     expect(nextMaterial.envNode).not.toBeNull()
-    expect(nextMaterial.emissiveNode).not.toBeNull()
+    expect(nextMaterial.emissiveNode).toBeNull()
 
     plugin.dispose()
   })
@@ -194,10 +186,6 @@ describe('WaterAreaMaterialPlugin', () => {
       plugin.optics.environmentNode,
       'dispose'
     )
-    const disposeReflection = vi.spyOn(
-      plugin.optics.reflectionNode,
-      'dispose'
-    )
 
     plugin.dispose()
 
@@ -205,6 +193,5 @@ describe('WaterAreaMaterialPlugin', () => {
     expect(disposeFirst).toHaveBeenCalledOnce()
     expect(disposeSecond).toHaveBeenCalledOnce()
     expect(disposeEnvironment).toHaveBeenCalledOnce()
-    expect(disposeReflection).toHaveBeenCalledOnce()
   })
 })

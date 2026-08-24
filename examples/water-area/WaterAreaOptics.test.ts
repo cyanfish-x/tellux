@@ -6,57 +6,37 @@ import {
 } from './WaterAreaOptics'
 
 describe('normalizeWaterAreaOptics', () => {
-  it('enables the shared sky environment and planar reflection by default', () => {
+  it('enables the shared sky environment by default', () => {
     expect(normalizeWaterAreaOptics()).toEqual(DEFAULT_WATER_AREA_OPTICS)
     expect(DEFAULT_WATER_AREA_OPTICS).toEqual({
       environment: {
         enabled: true,
         intensity: 1
-      },
-      reflection: {
-        enabled: true,
-        intensity: 0.65,
-        resolutionScale: 0.5,
-        debugView: false
       }
     })
   })
 
-  it('clamps runtime intensity and construction-time reflection resolution', () => {
+  it('clamps environment intensity', () => {
     expect(
       normalizeWaterAreaOptics({
-        environment: { enabled: false, intensity: 8 },
-        reflection: {
-          enabled: false,
-          intensity: -1,
-          resolutionScale: Number.NaN,
-          debugView: true
-        }
+        environment: { enabled: false, intensity: 8 }
       })
     ).toEqual({
       environment: {
         enabled: false,
         intensity: 2
-      },
-      reflection: {
-        enabled: false,
-        intensity: 0,
-        resolutionScale:
-          DEFAULT_WATER_AREA_OPTICS.reflection.resolutionScale,
-        debugView: true
       }
     })
   })
 
-  it('preserves defaults for partially specified domains', () => {
+  it('preserves defaults for partially specified environment options', () => {
     expect(
       normalizeWaterAreaOptics({
-        reflection: { intensity: 0.25 }
+        environment: { intensity: 0.25 }
       })
     ).toEqual({
-      environment: DEFAULT_WATER_AREA_OPTICS.environment,
-      reflection: {
-        ...DEFAULT_WATER_AREA_OPTICS.reflection,
+      environment: {
+        ...DEFAULT_WATER_AREA_OPTICS.environment,
         intensity: 0.25
       }
     })

@@ -593,18 +593,16 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 - WebGPU 材质：`WaterAreaMaterialPlugin`、`WaterAreaNodeMaterial`、`wrapWaterAreaNodeMaterial`。
 - 效果控制：`WaterAreaDemo.show` 通过所有水域材质共享的 TSL uniform 即时控制水色、波纹和镜面贡献；隐藏效果时保留 3D Tiles、Worker 和 Mask 缓存，不重建 shader 或 tileset。
 - 外观状态：案例级 `WaterAreaAppearance` 统一管理 `show`、`color`、`colorMix`、`roughness`、`waveStrength`、`waveScale`、`waveSpeed` 和 `waveDirection`；初始化 `appearance` 与运行时 `demo.appearance` 同构，所有已加载和后加载材质共享同一组 uniforms。
-- 波纹坐标：默认以创建案例时的实际相机经纬度建立 ECEF/ENU frame，调用者仍可通过 `waveOrigin` 明确覆盖；锚点每帧在 CPU 双精度下转换到 view space，再与 Three.js `highPrecision` 生成的 `positionView` 做小量级相减，避免在 shader 中直接对约 6,000 km 的 ECEF 坐标做高频运算。曾出现示例相机已移动到 `57.0194, -132.9167`、切平面仍停留在旧位置 `70.3327, -111.9880` 的问题，两点相距约 1784 km，导致反射相机围绕错误平面镜像；当前已由创建时相机位置消除这类默认值漂移。
+- 波纹坐标：默认以创建案例时的实际相机经纬度建立 ECEF/ENU frame，调用者仍可通过 `waveOrigin` 明确覆盖；锚点每帧在 CPU 双精度下转换到 view space，再与 Three.js `highPrecision` 生成的 `positionView` 做小量级相减，避免在 shader 中直接对约 6,000 km 的 ECEF 坐标做高频运算。
 - 动态法线：案例默认固定复用 Three.js r184 Water2 的两张 512 × 512 法线贴图，并对齐 Valve / Water2 的核心流动逻辑：同一 ENU 基础 UV、同一主流向、A/B 相位恒差半周期、三角形权重交叉淡入，从而隐藏周期 reset；不再把两张贴图作为不同方向的宏观/细节层。资源以 `NoColorSpace`、RepeatWrapping、mipmap、三线性与各向异性过滤配置，并由 `WaterAreaEffect` 成对释放。原整数频率生成纹理只保留为测试/直接构造后备；流动相位由共享的 TSL render-group uniform 每次 render 推进并回绕在小范围内，运行时修改速度不会造成相位跳变，也不新增 `requestAnimationFrame`、材质遍历或独立渲染循环。
 - 天空环境：所有水域瓦片材质共享一个 Takram `SkyEnvironmentNode`；它依据当前 AtmosphereContext 生成 64 像素半浮点 cubemap / PMREM，并只通过水域 mask 接入水面镜面辐射。案例不写入全局 `scene.environmentNode`，也不重复添加 Three `EnvironmentNode` 的漫反射 irradiance——后者继续由现有 `AtmosphereLight` 负责，因此不会重复天光或改变其他 PBR 地形、模型和 3D Tiles 的环境光边界。环境贴图保持线性 HDR，继续由 Tellux 唯一 WebGPU 输出链执行 AgX 和输出色彩空间转换。
-- 场景反射：案例中心的 ECEF 原点和 WGS84 椭球法线建立局部切平面，复用 Three.js r184 `ReflectorNode` 的反射相机、斜截投影和半浮点渲染目标；默认以 0.5 drawing-buffer 分辨率捕获一次共享反射纹理。Effect 维护一个稳定的普通 `TextureNode` 并在捕获后同步当前相机的 render-target texture；瓦片采样器仍是共享同一 reflector base 的 `ReflectorNode` clone，但通过 `referenceNode` 读取该稳定纹理。这样材质图会正常注册 reflector 的逐帧更新，也不需要用 `BypassNode` 把纹理采样强制生成为 `void` 语句——后者会产生 WebGPU fragment WGSL 校验错误。
-- 反射扰动：反射 UV 使用“当前双相位水法线减去椭球平滑法线”的 view-space XY 偏移，并通过 Schlick Fresnel 与水域 mask 合成；因此波纹强度、尺度、速度和方向会同时作用于太阳高光与倒影形变。天空由动态环境 PMREM 提供，反射相机负责地形、建筑等场景内容，二者都在线性空间进入最终后处理图。
-- 反射开关与成本：`WaterAreaDemo.optics.environment` / `reflection` 分别公开 `enabled` 与 `intensity`，反射另有创建期 `resolutionScale` 和诊断用 `debugView`；面板可运行时勾选。`debugView` 勾选时在 Viewer 右上角动态创建独立 DOM Canvas，不再向主场景加入全屏调试几何；GPU 侧以 Three 公开 `RenderPipeline` 把当前半浮点反射纹理缩放并执行正常输出转换到 512 像素宽的 RGBA8 小目标，再用公开 `readRenderTargetPixelsAsync` 以最高 15 FPS 异步更新 Canvas，不访问 `renderer.backend.device`，也不每帧回读全分辨率 FBO。隐藏水域或关闭反射时停止反射相机逐帧捕获；但调试视图开启时继续捕获，重新开启时强制刷新；销毁案例时释放 Canvas、预览 pipeline / target、SkyEnvironment、Reflector render target、反射 target 和原有法线纹理。
+- 场景反射：已移除基于单个 WGS84 局部切平面的 `ReflectorNode`、反射相机、离屏目标和 Canvas 调试预览。Water Area 继续定位为 3D Tiles 水域遮罩与材质重着色；在没有独立水面几何和真实水位前，不提供平面场景反射。
 - 流向边界：Water2 的 flow map 是可选输入；当前案例没有河道/海流矢量场，使用它的固定 `flowDirection` 分支。该版本解决的是统一流向与周期复位连续性，不等于已经支持沿弯曲河道变化的空间流场。
 - 资源合规：两张贴图的固定上游路径、Three.js MIT 许可证链接和 SHA-256 记录在 `examples/water-area/assets/NOTICE.md`；上游未为图片单独列出来源声明，严格商业发行前应补齐独立授权或替换为自有/CC0 资源。
 - 远景过滤：双相位合成后的整体法线扰动按 view-space 距离衰减，纹理使用 repeat、线性过滤和 mipmap，降低远景高频闪烁风险。
-- PBR 边界：继续使用 `MeshPhysicalNodeMaterial` 的 `ior = 1.33`、roughness 与 AtmosphereLight 产生太阳高光；动态环境通过专用 `WaterAreaEnvironmentNode` 只写入 PBR radiance，局部场景反射则以 mask + Schlick Fresnel 加入镜面辐射，不修改陆地材质，也不接管 Viewer 主渲染循环。
+- PBR 边界：继续使用 `MeshPhysicalNodeMaterial` 的 `ior = 1.33`、roughness 与 AtmosphereLight 产生太阳高光；动态环境通过专用 `WaterAreaEnvironmentNode` 只写入 PBR radiance，不修改陆地材质，也不接管 Viewer 主渲染循环。
 - Worker 链路：固定 `maxWorkers: 8`、`queueStrategy: 'lifo'`、module Worker；MVT 下载、选择性解析和 `OffscreenCanvas` 栅格化均在 Worker 内执行。
-- 示例面板：环境 Token 存在时默认加载；保留 Token 输入框作为运行时覆盖入口，修改后按 Enter 重新加载；继续复用通用 `.example-panel`，支持水色、颜色混合、粗糙度、波纹参数以及天空环境 / 场景反射开关和强度即时调整，Token 重载后保留当前 appearance 与 optics。Sandcastle 封面使用用户提供的水域渲染截图 `https://picture.cyanfish.site/20260823222559818.png`。
+- 示例面板：环境 Token 存在时默认加载；保留 Token 输入框作为运行时覆盖入口，修改后按 Enter 重新加载；继续复用通用 `.example-panel`，支持水色、颜色混合、粗糙度、波纹参数以及天空环境开关和强度即时调整，Token 重载后保留当前 appearance 与 optics。Sandcastle 封面使用用户提供的水域渲染截图 `https://picture.cyanfish.site/20260823222559818.png`。
 - Sandcastle：源码命中任一 Water Area runtime binding 时，runner 才动态加载 `sandcastleBindings.ts`；案例 helper、默认参数、归一化函数和默认 ENU 锚点成组注入，普通 runner 初始依赖图不包含水域实现。
 - 依赖：`workerpool`、`protomaps-leaflet`、`@mapbox/point-geometry` 暂时仅作为案例开发依赖。
 - 构建预算：水域 Worker 独立限制为 256 KiB raw / 80 KiB gzip；当前产物约 165 KiB raw。
@@ -613,22 +611,20 @@ Water Area mask 是瓦片数据与材质输入，不需要独立动画循环。�
 
 已完成验证：
 
-- Water Area 聚焦测试：10 个测试文件、33 个测试通过，覆盖水陆分类、Worker Pool、材质替换、共享外观 / optics 状态、Valve 双相位流动、法线纹理、ENU frame、相机派生的 WGS84 反射切平面、实时 Canvas 反射诊断契约、稳定 render-target 纹理绑定和共享环境 / 反射资源释放。
-- 全量 `vitest`：68 个测试文件、252 个测试通过。
+- Water Area 聚焦测试：9 个测试文件、29 个测试通过，覆盖水陆分类、Worker Pool、材质替换、共享外观 / optics 状态、Valve 双相位流动、法线纹理、ENU frame 和共享天空环境资源释放。
+- 全量 `vitest`：67 个测试文件、248 个测试通过。
 - `pnpm type-check` 通过。
 - 水域案例严格 TypeScript 检查通过。
 - `pnpm build:examples` 通过，水域独立页面、动态能力 chunk 和 Worker 产物均已生成且满足预算。
 
-尚未完成浏览器视觉验收和 WebGPU 性能采样。自动化验证不能证明法线与反射 UV 在真实 GPU 上没有接缝、shader 编译 warning、远景闪烁或参数观感问题；在固定镜头、近景、相机运动和 60 秒 P95 帧时间验收通过前，不应把案例标记为已完成公共能力，也不应开始设计稳定公开 API。当前场景反射是固定案例中心的局部 WGS84 切平面近似，适合这一版固定真实地点；它不是覆盖整颗曲面地球的全局反射方案，且反射 capture 不包含 WebGPU 后处理空气透视，天空由独立 SkyEnvironment PMREM 补足。
+尚未完成浏览器视觉验收和 WebGPU 性能采样。自动化验证不能证明动态法线与天空环境高光在真实 GPU 上没有接缝、shader 编译 warning、远景闪烁或参数观感问题；在固定镜头、近景、相机运动和 60 秒 P95 帧时间验收通过前，不应把案例标记为已完成公共能力，也不应开始设计稳定公开 API。
 
-### 阶段 1.1：环境与局部场景倒影验证（当前）
+### 阶段 1.1：天空环境验证（当前）
 
 - 保持 Sandcastle / Example 案例级边界，不进入 `src/` 或公开 `Viewer` API。
-- 使用一个共享 Takram SkyEnvironment 和一个共享 Three.js Reflector render target。
-- 反射平面由案例中心 ECEF 位置与 WGS84 法线确定，不依赖固定世界轴。
-- 反射纹理必须由当前双相位法线扰动，并与环境贴图按水域 mask / Fresnel 合成。
-- 运行时开关关闭后不重建 tileset；场景反射关闭或水域隐藏时停止 capture。
-- 不在这一阶段同时接入透明折射、OIT、水下雾或全球曲面多分区反射。
+- 所有水域材质共享一个 Takram SkyEnvironment，并只向水域片元的 PBR radiance 路径注入。
+- 运行时开关通过共享 uniform 生效，不重建 tileset。
+- 不在这一阶段接入场景反射、透明折射、OIT 或水下雾。
 
 ## 推荐实施阶段
 

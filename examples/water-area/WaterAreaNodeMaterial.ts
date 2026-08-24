@@ -145,7 +145,7 @@ export class WaterAreaEffect implements WaterAreaAppearance {
         )
       })
     this.normalTextures = normalTextures
-    this.optics = new WaterAreaOpticsEffect(opticsOptions, waveFrame)
+    this.optics = new WaterAreaOpticsEffect(opticsOptions)
     this.assign(options)
   }
 
@@ -155,7 +155,6 @@ export class WaterAreaEffect implements WaterAreaAppearance {
 
   set show(value: boolean) {
     this.weightNode.value = value ? 1 : 0
-    this.optics.setEffectVisible(value)
   }
 
   get color(): string {
@@ -349,30 +348,6 @@ export class WaterAreaNodeMaterial extends MeshPhysicalNodeMaterial {
       this.envNode
     )
 
-    // ReflectorNode renders a local tangent-plane view into a shared texture.
-    // Keep a ReflectorNode clone in the graph so Three schedules the shared
-    // capture, while its referenceNode follows the stable current-camera
-    // texture. Offset screen UV by the animated wave normal.
-    // Source: https://github.com/mrdoob/three.js/blob/r184/src/nodes/utils/ReflectorNode.js
-    const reflectionOffset = waterNormalNode
-      .sub(ellipsoidNormalView)
-      .xy.mul(0.035)
-    const reflectionSampler = optics.sampleReflection(
-      optics.reflectionNode.uvNode.add(reflectionOffset)
-    )
-    const viewDirection = positionView.negate().normalize()
-    const facing = waterNormalNode.dot(viewDirection).max(0)
-    const fresnel = facing
-      .oneMinus()
-      .pow(5)
-      .mul(0.98)
-      .add(0.02)
-    const reflectionContribution = reflectionSampler.rgb.mul(
-      fresnel
-        .mul(effectMask)
-        .mul(optics.reflectionWeightNode)
-    )
-    this.emissiveNode = reflectionContribution
     this.colorNode = mix(
       // Three's MaterialNode declaration does not currently expose the full
       // TSL node extension surface even though it is a vec4 node at runtime.

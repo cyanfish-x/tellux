@@ -65,17 +65,6 @@ async function main() {
     document.querySelector<HTMLInputElement>(
       "#water-area-environment-intensity"
     )
-  const reflectionInput = document.querySelector<HTMLInputElement>(
-    "#water-area-reflection"
-  )
-  const reflectionIntensityInput =
-    document.querySelector<HTMLInputElement>(
-      "#water-area-reflection-intensity"
-    )
-  const reflectionDebugInput =
-    document.querySelector<HTMLInputElement>(
-      "#water-area-reflection-debug"
-    )
   const statusElement =
     document.querySelector<HTMLElement>("#water-area-status")
   const attributionsElement = document.querySelector<HTMLElement>(
@@ -94,9 +83,6 @@ async function main() {
     !waveDirectionInput ||
     !environmentInput ||
     !environmentIntensityInput ||
-    !reflectionInput ||
-    !reflectionIntensityInput ||
-    !reflectionDebugInput ||
     !statusElement ||
     !attributionsElement
   ) {
@@ -178,20 +164,11 @@ async function main() {
   }
 
   const renderEffectStatus = (): void => {
-    if (reflectionDebugInput.checked) {
-      setStatus(
-        t({
-          zh: "反射调试已开启：右上角 Canvas 正在显示反射相机的实时离屏画面。",
-          en: "Reflection debug is on: the top-right canvas shows the live reflection-camera target.",
-        })
-      )
-      return
-    }
     setStatus(
       showInput.checked
         ? t({
-          zh: `水域外观已显示：动态天空环境${environmentInput.checked ? "开启" : "关闭"}，法线扰动场景反射${reflectionInput.checked ? "开启" : "关闭"}。`,
-          en: `Water appearance shown: dynamic sky environment ${environmentInput.checked ? "on" : "off"}; normal-distorted scene reflection ${reflectionInput.checked ? "on" : "off"}.`,
+          zh: `水域外观已显示：动态天空环境${environmentInput.checked ? "开启" : "关闭"}。`,
+          en: `Water appearance shown: dynamic sky environment ${environmentInput.checked ? "on" : "off"}.`,
         })
         : t({
           zh: "水域外观已隐藏；瓦片、Worker 与 Mask 缓存保持运行。",
@@ -223,12 +200,6 @@ async function main() {
         enabled: environmentInput.checked,
         intensity: environmentIntensityInput.valueAsNumber,
       },
-      reflection: {
-        enabled: reflectionInput.checked,
-        intensity: reflectionIntensityInput.valueAsNumber,
-        resolutionScale: opticsState.reflection.resolutionScale,
-        debugView: reflectionDebugInput.checked,
-      },
     })
 
   const applyOpticsControls = (): void => {
@@ -240,9 +211,6 @@ async function main() {
   const setOpticsControlsDisabled = (disabled: boolean): void => {
     environmentInput.disabled = disabled
     environmentIntensityInput.disabled = disabled
-    reflectionInput.disabled = disabled
-    reflectionIntensityInput.disabled = disabled
-    reflectionDebugInput.disabled = disabled
   }
 
   const reloadWaterArea = async (): Promise<void> => {
@@ -303,10 +271,7 @@ async function main() {
     input.addEventListener("input", applyAppearanceControls)
   }
   environmentInput.addEventListener("change", applyOpticsControls)
-  reflectionInput.addEventListener("change", applyOpticsControls)
-  reflectionDebugInput.addEventListener("change", applyOpticsControls)
   environmentIntensityInput.addEventListener("input", applyOpticsControls)
-  reflectionIntensityInput.addEventListener("input", applyOpticsControls)
   tokenInput.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") return
     event.preventDefault()
