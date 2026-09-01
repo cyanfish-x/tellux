@@ -1,11 +1,70 @@
 import { resolve } from "node:path"
-import { defineConfig, loadEnv } from "vite"
+import { defineConfig, loadEnv, type ProxyOptions } from "vite"
 import {
   assertBundleSizeBudgets,
   selectChunksContainingModules,
   selectFilesMatching,
   selectInitialEntryGraph,
 } from "../src/build/bundleSizeBudget"
+import {
+  TIANDITU_DEV_TILE_PROXY_PREFIX,
+  TIANDITU_SUBDOMAINS,
+} from "./tiandituDevProxy"
+
+function resolveTiandituDevReferer(raw: string): { origin: string; referer: string } {
+  try {
+    const parsed = new URL(raw)
+    return {
+      origin: parsed.origin,
+      referer: `${parsed.origin}/`,
+    }
+  } catch {
+    return {
+      origin: "https://tellux.cyanfish.site",
+      referer: "https://tellux.cyanfish.site/",
+    }
+  }
+}
+
+/**
+ * 天地图浏览器端 key 校验 Referer。本地页面来源是 localhost，会被域名白名单
+ * 拒绝；开发代理把请求转到 t{n}.tianditu.gov.cn，并改写成已备案域名。
+ */
+function createTiandituDevProxy(refererOrigin: string): Record<string, ProxyOptions> {
+  const { origin, referer } = resolveTiandituDevReferer(refererOrigin)
+  const attachReferer: NonNullable<ProxyOptions["configure"]> = (proxy) => {
+    proxy.on("proxyReq", (proxyReq) => {
+      proxyReq.setHeader("Referer", referer)
+      proxyReq.setHeader("Origin", origin)
+    })
+  }
+
+  const tileProxies = Object.fromEntries(
+    TIANDITU_SUBDOMAINS.map((subdomain) => [
+      `${TIANDITU_DEV_TILE_PROXY_PREFIX}/${subdomain}`,
+      {
+        target: `https://t${subdomain}.tianditu.gov.cn`,
+        changeOrigin: true,
+        rewrite: (path: string) =>
+          path.replace(
+            new RegExp(`^${TIANDITU_DEV_TILE_PROXY_PREFIX}/${subdomain}`),
+            ""
+          ),
+        configure: attachReferer,
+      } satisfies ProxyOptions,
+    ])
+  )
+
+  return {
+    "/tianditu-administrative": {
+      target: "https://api.tianditu.gov.cn",
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/tianditu-administrative/, ""),
+      configure: attachReferer,
+    },
+    ...tileProxies,
+  }
+}
 
 const projectRoot = resolve(__dirname, "..")
 const KiB = 1024
@@ -43,6 +102,19 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, projectRoot, "")
   const geoserverProxyTarget =
     env.TELLUX_EXAMPLE_GEOSERVER_PROXY_TARGET ?? "http://localhost:8080"
+  const exampleProxy: Record<string, ProxyOptions> = {
+    "/geoserver": {
+      target: geoserverProxyTarget,
+      changeOrigin: true,
+    },
+    "/3dtiles": {
+      target: "https://data.cyanfish.site",
+      changeOrigin: true,
+    },
+    ...createTiandituDevProxy(
+      env.TELLUX_TIANDITU_DEV_REFERER ?? "https://tellux.cyanfish.site/"
+    ),
+  }
 
   return {
     root: __dirname,
@@ -129,21 +201,10 @@ export default defineConfig(({ mode }) => {
       fs: {
         allow: [projectRoot, resolve(projectRoot, "../leva-vanilla")],
       },
-      proxy: {
-        "/geoserver": {
-          target: geoserverProxyTarget,
-          changeOrigin: true,
-        },
-        "/3dtiles": {
-          target: "https://data.cyanfish.site",
-          changeOrigin: true,
-        },
-        "/tianditu-administrative": {
-          target: "https://api.tianditu.gov.cn",
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/tianditu-administrative/, ""),
-        },
-      },
+      proxy: exampleProxy,
+    },
+    preview: {
+      proxy: exampleProxy,
     },
     build: {
       // 已由上方按入口 / 专用能力划分的预算替代 Vite 通用 500 kB warning。

@@ -51,8 +51,7 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 - 绑定锚点平滑滚动和顶部导航滚动状态。
 - 调用 `mountFeaturedStrip()` 挂载首页社区案例精选条（空数据隐藏，语言切换重渲染）。
 - 在 `#portal-globe-viewer` 中创建 `tellux.Viewer`。
-- 使用天地图卫星影像 XYZ 瓦片（`examples/shared.ts` 中的 `tiandituImageryXYZUrl`）作为默认影像底图。
-- 如果配置了 `VITE_CESIUM_TERRAIN_URL`，则加载 Cesium quantized-mesh 地形。
+- 使用 `examples/map-sources.config.ts` 配置示例 GIS 数据源，`examples/map-sources.ts` 据此生成 `exampleMapServiceConfig`。生产环境固定 `tianditu`；本地默认 `local`（ArcGIS 卫星影像 + Cesium Ion 地形），避免消耗天地图额度。改 `localMapSourceProfile` 可切换。走天地图时，`pnpm dev` 经 Vite 代理 `/tianditu-t/{n}` 转发到 `t{n}.tianditu.gov.cn`，并把 Referer 改写成 `TELLUX_TIANDITU_DEV_REFERER`（默认 `https://tellux.cyanfish.site/`）。密钥仍只放 `.env`。
 - 开启云、大气、镜头光晕、SMAA 和曝光设置，让首页直接展示 Tellux 的渲染能力。
 
 主页中的 viewer 会挂到 `window.viewer` 和 `window.portalViewer`，便于开发调试。页面卸载时调用 `viewer.destroy()` 释放资源。

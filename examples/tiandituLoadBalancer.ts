@@ -16,8 +16,51 @@
  * re-fetched under different URLs, burning quota faster.
  */
 
-/** 天地图 swdx / DataServer 子域名编号。Tianditu subdomain ids. */
-export const TIANDITU_SUBDOMAINS = ["0", "1", "2", "3", "4", "5", "6", "7"] as const
+import {
+  TIANDITU_DEV_TILE_PROXY_PREFIX,
+  TIANDITU_SUBDOMAINS,
+} from "./tiandituDevProxy"
+
+const TIANDITU_HOST_PATTERN = /^t(\d+)\.tianditu\.gov\.cn$/i
+
+export function isLocalDevHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  )
+}
+
+/**
+ * 本地开发或 preview 时走 Vite 代理，避免浏览器端 key 的域名白名单拦截
+ * localhost Referer。Node 测试没有 `location`，保持直连 URL。
+ *
+ * Use the Vite proxy during local dev or preview so browser-side keys are
+ * not rejected for a localhost Referer. Node tests have no `location` and
+ * keep the direct Tianditu URLs.
+ */
+export function shouldUseTiandituDevProxy(): boolean {
+  if (typeof location === "undefined") return false
+  return import.meta.env.DEV || isLocalDevHost(location.hostname)
+}
+
+/**
+ * 把 `https://t{n}.tianditu.gov.cn/path?query` 改写成同源代理路径。
+ *
+ * Rewrites `https://t{n}.tianditu.gov.cn/path?query` to a same-origin proxy
+ * path.
+ */
+export function rewriteTiandituUrlToDevProxy(url: string): string {
+  const parsed = new URL(url, "http://localhost")
+  const match = parsed.hostname.match(TIANDITU_HOST_PATTERN)
+  if (!match) return url
+  return `${TIANDITU_DEV_TILE_PROXY_PREFIX}/${match[1]}${parsed.pathname}${parsed.search}`
+}
+
+export function applyTiandituDevProxy(url: string): string {
+  return shouldUseTiandituDevProxy() ? rewriteTiandituUrlToDevProxy(url) : url
+}
 
 /**
  * 分片哈希常量。8 子域与 5 token 互质，分布天然错位均匀。
@@ -94,10 +137,13 @@ function replaceTiandituSubdomain(host: string, subdomain: string): string {
  *
  * `preprocessURL` 收到的是库已替换完 `{x}{y}{z}` 的完整 URL，天地图
  * DataServer 用 `l` 表示层级，这里从 query 解析 `x`/`y`/`l` 再算分片。
+ * 本地开发会再改写到 Vite 代理，由服务端带上白名单 Referer。
  *
  * The `preprocessURL` callback receives the full URL after `{x}{y}{z}`
  * substitution. Tianditu DataServer uses `l` for the level, so we parse
- * `x`/`y`/`l` from the query and compute the shard from those.
+ * `x`/`y`/`l` from the query and compute the shard from those. Local
+ * development then rewrites to the Vite proxy, which sends a whitelisted
+ * Referer.
  */
 export function createTiandituXYZImagerySource(tokens: string[]) {
   const tokenCount = tokens.length
@@ -122,7 +168,7 @@ export function createTiandituXYZImagerySource(tokens: string[]) {
         }
       }
 
-      return parsed.toString()
+      return applyTiandituDevProxy(parsed.toString())
     }
   }
 }
@@ -131,12 +177,13 @@ export function createTiandituXYZImagerySource(tokens: string[]) {
  * 创建天地图 WMTS 瓦片 URL 预处理函数，按瓦片坐标确定性轮换子域和 token。
  *
  * WMTS 请求用 `TileCol`/`TileRow`/`TileMatrix` 参数标识瓦片，这里从 query
- * 解析后算分片。dev 下走本地代理绕防盗链，prod 直连。
+ * 解析后算分片。本地开发走 Vite 代理并改写 Referer，生产环境直连。
  *
  * Creates a Tianditu WMTS tile URL preprocessor that deterministically rotates
  * subdomain and token per tile. WMTS requests identify tiles via
  * `TileCol`/`TileRow`/`TileMatrix`, which are parsed from the query to compute
- * the shard. Routes through the local proxy in dev, connects directly in prod.
+ * the shard. Local development routes through the Vite proxy with a rewritten
+ * Referer; production connects directly.
  */
 export function createTiandituWmtsPreprocessURLSource(tokens: string[]) {
   const tokenCount = tokens.length
@@ -156,6 +203,16 @@ export function createTiandituWmtsPreprocessURLSource(tokens: string[]) {
       }
     }
 
-    return parsed.toString()
+    return applyTiandituDevProxy(parsed.toString())
   }
+}
+
+export function buildTiandituTerrainServiceUrls(token: string): string[] {
+  return TIANDITU_SUBDOMAINS.map((subdomain) =>
+    applyTiandituDevProxy(
+      `https://t${subdomain}.tianditu.gov.cn/mapservice/swdx?T=elv_c${
+        token ? `&tk=${token}` : ""
+      }`
+    )
+  )
 }

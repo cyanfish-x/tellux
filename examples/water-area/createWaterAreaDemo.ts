@@ -18,9 +18,9 @@ import {
   resolveWaterAreaWaveOrigin
 } from './WaterAreaWaveFrame'
 import { disposeWaterAreaWorkerPool } from './worker/pool'
+import { CESIUM_ION_WORLD_TERRAIN_ASSET_ID } from '../map-sources.config'
 
-export const WATER_AREA_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? '1'
+export const WATER_AREA_ION_TERRAIN_ASSET_ID = CESIUM_ION_WORLD_TERRAIN_ASSET_ID
 export const WATER_AREA_ION_IMAGERY_ASSET_ID =
   import.meta.env.VITE_CESIUM_ION_IMAGERY_ASSET_ID ?? '2'
 export const WATER_AREA_IMAGERY_LAYER_ID = 'water-area-ion-imagery'

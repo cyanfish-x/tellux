@@ -6,6 +6,7 @@ import {
   exampleMapServiceConfig,
   tiandituTerrainServiceTemplate,
 } from "./shared"
+import { CESIUM_ION_WORLD_TERRAIN_ASSET_ID } from "./map-sources.config"
 import { bootExampleI18n, t } from "./i18n"
 import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 
@@ -13,8 +14,7 @@ bootExampleI18n()
 
 type TerrainSource = "tianditu" | "cesium-ion"
 
-const DEFAULT_ION_TERRAIN_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? "1"
+const DEFAULT_ION_TERRAIN_ASSET_ID = String(CESIUM_ION_WORLD_TERRAIN_ASSET_ID)
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
 const container = document.querySelector("#viewer")
