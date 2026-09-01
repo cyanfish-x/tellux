@@ -55,7 +55,6 @@ export type HismDemoPresetTemplate = {
 export function createHismDemoViewerOptions(options?: { includeTerrain?: boolean }) {
   const includeTerrain = options?.includeTerrain !== false
   return {
-    dracoDecoderPath: "/draco/",
     terrain: includeTerrain ? exampleMapServiceConfig.createTerrainOptions() : undefined,
     layers: [
       {

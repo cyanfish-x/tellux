@@ -11,17 +11,23 @@ import {
   defaultTiandituToken,
   defaultTiandituTokens,
   showTokenNotice,
+  getTokenNoticeMessage,
   exampleMapServiceConfig,
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
 import { setupExamplePanels } from "../example-panel"
+import { createTelluxPanel } from "../example-panel-leva"
+import { ExampleMessage, showExampleMessage } from "../example-message"
+import { setupSymbolPanel } from "../setupSymbolPanel"
 import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
 import type { BootExampleI18nOptions } from "../i18n"
 import {
   HISM_RUNTIME_BINDING_NAMES,
+  WATER_AREA_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
 } from "./runtime-bindings"
 import exampleStyles from "../styles.css?raw"
+import levaStyles from "../../../leva-vanilla/src/styles/index.css?inline"
 import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
 const STORAGE_PREFIX = "tellux:sandcastle-run:"
@@ -85,8 +91,15 @@ function loadPayload() {
   return rawPayload ? (JSON.parse(rawPayload) as SandcastleRunPayload) : null
 }
 
+function injectExampleStyles(document: Document) {
+  const style = document.createElement("style")
+  style.textContent = `${levaStyles}\n${exampleStyles}`
+  return style
+}
+
 function prepareHtml(html: string) {
   const document = new DOMParser().parseFromString(html, "text/html")
+  let injectedStyles = false
   document
     .querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet"][href]')
     .forEach((link) => {
@@ -95,10 +108,12 @@ function prepareHtml(html: string) {
         return
       }
 
-      const style = document.createElement("style")
-      style.textContent = exampleStyles
-      link.replaceWith(style)
+      link.replaceWith(injectExampleStyles(document))
+      injectedStyles = true
     })
+  if (!injectedStyles) {
+    document.head.append(injectExampleStyles(document))
+  }
   if (!document.querySelector("base")) {
     const base = document.createElement("base")
     base.href = "../"
@@ -159,9 +174,14 @@ async function executeExampleScript(source: string) {
     "defaultTiandituToken",
     "defaultTiandituTokens",
     "showTokenNotice",
+    "getTokenNoticeMessage",
     "mountLocationReadout",
     "formatHeight",
     "setupExamplePanels",
+    "createTelluxPanel",
+    "setupSymbolPanel",
+    "showExampleMessage",
+    "ExampleMessage",
     "createWindSwayLeavesMaterial",
     "exampleMapServiceConfig",
     "HISM_DEMO_CENTER",
@@ -174,6 +194,7 @@ async function executeExampleScript(source: string) {
     "createHismDemoViewerOptions",
     "generateFastPlacements",
     "generatePoissonPlacements",
+    ...WATER_AREA_RUNTIME_BINDING_NAMES,
     "t",
     "bootExampleI18n",
     "__sandcastleImportMeta",
@@ -194,13 +215,21 @@ async function executeExampleScript(source: string) {
     defaultTiandituToken,
     defaultTiandituTokens,
     showTokenNotice,
+    getTokenNoticeMessage,
     mountLocationReadout,
     formatHeight,
     setupExamplePanels,
+    createTelluxPanel,
+    setupSymbolPanel,
+    showExampleMessage,
+    ExampleMessage,
     createWindSwayLeavesMaterial,
     exampleMapServiceConfig,
     ...HISM_RUNTIME_BINDING_NAMES.map(
       (name) => optionalBindings.hism[name]
+    ),
+    ...WATER_AREA_RUNTIME_BINDING_NAMES.map(
+      (name) => optionalBindings.waterArea[name]
     ),
     t,
     bootExampleI18nInRunner,
@@ -210,17 +239,21 @@ async function executeExampleScript(source: string) {
 
 async function loadOptionalRuntimeBindings(source: string) {
   const required = detectOptionalRuntimeBindings(source)
-  const [gaussianSplatModule, treeModule, hismModule] = await Promise.all([
-    required.gaussianSplat
-      ? import("3d-tiles-rendererjs-3dgs-plugin")
-      : null,
-    required.tree
-      ? import("@dgreenheck/ez-tree")
-      : null,
-    required.hism
-      ? import("../hism/shared")
-      : null,
-  ])
+  const [gaussianSplatModule, treeModule, hismModule, waterAreaModule] =
+    await Promise.all([
+      required.gaussianSplat
+        ? import("3d-tiles-rendererjs-3dgs-plugin")
+        : null,
+      required.tree
+        ? import("@dgreenheck/ez-tree")
+        : null,
+      required.hism
+        ? import("../hism/shared")
+        : null,
+      required.waterArea
+        ? import("../water-area/sandcastleBindings")
+        : null,
+    ])
 
   return {
     GaussianSplatPlugin: gaussianSplatModule?.GaussianSplatPlugin,
@@ -228,6 +261,12 @@ async function loadOptionalRuntimeBindings(source: string) {
     hism: (hismModule ?? {}) as Record<
       (typeof HISM_RUNTIME_BINDING_NAMES)[number],
       unknown
+    >,
+    waterArea: (waterAreaModule ?? {}) as Partial<
+      Pick<
+        typeof import("../water-area/sandcastleBindings"),
+        (typeof WATER_AREA_RUNTIME_BINDING_NAMES)[number]
+      >
     >,
   }
 }

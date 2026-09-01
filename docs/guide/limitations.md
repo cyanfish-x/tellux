@@ -15,13 +15,14 @@ WebGPU 是实验能力，以下能力在 WebGPU 模式下**不渲染或不支持
 | 能力 | WebGPU 模式下的状态 |
 | --- | --- |
 | 体积云 | 不渲染（应设 `clouds.show: false`） |
-| 星空 | 不渲染 |
-| 后处理（SMAA / 镜头光晕 / 抖动） | 不渲染，调整开关无视觉效果 |
+| 星空 | 支持 `sky.stars.show`、`intensity` 与 `pointSize` |
+| 后处理 | LensFlare 与 TAA 支持；SMAA / 抖动不渲染，调整开关无视觉效果 |
 | 瓦片 LOD 淡入淡出 | 不可用，瓦片为直接切换（pop） |
 | 大气散射调试参数 | 部分参数不映射，`light-source` 光照模式支持更完整 |
 
 - WebGPU 模式**不会在不支持的环境上自动回退 WebGL**：不支持时 `renderer.init()` 会 reject，`Viewer.create(...)` 抛错。应用层需自行检测，或设置 `renderer.forceWebGL: true` 走 WebGL2 fallback backend。
 - WebGPU renderer 需异步初始化，推荐用 `Viewer.create(...)`；用 `new Viewer(...)` 时先 `await viewer.ready`。
+- WebGPU TAA 默认关闭。启用 `scene.postProcess.taa` 后会申请高精度 velocity MRT，并为历史颜色维护两张随 drawing buffer 尺寸变化的纹理；动态材质与 `InstancedMesh` 的运动矢量需按项目场景做视觉回归。
 
 ## 数据与图层
 

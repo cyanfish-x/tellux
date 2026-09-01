@@ -11,10 +11,21 @@ export const HISM_RUNTIME_BINDING_NAMES = [
   'generatePoissonPlacements'
 ] as const
 
+export const WATER_AREA_RUNTIME_BINDING_NAMES = [
+  'createWaterAreaDemo',
+  'setupWaterAreaPanel',
+  'DEFAULT_WATER_AREA_APPEARANCE',
+  'normalizeWaterAreaAppearance',
+  'DEFAULT_WATER_AREA_OPTICS',
+  'normalizeWaterAreaOptics',
+  'DEFAULT_WATER_AREA_WAVE_ORIGIN'
+] as const
+
 export interface OptionalRuntimeBindings {
   gaussianSplat: boolean
   hism: boolean
   tree: boolean
+  waterArea: boolean
 }
 
 export function detectOptionalRuntimeBindings(
@@ -23,7 +34,10 @@ export function detectOptionalRuntimeBindings(
   return {
     gaussianSplat: hasIdentifier(source, 'GaussianSplatPlugin'),
     hism: HISM_RUNTIME_BINDING_NAMES.some((name) => hasIdentifier(source, name)),
-    tree: hasIdentifier(source, 'Tree')
+    tree: hasIdentifier(source, 'Tree'),
+    waterArea: WATER_AREA_RUNTIME_BINDING_NAMES.some((name) =>
+      hasIdentifier(source, name)
+    )
   }
 }
 

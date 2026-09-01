@@ -6,35 +6,28 @@ import type {
   ViewerMouseMoveEvent,
 } from "../src"
 import { bootExampleI18n, t } from "./i18n"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
-import { setupExamplePanels } from "./example-panel"
 
 bootExampleI18n()
-setupExamplePanels()
-
-const container = document.querySelector("#viewer")
-const assetIdInput = document.querySelector<HTMLInputElement>("#ion-asset-id")
-const tokenInput = document.querySelector<HTMLInputElement>("#ion-token")
-const loadButton = document.querySelector<HTMLButtonElement>("#load-tileset")
-const clearButton = document.querySelector<HTMLButtonElement>("#clear-selection")
-const statusElement = document.querySelector<HTMLElement>("#pick-status")
-const hoverElement = document.querySelector<HTMLElement>("#feature-hover")
-const popupElement = document.querySelector<HTMLElement>("#feature-popup")
 
 const DEFAULT_ASSET_ID = "75343"
 const DEFAULT_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
+
+const container = document.querySelector("#viewer")
+const hoverElement = document.querySelector<HTMLElement>("#feature-hover")
+const popupElement = document.querySelector<HTMLElement>("#feature-popup")
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (!assetIdInput || !tokenInput || !loadButton || !clearButton || !hoverElement || !popupElement) {
-  throw new Error("3D Tiles picking controls not found.")
+if (!hoverElement || !popupElement) {
+  throw new Error("3D Tiles picking overlays not found.")
 }
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -72,22 +65,18 @@ const viewer = new tellux.Viewer(container, {
 ;(window as any).viewer = viewer
 viewer.clock.hourUTC = 16
 
-assetIdInput.value = DEFAULT_ASSET_ID
-tokenInput.value = ""
-tokenInput.placeholder = DEFAULT_TOKEN
-  ? t({ zh: "留空使用默认 token", en: "Leave empty to use default token" })
-  : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
-
+let panel: TelluxPanel | undefined
 let activeLayer: TilesetLayer | null = null
 let selectedKey: string | null = null
 let hoverKey: string | null = null
+
 const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
   position: "left-bottom",
 })
 
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
 function getFeatureKey(feature: Picked3DTilesFeature) {
@@ -114,11 +103,17 @@ function clearActiveLayer() {
 }
 
 function loadTileset() {
-  const assetId = assetIdInput.value.trim()
-  const apiToken = tokenInput.value.trim() || DEFAULT_TOKEN
+  if (!panel) return
+  const assetId = panel.controls.load.assetId.trim()
+  const apiToken = panel.controls.load.token.trim() || DEFAULT_TOKEN
 
   if (!assetId || !apiToken) {
-    setStatus(t({ zh: "请先输入 Cesium Ion asset id 和 token，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。", en: "Enter asset id and token, or set VITE_CESIUM_ION_TOKEN." }))
+    setStatus(
+      t({
+        zh: "请先输入 Cesium Ion asset id 和 token，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。",
+        en: "Enter asset id and token, or set VITE_CESIUM_ION_TOKEN.",
+      })
+    )
     return
   }
 
@@ -129,7 +124,12 @@ function loadTileset() {
     assetId,
     apiToken,
   })
-  setStatus(t({ zh: "3D Tiles 已加入场景。等待瓦片加载后移动鼠标拾取 feature。", en: "3D Tiles added. After tiles load, move the mouse to pick features." }))
+  setStatus(
+    t({
+      zh: "3D Tiles 已加入场景。等待瓦片加载后移动鼠标拾取 feature。",
+      en: "3D Tiles added. After tiles load, move the mouse to pick features.",
+    })
+  )
 }
 
 function handleMouseMove(event: ViewerMouseMoveEvent) {
@@ -181,10 +181,16 @@ function renderFeaturePopup(feature: Picked3DTilesFeature) {
   popupElement.appendChild(title)
 
   const meta = document.createElement("p")
-  meta.textContent = t({ zh: "图层 {layerId} · feature {featureId}", en: "Layer {layerId} · feature {featureId}" }, {
-    layerId: feature.layerId,
-    featureId: feature.featureId ?? "-",
-  })
+  meta.textContent = t(
+    {
+      zh: "图层 {layerId} · feature {featureId}",
+      en: "Layer {layerId} · feature {featureId}",
+    },
+    {
+      layerId: feature.layerId,
+      featureId: feature.featureId ?? "-",
+    }
+  )
   popupElement.appendChild(meta)
 
   const rows = [
@@ -192,12 +198,15 @@ function renderFeaturePopup(feature: Picked3DTilesFeature) {
     ["Longitude", feature.cartographic.longitude],
     ["Latitude", feature.cartographic.latitude],
     ["Height", feature.cartographic.height],
-  ].slice(0, 18)
+  ].slice(0,  18)
 
   if (rows.length === 0) {
     const empty = document.createElement("p")
     empty.className = "feature-empty"
-    empty.textContent = t({ zh: "当前命中对象没有可读取的 feature 属性。", en: "No readable feature properties on this hit." })
+    empty.textContent = t({
+      zh: "当前命中对象没有可读取的 feature 属性。",
+      en: "No readable feature properties on this hit.",
+    })
     popupElement.appendChild(empty)
   } else {
     const table = document.createElement("table")
@@ -228,7 +237,9 @@ function getFeatureTitle(feature: Picked3DTilesFeature) {
     }
   }
 
-  return feature.featureId === null ? "Picked 3D Tiles object" : `Feature ${feature.featureId}`
+  return feature.featureId === null
+    ? "Picked 3D Tiles object"
+    : `Feature ${feature.featureId}`
 }
 
 function formatValue(value: unknown) {
@@ -258,18 +269,69 @@ function positionFloatingElement(element: HTMLElement, x: number, y: number) {
   element.style.top = `${Math.min(Math.max(y, margin), maxY)}px`
 }
 
-loadButton.addEventListener("click", loadTileset)
-clearButton.addEventListener("click", () => {
-  clearHover()
-  clearSelection()
+function getInitialStatus() {
+  return DEFAULT_TOKEN
+    ? t({
+        zh: "3D Tiles 已加入场景。等待瓦片加载后移动鼠标拾取 feature。",
+        en: "3D Tiles added. After tiles load, move the mouse to pick features.",
+      })
+    : t({
+        zh: "输入 Cesium Ion token 后点击加载；默认 asset id 对应 Cesium NYC buildings 示例。",
+        en: "Enter token then Load; default asset id is Cesium NYC buildings.",
+      })
+}
+
+const pickingSchema = () =>
+  ({
+    load: {
+      $: { label: t({ zh: "加载", en: "Load" }) },
+      hint: {
+        type: "hint" as const,
+        value: t({
+          zh: "移动鼠标高亮 feature，点击后锁定选择并展示属性。",
+          en: "Hover to highlight features; click to lock selection and show properties.",
+        }),
+      },
+      assetId: {
+        value: DEFAULT_ASSET_ID,
+        label: t({ zh: "Cesium Ion asset id", en: "Cesium Ion asset id" }),
+      },
+      token: {
+        value: "",
+        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
+      },
+      loadTileset: {
+        onClick: () => loadTileset(),
+        label: t({ zh: "加载", en: "Load" }),
+      },
+      clearSelection: {
+        onClick: () => {
+          clearHover()
+          clearSelection()
+        },
+        label: t({ zh: "清除选择", en: "Clear selection" }),
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: getInitialStatus(),
+      },
+    },
+  }) as const
+
+panel = createTelluxPanel(pickingSchema, {
+  id: "3d-tiles-picking-panel",
+  title: () => t({ zh: "拾取与高亮", en: "Pick & highlight" }),
+  statusPath: "status.message",
 })
+
 viewer.on("mousemove", handleMouseMove)
 viewer.on("click", handleClick)
 
 if (DEFAULT_TOKEN) {
   loadTileset()
-} else {
-  setStatus(t({ zh: "输入 Cesium Ion token 后点击加载；默认 asset id 对应 Cesium NYC buildings 示例。", en: "Enter token then Load; default asset id is Cesium NYC buildings." }))
 }
 
 window.addEventListener("beforeunload", () => {
@@ -277,5 +339,6 @@ window.addEventListener("beforeunload", () => {
   viewer.off("click", handleClick)
   clearActiveLayer()
   locationReadout.destroy()
+  panel?.dispose()
   viewer.destroy()
 })

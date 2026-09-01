@@ -64,6 +64,7 @@ export function mountDebugSettingsPanel(
     cloudToggle,
     lensFlareToggle,
     smaaToggle,
+    taaToggle,
     ditheringToggle,
     fpsToggle,
     coverageControl,
@@ -259,6 +260,7 @@ export function mountDebugSettingsPanel(
     viewer.scene.postProcess.lensFlare.enabled =
       lensFlareToggle.input.checked
     viewer.scene.postProcess.smaa.enabled = smaaToggle.input.checked
+    viewer.scene.postProcess.taa.enabled = taaToggle.input.checked
     viewer.scene.postProcess.dithering.enabled =
       ditheringToggle.input.checked
     fpsHud.setVisible(fpsToggle.input.checked)
@@ -315,6 +317,7 @@ export function mountDebugSettingsPanel(
       resolutionScale: Number(resolutionControl.input.value),
       lensFlare: lensFlareToggle.input.checked,
       smaa: smaaToggle.input.checked,
+      taa: taaToggle.input.checked,
       dithering: ditheringToggle.input.checked,
       showFps: fpsToggle.input.checked,
     })

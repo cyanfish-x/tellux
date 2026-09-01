@@ -81,6 +81,7 @@ function sanitizeStoredDebugSettings(
   copyNumberSetting(value, settings, "resolutionScale")
   copyBooleanSetting(value, settings, "lensFlare")
   copyBooleanSetting(value, settings, "smaa")
+  copyBooleanSetting(value, settings, "taa")
   copyBooleanSetting(value, settings, "dithering")
   copyBooleanSetting(value, settings, "showFps")
 

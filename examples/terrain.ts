@@ -65,7 +65,6 @@ const ionTerrainTokenField = ionTerrainTokenInput
 const terrainEnabledControl = terrainEnabledInput
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   layers: [
     {
       source: createTiandituXYZImagery(),

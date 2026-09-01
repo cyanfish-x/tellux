@@ -169,15 +169,17 @@ export const exampleMapServiceConfig = createExampleMapServiceConfig({
   cesiumIonTerrainToken: defaultCesiumIonTerrainToken,
   tiandituTokens: defaultTiandituTokens,
 })
-export function showTokenNotice(element: HTMLElement | null) {
-  if (!element) return
-
+export function getTokenNoticeMessage() {
   if (import.meta.env.DEV) {
-    element.textContent = t({ zh: "当前示例使用 ArcGIS World Imagery XYZ 瓦片。", en: "This example uses ArcGIS World Imagery XYZ tiles." })
-    return
+    return t({ zh: "当前示例使用 ArcGIS World Imagery XYZ 瓦片。", en: "This example uses ArcGIS World Imagery XYZ tiles." })
   }
 
-  element.textContent = defaultTiandituToken
+  return defaultTiandituToken
     ? t({ zh: "当前示例使用天地图卫星影像 XYZ 瓦片。", en: "This example uses Tianditu satellite imagery XYZ tiles." })
     : t({ zh: "当前示例使用天地图卫星影像 XYZ 瓦片，请配置 VITE_TIANDITU_TOKEN。", en: "This example uses Tianditu satellite imagery XYZ tiles; please set VITE_TIANDITU_TOKEN." })
+}
+
+export function showTokenNotice(element: HTMLElement | null) {
+  if (!element) return
+  element.textContent = getTokenNoticeMessage()
 }

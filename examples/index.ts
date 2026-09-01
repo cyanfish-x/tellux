@@ -76,7 +76,6 @@ if (globeContainer instanceof HTMLElement) {
   }
 
   const viewer = new tellux.Viewer(globeContainer, {
-    dracoDecoderPath: "/draco/",
     terrain: exampleMapServiceConfig.createTerrainOptions(),
     layers: [
       {

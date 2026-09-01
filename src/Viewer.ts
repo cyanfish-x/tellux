@@ -30,6 +30,9 @@ import {
 import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { WebGPUAtmosphereManager } from './rendering/WebGPUAtmosphereManager'
+import { WebGPULensFlareManager } from './rendering/WebGPULensFlareManager'
+import { WebGPUPostProcessingManager } from './rendering/WebGPUPostProcessingManager'
+import { WebGPUTemporalAntialiasManager } from './rendering/WebGPUTemporalAntialiasManager'
 import { CartographicPicker } from './sampling/CartographicPicker'
 import { EntityPicker } from './sampling/EntityPicker'
 import { HeightSampler } from './sampling/HeightSampler'
@@ -404,6 +407,9 @@ export class Viewer {
   private readonly viewport: ViewportResizeManager
   private readonly atmosphere: ViewerAtmosphereManager | null
   private readonly postProcessing: PostProcessingManager | null
+  private readonly webgpuPostProcessing: WebGPUPostProcessingManager | null
+  private readonly webgpuLensFlare: WebGPULensFlareManager | null
+  private readonly webgpuTemporalAntialias: WebGPUTemporalAntialiasManager | null
   private readonly tilesets: TilesetManager
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
@@ -482,12 +488,16 @@ export class Viewer {
       constructionScope.defer(() => this.transparentOverlayTexture.dispose())
 
       let highlightManager: HighlightManager | null = null
+      let webgpuLensFlare: WebGPULensFlareManager | null = null
+      let webgpuTemporalAntialias: WebGPUTemporalAntialiasManager | null = null
       this.scene = new Scene(
         sceneOptions,
         (state) => atmosphere?.applyAtmosphereState(state),
         (state) => atmosphere?.applyCloudsState(state),
         () => {
           postProcessing?.applyEffects()
+          webgpuLensFlare?.sync(this.scene.postProcess.lensFlare)
+          webgpuTemporalAntialias?.setEnabled(this.scene.postProcess.taa.enabled)
           if (atmosphere instanceof WebGPUAtmosphereManager) {
             atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
           }
@@ -500,11 +510,32 @@ export class Viewer {
           postProcessing?.applyEffects()
         }
       )
+      this.webgpuPostProcessing = this.rendererType === 'webgpu'
+        ? new WebGPUPostProcessingManager(
+            this.rendererAdapter,
+            this.renderer as TelluxWebGPURenderer,
+            this.scene.threeScene,
+            this.threeCamera
+          )
+        : null
+      constructionScope.defer(() => this.webgpuPostProcessing?.dispose())
+      this.webgpuLensFlare = this.webgpuPostProcessing
+        ? new WebGPULensFlareManager(this.webgpuPostProcessing)
+        : null
+      constructionScope.defer(() => this.webgpuLensFlare?.dispose())
+      webgpuLensFlare = this.webgpuLensFlare
+      this.webgpuTemporalAntialias = this.webgpuPostProcessing
+        ? new WebGPUTemporalAntialiasManager(this.webgpuPostProcessing, this.threeCamera)
+        : null
+      constructionScope.defer(() => this.webgpuTemporalAntialias?.dispose())
+      webgpuTemporalAntialias = this.webgpuTemporalAntialias
       this.atmosphere = this.createAtmosphereManager(() => postProcessing?.applyEffects())
       constructionScope.defer(() => this.atmosphere?.dispose())
       atmosphere = this.atmosphere
       this.atmosphere?.addLightSourcesTo(this.scene.threeScene)
       this.scene.syncRuntimeEffects()
+      this.webgpuLensFlare?.sync(this.scene.postProcess.lensFlare)
+      this.webgpuTemporalAntialias?.setEnabled(this.scene.postProcess.taa.enabled)
       this.clock = new Clock(() => this.atmosphere?.updateSunDirection(this.clock.currentTime))
 
       this.dracoLoader = new DRACOLoader()
@@ -573,7 +604,8 @@ export class Viewer {
         container: this.container,
         camera: this.threeCamera,
         renderer: this.rendererAdapter,
-        tilesets: this.tilesets
+        tilesets: this.tilesets,
+        onResize: (width, height) => this.webgpuPostProcessing?.setSize(width, height)
       })
       constructionScope.defer(() => this.viewport.dispose())
       this.camera.setView(cameraOptions)
@@ -1125,7 +1157,10 @@ export class Viewer {
     this.targetFlights.dispose()
 
     this.postProcessing?.dispose()
+    this.webgpuTemporalAntialias?.dispose()
+    this.webgpuLensFlare?.dispose()
     this.atmosphere?.dispose()
+    this.webgpuPostProcessing?.dispose()
     this.transparentOverlayTexture.dispose()
     this.tilesets.dispose()
     this.controls.dispose()
@@ -1285,8 +1320,11 @@ export class Viewer {
     }
 
     if (this.rendererType === 'webgpu') {
+      if (!this.webgpuPostProcessing) {
+        throw new Error('WebGPU post-processing graph must be created before the atmosphere manager.')
+      }
       return new WebGPUAtmosphereManager(
-        this.rendererAdapter,
+        this.webgpuPostProcessing,
         this.renderer as TelluxWebGPURenderer,
         this.scene.threeScene,
         this.threeCamera

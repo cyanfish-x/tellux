@@ -96,9 +96,9 @@ Cesium Ion 是可选的数据服务；Tellux 的地形、影像和 3D Tiles API 
 - 在 WGS84 地球上使用经纬高、heading、pitch、roll 控制相机，并支持飞行定位、拾取和高度采样。
 - 加载 Cesium quantized-mesh 地形、XYZ、WMS、WMTS、Cesium Ion 影像，以及 GeoJSON、MVT 贴地矢量 overlay。
 - 加载 URL 或 Cesium Ion 3D Tiles，并处理 glTF / GLB 模型、动画和贴地放置。
-- 使用大气天空、空气透视、体积云、昼夜光照、SMAA、镜头光晕和抖动等效果构建地理场景。
+- 使用大气天空、空气透视、体积云、昼夜光照、SMAA、镜头光晕和抖动等效果构建地理场景；WebGPU 支持镜头光晕与可选 TAA。
 - 与 Three.js 场景、对象、坐标转换及自定义渲染循环互操作。
-- 默认使用 WebGL；实验性的 WebGPU renderer 支持基础地球、地形、影像、3D Tiles、模型、拾取与大气，具体限制见[能力边界](https://tellux.cyanfish.site/docs/guide/limitations)。
+- 默认使用 WebGL；实验性的 WebGPU renderer 支持基础地球、地形、影像、3D Tiles、模型、拾取、大气、镜头光晕与可选 TAA，具体限制见[能力边界](https://tellux.cyanfish.site/docs/guide/limitations)。
 
 ## 🛠️ 开发
 

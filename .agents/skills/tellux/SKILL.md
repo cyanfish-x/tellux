@@ -82,7 +82,7 @@ useEffect(() => {
 用 `renderer.type: 'webgpu'` 时：
 
 - 用 `await tellux.Viewer.create(...)`（异步工厂），不要用 `new Viewer(...)` 后立刻渲染。
-- **体积云、星空、SMAA / 镜头光晕 / 抖动在 WebGPU 下不渲染**，给这些开关赋值没有视觉效果，建议直接关掉。
+- **体积云、SMAA / 抖动在 WebGPU 下不渲染**；星空、镜头光晕和 TAA 已支持。`taa` 默认关闭，LensFlare → TAA 的顺序固定，给 SMAA / 抖动开关赋值没有视觉效果。
 - **瓦片 LOD 淡入淡出在 WebGPU 下不可用**，瓦片为直接切换。
 - WebGPU **不会在不支持的环境自动回退 WebGL**，应用层需自行检测。
 

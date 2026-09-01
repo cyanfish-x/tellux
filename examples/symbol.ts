@@ -2,50 +2,14 @@ import tellux from "../src"
 import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
-import { setupExamplePanels } from "./example-panel"
+import { setupSymbolPanel } from "./setupSymbolPanel"
 
 bootExampleI18n()
-setupExamplePanels()
-
 
 const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#symbol-status")
-const pickReadoutElement = document.querySelector<HTMLElement>(
-  "#symbol-pick-readout"
-)
-const togglePoiInput = document.querySelector<HTMLInputElement>("#toggle-poi")
-const toggleLabelsInput =
-  document.querySelector<HTMLInputElement>("#toggle-labels")
-const toggleIconsInput =
-  document.querySelector<HTMLInputElement>("#toggle-icons")
-const toggleMultilineInput =
-  document.querySelector<HTMLInputElement>("#toggle-multiline")
-const recolorButton =
-  document.querySelector<HTMLButtonElement>("#recolor-label")
-const clearButton =
-  document.querySelector<HTMLButtonElement>("#clear-symbols")
-const stressCountInput =
-  document.querySelector<HTMLInputElement>("#stress-count")
-const generateStressButton =
-  document.querySelector<HTMLButtonElement>("#generate-stress")
-const clearStressButton =
-  document.querySelector<HTMLButtonElement>("#clear-stress")
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
-}
-if (
-  !togglePoiInput ||
-  !toggleLabelsInput ||
-  !toggleIconsInput ||
-  !toggleMultilineInput ||
-  !recolorButton ||
-  !clearButton ||
-  !stressCountInput ||
-  !generateStressButton ||
-  !clearStressButton
-) {
-  throw new Error("Symbol controls not found.")
 }
 
 // 上海陆家嘴一带作为演示区域；高度抬升 50 米避免被地形压住。
@@ -55,7 +19,6 @@ const FOCUS_LATITUDE = 31.2304
 const SURFACE_OFFSET = 50
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -243,74 +206,6 @@ viewer.entities.add({
   properties: { kind: "coexist", label: t({ zh: "圆点 + 标签", en: "Dot + label" }) },
 })
 
-setStatus(
-  t({ zh: "已绘制 {poi} 个 POI + {labels} 个文字标签 + {icons} 个图标 + 多行/背景 + 圆点共存。", en: "Drew {poi} POIs + {labels} text labels + {icons} icons + multiline/background + dot coexistence." }, { poi: poiList.length, labels: labelList.length, icons: iconList.length })
-)
-
-// 拾取：点击 symbol 回传属性。Pick: clicking a symbol returns its properties.
-viewer.on("click", (event) => {
-  const picked = event.pick?.type === "entity" ? event.pick.entity : null
-  if (!picked) {
-    if (pickReadoutElement) pickReadoutElement.textContent = t({ zh: "未命中实体", en: "No entity hit" })
-    return
-  }
-  const { entity } = picked
-  const label = (entity.properties.label as string) ?? entity.id
-  const kind = (entity.properties.kind as string) ?? "unknown"
-  if (pickReadoutElement) {
-    pickReadoutElement.textContent = t({ zh: "命中：{label}（类型：{kind}，id：{id}）", en: "Hit: {label} (type: {kind}, id: {id})" }, { label, kind, id: entity.id })
-  }
-})
-
-// 显隐切换。Visibility toggles.
-function setGroupVisible(ids: string[], visible: boolean) {
-  ids.forEach((id) => {
-    const entity = viewer.entities.getById(id)
-    if (entity) entity.show = visible
-  })
-}
-
-togglePoiInput.addEventListener("change", () => {
-  const visible = togglePoiInput.checked
-  setGroupVisible(poiIds, visible)
-  setStatus(t({ zh: "POI 已{state}。", en: "POIs are {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
-})
-toggleLabelsInput.addEventListener("change", () => {
-  const visible = toggleLabelsInput.checked
-  setGroupVisible(labelIds, visible)
-  setStatus(t({ zh: "文字标签已{state}。", en: "Text labels are {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
-})
-toggleIconsInput.addEventListener("change", () => {
-  const visible = toggleIconsInput.checked
-  setGroupVisible(iconIds, visible)
-  setStatus(t({ zh: "图标已{state}。", en: "Icons are {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
-})
-toggleMultilineInput.addEventListener("change", () => {
-  const visible = toggleMultilineInput.checked
-  setGroupVisible([multilineId, "coexist"], visible)
-  setStatus(t({ zh: "多行/背景已{state}。", en: "Multiline/background is {state}." }, { state: visible ? t({ zh: "显示", en: "shown" }) : t({ zh: "隐藏", en: "hidden" }) }))
-})
-
-// 运行时改色：改文字填充色不重建 SDF 纹理（即时生效）。
-// Runtime recolor: changing fill color doesn't rebuild the SDF texture.
-const recolorPalette = ["#fde68a", "#67e8f9", "#fca5a5", "#bef264"]
-let recolorIndex = 0
-recolorButton.addEventListener("click", () => {
-  const entity = viewer.entities.getById("label-0")
-  const text = entity?.symbol?.text
-  if (!text) return
-  recolorIndex = (recolorIndex + 1) % recolorPalette.length
-  text.fillColor = recolorPalette[recolorIndex]
-  setStatus(t({ zh: "\"黄浦江\" 标签填充色已改为 {color}（未重建纹理）。", en: "\"Huangpu River\" label fill changed to {color} (texture not rebuilt)." }, { color: recolorPalette[recolorIndex] }))
-})
-
-clearButton.addEventListener("click", () => {
-  viewer.entities.removeAll()
-  stressIds.length = 0
-  setStatus(t({ zh: "已清空所有实体。", en: "All entities cleared." }))
-})
-
-// ----- 大规模 Symbol 压测：输入数量，网格散布 icon+text。-----
 const STRESS_MAX = 20_000
 const STRESS_CHUNK = 250
 const STRESS_HALF_SPAN_DEG = 0.035
@@ -327,15 +222,37 @@ const STRESS_LABELS = [
 const STRESS_ICONS = [pinIcon, starIcon, restaurantIcon, barIcon]
 const stressIds: string[] = []
 let stressGenerating = false
+let panelHandle: ReturnType<typeof setupSymbolPanel> | undefined
 
-clearStressButton.addEventListener("click", () => {
-  clearStressSymbols()
-  setStatus(t({ zh: "已清空压测 Symbol。", en: "Stress symbols cleared." }))
-})
+const recolorPalette = ["#fde68a", "#67e8f9", "#fca5a5", "#bef264"]
+let recolorIndex = 0
 
-generateStressButton.addEventListener("click", () => {
-  void generateStressSymbols()
-})
+function getInitialStatus() {
+  return t(
+    {
+      zh: "已绘制 {poi} 个 POI + {labels} 个文字标签 + {icons} 个图标 + 多行/背景 + 圆点共存。",
+      en: "Drew {poi} POIs + {labels} text labels + {icons} icons + multiline/background + dot coexistence.",
+    },
+    { poi: poiList.length, labels: labelList.length, icons: iconList.length }
+  )
+}
+
+function recolorFirstLabel() {
+  const entity = viewer.entities.getById("label-0")
+  const text = entity?.symbol?.text
+  if (!text) return
+  recolorIndex = (recolorIndex + 1) % recolorPalette.length
+  text.fillColor = recolorPalette[recolorIndex]
+  panelHandle?.setStatus(
+    t(
+      {
+        zh: '"黄浦江" 标签填充色已改为 {color}（未重建纹理）。',
+        en: '"Huangpu River" label fill changed to {color} (texture not rebuilt).',
+      },
+      { color: recolorPalette[recolorIndex] }
+    )
+  )
+}
 
 function clearStressSymbols() {
   for (const id of stressIds) {
@@ -343,29 +260,32 @@ function clearStressSymbols() {
   }
   stressIds.length = 0
 }
-
 async function generateStressSymbols() {
-  if (stressGenerating) return
+  if (stressGenerating || !panelHandle) return
 
-  const requested = Math.floor(Number(stressCountInput.value))
+  const requested = Math.floor(panelHandle.getStressCount())
   if (!Number.isFinite(requested) || requested < 1) {
-    setStatus(t({ zh: "请输入有效的压测数量（≥ 1）。", en: "Enter a valid stress count (≥ 1)." }))
+    panelHandle.setStatus(
+      t({ zh: "请输入有效的压测数量（≥ 1）。", en: "Enter a valid stress count (≥ 1)." })
+    )
     return
   }
   const count = Math.min(requested, STRESS_MAX)
-  if (count !== requested) {
-    stressCountInput.value = String(count)
-  }
 
   stressGenerating = true
-  generateStressButton.disabled = true
+  panelHandle.setStressControlsDisabled(true)
   clearStressSymbols()
 
   const cols = Math.ceil(Math.sqrt(count))
   const rows = Math.ceil(count / cols)
   const startedAt = performance.now()
 
-  setStatus(t({ zh: "正在生成 {count} 个压测 Symbol…", en: "Generating {count} stress symbols…" }, { count }))
+  panelHandle.setStatus(
+    t(
+      { zh: "正在生成 {count} 个压测 Symbol…", en: "Generating {count} stress symbols…" },
+      { count }
+    )
+  )
 
   try {
     for (let start = 0; start < count; start += STRESS_CHUNK) {
@@ -375,7 +295,6 @@ async function generateStressSymbols() {
         const row = Math.floor(i / cols)
         const u = cols === 1 ? 0.5 : col / (cols - 1)
         const v = rows === 1 ? 0.5 : row / (rows - 1)
-        // 轻微抖动，避免完全重叠。
         const jitterLon = (Math.random() - 0.5) * (STRESS_HALF_SPAN_DEG / cols)
         const jitterLat = (Math.random() - 0.5) * (STRESS_HALF_SPAN_DEG / rows)
         const lon =
@@ -412,22 +331,36 @@ async function generateStressSymbols() {
           properties: { kind: "stress", label, index: i },
         })
       }
-      setStatus(t({ zh: "正在生成压测 Symbol… {end} / {count}", en: "Generating stress symbols… {end} / {count}" }, { end, count }))
+      panelHandle.setStatus(
+        t(
+          {
+            zh: "正在生成压测 Symbol… {end} / {count}",
+            en: "Generating stress symbols… {end} / {count}",
+          },
+          { end, count }
+        )
+      )
       await yieldToBrowser()
     }
 
     const elapsedMs = performance.now() - startedAt
-    setStatus(
-      t({ zh: "压测完成：{count} 个 Symbol，耗时 {ms} ms（约 {rate} 个/秒）。当前实体总数 {total}。", en: "Stress test done: {count} symbols in {ms} ms (~{rate}/s). Total entities: {total}." }, {
-        count,
-        ms: elapsedMs.toFixed(0),
-        rate: (count / (elapsedMs / 1000)).toFixed(0),
-        total: viewer.entities.values.length,
-      })
+    panelHandle.setStatus(
+      t(
+        {
+          zh: "压测完成：{count} 个 Symbol，耗时 {ms} ms（约 {rate} 个/秒）。当前实体总数 {total}。",
+          en: "Stress test done: {count} symbols in {ms} ms (~{rate}/s). Total entities: {total}.",
+        },
+        {
+          count,
+          ms: elapsedMs.toFixed(0),
+          rate: (count / (elapsedMs / 1000)).toFixed(0),
+          total: viewer.entities.values.length,
+        }
+      )
     )
   } finally {
     stressGenerating = false
-    generateStressButton.disabled = false
+    panelHandle.setStressControlsDisabled(false)
   }
 }
 
@@ -437,11 +370,45 @@ function yieldToBrowser() {
   })
 }
 
-function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
-}
+panelHandle = setupSymbolPanel({
+  viewer,
+  poiIds,
+  labelIds,
+  iconIds,
+  multilineId,
+  clearStressSymbols,
+  generateStressSymbols,
+  recolorFirstLabel,
+  clearAllSymbols: () => {
+    viewer.entities.removeAll()
+    stressIds.length = 0
+  },
+  getInitialStatus,
+  isStressGenerating: () => stressGenerating,
+})
+
+viewer.on("click", (event) => {
+  const picked = event.pick?.type === "entity" ? event.pick.entity : null
+  if (!picked) {
+    panelHandle?.setPickReadout(t({ zh: "未命中实体", en: "No entity hit" }))
+    return
+  }
+  const { entity } = picked
+  const label = (entity.properties.label as string) ?? entity.id
+  const kind = (entity.properties.kind as string) ?? "unknown"
+  panelHandle?.setPickReadout(
+    t(
+      {
+        zh: "命中：{label}（类型：{kind}，id：{id}）",
+        en: "Hit: {label} (type: {kind}, id: {id})",
+      },
+      { label, kind, id: entity.id }
+    )
+  )
+})
 
 window.addEventListener("beforeunload", () => {
   locationReadout.destroy()
+  panelHandle?.dispose()
   viewer.destroy()
 })

@@ -194,6 +194,10 @@ export function applyInitialDebugSettings(
     viewer.scene.postProcess.smaa.enabled = settings.smaa
   }
 
+  if (settings.taa !== undefined) {
+    viewer.scene.postProcess.taa.enabled = settings.taa
+  }
+
   if (settings.dithering !== undefined) {
     viewer.scene.postProcess.dithering.enabled = settings.dithering
   }

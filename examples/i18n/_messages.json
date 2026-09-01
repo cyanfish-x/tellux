@@ -935,6 +935,10 @@
     "还没有加载高斯泼溅。",
     "No Gaussian splats loaded yet."
   ],
+  "example.gaussian-splat-3d-tiles.status.loadFail": [
+    "高斯泼溅 tileset 加载失败：{message}",
+    "Failed to load Gaussian splat tileset: {message}"
+  ],
   "example.google-photorealistic-3d-tiles.docTitle": [
     "Tellux 城市级海量模型加载",
     "Tellux City-scale Massive Models"
@@ -2114,5 +2118,93 @@
   "example.hism-compare.status.ready": [
     "模板就绪。选择模式与数量后点击「生成并测速」。",
     "Templates ready. Choose mode/count then Generate & benchmark."
+  ],
+  "example.water-area.registry.title": [
+    "WebGPU 水域渲染",
+    "WebGPU Water Area"
+  ],
+  "example.water-area.registry.description": [
+    "使用 OSM Shortbread MVT Worker 遮罩，在 Cesium Ion 地形与卫星影像上渲染水域材质。",
+    "Render water materials on Cesium Ion terrain and satellite imagery with worker-generated OSM Shortbread MVT masks."
+  ],
+  "example.water-area.docTitle": [
+    "Tellux WebGPU 水域渲染",
+    "Tellux WebGPU Water Area"
+  ],
+  "example.water-area.panel.aria": [
+    "WebGPU 水域渲染控件",
+    "WebGPU water-area controls"
+  ],
+  "example.water-area.panel.title": [
+    "水域渲染",
+    "Water Area"
+  ],
+  "example.water-area.folder.effect": [
+    "效果",
+    "Effect"
+  ],
+  "example.water-area.folder.appearance": [
+    "外观",
+    "Appearance"
+  ],
+  "example.water-area.folder.waves": [
+    "波纹",
+    "Waves"
+  ],
+  "example.water-area.folder.optics": [
+    "环境",
+    "Environment"
+  ],
+  "example.water-area.folder.status": [
+    "状态",
+    "Status"
+  ],
+  "example.water-area.label.showAppearance": [
+    "显示水域外观",
+    "Show water appearance"
+  ],
+  "example.water-area.label.color": [
+    "水色",
+    "Water color"
+  ],
+  "example.water-area.label.colorMix": [
+    "颜色混合",
+    "Color mix"
+  ],
+  "example.water-area.label.roughness": [
+    "粗糙度",
+    "Roughness"
+  ],
+  "example.water-area.label.waveStrength": [
+    "强度",
+    "Strength"
+  ],
+  "example.water-area.label.waveScale": [
+    "尺度",
+    "Scale"
+  ],
+  "example.water-area.label.waveSpeed": [
+    "速度",
+    "Speed"
+  ],
+  "example.water-area.label.waveDirection": [
+    "方向（°）",
+    "Direction (°)"
+  ],
+  "example.water-area.label.environment": [
+    "天空环境倒影",
+    "Sky environment"
+  ],
+  "example.water-area.label.environmentIntensity": [
+    "环境强度",
+    "Environment intensity"
+  ],
+  "example.water-area.hint.tokenReload": [
+    "修改 Token 后按 Enter 重新加载案例。",
+    "Press Enter after changing the token to reload the example."
+  ],
+  "example.water-area.attr.aria": [
+    "地图数据来源",
+    "Map data attribution"
   ]
 }

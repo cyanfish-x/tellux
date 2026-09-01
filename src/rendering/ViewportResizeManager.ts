@@ -7,6 +7,7 @@ export interface ViewportResizeManagerOptions {
   camera: THREE.PerspectiveCamera
   renderer: TelluxRendererAdapter
   tilesets: TilesetManager
+  onResize?: (width: number, height: number) => void
 }
 
 export class ViewportResizeManager {
@@ -26,12 +27,16 @@ export class ViewportResizeManager {
     if (!clientWidth || !clientHeight) return
 
     this.options.renderer.getSize(this.rendererSize)
-    if (this.rendererSize.width === clientWidth && this.rendererSize.height === clientHeight) return
+    if (this.rendererSize.width === clientWidth && this.rendererSize.height === clientHeight) {
+      this.options.onResize?.(clientWidth, clientHeight)
+      return
+    }
 
     this.options.camera.aspect = clientWidth / clientHeight
     this.options.camera.updateProjectionMatrix()
     this.options.renderer.setSize(clientWidth, clientHeight)
     this.options.tilesets.resize()
+    this.options.onResize?.(clientWidth, clientHeight)
   }
 
   dispose() {

@@ -200,5 +200,12 @@ Tellux 当前管线顺序由 `PostProcessingManager.applyEffects()` 控制：
 - 增加 depth / normal debug view。
 - 评估 `GeometryPass` 用于更完整的材质和 G-buffer 调试。
 - 评估 `createHaldLookupTexture` 用于色彩分级（`scene.postProcess.colorGrading`）。
-- WebGPU 下 SMAA / 镜头光晕 / 抖动当前不渲染，文档需持续声明。
+- WebGPU 下 SMAA / 抖动当前不渲染，文档需持续声明。LensFlare 已接入为
+  `WebGPULensFlareManager`：使用 `@takram/three-geospatial/webgpu` 的 `LensFlareNode`，
+  将 Tellux 既有 `intensity`、threshold 和 quality 映射到 HDR threshold / blur / feature
+  资源，并以 order 100 排在 TAA 前。TAA 则由 `WebGPUTemporalAntialiasManager` 在共享图中
+  声明 `velocity` MRT，使用 takram `highpVelocity` 输出地球尺度稳定的运动矢量，order 200
+  执行 `temporalAntialias(scene color, depth, velocity, camera)`。两类中间资源均由各自 stage
+  持有，并在关闭或图销毁时释放；TAA history 还会随 resize 重建。其他效果仍不会因图基础设施
+  存在而自动兼容，必须各自实现 WebGPU node / pass 并声明附件。
 

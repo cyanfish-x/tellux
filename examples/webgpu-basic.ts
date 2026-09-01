@@ -29,9 +29,15 @@ async function main() {
         lighting: {
           mode: "light-source",
         },
+        sky: {
+          stars: true,
+        },
       },
       clouds: {
         show: false,
+      },
+      postProcess: {
+        taa: true,
       },
     },
   })

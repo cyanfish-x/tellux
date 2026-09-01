@@ -1,36 +1,18 @@
 import * as THREE from 'three'
-import { pass } from 'three/tsl'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { WebGPUAtmosphereManager } from '../rendering/WebGPUAtmosphereManager'
 import type { AtmosphereRuntimeState } from '../rendering/AtmosphereRuntimeState'
-import type { TelluxRendererAdapter, TelluxWebGPURenderer } from '../rendering/RendererAdapter'
+import type { WebGPUPostProcessingGraph } from '../rendering/WebGPUPostProcessingManager'
+import type { TelluxWebGPURenderer } from '../rendering/RendererAdapter'
 
-const renderPipelineRender = vi.fn()
-const renderPipelineDispose = vi.fn()
-
-vi.mock('three/webgpu', async () => {
-  const three = await vi.importActual<typeof import('three')>('three')
-  return {
-    ...three,
-    RenderPipeline: class {
-      needsUpdate = true
-
-      constructor(
-        readonly renderer: unknown,
-        readonly outputNode: unknown
-      ) {}
-
-      render() {
-        renderPipelineRender()
-      }
-
-      dispose() {
-        renderPipelineDispose()
-      }
-    }
-  }
-})
+const { atmosphereTextureLoaderInstances } = vi.hoisted(() => ({
+  atmosphereTextureLoaderInstances: [] as Array<{
+    loadBuffer: ReturnType<typeof vi.fn>
+    dispose: ReturnType<typeof vi.fn>
+    applyBuffer?: (buffer: ArrayBuffer) => void
+  }>
+}))
 
 vi.mock('three/tsl', () => {
   const makeNode = () => ({
@@ -52,6 +34,7 @@ vi.mock('three/tsl', () => {
 vi.mock('@takram/three-atmosphere/webgpu', () => {
   const skyNodeInstances: MockSkyNode[] = []
   const atmosphereContextInstances: MockAtmosphereContext[] = []
+  const starsNodeInstances: MockStarsNode[] = []
 
   const makeConstVarNode = <T,>(value: T) => ({ node: { value } })
 
@@ -64,6 +47,7 @@ vi.mock('@takram/three-atmosphere/webgpu', () => {
     miePhaseFunctionG: 0.8,
     absorptionExtinction: new THREE.Vector3(0.00000065, 0.000001881, 0.000000085),
     groundAlbedo: new THREE.Vector3().setScalar(0.3),
+    luminanceScale: 0.0000125,
     update: vi.fn()
   })
 
@@ -82,6 +66,16 @@ vi.mock('@takram/three-atmosphere/webgpu', () => {
     }
   })
 
+  class MockStarsNode {
+    intensity = { value: 1 }
+    pointSize = { value: 1 }
+    dispose = vi.fn()
+
+    constructor(readonly data?: string | ArrayBufferLike) {
+      starsNodeInstances.push(this)
+    }
+  }
+
   class MockSkyNode {
     showSun = true
     showMoon = true
@@ -89,7 +83,7 @@ vi.mock('@takram/three-atmosphere/webgpu', () => {
     moonScattering = false
     sunNode = { angularRadius: { value: 0 }, intensity: { value: 1 } }
     moonNode = { angularRadius: { value: 0 }, intensity: { value: 1 } }
-    starsNode = { intensity: { value: 1 }, pointSize: { value: 1 } }
+    starsNode = new MockStarsNode()
 
     constructor() {
       skyNodeInstances.push(this)
@@ -145,12 +139,28 @@ vi.mock('@takram/three-atmosphere/webgpu', () => {
     AtmosphereLight: MockAtmosphereLight,
     AtmosphereLightNode: class {},
     SkyNode: MockSkyNode,
+    StarsNode: MockStarsNode,
     aerialPerspective: vi.fn(() => new MockAerialPerspectiveNode()),
     sky: vi.fn(() => new MockSkyNode()),
     atmosphereContextInstances,
-    skyNodeInstances
+    skyNodeInstances,
+    starsNodeInstances
   }
 })
+
+vi.mock('../rendering/AtmosphereTextureLoader', () => ({
+  AtmosphereTextureLoader: class {
+    loadBuffer = vi.fn((_: string, applyBuffer: (buffer: ArrayBuffer) => void) => {
+      this.applyBuffer = applyBuffer
+    })
+    dispose = vi.fn()
+    applyBuffer?: (buffer: ArrayBuffer) => void
+
+    constructor() {
+      atmosphereTextureLoaderInstances.push(this)
+    }
+  }
+}))
 
 vi.mock('@takram/three-atmosphere', () => ({
   getECIToECEFRotationMatrix: vi.fn((_date: Date, target = new THREE.Matrix4()) => target.identity()),
@@ -159,20 +169,36 @@ vi.mock('@takram/three-atmosphere', () => ({
   getSunDirectionECEF: vi.fn((_date: Date, target = new THREE.Vector3()) => target.set(1, 0, 0))
 }))
 
-function createAdapter() {
-  let delegate: ((scene: THREE.Object3D, camera: THREE.Camera) => void) | null = null
+function createPostProcessingGraph() {
+  const scenePass = {
+    contextNode: null,
+    getTextureNode: vi.fn(() => ({
+      context: vi.fn(function context(this: unknown) {
+        return this
+      })
+    }))
+  }
   return {
-    adapter: {
-      setRenderDelegate(nextDelegate) {
-        delegate = nextDelegate
-      }
-    } as Pick<TelluxRendererAdapter, 'setRenderDelegate'> as TelluxRendererAdapter,
-    render(scene: THREE.Scene, camera: THREE.Camera) {
-      delegate?.(scene, camera)
-    },
-    get delegate() {
-      return delegate
-    }
+    graph: {
+      scenePass,
+      setSceneCompositor: vi.fn(),
+      invalidate: vi.fn()
+    } as unknown as WebGPUPostProcessingGraph,
+    scenePass
+  }
+}
+
+function createManager(
+  renderer: TelluxWebGPURenderer,
+  scene = new THREE.Scene(),
+  camera = new THREE.PerspectiveCamera()
+) {
+  const postProcessing = createPostProcessingGraph()
+  return {
+    manager: new WebGPUAtmosphereManager(postProcessing.graph, renderer, scene, camera),
+    ...postProcessing,
+    scene,
+    camera
   }
 }
 
@@ -225,27 +251,21 @@ function createAtmosphereState(overrides: Partial<AtmosphereRuntimeState> = {}):
 
 describe('WebGPUAtmosphereManager', () => {
   beforeEach(() => {
-    renderPipelineRender.mockClear()
-    renderPipelineDispose.mockClear()
-    vi.mocked(pass).mockClear()
+    atmosphereTextureLoaderInstances.length = 0
   })
 
-  it('uses RenderPipeline while atmosphere is visible and falls back when hidden', () => {
+  it('sets and removes its scene compositor without owning the render delegate', () => {
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera()
     const renderer = {
       library: { addLight: vi.fn() },
       render: vi.fn()
     } as unknown as TelluxWebGPURenderer
-    const adapter = createAdapter()
-    const manager = new WebGPUAtmosphereManager(adapter.adapter, renderer, scene, camera)
+    const { manager, graph } = createManager(renderer, scene, camera)
 
-    adapter.render(scene, camera)
     manager.setAtmosphereVisible(false)
-    adapter.render(scene, camera)
 
-    expect(renderPipelineRender).toHaveBeenCalledTimes(1)
-    expect(renderer.render).toHaveBeenCalledWith(scene, camera)
+    expect(graph.setSceneCompositor).toHaveBeenLastCalledWith(null)
   })
 
   it('adds the atmosphere context to the internal scene pass', () => {
@@ -255,29 +275,83 @@ describe('WebGPUAtmosphereManager', () => {
       library: { addLight: vi.fn() },
       render: vi.fn()
     } as unknown as TelluxWebGPURenderer
-    const adapter = createAdapter()
+    const { scenePass } = createManager(renderer, scene, camera)
 
-    new WebGPUAtmosphereManager(adapter.adapter, renderer, scene, camera)
-
-    const scenePass = vi.mocked(pass).mock.results[0]?.value
     expect(scenePass.contextNode).not.toBeNull()
   })
 
-  it('keeps Takram stars disabled to avoid async builder context loss', async () => {
+  it('maps Tellux star intensity to the WebGPU luminance scale before enabling the star graph', async () => {
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera()
     const renderer = {
       library: { addLight: vi.fn() },
       render: vi.fn()
     } as unknown as TelluxWebGPURenderer
-    const adapter = createAdapter()
+    const { manager } = createManager(renderer, scene, camera)
+    manager.applyAtmosphereState(createAtmosphereState({
+      starsVisible: true,
+      starsIntensity: 1,
+      starsPointSize: 3
+    }))
+    manager.loadTextures()
 
-    new WebGPUAtmosphereManager(adapter.adapter, renderer, scene, camera)
     const webgpuAtmosphere = await import('@takram/three-atmosphere/webgpu') as unknown as {
       skyNodeInstances: Array<{ showStars: boolean }>
+      starsNodeInstances: Array<{
+        data?: string | ArrayBufferLike
+        intensity: { value: number }
+        pointSize: { value: number }
+      }>
     }
+    const loader = atmosphereTextureLoaderInstances.at(-1)!
+    const catalog = new ArrayBuffer(20)
+    const skyNode = webgpuAtmosphere.skyNodeInstances.at(-1)!
 
-    expect(webgpuAtmosphere.skyNodeInstances[0].showStars).toBe(false)
+    expect(skyNode.showStars).toBe(false)
+    expect(loader.loadBuffer).toHaveBeenCalledTimes(1)
+
+    loader.applyBuffer?.(catalog)
+
+    const starsNode = webgpuAtmosphere.starsNodeInstances.at(-1)!
+    expect(starsNode.data).toBe(catalog)
+    expect(skyNode.showStars).toBe(true)
+    // WebGPU stars are physical luminance while Tellux exposes a visual
+    // multiplier; the adapter converts between their different units.
+    expect(starsNode.intensity.value).toBe(800_000)
+    expect(starsNode.pointSize.value).toBe(3)
+
+    manager.applyAtmosphereState(createAtmosphereState({
+      starsVisible: false,
+      starsIntensity: 4,
+      starsPointSize: 5
+    }))
+
+    expect(skyNode.showStars).toBe(false)
+    expect(starsNode.intensity.value).toBe(3_200_000)
+    expect(starsNode.pointSize.value).toBe(5)
+  })
+
+  it('disposes the packaged star catalog loader and active star node', async () => {
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera()
+    const renderer = {
+      library: { addLight: vi.fn() },
+      render: vi.fn()
+    } as unknown as TelluxWebGPURenderer
+    const { manager } = createManager(renderer, scene, camera)
+    manager.loadTextures()
+
+    const loader = atmosphereTextureLoaderInstances.at(-1)!
+    loader.applyBuffer?.(new ArrayBuffer(20))
+    const webgpuAtmosphere = await import('@takram/three-atmosphere/webgpu') as unknown as {
+      starsNodeInstances: Array<{ dispose: ReturnType<typeof vi.fn> }>
+    }
+    const activeStarsNode = webgpuAtmosphere.starsNodeInstances.at(-1)!
+
+    manager.dispose()
+
+    expect(loader.dispose).toHaveBeenCalledTimes(1)
+    expect(activeStarsNode.dispose).toHaveBeenCalledTimes(1)
   })
 
   it('applies scattering runtime settings to WebGPU atmosphere parameters and nodes', async () => {
@@ -287,8 +361,7 @@ describe('WebGPUAtmosphereManager', () => {
       library: { addLight: vi.fn() },
       render: vi.fn()
     } as unknown as TelluxWebGPURenderer
-    const adapter = createAdapter()
-    const manager = new WebGPUAtmosphereManager(adapter.adapter, renderer, scene, camera)
+    const { manager } = createManager(renderer, scene, camera)
     const webgpuAtmosphere = await import('@takram/three-atmosphere/webgpu') as unknown as {
       atmosphereContextInstances: Array<{
         parameters: {
@@ -369,8 +442,7 @@ describe('WebGPUAtmosphereManager', () => {
       library: { addLight: vi.fn() },
       render: vi.fn()
     } as unknown as TelluxWebGPURenderer
-    const adapter = createAdapter()
-    const manager = new WebGPUAtmosphereManager(adapter.adapter, renderer, scene, camera)
+    const { manager } = createManager(renderer, scene, camera)
 
     manager.addLightSourcesTo(scene)
     expect(renderer.library.addLight).toHaveBeenCalledTimes(1)
@@ -378,8 +450,6 @@ describe('WebGPUAtmosphereManager', () => {
 
     manager.dispose()
 
-    expect(adapter.delegate).toBeNull()
     expect(scene.backgroundNode).toBe(existingBackgroundNode)
-    expect(renderPipelineDispose).toHaveBeenCalledTimes(1)
   })
 })

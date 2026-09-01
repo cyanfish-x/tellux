@@ -121,6 +121,7 @@ describe('scene setting normalization', () => {
       quality: 'medium'
     })
     expect(options.postProcess.smaa).toEqual({ enabled: true })
+    expect(options.postProcess.taa).toEqual({ enabled: false })
     expect(options.postProcess.dithering).toEqual({ enabled: false })
   })
 
@@ -134,6 +135,7 @@ describe('scene setting normalization', () => {
       postProcess: {
         lensFlare: false,
         smaa: false,
+        taa: true,
         dithering: true
       }
     })
@@ -141,6 +143,7 @@ describe('scene setting normalization', () => {
     expect(options.atmosphere.sky.stars.show).toBe(false)
     expect(options.postProcess.lensFlare.enabled).toBe(false)
     expect(options.postProcess.smaa.enabled).toBe(false)
+    expect(options.postProcess.taa.enabled).toBe(true)
     expect(options.postProcess.dithering.enabled).toBe(true)
   })
 

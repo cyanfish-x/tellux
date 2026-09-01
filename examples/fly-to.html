@@ -1,64 +1,16 @@
-<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="sandcastle-thumbnail" content="./images/base.png" />
-    <title>Tellux Camera FlyTo</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <main class="viewer-shell">
-      <div id="viewer"></div>
-      <aside class="example-panel" data-i18n-attr="aria-label:example.fly-to.panel.aria" aria-label="相机飞行控件">
-        <header class="example-panel__chrome">
-          <button
-            type="button"
-            class="example-panel__fold"
-            aria-expanded="true"
-            title="收起面板"
-            aria-label="收起面板"
-            data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
-          ></button>
-          <span class="example-panel__title" data-i18n="example.fly-to.panel.title">相机飞行</span>
-        </header>
-
-        <div class="example-panel__collapse">
-          <div class="example-panel__content">
-            <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary" data-i18n="example.fly-to.folder.dest">目的地</summary>
-              <div class="example-panel__folder-collapse">
-                <div class="example-panel__folder-body">
-                  <p class="example-panel__hint" data-i18n-html="example.fly-to.hint">使用 <code>viewer.camera.flyTo</code> 触发 Cesium 风格的相机飞行动画。</p>
-                  <div id="destination-row"></div>
-                </div>
-              </div>
-            </details>
-
-            <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary" data-i18n="example.fly-to.folder.actions">操作</summary>
-              <div class="example-panel__folder-collapse">
-                <div class="example-panel__folder-body">
-                  <button class="example-panel__button example-panel__button--ghost" id="cancel-flight" type="button" data-i18n="example.fly-to.btn.cancel">
-                    取消飞行
-                  </button>
-                </div>
-              </div>
-            </details>
-
-            <details class="example-panel__folder" open>
-              <summary class="example-panel__folder-summary" data-i18n="example.fly-to.folder.status">状态</summary>
-              <div class="example-panel__folder-collapse">
-                <div class="example-panel__folder-body">
-                  <p id="token-status" class="example-panel__status" aria-live="polite"></p>
-                  <p id="flight-status" class="example-panel__status" aria-live="polite" data-i18n="example.fly-to.status.initial">选择一个目的地开始飞行。</p>
-                </div>
-              </div>
-            </details>
-          </div>
-        </div>
-      </aside>
-    </main>
-    <script type="module" src="./fly-to.ts"></script>
-  </body>
-</html>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="sandcastle-thumbnail" content="./images/base.png" />
+    <title>Tellux Camera FlyTo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="viewer-shell">
+      <div id="viewer"></div>
+    </main>
+    <script type="module" src="./fly-to.ts"></script>
+  </body>
+</html>

@@ -2,12 +2,11 @@ import * as THREE from "three"
 import { bootExampleI18n, t } from "./i18n"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import tellux from "../src"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
-import { setupExamplePanels } from "./example-panel"
 
 bootExampleI18n()
-setupExamplePanels()
 
 const ZOIGE_GRASSLAND_LONGITUDE = 102.3959
 const ZOIGE_GRASSLAND_LATITUDE = 33.5314
@@ -44,27 +43,12 @@ type HorseHerd = {
 }
 
 const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#horse-status")
-const horseCountElement = document.querySelector<HTMLElement>("#horse-count")
-const animationStatusElement = document.querySelector<HTMLElement>(
-  "#horse-animation-status"
-)
-const flyToButton = document.querySelector<HTMLButtonElement>("#fly-to-horses")
-const toggleAnimationButton =
-  document.querySelector<HTMLButtonElement>("#toggle-horses")
-const regenerateButton =
-  document.querySelector<HTMLButtonElement>("#regenerate-horses")
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (!flyToButton || !toggleAnimationButton || !regenerateButton) {
-  throw new Error("Instanced horse controls not found.")
-}
-
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -102,36 +86,42 @@ const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
 })
 
+let panel: TelluxPanel | undefined
 let herd: HorseHerd | null = null
 let isAnimationPlaying = true
 let generationToken = 0
 let animationFrame = 0
 
-flyToButton.disabled = true
-toggleAnimationButton.disabled = true
-regenerateButton.disabled = true
-
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
-function setAnimationStatus(message: string) {
-  if (animationStatusElement) animationStatusElement.textContent = message
+function setInstanceCount(value: string) {
+  if (panel) panel.controls.readout.instances = value
 }
 
-function updateAnimationButton() {
-  toggleAnimationButton.textContent = isAnimationPlaying
-    ? t({ zh: "暂停动画", en: "Pause animation" })
-    : t({ zh: "播放动画", en: "Play animation" })
+function setAnimationReadout(value: string) {
+  if (panel) panel.controls.readout.animation = value
+}
+
+function setActionsDisabled(disabled: boolean) {
+  if (!panel) return
+  panel.setFieldDisabled("actions.flyTo", disabled)
+  panel.setFieldDisabled("actions.playing", disabled)
+  panel.setFieldDisabled("actions.regenerate", disabled)
+}
+
+function syncAnimationFromPanel() {
+  if (!panel) return
+  isAnimationPlaying = panel.controls.actions.playing
+  setAnimationReadout(isAnimationPlaying ? "Morph targets instancing" : "Paused")
 }
 
 async function createHorseHerd() {
   const token = ++generationToken
-  flyToButton.disabled = true
-  toggleAnimationButton.disabled = true
-  regenerateButton.disabled = true
-  horseCountElement && (horseCountElement.textContent = "-")
-  setAnimationStatus("-")
+  setActionsDisabled(true)
+  setInstanceCount("-")
+  setAnimationReadout("-")
   setStatus(t({ zh: "正在生成带间距约束的若尔盖草原随机点...", en: "Generating spaced random points on Zoige grassland..." }))
 
   herd?.dispose()
@@ -168,7 +158,7 @@ async function createHorseHerd() {
       error
     )
     setStatus(t({ zh: "地形高度采样失败，请检查地形数据源是否可用。", en: "Terrain height sampling failed." }))
-    regenerateButton.disabled = false
+    setActionsDisabled(false)
     return
   } finally {
     console.timeEnd(samplingTimerLabel)
@@ -187,7 +177,7 @@ async function createHorseHerd() {
 
   if (sampledPlacements.length === 0) {
     setStatus(t({ zh: "地形高度没有命中，未加载奔马实例。", en: "No terrain hits; horses not loaded." }))
-    regenerateButton.disabled = false
+    setActionsDisabled(false)
     return
   }
 
@@ -200,7 +190,7 @@ async function createHorseHerd() {
   } catch (error) {
     console.error("Failed to load instanced horse model.", error)
     setStatus(t({ zh: "奔马模型加载失败，请检查 three.js 示例资源是否可访问。", en: "Horse model failed to load." }))
-    regenerateButton.disabled = false
+    setActionsDisabled(false)
     return
   }
 
@@ -211,12 +201,9 @@ async function createHorseHerd() {
   }
 
   viewer.scene.threeScene.add(herd.group)
-  flyToButton.disabled = false
-  toggleAnimationButton.disabled = false
-  regenerateButton.disabled = false
-  horseCountElement &&
-    (horseCountElement.textContent = `${sampledPlacements.length} / ${HORSE_COUNT}`)
-  setAnimationStatus("Morph targets instancing")
+  setActionsDisabled(false)
+  setInstanceCount(`${sampledPlacements.length} / ${HORSE_COUNT}`)
+  setAnimationReadout("Morph targets instancing")
   setStatus(
     t({ zh: "已在若尔盖大草原附近放置 {n} 匹实例化奔马。", en: "Placed {n} instanced horses near Zoige." }, { n: sampledPlacements.length })
   )
@@ -487,34 +474,88 @@ function disposeMaterial(material: THREE.Material | THREE.Material[]) {
   }
 }
 
-flyToButton.addEventListener("click", () => {
-  if (!herd) return
+const horseSchema = () =>
+  ({
+    actions: {
+      $: { label: t({ zh: "操作", en: "Actions" }) },
+      flyTo: {
+        onClick: () => {
+          if (!herd) return
+          viewer.flyToTarget(herd.group, {
+            heading: 180,
+            pitch: -10,
+            distance: 800,
+          })
+        },
+        label: t({ zh: "飞到马群", en: "Fly to herd" }),
+      },
+      playing: {
+        value: true,
+        label: t({ zh: "播放动画", en: "Play animation" }),
+      },
+      regenerate: {
+        onClick: () => {
+          void createHorseHerd()
+        },
+        label: t({ zh: "重新生成", en: "Regenerate" }),
+      },
+    },
+    readout: {
+      $: { label: t({ zh: "信息", en: "Info" }) },
+      center: {
+        type: "hint" as const,
+        label: "Center",
+        value: "102.434637, 33.568156",
+      },
+      instances: {
+        type: "hint" as const,
+        label: "Instances",
+        value: "-",
+      },
+      spacing: {
+        type: "hint" as const,
+        label: "Spacing",
+        value: t({ zh: "最小 34 米", en: "Min 34 m" }),
+      },
+      animation: {
+        type: "hint" as const,
+        label: "Animation",
+        value: "-",
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: t({ zh: "正在准备若尔盖草原点位...", en: "Preparing Zoige grassland placements..." }),
+      },
+    },
+  }) as const
 
-  viewer.flyToTarget(herd.group, {
-    heading: 180,
-    pitch: -10,
-    distance: 800,
+function bindHorsePanel(currentPanel: TelluxPanel<ReturnType<typeof horseSchema>>) {
+  return currentPanel.controls.effect(() => {
+    void currentPanel.controls.actions.playing
+    syncAnimationFromPanel()
   })
+}
+
+panel = createTelluxPanel(horseSchema, {
+  id: "instanced-horses-panel",
+  title: () => t({ zh: "若尔盖草原奔马实例化", en: "Instanced horses on Zoige" }),
+  statusPath: "status.message",
+  onRebuild: bindHorsePanel,
 })
 
-toggleAnimationButton.addEventListener("click", () => {
-  isAnimationPlaying = !isAnimationPlaying
-  updateAnimationButton()
-  setAnimationStatus(isAnimationPlaying ? "Morph targets instancing" : "Paused")
-})
-
-regenerateButton.addEventListener("click", () => {
-  void createHorseHerd()
-})
+setActionsDisabled(true)
 
 window.addEventListener("beforeunload", () => {
   generationToken += 1
   cancelAnimationFrame(animationFrame)
   herd?.dispose()
   locationReadout.destroy()
+  panel?.dispose()
   viewer.destroy()
 })
 
-updateAnimationButton()
 animateHorses()
 void createHorseHerd()

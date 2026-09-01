@@ -24,6 +24,7 @@ const htmlInputs = {
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
   webgpuBasic: resolve(__dirname, "webgpu-basic.html"),
+  waterArea: resolve(__dirname, "water-area.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
   entities: resolve(__dirname, "entities.html"),
   symbol: resolve(__dirname, "symbol.html"),
@@ -88,6 +89,12 @@ export default defineConfig(({ mode }) => {
             maxGzipBytes: 1.6 * MiB,
           },
           {
+            name: "Water Area worker",
+            select: selectFilesMatching(/^assets\/worker-.*\.js$/),
+            maxBytes: 256 * KiB,
+            maxGzipBytes: 80 * KiB,
+          },
+          {
             name: "editor worker",
             select: selectFilesMatching(/^assets\/editor\.worker-.*\.js$/),
             maxBytes: 300 * KiB,
@@ -104,10 +111,23 @@ export default defineConfig(({ mode }) => {
     envDir: projectRoot,
     optimizeDeps: {
       include: ["@mapbox/vector-tile", "pbf", "@sparkjsdev/spark", "3d-tiles-rendererjs-3dgs-plugin", "three-mesh-bvh"],
+      exclude: ["leva-vanilla"],
+    },
+    resolve: {
+      alias: [
+        {
+          find: "leva-vanilla/gui",
+          replacement: resolve(projectRoot, "../leva-vanilla/src/dom/gui.ts"),
+        },
+        {
+          find: "leva-vanilla",
+          replacement: resolve(projectRoot, "../leva-vanilla/src/index.ts"),
+        },
+      ],
     },
     server: {
       fs: {
-        allow: [projectRoot],
+        allow: [projectRoot, resolve(projectRoot, "../leva-vanilla")],
       },
       proxy: {
         "/geoserver": {
