@@ -183,8 +183,8 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 
 有控件的示例页分两类：
 
-- **Leva 面板**（`createTelluxPanel` + `leva-vanilla`）：A 批（water-area、fly-to、atmosphere、ground-clamp 等）与 B 批（3d-tiles、entities、symbol、vegetation、horses 系列等）schema 驱动案例；Tellux accent 见 `styles.css` 的 `#leva__root` 变量覆盖。
-- **遗留 HTML 声明式 `.example-panel`**（`examples/example-panel.ts`）：标题栏折叠 + `details.example-panel__folder`；样式已从 `styles.css` 移除，待后续迁移或恢复。
+- **Leva 面板**（`createTelluxPanel` + `leva-vanilla`）：schema 驱动案例（water-area、fly-to、atmosphere、ground-clamp、3d-tiles、entities、symbol、vegetation、horses 系列、terrain、data-sources、threejs-interop、hism-forest、hism-compare 等）；Tellux accent 见 `styles.css` 的 `#leva__root` 变量覆盖。
+- **遗留 HTML 声明式 `.example-panel`**（`examples/example-panel.ts`）：仅保留折叠 helper，供尚未改完的页面或 Sandcastle runner 注入；独立示例页已迁到 Leva。
 
 通用约定：
 
@@ -199,11 +199,12 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 - `createTelluxPanel(schemaFactory, options)` 为薄封装；`title` 可传函数；locale 变化时按 factory 重建面板并恢复控件值。
 - 需要页面级错误/成功提示（类似 Element UI Message）时使用 `examples/example-message.ts` 的 `ExampleMessage.error()` 等；Sandcastle runner 已注入 `showExampleMessage` / `ExampleMessage`。
 - `onRebuild` 在初次挂载与每次 locale 重建后调用，用于注册 `effect()` / DOM 监听；`statusPath` 配合 `setStatus()` 写入 `hint` 字段。
-- 已迁移案例：A 批 `water-area`、`fly-to`、`atmosphere`、`ground-clamp`、`ground-clamp-polygon`；B 批 `google-photorealistic-3d-tiles`、`3d-tiles`、`point-cloud-3d-tiles`、`gaussian-splat-3d-tiles`、`3d-tiles-picking`、`entities`、`symbol`（`setupSymbolPanel.ts`）、`vegetation`、`instanced-horses`、`mixed-height-sampling-horses`。
+- 已迁移案例：`water-area`、`fly-to`、`atmosphere`、`ground-clamp`、`ground-clamp-polygon`、`google-photorealistic-3d-tiles`、`3d-tiles`、`point-cloud-3d-tiles`、`gaussian-splat-3d-tiles`、`3d-tiles-picking`、`entities`、`symbol`（`setupSymbolPanel.ts`）、`vegetation`、`instanced-horses`、`mixed-height-sampling-horses`、`terrain`、`data-sources`、`threejs-interop`、`hism-forest`、`hism-compare`。
+- 无独立控件面板的示例：`basic`、`webgpu-basic`（以及主页 / gallery / Sandcastle 壳）。
 - Sandcastle runner 基线注入含 `createTelluxPanel`（`example-panel-leva.ts`）。
 - 依赖：根 `package.json` 的 `devDependencies.leva-vanilla` 通过 `link:../leva-vanilla` 指向本地 fork；Vite alias 解析到源码。
 
-**遗留 HTML 声明式 `.example-panel`**：其余示例仍保留 HTML 结构与 `setupExamplePanels()` 折叠行为，但 `styles.css` 中对应样式已移除，视觉会退化，后续按需迁到 Leva 或恢复样式。
+**遗留 HTML 声明式 `.example-panel`**：`setupExamplePanels()` 仍注入 Sandcastle runner，供旧 HTML 结构兼容；独立示例页已不再依赖该样式。
 
 runner 的 iframe 使用 `sandbox="allow-scripts allow-same-origin"`。它隔离了示例对 document 的重写，同时允许脚本运行和同源 localStorage 读取。
 

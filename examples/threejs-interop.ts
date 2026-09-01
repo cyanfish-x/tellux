@@ -2,38 +2,19 @@ import tellux from "../src"
 import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
-import { setupExamplePanels } from "./example-panel"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 
 bootExampleI18n()
-setupExamplePanels()
 
-const MODEL_LONGITUDE = 113.9958  
+const MODEL_LONGITUDE = 113.9958
 const MODEL_LATITUDE = 30.0072
 const MODEL_HEIGHT = 0
 const MODEL_URL = "https://threejs.org/examples/models/gltf/LittlestTokyo.glb"
 
 const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#model-status")
-const coordinatesTextElement = document.querySelector<HTMLElement>(
-  "#model-coordinates-text"
-)
-const coordinatesElement = document.querySelector<HTMLElement>(
-  "#model-coordinates"
-)
-const modelStatusElement = document.querySelector<HTMLElement>(
-  "#model-ready-status"
-)
-const flyToModelButton =
-  document.querySelector<HTMLButtonElement>("#fly-to-model")
-const toggleAnimationButton =
-  document.querySelector<HTMLButtonElement>("#toggle-animation")
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
-}
-
-if (!flyToModelButton || !toggleAnimationButton) {
-  throw new Error("Three.js interop controls not found.")
 }
 
 const viewer = new tellux.Viewer(container, {
@@ -55,61 +36,76 @@ const viewer = new tellux.Viewer(container, {
     atmosphere: {
       show: true,
       fallbackAmbientLight: {
-        intensity: 0.8
-      }
+        intensity: 0.8,
+      },
     },
     clouds: {
-      show: false
+      show: false,
     },
     highlight: {
       outline: {
         enabled: true,
         color: "#7cff5b",
         edgeStrength: 2,
-        xray: true
-      }
-    }
+        xray: true,
+      },
+    },
   },
-  widgets:{
-    timeline:true
-  }
+  widgets: {
+    timeline: true,
+  },
 })
 
 ;(window as any).viewer = viewer
 
 let isAnimationPlaying = true
 let model: ReturnType<typeof viewer.addModel> | null = null
+let panel: TelluxPanel<ReturnType<typeof interopSchema>> | undefined
 const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
 })
 
-flyToModelButton.disabled = true
-toggleAnimationButton.disabled = true
-
-const modelCoordinatesText = t({ zh: "经度 {lon}、纬度 {lat}", en: "Longitude {lon}, latitude {lat}" }, {
-  lon: MODEL_LONGITUDE.toFixed(6),
-  lat: MODEL_LATITUDE.toFixed(6),
-})
-if (coordinatesTextElement) coordinatesTextElement.textContent = modelCoordinatesText
-if (coordinatesElement) {
-  coordinatesElement.textContent = `${MODEL_LONGITUDE.toFixed(6)}, ${MODEL_LATITUDE.toFixed(6)}`
-}
-
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
-function updateAnimationButton() {
-  toggleAnimationButton.textContent = isAnimationPlaying
-    ? t({ zh: "暂停动画", en: "Pause animation" })
-    : t({ zh: "播放动画", en: "Play animation" })
+function setReadyStatus(message: string) {
+  if (panel) panel.controls.readout.animation = message
+}
+
+function setActionDisabled(disabled: boolean) {
+  if (!panel) return
+  panel.setFieldDisabled("actions.flyTo", disabled)
+  panel.setFieldDisabled("actions.playing", disabled)
+}
+
+function flyToModel() {
+  if (!model) return
+  viewer.flyToTarget(model.root, {
+    heading: -30,
+    pitch: -10,
+    distance: 500,
+  })
+}
+
+function syncAnimationFromPanel() {
+  if (!model || !panel) return
+  isAnimationPlaying = panel.controls.actions.playing
+  if (isAnimationPlaying) {
+    model.playAnimation(0)
+  } else {
+    model.pauseAnimation()
+  }
 }
 
 async function loadModelOnSampledGround() {
-  setStatus(t({ zh: "正在离屏采样模型位置的地形高度...", en: "Offscreen sampling terrain height at model position..." }))
-  if (modelStatusElement) {
-    modelStatusElement.textContent = t({ zh: "采样地形高度中", en: "Sampling terrain height" })
-  }
+  setStatus(
+    t({
+      zh: "正在离屏采样模型位置的地形高度...",
+      en: "Offscreen sampling terrain height at model position...",
+    })
+  )
+  setReadyStatus(t({ zh: "采样地形高度中", en: "Sampling terrain height" }))
 
   let modelHeight = MODEL_HEIGHT
   try {
@@ -121,19 +117,27 @@ async function loadModelOnSampledGround() {
     )
     const sampledPosition = sampledPositions[0]
     if (!sampledPosition) {
-      setStatus(t({ zh: "离屏采样地形高度未命中，已取消模型加载。", en: "Offscreen terrain sample missed; model load cancelled." }))
-      if (modelStatusElement) {
-        modelStatusElement.textContent = t({ zh: "地形高度未命中", en: "Terrain height missed" })
-      }
+      setStatus(
+        t({
+          zh: "离屏采样地形高度未命中，已取消模型加载。",
+          en: "Offscreen terrain sample missed; model load cancelled.",
+        })
+      )
+      setReadyStatus(t({ zh: "地形高度未命中", en: "Terrain height missed" }))
       return
     }
     modelHeight = sampledPosition[2]
   } catch (error) {
     console.warn("Failed to sample terrain height before loading model.", error)
-    setStatus(t({ zh: "离屏采样地形高度失败，已取消模型加载。", en: "Offscreen terrain sample failed; model load cancelled." }))
-    if (modelStatusElement) {
-      modelStatusElement.textContent = t({ zh: "地形高度采样失败", en: "Terrain height sampling failed" })
-    }
+    setStatus(
+      t({
+        zh: "离屏采样地形高度失败，已取消模型加载。",
+        en: "Offscreen terrain sample failed; model load cancelled.",
+      })
+    )
+    setReadyStatus(
+      t({ zh: "地形高度采样失败", en: "Terrain height sampling failed" })
+    )
     return
   }
 
@@ -150,26 +154,105 @@ async function loadModelOnSampledGround() {
 
   try {
     const layer = await model.ready
-    if (modelStatusElement) {
-      modelStatusElement.textContent = t({ zh: "{n} 个动画通道", en: "{n} animation clip(s)" }, { n: layer.animations.length })
-    }
-    flyToModelButton.disabled = false
-    toggleAnimationButton.disabled = false
-    viewer.flyToTarget(model.root, {
-      heading: -30,
-      pitch: -10,
-      distance: 500,
-    })
+    setReadyStatus(
+      t({ zh: "{n} 个动画通道", en: "{n} animation clip(s)" }, { n: layer.animations.length })
+    )
+    setActionDisabled(false)
+    flyToModel()
     setStatus(
-      t({ zh: "Littlest Tokyo 已在采样高度 {h} 米处加入场景，并自动播放第 0 个动画通道。", en: "Littlest Tokyo added at sampled height {h} m; playing animation channel 0." }, { h: modelHeight.toFixed(2) })
+      t(
+        {
+          zh: "Littlest Tokyo 已在采样高度 {h} 米处加入场景，并自动播放第 0 个动画通道。",
+          en: "Littlest Tokyo added at sampled height {h} m; playing animation channel 0.",
+        },
+        { h: modelHeight.toFixed(2) }
+      )
     )
   } catch (error) {
     console.error(error)
-    setStatus(t({ zh: "模型加载失败，请检查网络或 three.js 示例资源是否可访问。", en: "Model load failed; check network or Three.js example assets." }))
+    setStatus(
+      t({
+        zh: "模型加载失败，请检查网络或 three.js 示例资源是否可访问。",
+        en: "Model load failed; check network or Three.js example assets.",
+      })
+    )
   }
 }
 
-loadModelOnSampledGround()
+const interopSchema = () =>
+  ({
+    actions: {
+      $: { label: t({ zh: "操作", en: "Actions" }) },
+      hint: {
+        type: "hint" as const,
+        value: t(
+          {
+            zh: "加载 Three.js 官方 keyframes 模型，作为原生 Object3D 放到经度 {lon}、纬度 {lat} 的地表位置。",
+            en: "Load the official Three.js keyframes model as a native Object3D at longitude {lon}, latitude {lat}.",
+          },
+          {
+            lon: MODEL_LONGITUDE.toFixed(6),
+            lat: MODEL_LATITUDE.toFixed(6),
+          }
+        ),
+      },
+      flyTo: {
+        onClick: () => flyToModel(),
+        label: t({ zh: "飞到模型", en: "Fly to model" }),
+      },
+      playing: {
+        value: true,
+        label: t({ zh: "播放动画", en: "Play animation" }),
+      },
+    },
+    readout: {
+      $: { label: t({ zh: "信息", en: "Info" }) },
+      api: {
+        type: "hint" as const,
+        label: "API",
+        value: "viewer.addModel",
+      },
+      coords: {
+        type: "hint" as const,
+        label: t({ zh: "坐标", en: "Coordinates" }),
+        value: `${MODEL_LONGITUDE.toFixed(6)}, ${MODEL_LATITUDE.toFixed(6)}`,
+      },
+      animation: {
+        type: "hint" as const,
+        label: t({ zh: "动画", en: "Animation" }),
+        value: "-",
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: t({
+          zh: "正在加载 Littlest Tokyo...",
+          en: "Loading Littlest Tokyo...",
+        }),
+      },
+    },
+  }) as const
+
+function bindPanelInteractions(
+  currentPanel: TelluxPanel<ReturnType<typeof interopSchema>>
+) {
+  return currentPanel.controls.effect(() => {
+    void currentPanel.controls.actions.playing
+    syncAnimationFromPanel()
+  })
+}
+
+panel = createTelluxPanel(interopSchema, {
+  id: "threejs-interop-panel",
+  title: () => t({ zh: "Three.js 原生互操作", en: "Three.js interop" }),
+  statusPath: "status.message",
+  onRebuild: bindPanelInteractions,
+})
+
+setActionDisabled(true)
+void loadModelOnSampledGround()
 
 viewer.on("click", (event) => {
   if (!model) {
@@ -182,42 +265,27 @@ viewer.on("click", (event) => {
   if (hit?.type === "object") {
     viewer.highlight.set(model.root)
     setStatus(
-      t({ zh: "已选中模型（命中 {name}，距离 {d} m）。再次点击空白处取消。", en: "Model selected (hit {name}, distance {d} m). Click empty space to clear." }, {
-        name: hit.object.object.name || hit.object.object.type,
-        d: hit.distance.toFixed(1),
-      })
+      t(
+        {
+          zh: "已选中模型（命中 {name}，距离 {d} m）。再次点击空白处取消。",
+          en: "Model selected (hit {name}, distance {d} m). Click empty space to clear.",
+        },
+        {
+          name: hit.object.object.name || hit.object.object.type,
+          d: hit.distance.toFixed(1),
+        }
+      )
     )
   } else {
     viewer.highlight.clear()
-    setStatus(t({ zh: "未命中模型，已清除高亮。", en: "No model hit; highlight cleared." }))
+    setStatus(
+      t({ zh: "未命中模型，已清除高亮。", en: "No model hit; highlight cleared." })
+    )
   }
 })
-
-flyToModelButton.addEventListener("click", () => {
-  if (!model) return
-
-  viewer.flyToTarget(model.root, {
-    heading: -30,
-    pitch: -10,
-    distance: 500,
-  })
-})
-
-toggleAnimationButton.addEventListener("click", () => {
-  if (!model) return
-
-  isAnimationPlaying = !isAnimationPlaying
-  if (isAnimationPlaying) {
-    model.playAnimation(0)
-  } else {
-    model.pauseAnimation()
-  }
-  updateAnimationButton()
-})
-
-updateAnimationButton()
 
 window.addEventListener("beforeunload", () => {
   locationReadout.destroy()
+  panel?.dispose()
   viewer.destroy()
 })

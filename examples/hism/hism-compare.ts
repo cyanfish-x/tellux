@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { bootExampleI18n, t } from "../i18n"
 import tellux, { type HismLayer } from "../../src"
-import { setupExamplePanels } from "../example-panel"
+import { createTelluxPanel, type TelluxPanel } from "../example-panel-leva"
 import {
   HISM_DEMO_CENTER,
   HISM_DEMO_VIEW_POSE,
@@ -17,7 +17,6 @@ import {
 } from "./shared"
 
 bootExampleI18n()
-setupExamplePanels()
 
 const MAX_INSTANCE_COUNT = 10_000_000
 const SAMPLING_MAX_COUNT = 5000
@@ -68,18 +67,6 @@ type ActiveScene =
     }
 
 const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#compare-status")
-const hintElement = document.querySelector<HTMLElement>("#compare-hint")
-const countInput = document.querySelector<HTMLInputElement>("#compare-count")
-const sampleTerrainCheckbox = document.querySelector<HTMLInputElement>(
-  "#compare-sample-terrain"
-)
-const progressElement = document.querySelector<HTMLProgressElement>(
-  "#compare-progress"
-)
-const generateButton = document.querySelector<HTMLButtonElement>("#compare-generate")
-const flyToButton = document.querySelector<HTMLButtonElement>("#compare-flyto")
-const clearButton = document.querySelector<HTMLButtonElement>("#compare-clear")
 const summaryBody = document.querySelector<HTMLElement>("#compare-summary-body")
 const liveMode = document.querySelector<HTMLElement>("#compare-live-mode")
 const liveFps = document.querySelector<HTMLElement>("#compare-live-fps")
@@ -88,16 +75,7 @@ const liveVisible = document.querySelector<HTMLElement>("#compare-live-visible")
 const liveDrawCalls = document.querySelector<HTMLElement>("#compare-live-drawcalls")
 const liveLoad = document.querySelector<HTMLElement>("#compare-live-load")
 
-if (
-  !(container instanceof HTMLElement) ||
-  !countInput ||
-  !sampleTerrainCheckbox ||
-  !progressElement ||
-  !generateButton ||
-  !flyToButton ||
-  !clearButton ||
-  !summaryBody
-) {
+if (!(container instanceof HTMLElement) || !summaryBody) {
   throw new Error("Compare controls not found.")
 }
 
@@ -118,13 +96,18 @@ let lastHudTime = performance.now()
 let smoothedFps = 0
 let lastRunMetrics: RunMetrics | null = null
 const compareHistory: Partial<Record<RenderMode, RunMetrics>> = {}
+let panel: TelluxPanel<ReturnType<typeof compareSchema>> | undefined
+const progressElement = document.createElement("progress")
+progressElement.max = 100
+progressElement.value = 0
+progressElement.hidden = true
+progressElement.className = "leva-compare-progress"
 
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
 function setProgress(value: number | null) {
-  if (!progressElement) return
   if (value === null) {
     progressElement.hidden = true
     progressElement.value = 0
@@ -135,15 +118,24 @@ function setProgress(value: number | null) {
 }
 
 function getSelectedMode(): RenderMode {
-  const selected = document.querySelector<HTMLInputElement>(
-    'input[name="compare-mode"]:checked'
-  )
-  return selected?.value === "legacy" ? "legacy" : "hism"
+  return panel?.controls.params.mode === "legacy" ? "legacy" : "hism"
+}
+
+function getRequestedCount() {
+  return clampCount(Number(panel?.controls.params.count ?? 10000))
 }
 
 function clampCount(raw: number) {
   if (!Number.isFinite(raw)) return 1
   return Math.min(MAX_INSTANCE_COUNT, Math.max(1, Math.floor(raw)))
+}
+
+function setGenerateDisabled(disabled: boolean) {
+  panel?.setFieldDisabled("actions.generate", disabled)
+}
+
+function setFlyToDisabled(disabled: boolean) {
+  panel?.setFieldDisabled("actions.flyTo", disabled)
 }
 
 function resolvePresetDefs(count: number) {
@@ -164,11 +156,14 @@ function resolveClusterCellSize(count: number, radiusMeters: number) {
 }
 
 function shouldSampleTerrain(count: number) {
-  return sampleTerrainCheckbox.checked && count <= SAMPLING_MAX_COUNT
+  return Boolean(panel?.controls.params.sampleTerrain) && count <= SAMPLING_MAX_COUNT
 }
 
-function updateHint(count: number) {
-  if (!hintElement) return
+function updateHint(
+  count: number,
+  targetPanel: TelluxPanel<ReturnType<typeof compareSchema>> | undefined = panel
+) {
+  if (!targetPanel) return
   const parts = []
   if (count > POISSON_MAX_COUNT) {
     parts.push(t({ zh: "已启用快速随机散布", en: "Fast random scatter enabled" }))
@@ -179,13 +174,13 @@ function updateHint(count: number) {
   if (count > SINGLE_PRESET_THRESHOLD) {
     parts.push(t({ zh: "已切换为单树种模板以缩短构建时间", en: "Switched to single-species templates to speed build" }))
   }
-  hintElement.textContent =
+  targetPanel.controls.params.hint =
     parts.length > 0
       ? parts.join("；") + "。"
       : t({ zh: "≤ 5000 实例时可启用地形采样与泊松散布。", en: "≤ 5000: terrain sampling + Poisson scatter available." })
-  sampleTerrainCheckbox.disabled = count > SAMPLING_MAX_COUNT
+  targetPanel.setFieldDisabled("params.sampleTerrain", count > SAMPLING_MAX_COUNT)
   if (count > SAMPLING_MAX_COUNT) {
-    sampleTerrainCheckbox.checked = false
+    targetPanel.controls.params.sampleTerrain = false
   }
 }
 
@@ -492,12 +487,12 @@ function fmtSec(value: number | undefined) {
 async function runGeneration() {
   const token = ++generationToken
   const mode = getSelectedMode()
-  const requestedCount = clampCount(Number(countInput.value))
-  countInput.value = String(requestedCount)
+  const requestedCount = getRequestedCount()
+  if (panel) panel.controls.params.count = requestedCount
   updateHint(requestedCount)
 
-  generateButton.disabled = true
-  flyToButton.disabled = true
+  setGenerateDisabled(true)
+  setFlyToDisabled(true)
   disposeActiveScene()
   document.body.dataset.compareReady = ""
   setProgress(0)
@@ -536,7 +531,7 @@ async function runGeneration() {
   if (sampledPlacements.length === 0) {
     setStatus(t({ zh: "未生成任何实例。", en: "No instances generated." }))
     setProgress(null)
-    generateButton.disabled = false
+    setGenerateDisabled(false)
     return
   }
 
@@ -592,8 +587,8 @@ async function runGeneration() {
     compareHistory[mode] = lastRunMetrics
     renderSummaryTable()
     setProgress(null)
-    generateButton.disabled = false
-    flyToButton.disabled = false
+    setGenerateDisabled(false)
+    setFlyToDisabled(false)
     document.body.dataset.compareReady = "true"
     window.__hismCompareSnapshot = lastRunMetrics
     setStatus(
@@ -608,53 +603,135 @@ async function runGeneration() {
   })
 }
 
-generateButton.addEventListener("click", () => {
-  void runGeneration()
+const compareSchema = () =>
+  ({
+    params: {
+      $: { label: t({ zh: "参数", en: "Parameters" }) },
+      count: {
+        value: 10000,
+        step: 1,
+        label: t({
+          zh: "实例数量（1 – 10,000,000）",
+          en: "Instance count (1 – 10,000,000)",
+        }),
+      },
+      mode: {
+        value: "hism" as RenderMode,
+        options: {
+          "Legacy InstancedMesh": "legacy",
+          HISM: "hism",
+        },
+        label: t({ zh: "渲染模式", en: "Render mode" }),
+      },
+      sampleTerrain: {
+        value: true,
+        label: t({
+          zh: "地形采样（≤ 5000 实例时可用）",
+          en: "Terrain sampling (≤ 5000 instances)",
+        }),
+      },
+      hint: {
+        type: "hint" as const,
+        value: t({
+          zh: "≤ 5000 实例时可启用地形采样与泊松散布。",
+          en: "≤ 5000: terrain sampling + Poisson scatter available.",
+        }),
+      },
+    },
+    actions: {
+      $: { label: t({ zh: "操作", en: "Actions" }) },
+      generate: {
+        onClick: () => {
+          void runGeneration()
+        },
+        label: t({ zh: "生成并测速", en: "Generate & benchmark" }),
+      },
+      flyTo: {
+        onClick: () => flyToScene(),
+        label: t({ zh: "飞到场景", en: "Fly to scene" }),
+      },
+      clear: {
+        onClick: () => {
+          generationToken += 1
+          disposeActiveScene()
+          setProgress(null)
+          lastRunMetrics = null
+          setStatus(
+            t({
+              zh: "场景已清空。可切换模式后重新生成对比。",
+              en: "Scene cleared. Switch mode and regenerate.",
+            })
+          )
+        },
+        label: t({ zh: "清空场景", en: "Clear scene" }),
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: t({
+          zh: "正在初始化模板...",
+          en: "Initializing templates...",
+        }),
+      },
+    },
+  }) as const
+
+function bindPanelInteractions(
+  currentPanel: TelluxPanel<ReturnType<typeof compareSchema>>
+) {
+  const folder = currentPanel.root.querySelector(
+    '[data-path="params"] .leva__folder-content'
+  )
+  folder?.append(progressElement)
+
+  return currentPanel.controls.effect(() => {
+    updateHint(
+      clampCount(Number(currentPanel.controls.params.count)),
+      currentPanel
+    )
+  })
+}
+
+panel = createTelluxPanel(compareSchema, {
+  id: "hism-compare-panel",
+  title: () =>
+    t({ zh: "Legacy vs HISM 性能对比", en: "Legacy vs HISM compare" }),
+  statusPath: "status.message",
+  onRebuild: bindPanelInteractions,
 })
 
-flyToButton.addEventListener("click", () => {
-  flyToScene()
-})
-
-clearButton.addEventListener("click", () => {
-  generationToken += 1
-  disposeActiveScene()
-  setProgress(null)
-  lastRunMetrics = null
-  setStatus(t({ zh: "场景已清空。可切换模式后重新生成对比。", en: "Scene cleared. Switch mode and regenerate." }))
-})
-
-countInput.addEventListener("input", () => {
-  updateHint(clampCount(Number(countInput.value)))
-})
+setFlyToDisabled(true)
 
 window.addEventListener("beforeunload", () => {
   generationToken += 1
   cancelAnimationFrame(hudFrame)
   disposeActiveScene()
+  panel?.dispose()
   viewer.destroy()
 })
 
-updateHint(clampCount(Number(countInput.value)))
+updateHint(getRequestedCount())
 updateHud()
-void initializeTemplates(getSelectedMode(), clampCount(Number(countInput.value))).then(
-  () => {
-    setStatus(t({ zh: "模板就绪。选择模式与数量后点击「生成并测速」。", en: "Templates ready. Choose mode/count then Generate & benchmark." }))
-    const params = new URLSearchParams(location.search)
-    if (params.get("autorun") !== "1") return
-    const trees = params.get("trees")
-    const mode = params.get("mode")
-    if (trees) countInput.value = String(clampCount(Number(trees)))
-    if (mode === "legacy" || mode === "hism") {
-      const input = document.querySelector<HTMLInputElement>(
-        `input[name="compare-mode"][value="${mode}"]`
-      )
-      if (input) input.checked = true
-    }
-    updateHint(clampCount(Number(countInput.value)))
-    void runGeneration()
+void initializeTemplates(getSelectedMode(), getRequestedCount()).then(() => {
+  setStatus(
+    t({
+      zh: "模板就绪。选择模式与数量后点击「生成并测速」。",
+      en: "Templates ready. Choose mode/count then Generate & benchmark.",
+    })
+  )
+  const params = new URLSearchParams(location.search)
+  if (params.get("autorun") !== "1") return
+  const trees = params.get("trees")
+  const mode = params.get("mode")
+  if (trees && panel) panel.controls.params.count = clampCount(Number(trees))
+  if ((mode === "legacy" || mode === "hism") && panel) {
+    panel.controls.params.mode = mode
   }
-)
+  updateHint(getRequestedCount())
+  void runGeneration()
+})
 
 declare global {
   interface Window {

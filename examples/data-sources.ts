@@ -13,14 +13,14 @@ import {
   defaultTiandituToken,
   defaultTiandituTokens,
 } from "./shared"
-import { setupExamplePanels } from "./example-panel"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 
 bootExampleI18n()
-setupExamplePanels()
 
 const container = document.querySelector("#viewer")
-const overlayList = document.querySelector<HTMLElement>("#overlay-list")
-const layerStatus = document.querySelector<HTMLElement>("#layer-status")
+const overlayListElement = document.createElement("div")
+overlayListElement.id = "overlay-list"
+overlayListElement.className = "layer-manager__list"
 
 /**
  * 天地图 WMTS 注记（cia_w）URL 预处理：按瓦片坐标确定性轮换子域和 token，
@@ -243,11 +243,6 @@ if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (!(overlayList instanceof HTMLElement)) {
-  throw new Error("Overlay list container not found.")
-}
-
-const overlayListElement = overlayList
 let draggedLayerKey: string | null = null
 let dragHoverLayerKey: string | null = null
 
@@ -443,8 +438,44 @@ overlayLayers.forEach((item) => {
   item.layer = layer
 })
 
-renderLayerManager()
-updateLayerStatus()
+const dataSourcesSchema = () =>
+  ({
+    layers: {
+      $: { label: t({ zh: "图层", en: "Layers" }) },
+      slot: {
+        type: "hint" as const,
+        value: " ",
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: "",
+      },
+    },
+  }) as const
+
+function bindLayerManager(
+  currentPanel: TelluxPanel<ReturnType<typeof dataSourcesSchema>>
+) {
+  panel = currentPanel
+  currentPanel.controls.visibility("layers.slot", false)
+  const folder = currentPanel.root.querySelector(
+    '[data-path="layers"] .leva__folder-content'
+  )
+  folder?.append(overlayListElement)
+  renderLayerManager()
+  updateLayerStatus()
+}
+
+let panel: TelluxPanel<ReturnType<typeof dataSourcesSchema>> | undefined
+panel = createTelluxPanel(dataSourcesSchema, {
+  id: "data-sources-panel",
+  title: () => t({ zh: "图层管理器", en: "Layer manager" }),
+  statusPath: "status.message",
+  onRebuild: bindLayerManager,
+})
 
 function renderLayerManager() {
   overlayListElement.innerHTML = ""
@@ -677,8 +708,6 @@ function formatOpacity(opacity: number) {
 }
 
 function updateLayerStatus() {
-  if (!layerStatus) return
-
   const activeCount = overlayLayers.filter((layer) =>
     layer.layer?.isVisible()
   ).length
@@ -708,10 +737,11 @@ function updateLayerStatus() {
     statusParts.push(adminLoadIssue)
   }
 
-  layerStatus.textContent = statusParts.join(" ")
+  panel?.setStatus(statusParts.join(" "))
 }
 
 window.addEventListener("beforeunload", () => {
+  panel?.dispose()
   viewer.destroy()
 })
 }

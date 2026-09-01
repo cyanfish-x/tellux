@@ -36,7 +36,7 @@ Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用�
 - 项目级备忘、调研记录、架构草稿和维护说明放在 `notes/`。
 - `examples/public/docs/` 是 VitePress 构建产物，不要手动编辑。
 - 新增普通示例时，通常需要同时关注示例 HTML/TS、`examples/vite.config.ts` 的入口注册，以及 Sandcastle registry 的分类/标题/描述规则。
-- 项目已经封装通用示例 UI 面板（`examples/example-panel.ts` + `examples/styles.css` 的 `.example-panel*` 体系）。示例需要参数或交互面板时应优先完整复用其 DOM 契约、控件类名和 `setupExamplePanels()`，不要只复用外层类名后另写一套内部结构或样式；现有能力不足时优先扩展通用面板并同步架构文档。
+- 有控件的示例页使用 `createTelluxPanel`（`examples/example-panel-leva.ts` + `leva-vanilla`）。新增或改示例面板时按现有 schema / `effect()` / `statusPath` 契约扩展，并同步 `notes/架构/examples文档与Sandcastle架构.md`。不要再给独立示例页加 HTML `.example-panel`。
 - 修改 Sandcastle 时先区分主应用和 runner：`app.ts` 负责编辑器、示例列表、运行控制和日志；`runner.ts` 负责 iframe 内执行当前 payload。
 
 ## notes 快速索引

@@ -29,6 +29,7 @@ export type TelluxPanelOptions<T extends Schema = Schema> = {
 
 export type TelluxPanelControls<T extends Schema> = ReturnType<typeof leva<T>> & {
   effect: (fn: () => void) => () => void
+  visibility: (path: string, visible: boolean) => void
   dispose: () => void
 }
 
@@ -100,6 +101,7 @@ export function createTelluxPanel<T extends Schema>(
       container,
       position: options.position ?? { top: 12, left: 12 },
     })
+    gui.root.dataset.telluxPanel = options.id ?? "default"
 
     if (snapshot) {
       restoreControlSnapshot(controls, snapshot)

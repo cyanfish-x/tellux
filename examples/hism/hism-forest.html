@@ -79,54 +79,6 @@
       </dl>
       <p id="hism-pick" class="hism-pick" data-i18n="example.hism-forest.pick.hint">点击场景拾取 HISM 实例</p>
     </aside>
-    <aside class="example-panel" id="hism-forest-panel" data-i18n-attr="aria-label:example.hism-forest.panel.aria" aria-label="HISM 森林基准控件">
-      <header class="example-panel__chrome">
-        <button
-          type="button"
-          class="example-panel__fold"
-          id="hism-forest-panel-fold"
-          aria-expanded="true"
-          aria-controls="hism-forest-panel-body"
-          title="收起面板"
-          aria-label="收起面板"
-          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
-        ></button>
-        <span class="example-panel__title" data-i18n="example.hism-forest.panel.title">HISM 森林基准</span>
-      </header>
-
-      <div class="example-panel__collapse" id="hism-forest-panel-body">
-        <div class="example-panel__content">
-          <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary" data-i18n="example.hism-forest.folder.actions">操作</summary>
-            <div class="example-panel__folder-collapse">
-              <div class="example-panel__folder-body">
-                <button class="example-panel__button" id="fly-to-hism-forest" type="button" data-i18n="example.hism-forest.btn.fly">飞到场景</button>
-                <button class="example-panel__button example-panel__button--ghost" id="regenerate-hism-forest" type="button" data-i18n="example.hism-forest.btn.regen">
-                  重新生成
-                </button>
-              </div>
-            </div>
-          </details>
-
-          <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary" data-i18n="example.hism-forest.folder.status">状态</summary>
-            <div class="example-panel__folder-collapse">
-              <div class="example-panel__folder-body">
-                <p id="hism-status" class="example-panel__status" aria-live="polite" data-i18n="example.hism-forest.status.initial">正在准备 HISM 场景...</p>
-                <dl class="example-panel__readout">
-                  <dt>Trees</dt>
-                  <dd id="hism-tree-count">-</dd>
-                  <dt>Rocks</dt>
-                  <dd id="hism-rock-count">-</dd>
-                  <dt>Sampling</dt>
-                  <dd id="hism-sampling-status">-</dd>
-                </dl>
-              </div>
-            </div>
-          </details>
-        </div>
-      </div>
-    </aside>
   </main>
   <script type="module" src="./hism-forest.ts"></script>
 </body>

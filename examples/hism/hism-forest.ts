@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { bootExampleI18n, t } from "../i18n"
 import tellux, { type HismLayer } from "../../src"
-import { setupExamplePanels } from "../example-panel"
+import { createTelluxPanel, type TelluxPanel } from "../example-panel-leva"
 import { mountLocationReadout } from "../location-readout"
 import {
   HISM_DEMO_CENTER,
@@ -15,7 +15,6 @@ import {
 } from "./shared"
 
 bootExampleI18n()
-setupExamplePanels()
 
 const TREE_COUNT = 12000
 const ROCK_COUNT = 4000
@@ -31,16 +30,6 @@ type SceneState = {
 }
 
 const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#hism-status")
-const treeCountElement = document.querySelector<HTMLElement>("#hism-tree-count")
-const rockCountElement = document.querySelector<HTMLElement>("#hism-rock-count")
-const samplingStatusElement = document.querySelector<HTMLElement>(
-  "#hism-sampling-status"
-)
-const flyToButton = document.querySelector<HTMLButtonElement>("#fly-to-hism-forest")
-const regenerateButton = document.querySelector<HTMLButtonElement>(
-  "#regenerate-hism-forest"
-)
 const hudFps = document.querySelector<HTMLElement>("#hism-fps")
 const hudLayers = document.querySelector<HTMLElement>("#hism-layers")
 const hudClusters = document.querySelector<HTMLElement>("#hism-clusters")
@@ -52,9 +41,6 @@ const hudPick = document.querySelector<HTMLElement>("#hism-pick")
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
-}
-if (!flyToButton || !regenerateButton) {
-  throw new Error("HISM controls not found.")
 }
 
 const impostorGeometry = new THREE.CylinderGeometry(1.2, 1.8, 14, 6)
@@ -98,16 +84,20 @@ let generationToken = 0
 let hudFrame = 0
 let lastHudTime = performance.now()
 let smoothedFps = 0
-
-flyToButton.disabled = true
-regenerateButton.disabled = true
+let panel: TelluxPanel<ReturnType<typeof hismForestSchema>> | undefined
 
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
 function setSamplingStatus(message: string) {
-  if (samplingStatusElement) samplingStatusElement.textContent = message
+  if (panel) panel.controls.readout.sampling = message
+}
+
+function setActionDisabled(disabled: boolean) {
+  if (!panel) return
+  panel.setFieldDisabled("actions.flyTo", disabled)
+  panel.setFieldDisabled("actions.regenerate", disabled)
 }
 
 function createTemplates() {
@@ -118,10 +108,11 @@ function createTemplates() {
 
 async function createScene(templates: HismDemoPresetTemplate[]) {
   const token = ++generationToken
-  flyToButton.disabled = true
-  regenerateButton.disabled = true
-  if (treeCountElement) treeCountElement.textContent = "-"
-  if (rockCountElement) rockCountElement.textContent = "-"
+  setActionDisabled(true)
+  if (panel) {
+    panel.controls.readout.trees = "-"
+    panel.controls.readout.rocks = "-"
+  }
   setSamplingStatus("-")
   setStatus(t({ zh: "正在生成散布点...", en: "Generating placements..." }))
 
@@ -199,7 +190,7 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
 
   if (treeInstances.length === 0) {
     setStatus(t({ zh: "树实例高度采样失败。", en: "Tree instance height sampling failed." }))
-    regenerateButton.disabled = false
+    setActionDisabled(false)
     return
   }
 
@@ -245,10 +236,11 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
   }
 
   sceneState = { forestLayer, rockLayer, templates }
-  flyToButton.disabled = false
-  regenerateButton.disabled = false
-  if (treeCountElement) treeCountElement.textContent = String(treeInstances.length)
-  if (rockCountElement) rockCountElement.textContent = String(rockInstances.length)
+  setActionDisabled(false)
+  if (panel) {
+    panel.controls.readout.trees = String(treeInstances.length)
+    panel.controls.readout.rocks = String(rockInstances.length)
+  }
   setSamplingStatus(
     `${Math.min(...treeInstances.map((item) => item.coordinates[2])).toFixed(1)}m - ${Math.max(...treeInstances.map((item) => item.coordinates[2])).toFixed(1)}m`
   )
@@ -327,15 +319,62 @@ viewer.on("click", (event) => {
   }
 })
 
-flyToButton.addEventListener("click", () => {
-  if (!sceneState) return
-  flyToScene()
+const hismForestSchema = () =>
+  ({
+    actions: {
+      $: { label: t({ zh: "操作", en: "Actions" }) },
+      flyTo: {
+        onClick: () => {
+          if (!sceneState) return
+          flyToScene()
+        },
+        label: t({ zh: "飞到场景", en: "Fly to scene" }),
+      },
+      regenerate: {
+        onClick: () => {
+          viewer.highlight.clear()
+          void createScene(createTemplates())
+        },
+        label: t({ zh: "重新生成", en: "Regenerate" }),
+      },
+    },
+    readout: {
+      $: { label: t({ zh: "信息", en: "Info" }) },
+      trees: {
+        type: "hint" as const,
+        label: "Trees",
+        value: "-",
+      },
+      rocks: {
+        type: "hint" as const,
+        label: "Rocks",
+        value: "-",
+      },
+      sampling: {
+        type: "hint" as const,
+        label: "Sampling",
+        value: "-",
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: t({
+          zh: "正在准备 HISM 场景...",
+          en: "Preparing HISM scene...",
+        }),
+      },
+    },
+  }) as const
+
+panel = createTelluxPanel(hismForestSchema, {
+  id: "hism-forest-panel",
+  title: () => t({ zh: "HISM 森林基准", en: "HISM forest benchmark" }),
+  statusPath: "status.message",
 })
 
-regenerateButton.addEventListener("click", () => {
-  viewer.highlight.clear()
-  void createScene(createTemplates())
-})
+setActionDisabled(true)
 
 window.addEventListener("beforeunload", () => {
   generationToken += 1
@@ -343,6 +382,7 @@ window.addEventListener("beforeunload", () => {
   sceneState?.forestLayer.remove()
   sceneState?.rockLayer?.remove()
   locationReadout.destroy()
+  panel?.dispose()
   viewer.destroy()
 })
 

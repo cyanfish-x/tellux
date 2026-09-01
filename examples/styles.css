@@ -1718,6 +1718,22 @@ select.field__input {
   color: #e8c56a;
 }
 
+#leva__root[data-tellux-panel="data-sources-panel"] .leva__base {
+  width: min(360px, calc(100vw - 32px));
+}
+
+#leva__root .layer-manager__list {
+  padding: 0 var(--leva-space-md, 10px) var(--leva-space-md, 10px);
+  max-height: min(60vh, 520px);
+  overflow: auto;
+}
+
+#leva__root .leva-compare-progress {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 0 10px 8px;
+}
+
 .location-panel {
   position: absolute;
   right: 16px;
