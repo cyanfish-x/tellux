@@ -1,11 +1,12 @@
 import * as THREE from 'three'
-import { EffectPass, NormalPass, OutlineEffect, SMAAEffect } from 'postprocessing'
+import { BloomEffect, EffectPass, NormalPass, OutlineEffect, SMAAEffect } from 'postprocessing'
 import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effects'
 import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects } from '../effects'
 import type { Scene } from '../Scene'
 import type { PointCloudEdlAggregate } from '../tiles/PointCloudShadingController'
 import type { AtmosphereManager } from './AtmosphereManager'
 import { applyLensFlareAppearanceState } from './lensFlareAppearance'
+import { applyBloomAppearanceState } from './bloomAppearance'
 import { PointCloudEdlPass } from './PointCloudEdlEffect'
 
 const CLOUD_RENDER_MAX_HEIGHT = 27000
@@ -63,6 +64,8 @@ export class PostProcessingManager {
   private readonly cloudAtmosphereAdapter: ThreeEffectPass
   private readonly atmosphereAdapter: ThreeEffectPass
   private readonly pointCloudEdlPass: PointCloudEdlPass
+  private readonly bloomEffect: BloomEffect
+  private readonly bloomAdapter: ThreeEffectPass
   private readonly lensFlareEffect: LensFlareEffect
   private readonly lensFlareAdapter: ThreeEffectPass
   private readonly smaaAdapter: ThreeEffectPass
@@ -101,6 +104,11 @@ export class PostProcessingManager {
     )
     this.normalAdapter = new EffectPassAdapter(normalPass, () => this.camera)
     this.pointCloudEdlPass = new PointCloudEdlPass(threeScene, this.camera)
+    this.bloomEffect = new BloomEffect({ mipmapBlur: true })
+    this.bloomAdapter = new EffectPassAdapter(
+      new EffectPass(this.camera, this.bloomEffect),
+      () => this.camera
+    )
     this.lensFlareEffect = new LensFlareEffect()
     this.lensFlareAdapter = new EffectPassAdapter(
       new EffectPass(this.camera, this.lensFlareEffect),
@@ -117,6 +125,7 @@ export class PostProcessingManager {
       this.cloudAtmosphereAdapter,
       this.atmosphereAdapter,
       this.pointCloudEdlPass,
+      this.bloomAdapter,
       this.lensFlareAdapter,
       this.smaaAdapter,
       this.ditheringAdapter
@@ -126,6 +135,7 @@ export class PostProcessingManager {
     }
 
     this.syncLensFlareSettings()
+    this.syncBloomSettings()
   }
 
   applyEffects() {
@@ -144,6 +154,7 @@ export class PostProcessingManager {
 
   private syncEffects(currentHeight: number | null, forceRecompile: boolean) {
     this.syncLensFlareSettings()
+    this.syncBloomSettings()
     const edl = this.getPointCloudEdlState?.() ?? {
       enabled: false,
       strength: 1,
@@ -170,7 +181,8 @@ export class PostProcessingManager {
       outlineEnabled,
       edl.enabled,
       edl.strength,
-      edl.radius
+      edl.radius,
+      this.scene.postProcess.bloom.enabled
     ].join(':')
 
     this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
@@ -203,6 +215,9 @@ export class PostProcessingManager {
       // 也能正确取到 targetA 的深度。
       nextEffects.push(this.entityRenderer)
     }
+    if (this.scene.postProcess.bloom.enabled) {
+      nextEffects.push(this.bloomAdapter)
+    }
     if (this.symbolOcclusionPass) {
       // Labels are screen-space overlays: draw them after atmosphere/cloud composition so
       // aerial perspective does not soften glyph edges. The pass still samples scene depth
@@ -230,6 +245,10 @@ export class PostProcessingManager {
 
   private syncLensFlareSettings() {
     applyLensFlareAppearanceState(this.lensFlareEffect, this.scene.postProcess.lensFlare)
+  }
+
+  private syncBloomSettings() {
+    applyBloomAppearanceState(this.bloomEffect, this.scene.postProcess.bloom)
   }
 
   /**

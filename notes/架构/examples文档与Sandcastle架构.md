@@ -199,6 +199,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 - 需要页面级错误/成功提示（类似 Element UI Message）时使用 `examples/example-message.ts` 的 `ExampleMessage.error()` 等；Sandcastle runner 已注入 `showExampleMessage` / `ExampleMessage`。
 - `onRebuild` 在初次挂载与每次 locale 重建后调用，用于注册 `effect()` / DOM 监听；`statusPath` 配合 `setStatus()` 写入 `hint` 字段。
 - 已迁移案例：`water-area`、`fly-to`、`atmosphere`、`ground-clamp`、`ground-clamp-polygon`、`google-photorealistic-3d-tiles`、`3d-tiles`、`point-cloud-3d-tiles`、`gaussian-splat-3d-tiles`、`3d-tiles-picking`、`entities`、`symbol`（`setupSymbolPanel.ts`）、`vegetation`、`instanced-horses`、`mixed-height-sampling-horses`、`terrain`、`data-sources`、`threejs-interop`、`hism-forest`、`hism-compare`。
+- `threejs-interop` 使用 Littlest Tokyo 原生 glTF PBR / emissive 材质和 `light-source` 场景光照展示夜景 Bloom；默认时钟设为武汉当地夜间，面板同时控制 Bloom 参数与模型 `emissiveIntensity`，不要用额外灯光或替换材质伪造窗灯。
 - 无独立控件面板的示例：`basic`、`webgpu-basic`（以及主页 / gallery / Sandcastle 壳）。
 - Sandcastle runner 基线注入含 `createTelluxPanel`（`example-panel-leva.ts`）。
 - 依赖：根 `package.json` 的 `devDependencies.leva-vanilla` 通过 `link:../leva-vanilla` 指向本地 fork；Vite alias 解析到源码。

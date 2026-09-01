@@ -355,6 +355,8 @@ model.remove()
 
 `type` 固定 `'gltf'`，`url` 可指 `.gltf` 或 `.glb`。`scale` 支持数字（均匀）或 `[x,y,z]`。需要贴合地形时先用 `sampleHeight` 查高度再传入 `height`。
 
+需要呈现建筑窗灯等夜间自发光时，使用 `materialMode: 'preserve'` 保留 glTF 的 `emissiveMap` / `emissiveFactor`，再开启 `viewer.scene.postProcess.bloom`。Bloom 按整帧 HDR 亮度提取，不会自动判断昼夜；应用可随 `viewer.clock` 调整 Bloom 或材质 `emissiveIntensity`。
+
 ## HISM 大规模实例化
 
 面向森林、岩石场等大量重复静态 mesh。Tellux 负责簇分桶、视锥剔除、LOD、RTC 定位与 BVH 拾取。

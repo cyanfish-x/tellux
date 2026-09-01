@@ -8,7 +8,7 @@ Tellux 把视觉氛围相关的能力组织在 `viewer.scene` 下，分为大气
 viewer.scene.atmosphere          // 大气天空、空气透视、光照、夜景、星空、云影
 viewer.scene.clouds              // 体积云
 viewer.scene.surface             // 基础地球表面材质
-viewer.scene.postProcess         // 后处理开关（镜头光晕、TAA、SMAA、抖动）
+viewer.scene.postProcess         // 后处理开关（Bloom、镜头光晕、TAA、SMAA、抖动）
 ```
 
 每个领域都遵循「初始化配置与运行时入口同构」的原则：`ViewerOptions.scene.xxx` 的字段结构和 `viewer.scene.xxx` 的属性一一对应。
@@ -186,6 +186,9 @@ viewer.scene.surface.material.useRoughnessMap = false
 ```ts
 viewer.scene.postProcess.smaa.enabled = true
 viewer.scene.postProcess.taa.enabled = true // WebGPU
+viewer.scene.postProcess.bloom.enabled = true
+viewer.scene.postProcess.bloom.intensity = 1.2
+viewer.scene.postProcess.bloom.luminanceThreshold = 0.6
 viewer.scene.postProcess.lensFlare.enabled = true
 viewer.scene.postProcess.lensFlare.intensity = 0.005
 viewer.scene.postProcess.lensFlare.threshold.level = 10
@@ -197,6 +200,7 @@ viewer.scene.postProcess.dithering.enabled = false
 | --- | --- |
 | `smaa.enabled` | SMAA 抗锯齿。 |
 | `taa.enabled` | WebGPU 时间抗锯齿（TAA）。使用高精度运动矢量和深度重投影历史帧；默认 `false`。 |
+| `bloom.enabled` / `intensity` / `luminanceThreshold` / `luminanceSmoothing` / `radius` | 基于 HDR 亮度的泛光，WebGL / WebGPU 均支持；默认关闭。 |
 | `lensFlare.enabled` / `intensity` / `threshold` / `quality` | 镜头光晕开关、强度、亮部阈值与质量档。 |
 | `dithering.enabled` | 抖动，减少色带。 |
 
@@ -206,6 +210,8 @@ viewer.scene.postProcess.dithering.enabled = false
 viewer.toneMappingExposure = 10
 ```
 
+Bloom 作用于整帧 HDR 亮部，并不只识别材质的 `emissive` 字段。夜景模型应保留 glTF 原始 PBR 材质，并通过 `emissiveMap` / `emissiveIntensity` 产生高于阈值的亮度；白天是否降低或关闭 Bloom 由应用按时间控制。
+
 ::: warning WebGPU 后处理边界
-WebGPU 已接入 LensFlare 与 TAA：LensFlare 基于 HDR 亮部提取、模糊和特征合成，并在 TAA 之前运行；TAA 会增加一个高精度 velocity MRT 和两张随绘制缓冲尺寸变化的历史纹理。SMAA 和抖动仍是 WebGL 专属，在 WebGPU 模式下调整这些开关没有视觉效果。由于 TAA 会累积历史，动态材质或逐实例动画需要单独验证运动矢量质量。
+WebGPU 已接入 Bloom、LensFlare 与 TAA，固定顺序为 Bloom → LensFlare → TAA。TAA 会增加一个高精度 velocity MRT 和两张随绘制缓冲尺寸变化的历史纹理。SMAA 和抖动仍是 WebGL 专属，在 WebGPU 模式下调整这些开关没有视觉效果。由于 TAA 会累积历史，动态材质或逐实例动画需要单独验证运动矢量质量。
 :::

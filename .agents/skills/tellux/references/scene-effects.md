@@ -122,6 +122,9 @@ viewer.scene.surface.material.useRoughnessMap = false   // 关掉可避免海面
 
 ```ts
 viewer.scene.postProcess.smaa.enabled = true
+viewer.scene.postProcess.bloom.enabled = true
+viewer.scene.postProcess.bloom.intensity = 1.2
+viewer.scene.postProcess.bloom.luminanceThreshold = 0.6
 viewer.scene.postProcess.lensFlare.enabled = true
 viewer.scene.postProcess.lensFlare.intensity = 0.005
 viewer.scene.postProcess.lensFlare.quality = 'medium'
@@ -130,7 +133,7 @@ viewer.scene.postProcess.dithering.enabled = false
 viewer.toneMappingExposure = 10
 ```
 
-> WebGPU 已支持镜头光晕与 TAA，且固定为 LensFlare → TAA；SMAA / 抖动在 WebGPU 模式下仍不渲染，调这些开关无视觉效果。
+> Bloom 在 WebGL / WebGPU 均可用，基于整帧 HDR 亮度提取；夜景模型应保留 glTF 原生 `emissiveMap`，并按需提高 `emissiveIntensity`。WebGPU 顺序固定为 Bloom → LensFlare → TAA；SMAA / 抖动仍不渲染。
 
 ## 完整初始化示例
 
@@ -153,6 +156,7 @@ const viewer = new tellux.Viewer(container, {
     },
     surface: { materialMode: 'auto', material: { roughness: 1, useRoughnessMap: false } },
     postProcess: {
+      bloom: { enabled: false, intensity: 1, luminanceThreshold: 1, luminanceSmoothing: 0.03, radius: 0.85 },
       lensFlare: { enabled: true, intensity: 0.005, quality: 'medium' },
       smaa: true,
       toneMappingExposure: 10

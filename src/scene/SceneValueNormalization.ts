@@ -71,6 +71,10 @@ export const sceneValueNormalizers = {
   cloudLayerHeight: (value: number) => nonNegative(value, 650),
   cloudShadowQuality: (value: string | undefined) =>
     value === 'low' || value === 'medium' || value === 'high' ? value : 'medium',
+  bloomIntensity: (value: number) => nonNegative(value, 1),
+  bloomLuminanceThreshold: (value: number) => nonNegative(value, 1),
+  bloomLuminanceSmoothing: (value: number) => clamped(value, 0.03, 0, 1),
+  bloomRadius: (value: number) => clamped(value, 0.85, 0, 1),
   lensFlareIntensity: (value: number) => nonNegative(value, 0.005),
   lensFlareThresholdLevel: (value: number) => nonNegative(value, 10),
   lensFlareThresholdRange: (value: number) => nonNegative(value, 1),

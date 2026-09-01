@@ -408,6 +408,24 @@ export interface ViewerPostProcessStageOptions {
 }
 
 /**
+ * Viewer Bloom 后处理配置。
+ *
+ * Viewer bloom post-processing options.
+ */
+export interface ViewerBloomOptions {
+  /** 是否启用 Bloom，默认 `false`。Enables bloom. Defaults to `false`. */
+  enabled?: boolean
+  /** Bloom 强度，默认 `1`。Bloom intensity. Defaults to `1`. */
+  intensity?: number
+  /** 参与 Bloom 的亮度阈值，默认 `1`。Luminance threshold for bloom. Defaults to `1`. */
+  luminanceThreshold?: number
+  /** 亮度阈值过渡宽度，范围 `0` 到 `1`，默认 `0.03`。Luminance threshold smoothing from `0` to `1`. Defaults to `0.03`. */
+  luminanceSmoothing?: number
+  /** Bloom 扩散半径，范围 `0` 到 `1`，默认 `0.85`。Bloom radius from `0` to `1`. Defaults to `0.85`. */
+  radius?: number
+}
+
+/**
  * Viewer 镜头光晕阈值配置。
  *
  * Viewer lens flare threshold options.
@@ -441,6 +459,12 @@ export interface ViewerLensFlareOptions {
  * Viewer post-processing options.
  */
 export interface ViewerPostProcessOptions {
+  /**
+   * Bloom 配置。传入 `boolean` 时等价于 `{ enabled }`，默认关闭。
+   *
+   * Bloom options. A `boolean` is treated as `{ enabled }`. Disabled by default.
+   */
+  bloom?: boolean | ViewerBloomOptions
   /**
    * 镜头光晕配置。传入 `boolean` 时等价于 `{ enabled }`。
    *

@@ -198,6 +198,7 @@ export {
   type ViewerAtmosphereShadowOptions,
   type ViewerAtmosphereSkyOptions,
   type ViewerAtmosphereStarsOptions,
+  type ViewerBloomOptions,
   type ViewerCloudLayerOptions,
   type ViewerCloudLookOptions,
   type ViewerCloudOptions,

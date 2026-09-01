@@ -8,6 +8,7 @@ import type {
   AtmosphereLightingMode,
   SurfaceMaterialMode,
   ViewerAtmosphereStarsOptions,
+  ViewerBloomOptions,
   ViewerLensFlareOptions,
   ViewerOptions,
   ViewerPostProcessStageOptions,
@@ -163,6 +164,7 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
       material: resolveSurfaceMaterialOptions(options?.surface?.material)
     },
     postProcess: {
+      bloom: resolveBloomOptions(options?.postProcess?.bloom),
       lensFlare: resolveLensFlareOptions(options?.postProcess?.lensFlare),
       smaa: resolvePostProcessStageOptions(options?.postProcess?.smaa, true),
       taa: resolvePostProcessStageOptions(options?.postProcess?.taa, false),
@@ -244,6 +246,23 @@ function resolvePostProcessStageOptions(
 ): { enabled: boolean } {
   if (typeof options === 'boolean') return { enabled: options }
   return { enabled: options?.enabled ?? defaultEnabled }
+}
+
+function resolveBloomOptions(
+  options: boolean | ViewerBloomOptions | undefined
+): ResolvedSceneOptions['postProcess']['bloom'] {
+  const values = typeof options === 'boolean' || options === undefined ? {} : options
+  return {
+    enabled: typeof options === 'boolean' ? options : options?.enabled ?? false,
+    intensity: sceneValueNormalizers.bloomIntensity(values.intensity ?? 1),
+    luminanceThreshold: sceneValueNormalizers.bloomLuminanceThreshold(
+      values.luminanceThreshold ?? 1
+    ),
+    luminanceSmoothing: sceneValueNormalizers.bloomLuminanceSmoothing(
+      values.luminanceSmoothing ?? 0.03
+    ),
+    radius: sceneValueNormalizers.bloomRadius(values.radius ?? 0.85)
+  }
 }
 
 function resolveLensFlareOptions(

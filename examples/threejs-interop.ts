@@ -1,4 +1,5 @@
 import tellux from "../src"
+import type { Material, Mesh, MeshStandardMaterial, Object3D } from "three"
 import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
@@ -18,6 +19,10 @@ if (!(container instanceof HTMLElement)) {
 }
 
 const viewer = new tellux.Viewer(container, {
+  // 武汉当地 20:00（UTC+8），直接展示模型自发光在夜景中的效果。
+  clock: {
+    currentTime: "2026-09-01T12:00:00Z",
+  },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -35,12 +40,25 @@ const viewer = new tellux.Viewer(container, {
   scene: {
     atmosphere: {
       show: true,
+      lighting: {
+        mode: "light-source",
+      },
       fallbackAmbientLight: {
-        intensity: 0.8,
+        intensity: 0.05,
       },
     },
     clouds: {
       show: false,
+    },
+    postProcess: {
+      toneMappingExposure: 1,
+      bloom: {
+        enabled: true,
+        intensity: 2,
+        luminanceThreshold: 0.8,
+        luminanceSmoothing: 0.05,
+        radius: 0.55,
+      },
     },
     highlight: {
       outline: {
@@ -60,6 +78,7 @@ const viewer = new tellux.Viewer(container, {
 
 let isAnimationPlaying = true
 let model: ReturnType<typeof viewer.addModel> | null = null
+let emissiveMaterials: MeshStandardMaterial[] = []
 let panel: TelluxPanel<ReturnType<typeof interopSchema>> | undefined
 const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
@@ -84,7 +103,7 @@ function flyToModel() {
   viewer.flyToTarget(model.root, {
     heading: -30,
     pitch: -10,
-    distance: 500,
+    distance: 280,
   })
 }
 
@@ -96,6 +115,41 @@ function syncAnimationFromPanel() {
   } else {
     model.pauseAnimation()
   }
+}
+
+function syncBloomFromPanel() {
+  if (!panel) return
+
+  const bloom = panel.controls.bloom
+  viewer.scene.postProcess.bloom.enabled = bloom.enabled
+  viewer.scene.postProcess.bloom.intensity = bloom.intensity
+  viewer.scene.postProcess.bloom.luminanceThreshold = bloom.luminanceThreshold
+  viewer.scene.postProcess.bloom.radius = bloom.radius
+  for (const material of emissiveMaterials) {
+    material.emissiveIntensity = bloom.emissiveIntensity
+  }
+}
+
+function isMeshStandardMaterial(material: Material): material is MeshStandardMaterial {
+  return (material as MeshStandardMaterial).isMeshStandardMaterial === true
+}
+
+function collectEmissiveMaterials(root: Object3D) {
+  const materials = new Set<MeshStandardMaterial>()
+  root.traverse((object) => {
+    if (!(object as Mesh).isMesh) return
+    const material = (object as Mesh).material
+    const entries = Array.isArray(material) ? material : [material]
+    for (const entry of entries) {
+      if (
+        isMeshStandardMaterial(entry) &&
+        (entry.emissiveMap !== null || entry.emissive.getHex() !== 0)
+      ) {
+        materials.add(entry)
+      }
+    }
+  })
+  return [...materials]
 }
 
 async function loadModelOnSampledGround() {
@@ -149,11 +203,14 @@ async function loadModelOnSampledGround() {
     scale: 0.45,
     heading: 160,
     alignToGround: true,
+    materialMode: "preserve",
     animate: true,
   })
 
   try {
     const layer = await model.ready
+    emissiveMaterials = collectEmissiveMaterials(layer.root)
+    syncBloomFromPanel()
     setReadyStatus(
       t({ zh: "{n} 个动画通道", en: "{n} animation clip(s)" }, { n: layer.animations.length })
     )
@@ -162,10 +219,10 @@ async function loadModelOnSampledGround() {
     setStatus(
       t(
         {
-          zh: "Littlest Tokyo 已在采样高度 {h} 米处加入场景，并自动播放第 0 个动画通道。",
-          en: "Littlest Tokyo added at sampled height {h} m; playing animation channel 0.",
+          zh: "Littlest Tokyo 已在采样高度 {h} 米处加入场景；检测到 {n} 个自发光材质并启用夜景 Bloom。",
+          en: "Littlest Tokyo added at sampled height {h} m; detected {n} emissive material(s) with night bloom enabled.",
         },
-        { h: modelHeight.toFixed(2) }
+        { h: modelHeight.toFixed(2), n: emissiveMaterials.length }
       )
     )
   } catch (error) {
@@ -205,6 +262,41 @@ const interopSchema = () =>
         label: t({ zh: "播放动画", en: "Play animation" }),
       },
     },
+    bloom: {
+      $: { label: t({ zh: "夜景自发光", en: "Night emissive" }) },
+      enabled: {
+        value: true,
+        label: t({ zh: "启用 Bloom", en: "Enable bloom" }),
+      },
+      intensity: {
+        value: 2,
+        min: 0,
+        max: 4,
+        step: 0.05,
+        label: t({ zh: "Bloom 强度", en: "Bloom intensity" }),
+      },
+      luminanceThreshold: {
+        value: 0.8,
+        min: 0,
+        max: 3,
+        step: 0.05,
+        label: t({ zh: "亮度阈值", en: "Luminance threshold" }),
+      },
+      radius: {
+        value: 0.55,
+        min: 0,
+        max: 1,
+        step: 0.05,
+        label: t({ zh: "扩散半径", en: "Bloom radius" }),
+      },
+      emissiveIntensity: {
+        value: 20,
+        min: 0,
+        max: 20,
+        step: 0.5,
+        label: t({ zh: "模型自发光", en: "Model emissive" }),
+      },
+    },
     readout: {
       $: { label: t({ zh: "信息", en: "Info" }) },
       api: {
@@ -240,7 +332,13 @@ function bindPanelInteractions(
 ) {
   return currentPanel.controls.effect(() => {
     void currentPanel.controls.actions.playing
+    void currentPanel.controls.bloom.enabled
+    void currentPanel.controls.bloom.intensity
+    void currentPanel.controls.bloom.luminanceThreshold
+    void currentPanel.controls.bloom.radius
+    void currentPanel.controls.bloom.emissiveIntensity
     syncAnimationFromPanel()
+    syncBloomFromPanel()
   })
 }
 

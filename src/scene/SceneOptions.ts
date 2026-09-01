@@ -98,6 +98,13 @@ export interface ResolvedSceneOptions {
     material: SurfaceMaterialOptions
   }
   postProcess: {
+    bloom: {
+      enabled: boolean
+      intensity: number
+      luminanceThreshold: number
+      luminanceSmoothing: number
+      radius: number
+    }
     lensFlare: {
       enabled: boolean
       intensity: number

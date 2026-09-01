@@ -27,6 +27,75 @@ class PostProcessStage {
   }
 }
 
+class BloomSettings {
+  constructor(
+    private readonly options: ResolvedSceneOptions['postProcess']['bloom'],
+    private readonly onChange: () => void
+  ) {}
+
+  /** Bloom 是否启用。Whether bloom is enabled. */
+  get enabled() {
+    return this.options.enabled
+  }
+
+  set enabled(value: boolean) {
+    if (this.options.enabled === value) return
+    this.options.enabled = value
+    this.onChange()
+  }
+
+  /** Bloom 强度。Bloom intensity. */
+  get intensity() {
+    return this.options.intensity
+  }
+
+  set intensity(value: number) {
+    this.setNumber('intensity', sceneValueNormalizers.bloomIntensity(value))
+  }
+
+  /** 亮度提取阈值。Luminance threshold. */
+  get luminanceThreshold() {
+    return this.options.luminanceThreshold
+  }
+
+  set luminanceThreshold(value: number) {
+    this.setNumber(
+      'luminanceThreshold',
+      sceneValueNormalizers.bloomLuminanceThreshold(value)
+    )
+  }
+
+  /** 亮度阈值过渡宽度。Luminance threshold smoothing. */
+  get luminanceSmoothing() {
+    return this.options.luminanceSmoothing
+  }
+
+  set luminanceSmoothing(value: number) {
+    this.setNumber(
+      'luminanceSmoothing',
+      sceneValueNormalizers.bloomLuminanceSmoothing(value)
+    )
+  }
+
+  /** Bloom 扩散半径。Bloom radius. */
+  get radius() {
+    return this.options.radius
+  }
+
+  set radius(value: number) {
+    this.setNumber('radius', sceneValueNormalizers.bloomRadius(value))
+  }
+
+  private setNumber(
+    key: 'intensity' | 'luminanceThreshold' | 'luminanceSmoothing' | 'radius',
+    value: number
+  ) {
+    if (this.options[key] === value) return
+    this.options[key] = value
+    this.onChange()
+  }
+}
+
 class LensFlareThresholdSettings {
   constructor(
     private readonly options: ResolvedSceneOptions['postProcess']['lensFlare']['threshold'],
@@ -117,6 +186,8 @@ class LensFlareSettings {
 }
 
 export class PostProcessSettings {
+  /** Bloom 后处理阶段。Bloom post-processing stage. */
+  readonly bloom: BloomSettings
   /** 镜头光晕后处理阶段。Lens flare post-processing stage. */
   readonly lensFlare: LensFlareSettings
   /** SMAA 抗锯齿后处理阶段。SMAA anti-aliasing post-processing stage. */
@@ -127,6 +198,7 @@ export class PostProcessSettings {
   readonly dithering: PostProcessStage
 
   constructor(options: ResolvedSceneOptions['postProcess'], onChange: () => void) {
+    this.bloom = new BloomSettings(options.bloom, onChange)
     this.lensFlare = new LensFlareSettings(options.lensFlare, onChange)
     this.smaa = new PostProcessStage(options.smaa.enabled, onChange)
     this.taa = new PostProcessStage(options.taa.enabled, onChange)

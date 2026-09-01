@@ -53,6 +53,12 @@ describe('scene setting normalization', () => {
         }
       },
       postProcess: {
+        bloom: {
+          intensity: -1,
+          luminanceThreshold: Number.NaN,
+          luminanceSmoothing: 2,
+          radius: -1
+        },
         lensFlare: {
           intensity: -1,
           threshold: {
@@ -120,6 +126,13 @@ describe('scene setting normalization', () => {
       },
       quality: 'medium'
     })
+    expect(options.postProcess.bloom).toEqual({
+      enabled: false,
+      intensity: 0,
+      luminanceThreshold: 1,
+      luminanceSmoothing: 1,
+      radius: 0
+    })
     expect(options.postProcess.smaa).toEqual({ enabled: true })
     expect(options.postProcess.taa).toEqual({ enabled: false })
     expect(options.postProcess.dithering).toEqual({ enabled: false })
@@ -133,6 +146,7 @@ describe('scene setting normalization', () => {
         }
       },
       postProcess: {
+        bloom: true,
         lensFlare: false,
         smaa: false,
         taa: true,
@@ -142,6 +156,7 @@ describe('scene setting normalization', () => {
 
     expect(options.atmosphere.sky.stars.show).toBe(false)
     expect(options.postProcess.lensFlare.enabled).toBe(false)
+    expect(options.postProcess.bloom.enabled).toBe(true)
     expect(options.postProcess.smaa.enabled).toBe(false)
     expect(options.postProcess.taa.enabled).toBe(true)
     expect(options.postProcess.dithering.enabled).toBe(true)
@@ -250,6 +265,27 @@ describe('scene setting normalization', () => {
     expect(settings.lensFlare.threshold.level).toBe(0)
     expect(settings.lensFlare.threshold.range).toBe(1)
     expect(settings.lensFlare.quality).toBe('high')
+    expect(onChange).toHaveBeenCalled()
+  })
+
+  it('keeps bloom getters normalized after runtime updates', () => {
+    const onChange = vi.fn()
+    const settings = new PostProcessSettings(
+      resolveViewerSceneOptions(undefined).postProcess,
+      onChange
+    )
+
+    settings.bloom.enabled = true
+    settings.bloom.intensity = -1
+    settings.bloom.luminanceThreshold = Number.NaN
+    settings.bloom.luminanceSmoothing = 2
+    settings.bloom.radius = -1
+
+    expect(settings.bloom.enabled).toBe(true)
+    expect(settings.bloom.intensity).toBe(0)
+    expect(settings.bloom.luminanceThreshold).toBe(1)
+    expect(settings.bloom.luminanceSmoothing).toBe(1)
+    expect(settings.bloom.radius).toBe(0)
     expect(onChange).toHaveBeenCalled()
   })
 })
