@@ -1,4 +1,6 @@
-export { createWaterAreaDemo } from './createWaterAreaDemo'
+export { configureWaterAreaMap, createWaterAreaDemo } from './createWaterAreaDemo'
+export { setupWaterAreaPanel } from './setupWaterAreaPanel'
+export { createTelluxPanel } from '../example-panel-leva'
 export {
   DEFAULT_WATER_AREA_APPEARANCE,
   normalizeWaterAreaAppearance

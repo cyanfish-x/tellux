@@ -1,14 +1,11 @@
-﻿import tellux from '../src'
-import { bootExampleI18n } from './i18n'
-import { exampleMapServiceConfig } from './shared'
-import { setupExamplePanels } from './example-panel'
+﻿import tellux from "../src"
+import { bootExampleI18n, t } from "./i18n"
+import { createTelluxPanel } from "./example-panel-leva"
+import { exampleMapServiceConfig } from "./shared"
 
 bootExampleI18n()
-setupExamplePanels()
 
-const container = document.querySelector('#viewer')
-const dujiangyanButton = document.querySelector<HTMLButtonElement>('#dujiangyan')
-const himalayaButton = document.querySelector<HTMLButtonElement>('#himalaya')
+const container = document.querySelector("#viewer")
 
 const initialDaytimeHourUTC = 5
 
@@ -21,12 +18,10 @@ const dujiangyanView = {
   roll: 0.00004662245553609294,
   clouds: {
     layerAltitude: 2500,
-    layerHeight: 650
-  }
+    layerHeight: 650,
+  },
 }
 
-// 近地视角，高度与紫坪铺水库同量级；略抬高以避开珠峰附近地形。
-// Near-surface view at Zipingpu-like altitude; slightly raised for Everest terrain.
 const himalayaView = {
   latitude: 27.98,
   longitude: 86.92,
@@ -36,40 +31,35 @@ const himalayaView = {
   roll: 0,
   clouds: {
     layerAltitude: 8500,
-    layerHeight: 200
-  }
+    layerHeight: 200,
+  },
 }
 
 if (!(container instanceof HTMLElement)) {
-  throw new Error('Viewer container not found.')
-}
-
-if (!dujiangyanButton || !himalayaButton) {
-  throw new Error('Atmosphere controls not found.')
+  throw new Error("Viewer container not found.")
 }
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: '/draco/',
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
-      source: exampleMapServiceConfig.createImagerySource()
-    }
+      source: exampleMapServiceConfig.createImagerySource(),
+    },
   ],
   camera: {
     ...dujiangyanView,
-    far: 8000000
+    far: 8000000,
   },
   scene: {
     atmosphere: {
       show: true,
       lighting: {
-        mode: 'post-process'
-      }
+        mode: "post-process",
+      },
     },
     clouds: {
       show: true,
-      coverage: 0.35
+      coverage: 0.35,
     },
   },
   widgets: {
@@ -77,7 +67,7 @@ const viewer = new tellux.Viewer(container, {
       linkCloudSpeed: true,
     },
   },
-  resolutionScale: 1
+  resolutionScale: 1,
 })
 
 viewer.clock.setHourUTC(initialDaytimeHourUTC)
@@ -92,24 +82,44 @@ function applyLocationView(view: typeof dujiangyanView | typeof himalayaView) {
     destination: {
       latitude: view.latitude,
       longitude: view.longitude,
-      height: view.height
+      height: view.height,
     },
     orientation: {
       heading: view.heading,
       pitch: view.pitch,
-      roll: view.roll
-    }
+      roll: view.roll,
+    },
   })
 }
 
-dujiangyanButton.addEventListener('click', () => {
-  applyLocationView(dujiangyanView)
+const atmosphereSchema = () =>
+  ({
+    place: {
+      $: { label: t({ zh: "地点", en: "Places" }) },
+      hint: {
+        type: "hint" as const,
+        value: t({
+          zh: "使用右上角公共设置面板调整大气、体积云、日期、光照和曝光。",
+          en: "Use the top-right shared settings panel for atmosphere, clouds, date, lighting, and exposure.",
+        }),
+      },
+      dujiangyan: {
+        onClick: () => applyLocationView(dujiangyanView),
+        label: t({ zh: "紫坪铺水库", en: "Zipingpu Reservoir" }),
+      },
+      himalaya: {
+        onClick: () => applyLocationView(himalayaView),
+        label: t({ zh: "喜马拉雅", en: "Himalaya" }),
+      },
+    },
+  }) as const
+
+const panel = createTelluxPanel(atmosphereSchema, {
+  id: "atmosphere-panel",
+  title: () => t({ zh: "体积云与大气", en: "Volumetric clouds & atmosphere" }),
 })
 
-himalayaButton.addEventListener('click', () => {
-  applyLocationView(himalayaView)
-})
-
-window.addEventListener('beforeunload', () => {
+window.addEventListener("beforeunload", () => {
+  panel.dispose()
   viewer.destroy()
 })

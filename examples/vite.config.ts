@@ -111,10 +111,23 @@ export default defineConfig(({ mode }) => {
     envDir: projectRoot,
     optimizeDeps: {
       include: ["@mapbox/vector-tile", "pbf", "@sparkjsdev/spark", "3d-tiles-rendererjs-3dgs-plugin", "three-mesh-bvh"],
+      exclude: ["leva-vanilla"],
+    },
+    resolve: {
+      alias: [
+        {
+          find: "leva-vanilla/gui",
+          replacement: resolve(projectRoot, "../leva-vanilla/src/dom/gui.ts"),
+        },
+        {
+          find: "leva-vanilla",
+          replacement: resolve(projectRoot, "../leva-vanilla/src/index.ts"),
+        },
+      ],
     },
     server: {
       fs: {
-        allow: [projectRoot],
+        allow: [projectRoot, resolve(projectRoot, "../leva-vanilla")],
       },
       proxy: {
         "/geoserver": {

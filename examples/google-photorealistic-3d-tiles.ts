@@ -2,18 +2,12 @@ import type { TilesetLayer } from "../src"
 import tellux from "../src"
 import * as THREE from "three"
 import { bootExampleI18n, t } from "./i18n"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 import { exampleMapServiceConfig } from "./shared"
-import { setupExamplePanels } from "./example-panel"
 
 bootExampleI18n()
-setupExamplePanels()
 
 const container = document.querySelector("#viewer")
-const tokenInput = document.querySelector<HTMLInputElement>("#ion-token")
-const statusElement = document.querySelector<HTMLElement>("#tileset-status")
-const loadButton = document.querySelector<HTMLButtonElement>("#load-tileset")
-const flyToCityButton =
-  document.querySelector<HTMLButtonElement>("#fly-to-city")
 const attributionsElement = document.querySelector<HTMLElement>(
   "#google-attributions"
 )
@@ -33,12 +27,7 @@ if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (!tokenInput || !loadButton || !flyToCityButton) {
-  throw new Error("Massive city model controls not found.")
-}
-
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -69,11 +58,7 @@ const viewer = new tellux.Viewer(container, {
 viewer.clock.hourUTC = 21
 viewer.tileset.group.visible = false
 
-tokenInput.value = ""
-tokenInput.placeholder = DEFAULT_ION_TOKEN
-  ? t({ zh: "留空使用 VITE_CESIUM_ION_TOKEN", en: "Leave empty to use VITE_CESIUM_ION_TOKEN" })
-  : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
-
+let panel: TelluxPanel | undefined
 let activeLayer: TilesetLayer | null = null
 let attributionFrame = 0
 let materialDebugTileCount = 0
@@ -81,7 +66,7 @@ let materialDebugTotalCount = 0
 let materialDebugBasicCount = 0
 
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
 function flyToTokyo() {
@@ -194,10 +179,15 @@ function scheduleAttributionUpdate() {
 }
 
 function loadGooglePhotorealisticTiles() {
-  const apiToken = tokenInput.value.trim() || DEFAULT_ION_TOKEN
+  const apiToken = panel!.controls.load.token.trim() || DEFAULT_ION_TOKEN
 
   if (!apiToken) {
-    setStatus(t({ zh: "请先输入 Cesium Ion token，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。", en: "Enter token or set VITE_CESIUM_ION_TOKEN." }))
+    setStatus(
+      t({
+        zh: "请先输入 Cesium Ion token，或在 .env 中配置 VITE_CESIUM_ION_TOKEN。",
+        en: "Enter token or set VITE_CESIUM_ION_TOKEN.",
+      })
+    )
     return
   }
 
@@ -217,21 +207,67 @@ function loadGooglePhotorealisticTiles() {
     logTileMaterialDebug
   )
   flyToTokyo()
-  setStatus(t({ zh: "已通过 viewer.load3DTileset 加载城市级海量 3D Tiles 模型。", en: "City-scale 3D Tiles loaded via viewer.load3DTileset." }))
+  setStatus(
+    t({
+      zh: "已通过 viewer.load3DTileset 加载城市级海量 3D Tiles 模型。",
+      en: "City-scale 3D Tiles loaded via viewer.load3DTileset.",
+    })
+  )
 }
 
-loadButton.addEventListener("click", loadGooglePhotorealisticTiles)
-flyToCityButton.addEventListener("click", flyToTokyo)
+function getInitialStatus() {
+  return DEFAULT_ION_TOKEN
+    ? t({
+        zh: "已通过 viewer.load3DTileset 加载城市级海量 3D Tiles 模型。",
+        en: "City-scale 3D Tiles loaded via viewer.load3DTileset.",
+      })
+    : t({
+        zh: "输入 Cesium Ion token 后加载城市级海量 3D Tiles 模型。",
+        en: "Enter Cesium Ion token to load city-scale 3D Tiles.",
+      })
+}
+
+const citySchema = () =>
+  ({
+    load: {
+      $: { label: t({ zh: "加载", en: "Load" }) },
+      token: {
+        value: "",
+        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
+      },
+      loadTileset: {
+        onClick: () => loadGooglePhotorealisticTiles(),
+        label: t({ zh: "加载 3D Tiles", en: "Load 3D Tiles" }),
+      },
+      flyTo: {
+        onClick: () => flyToTokyo(),
+        label: t({ zh: "定位到东京", en: "Fly to Tokyo" }),
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: getInitialStatus(),
+      },
+    },
+  }) as const
+
+panel = createTelluxPanel(citySchema, {
+  id: "google-photorealistic-panel",
+  title: () =>
+    t({ zh: "城市级海量模型", en: "City-scale massive model" }),
+  statusPath: "status.message",
+})
 
 if (DEFAULT_ION_TOKEN) {
   loadGooglePhotorealisticTiles()
-} else {
-  setStatus(t({ zh: "输入 Cesium Ion token 后加载城市级海量 3D Tiles 模型。", en: "Enter Cesium Ion token to load city-scale 3D Tiles." }))
 }
 
 scheduleAttributionUpdate()
 
 window.addEventListener("beforeunload", () => {
   window.cancelAnimationFrame(attributionFrame)
+  panel?.dispose()
   viewer.destroy()
 })

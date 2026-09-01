@@ -58,6 +58,18 @@ export class WaterAreaOverlayPlugin extends ImageOverlayPlugin {
     })
   }
 
+  async processTileModel(scene: Object3D, tile: unknown): Promise<void> {
+    await (
+      ImageOverlayPlugin.prototype as unknown as {
+        processTileModel(
+          this: ImageOverlayPlugin,
+          scene: Object3D,
+          tile: unknown
+        ): Promise<void>
+      }
+    ).processTileModel.call(this, scene, tile)
+  }
+
   dispose(): void {
     ;(
       ImageOverlayPlugin.prototype as unknown as {

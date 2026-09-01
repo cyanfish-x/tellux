@@ -3,12 +3,11 @@ import { bootExampleI18n, t } from "./i18n"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import type { TilesetLayer } from "../src"
 import tellux from "../src"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
-import { setupExamplePanels } from "./example-panel"
 
 bootExampleI18n()
-setupExamplePanels()
 
 const MIXED_TILESET_URL =
   "https://raw.githubusercontent.com/CesiumGS/3d-tiles-samples/main/1.0/TilesetWithDiscreteLOD/tileset.json"
@@ -47,28 +46,12 @@ type HorseHerd = {
 }
 
 const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#mixed-horse-status")
-const horseCountElement = document.querySelector<HTMLElement>("#mixed-horse-count")
-const samplingStatusElement = document.querySelector<HTMLElement>(
-  "#mixed-horse-sampling-status"
-)
-const toggleAnimationButton = document.querySelector<HTMLButtonElement>(
-  "#toggle-mixed-horses"
-)
-const regenerateButton = document.querySelector<HTMLButtonElement>(
-  "#regenerate-mixed-horses"
-)
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (!toggleAnimationButton || !regenerateButton) {
-  throw new Error("Mixed height sampling horse controls not found.")
-}
-
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -106,27 +89,34 @@ const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
 })
 
+let panel: TelluxPanel | undefined
 let tilesetLayer: TilesetLayer | null = null
 let herd: HorseHerd | null = null
 let isAnimationPlaying = true
 let generationToken = 0
 let animationFrame = 0
 
-toggleAnimationButton.disabled = true
-regenerateButton.disabled = true
-
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
-function setSamplingStatus(message: string) {
-  if (samplingStatusElement) samplingStatusElement.textContent = message
+function setInstanceCount(value: string) {
+  if (panel) panel.controls.readout.instances = value
 }
 
-function updateAnimationButton() {
-  toggleAnimationButton.textContent = isAnimationPlaying
-    ? t({ zh: "暂停动画", en: "Pause animation" })
-    : t({ zh: "播放动画", en: "Play animation" })
+function setSamplingReadout(value: string) {
+  if (panel) panel.controls.readout.sampling = value
+}
+
+function setActionsDisabled(disabled: boolean) {
+  if (!panel) return
+  panel.setFieldDisabled("actions.playing", disabled)
+  panel.setFieldDisabled("actions.regenerate", disabled)
+}
+
+function syncAnimationFromPanel() {
+  if (!panel) return
+  isAnimationPlaying = panel.controls.actions.playing
 }
 
 function waitForBrowserPaint() {
@@ -151,10 +141,9 @@ async function initializeMixedSamplingScene() {
 
 async function createHorseHerd() {
   const token = ++generationToken
-  toggleAnimationButton.disabled = true
-  regenerateButton.disabled = true
-  horseCountElement && (horseCountElement.textContent = "-")
-  setSamplingStatus("-")
+  setActionsDisabled(true)
+  setInstanceCount("-")
+  setSamplingReadout("-")
   setStatus(t({ zh: "正在生成 3D Tiles 附近的随机点...", en: "Generating random points near 3D Tiles..." }))
 
   herd?.dispose()
@@ -191,7 +180,7 @@ async function createHorseHerd() {
   } catch (error) {
     console.error("Failed to sample mixed terrain and 3D Tiles height.", error)
     setStatus(t({ zh: "混合高度采样失败，请检查 3D Tiles 和地形数据源是否可访问。", en: "Mixed height sampling failed." }))
-    regenerateButton.disabled = false
+    setActionsDisabled(false)
     return
   } finally {
     console.timeEnd(samplingTimerLabel)
@@ -210,14 +199,14 @@ async function createHorseHerd() {
 
   if (sampledPlacements.length === 0) {
     setStatus(t({ zh: "混合高度没有命中，未加载奔马实例。", en: "No mixed-height hits; horses not loaded." }))
-    regenerateButton.disabled = false
+    setActionsDisabled(false)
     return
   }
 
   const heights = sampledPlacements.map((item) => item.height)
   const minHeight = Math.min(...heights)
   const maxHeight = Math.max(...heights)
-  setSamplingStatus(`${minHeight.toFixed(2)}m - ${maxHeight.toFixed(2)}m`)
+  setSamplingReadout(`${minHeight.toFixed(2)}m - ${maxHeight.toFixed(2)}m`)
   setStatus(t({ zh: "采样命中 {n} 个点，正在加载 Three.js Horse.glb...", en: "{n} hits; loading Horse.glb..." }, { n: sampledPlacements.length }))
 
   try {
@@ -225,7 +214,7 @@ async function createHorseHerd() {
   } catch (error) {
     console.error("Failed to load instanced horse model.", error)
     setStatus(t({ zh: "奔马模型加载失败，请检查 three.js 示例资源是否可访问。", en: "Horse model failed to load." }))
-    regenerateButton.disabled = false
+    setActionsDisabled(false)
     return
   }
 
@@ -236,10 +225,8 @@ async function createHorseHerd() {
   }
 
   viewer.scene.threeScene.add(herd.group)
-  toggleAnimationButton.disabled = false
-  regenerateButton.disabled = false
-  horseCountElement &&
-    (horseCountElement.textContent = `${sampledPlacements.length} / ${HORSE_COUNT}`)
+  setActionsDisabled(false)
+  setInstanceCount(`${sampledPlacements.length} / ${HORSE_COUNT}`)
   setStatus(
     t({ zh: "已在 3D Tiles 和地形混合表面放置 {n} 匹实例化奔马。", en: "Placed {n} instanced horses on mixed 3D Tiles + terrain surface." }, { n: sampledPlacements.length })
   )
@@ -503,14 +490,71 @@ function disposeMaterial(material: THREE.Material | THREE.Material[]) {
   }
 }
 
-toggleAnimationButton.addEventListener("click", () => {
-  isAnimationPlaying = !isAnimationPlaying
-  updateAnimationButton()
+const mixedHorseSchema = () =>
+  ({
+    actions: {
+      $: { label: t({ zh: "操作", en: "Actions" }) },
+      playing: {
+        value: true,
+        label: t({ zh: "播放动画", en: "Play animation" }),
+      },
+      regenerate: {
+        onClick: () => {
+          void createHorseHerd()
+        },
+        label: t({ zh: "重新生成", en: "Regenerate" }),
+      },
+    },
+    readout: {
+      $: { label: t({ zh: "信息", en: "Info" }) },
+      center: {
+        type: "hint" as const,
+        label: "Center",
+        value: "-75.612094, 40.042531",
+      },
+      instances: {
+        type: "hint" as const,
+        label: "Instances",
+        value: "-",
+      },
+      source: {
+        type: "hint" as const,
+        label: "Source",
+        value: "all",
+      },
+      sampling: {
+        type: "hint" as const,
+        label: "Sampling",
+        value: "-",
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: t({ zh: "正在准备混合采样场景...", en: "Preparing mixed sampling scene..." }),
+      },
+    },
+  }) as const
+
+function bindMixedHorsePanel(
+  currentPanel: TelluxPanel<ReturnType<typeof mixedHorseSchema>>
+) {
+  return currentPanel.controls.effect(() => {
+    void currentPanel.controls.actions.playing
+    syncAnimationFromPanel()
+  })
+}
+
+panel = createTelluxPanel(mixedHorseSchema, {
+  id: "mixed-height-sampling-horses-panel",
+  title: () =>
+    t({ zh: "混合场景高度采样奔马", en: "Mixed-height sampling horses" }),
+  statusPath: "status.message",
+  onRebuild: bindMixedHorsePanel,
 })
 
-regenerateButton.addEventListener("click", () => {
-  void createHorseHerd()
-})
+setActionsDisabled(true)
 
 window.addEventListener("beforeunload", () => {
   generationToken += 1
@@ -518,9 +562,9 @@ window.addEventListener("beforeunload", () => {
   herd?.dispose()
   tilesetLayer?.remove()
   locationReadout.destroy()
+  panel?.dispose()
   viewer.destroy()
 })
 
-updateAnimationButton()
 animateHorses()
 void initializeMixedSamplingScene()

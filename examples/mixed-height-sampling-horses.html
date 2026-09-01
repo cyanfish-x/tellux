@@ -12,56 +12,6 @@
 <body>
   <main class="viewer-shell">
     <div id="viewer"></div>
-    <aside class="example-panel" id="mixed-horse-panel" data-i18n-attr="aria-label:example.mixed-height-sampling-horses.panel.aria" aria-label="混合场景高度采样奔马控件">
-      <header class="example-panel__chrome">
-        <button
-          type="button"
-          class="example-panel__fold"
-          id="mixed-horse-panel-fold"
-          aria-expanded="true"
-          aria-controls="mixed-horse-panel-body"
-          title="收起面板"
-          aria-label="收起面板"
-          data-i18n-attr="title:common.panel.collapse,aria-label:common.panel.collapse"
-        ></button>
-        <span class="example-panel__title" data-i18n="example.mixed-height-sampling-horses.panel.title">混合场景高度采样奔马</span>
-      </header>
-
-      <div class="example-panel__collapse" id="mixed-horse-panel-body">
-        <div class="example-panel__content">
-          <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary" data-i18n="example.mixed-height-sampling-horses.folder.actions">操作</summary>
-            <div class="example-panel__folder-collapse">
-              <div class="example-panel__folder-body">
-                <button class="example-panel__button" id="toggle-mixed-horses" type="button" data-i18n="example.mixed-height-sampling-horses.btn.pause">暂停动画</button>
-                <button class="example-panel__button example-panel__button--ghost" id="regenerate-mixed-horses" type="button" data-i18n="example.mixed-height-sampling-horses.btn.regen">
-                  重新生成
-                </button>
-              </div>
-            </div>
-          </details>
-
-          <details class="example-panel__folder" open>
-            <summary class="example-panel__folder-summary" data-i18n="example.mixed-height-sampling-horses.folder.status">状态</summary>
-            <div class="example-panel__folder-collapse">
-              <div class="example-panel__folder-body">
-                <p id="mixed-horse-status" class="example-panel__status" aria-live="polite" data-i18n="example.mixed-height-sampling-horses.status.initial">正在准备混合采样场景...</p>
-                <dl class="example-panel__readout">
-                  <dt>Center</dt>
-                  <dd>-75.612094, 40.042531</dd>
-                  <dt>Instances</dt>
-                  <dd id="mixed-horse-count">-</dd>
-                  <dt>Source</dt>
-                  <dd>all</dd>
-                  <dt>Sampling</dt>
-                  <dd id="mixed-horse-sampling-status">-</dd>
-                </dl>
-              </div>
-            </div>
-          </details>
-        </div>
-      </div>
-    </aside>
   </main>
   <script type="module" src="./mixed-height-sampling-horses.ts"></script>
 </body>

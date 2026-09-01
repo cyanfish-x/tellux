@@ -69,6 +69,9 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
+      leva-vanilla:
+        specifier: link:../leva-vanilla
+        version: link:../leva-vanilla
       monaco-editor:
         specifier: ^0.52.2
         version: 0.52.2

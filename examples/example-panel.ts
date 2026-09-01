@@ -15,9 +15,16 @@ const TRANSITION_MS = 240
  * Enhances all `.example-panel` / `.leva-panel` roots on the page.
  */
 export function setupExamplePanels(root: ParentNode = document) {
-  const panels = root.querySelectorAll<HTMLElement>(
-    '.example-panel, .leva-panel'
-  )
+  const panels = new Set<HTMLElement>()
+
+  if (root instanceof HTMLElement && root.matches('.example-panel, .leva-panel')) {
+    panels.add(root)
+  }
+
+  root
+    .querySelectorAll<HTMLElement>('.example-panel, .leva-panel')
+    .forEach((panel) => panels.add(panel))
+
   panels.forEach((panel) => {
     const fold = panel.querySelector<HTMLButtonElement>(
       ':scope > .example-panel__chrome > .example-panel__fold, :scope > .leva-panel__chrome > .leva-panel__fold, :scope > .example-panel__chrome > .leva-panel__fold, :scope > .leva-panel__chrome > .example-panel__fold'
@@ -120,8 +127,13 @@ function animateFolder(
 }
 
 function syncCollapseHeight(collapse: HTMLElement, open: boolean) {
+  if (open) {
+    collapse.style.overflow = ''
+    collapse.style.height = 'auto'
+    return
+  }
   collapse.style.overflow = 'hidden'
-  collapse.style.height = open ? 'auto' : '0px'
+  collapse.style.height = '0px'
 }
 
 function runHeightTransition(

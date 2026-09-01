@@ -1,255 +1,606 @@
 ﻿import type { TilesetLayer } from "../src"
+
 import tellux from "../src"
+
 import { bootExampleI18n, t } from "./i18n"
+
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
+
 import { exampleMapServiceConfig } from "./shared"
-import { setupExamplePanels } from "./example-panel"
+
+
 
 bootExampleI18n()
-setupExamplePanels()
+
+
 
 type TilesetSource = "url" | "cesium-ion"
 
-const container = document.querySelector("#viewer")
-const tilesetSourceSelect =
-  document.querySelector<HTMLSelectElement>("#tileset-source")
-const urlTilesetFieldGroup = document.querySelector<HTMLElement>(
-  "#url-tileset-fields"
-)
-const ionTilesetFieldGroup = document.querySelector<HTMLElement>(
-  "#ion-tileset-fields"
-)
-const tilesetUrlInput = document.querySelector<HTMLInputElement>("#tileset-url")
-const ionAssetIdInput =
-  document.querySelector<HTMLInputElement>("#ion-asset-id")
-const ionTokenInput = document.querySelector<HTMLInputElement>("#ion-token")
-const visibleToggle =
-  document.querySelector<HTMLInputElement>("#tileset-visible")
-const flyToToggle = document.querySelector<HTMLInputElement>("#tileset-fly-to")
-const statusElement = document.querySelector<HTMLElement>("#tileset-status")
-const loadButton = document.querySelector<HTMLButtonElement>("#load-tileset")
-const removeButton =
-  document.querySelector<HTMLButtonElement>("#remove-tileset")
 
-// 打包后直连数据源；开发服务器下走 vite proxy（/3dtiles -> https://data.cyanfish.site）避免跨域。
+
 const PROD_TILESET_URL = "https://data.cyanfish.site/3dtiles/hk/tileset.json"
+
 const DEV_TILESET_URL = "/3dtiles/hk/tileset.json"
+
 const DEFAULT_TILESET_URL =
+
   import.meta.env.VITE_3D_TILESET_URL ??
+
   (import.meta.env.DEV ? DEV_TILESET_URL : PROD_TILESET_URL)
+
 const DEFAULT_ION_ASSET_ID =
+
   import.meta.env.VITE_CESIUM_ION_3D_TILESET_ASSET_ID ?? "354307"
+
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
 
+
+
+const container = document.querySelector("#viewer")
+
+
+
 if (!(container instanceof HTMLElement)) {
+
   throw new Error("Viewer container not found.")
+
 }
 
-if (
-  !tilesetSourceSelect ||
-  !urlTilesetFieldGroup ||
-  !ionTilesetFieldGroup ||
-  !tilesetUrlInput ||
-  !ionAssetIdInput ||
-  !ionTokenInput ||
-  !visibleToggle ||
-  !flyToToggle ||
-  !loadButton ||
-  !removeButton
-) {
-  throw new Error("3D Tiles controls not found.")
-}
 
-const tilesetSourceField = tilesetSourceSelect
-const tilesetUrlField = tilesetUrlInput
-const ionAssetIdField = ionAssetIdInput
-const ionTokenField = ionTokenInput
-const tilesetVisibleToggle = visibleToggle
-const flyToTilesetToggle = flyToToggle
-const loadControl = loadButton
-const removeControl = removeButton
+
+const defaultLoadMode: TilesetSource =
+
+  DEFAULT_TILESET_URL
+
+    ? "url"
+
+    : DEFAULT_ION_ASSET_ID && DEFAULT_ION_TOKEN
+
+      ? "cesium-ion"
+
+      : "url"
+
+
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
+
   terrain: exampleMapServiceConfig.createTerrainOptions(),
+
   layers: [
+
     {
+
       source: exampleMapServiceConfig.createImagerySource(),
+
     },
+
   ],
+
   scene: {
+
     atmosphere: {
+
       lighting: {
+
         mode: "post-process",
+
       },
+
     },
+
     clouds: {
+
       show: false,
+
     },
+
   },
+
   widgets: {
+
     timeline: true,
+
   },
+
 })
 
+
+
 ;(window as any).viewer = viewer
+
 viewer.clock.hourUTC = 10
 
-tilesetUrlField.value = DEFAULT_TILESET_URL
-ionAssetIdField.value = DEFAULT_ION_ASSET_ID
-ionTokenField.value = ""
-ionTokenField.placeholder = DEFAULT_ION_TOKEN
-  ? t({ zh: "留空使用默认 token", en: "Leave empty to use default token" })
-  : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
+
+
+let panel: TelluxPanel | undefined
 
 let activeLayer: TilesetLayer | null = null
 
+
+
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+
+  panel?.setStatus(message)
+
 }
 
-function getSelectedTilesetSource(): TilesetSource {
-  return tilesetSourceField.value === "cesium-ion" ? "cesium-ion" : "url"
-}
 
-function syncTilesetSourceFields() {
-  const isUrl = getSelectedTilesetSource() === "url"
-
-  urlTilesetFieldGroup.hidden = !isUrl
-  ionTilesetFieldGroup.hidden = isUrl
-  tilesetUrlField.disabled = !isUrl
-  ionAssetIdField.disabled = isUrl
-  ionTokenField.disabled = isUrl
-}
 
 function clearActiveLayer() {
+
   activeLayer?.remove()
+
   activeLayer = null
+
 }
 
-function syncLayerVisibility() {
+
+
+function syncLayerVisibility(currentPanel: TelluxPanel<ReturnType<typeof tilesetSchema>>) {
+
   if (activeLayer) {
-    activeLayer.show = tilesetVisibleToggle.checked
+
+    activeLayer.show = currentPanel.controls.options.visible
+
   }
+
 }
+
+
 
 function activateLayer(layer: TilesetLayer, description: string) {
+
+  if (!panel) return
+
   activeLayer = layer
-  syncLayerVisibility()
-  if (flyToTilesetToggle.checked) {
+
+  syncLayerVisibility(panel)
+
+  if (panel.controls.options.flyTo) {
+
     viewer.flyToTarget(layer.tileset, {
+
       heading: 30,
+
       pitch: -30,
+
     })
+
   }
-  setStatus(t({ zh: "{description} 已加入场景。图层 id：{id}", en: "{description} added. Layer id: {id}" }, { description, id: layer.id }))
+
+  setStatus(
+
+    t(
+
+      { zh: "{description} 已加入场景。图层 id：{id}", en: "{description} added. Layer id: {id}" },
+
+      { description, id: layer.id }
+
+    )
+
+  )
+
 }
+
+
 
 function loadUrlTileset() {
-  const url = tilesetUrlField.value.trim()
+
+  if (!panel) return
+
+  const url = panel.controls.source.tilesetUrl.trim()
+
   if (!url) {
-    setStatus(t({ zh: "请先输入 tileset.json URL，或在 .env 中配置 VITE_3D_TILESET_URL。", en: "Enter a tileset.json URL, or set VITE_3D_TILESET_URL in .env." }))
+
+    setStatus(
+
+      t({
+
+        zh: "请先输入 tileset.json URL，或在 .env 中配置 VITE_3D_TILESET_URL。",
+
+        en: "Enter a tileset.json URL, or set VITE_3D_TILESET_URL in .env.",
+
+      })
+
+    )
+
     return
+
   }
 
+
+
   clearActiveLayer()
+
   activateLayer(
+
     viewer.load3DTileset({
+
       type: "url",
+
       id: "example-3d-tiles",
+
       url,
-      // 香港摄影测量瓦片法线常缺失/不稳定；post-process 光照依赖 NormalPass，
-      // 不开 creasedNormals 时 albedo 会被乘成接近 0，模型显示全黑。
+
       creasedNormals: true,
+
     }),
+
     "URL 3D Tiles"
+
   )
+
 }
+
+
 
 function loadIonTileset() {
-  const assetId = ionAssetIdField.value.trim()
-  const apiToken = ionTokenField.value.trim() || DEFAULT_ION_TOKEN
+
+  if (!panel) return
+
+  const assetId = panel.controls.source.ionAssetId.trim()
+
+  const apiToken = panel.controls.source.ionToken.trim() || DEFAULT_ION_TOKEN
+
+
 
   if (!assetId || !apiToken) {
-    setStatus(t({ zh: "请先输入 Cesium Ion asset id 和 token，或在 .env 中配置默认值。", en: "Enter Cesium Ion asset id and token, or configure defaults in .env." }))
+
+    setStatus(
+
+      t({
+
+        zh: "请先输入 Cesium Ion asset id 和 token，或在 .env 中配置默认值。",
+
+        en: "Enter Cesium Ion asset id and token, or configure defaults in .env.",
+
+      })
+
+    )
+
     return
+
   }
 
+
+
   clearActiveLayer()
+
   activateLayer(
+
     viewer.load3DTileset({
+
       type: "cesium-ion",
+
       id: "example-3d-tiles",
+
       assetId,
+
       apiToken,
+
       creasedNormals: true,
+
     }),
+
     "Cesium Ion 3D Tiles"
+
   )
+
 }
 
+
+
 function loadSelectedTileset() {
-  if (getSelectedTilesetSource() === "url") {
+
+  if (!panel) return
+
+  if (panel.controls.source.loadMode === "url") {
+
     loadUrlTileset()
+
     return
+
   }
 
   loadIonTileset()
+
 }
 
-tilesetSourceField.addEventListener("change", () => {
-  syncTilesetSourceFields()
-  setStatus(
-    getSelectedTilesetSource() === "url"
-      ? t({ zh: "已切换到 URL 加载；填写 tileset.json 地址后点击“加载”。", en: "Switched to URL loading; enter tileset.json then click Load." })
-      : t({ zh: "已切换到 Cesium Ion 加载；填写 asset id 和 token 后点击“加载”。", en: "Switched to Cesium Ion; enter asset id and token then click Load." })
-  )
-})
 
-loadControl.addEventListener("click", loadSelectedTileset)
 
-tilesetVisibleToggle.addEventListener("change", () => {
-  syncLayerVisibility()
-  setStatus(
-    activeLayer
-      ? t({ zh: "3D Tiles 已{state}。", en: "3D Tiles is {state}." }, {
-          state: tilesetVisibleToggle.checked
-            ? t({ zh: "显示", en: "shown" })
-            : t({ zh: "隐藏", en: "hidden" }),
-        })
-      : t({ zh: "还没有加载 3D Tiles。", en: "No 3D Tiles loaded yet." })
-  )
-})
+function syncSourceFieldState(currentPanel: TelluxPanel<ReturnType<typeof tilesetSchema>>) {
 
-removeControl.addEventListener("click", () => {
-  clearActiveLayer()
-  setStatus(t({ zh: "3D Tiles 已移除。", en: "3D Tiles removed." }))
-})
+  const isUrl = currentPanel.controls.source.loadMode === "url"
 
-if (DEFAULT_TILESET_URL) {
-  tilesetSourceField.value = "url"
-} else if (DEFAULT_ION_ASSET_ID && DEFAULT_ION_TOKEN) {
-  tilesetSourceField.value = "cesium-ion"
+  currentPanel.setFieldDisabled("source.tilesetUrl", !isUrl)
+
+  currentPanel.setFieldDisabled("source.ionAssetId", isUrl)
+
+  currentPanel.setFieldDisabled("source.ionToken", isUrl)
+
 }
 
-syncTilesetSourceFields()
 
-if (DEFAULT_TILESET_URL && getSelectedTilesetSource() === "url") {
-  loadUrlTileset()
-  setStatus(t({ zh: "已自动加载默认 3D Tiles；也可以替换 URL 后重新加载。", en: "Default 3D Tiles auto-loaded; replace the URL and reload if needed." }))
-} else if (
-  DEFAULT_ION_ASSET_ID &&
-  DEFAULT_ION_TOKEN &&
-  getSelectedTilesetSource() === "cesium-ion"
+
+function getInitialStatus() {
+
+  if (DEFAULT_TILESET_URL && defaultLoadMode === "url") {
+
+    return t({
+
+      zh: "已自动加载默认 3D Tiles；也可以替换 URL 后重新加载。",
+
+      en: "Default 3D Tiles auto-loaded; replace the URL and reload if needed.",
+
+    })
+
+  }
+
+  if (
+
+    DEFAULT_ION_ASSET_ID &&
+
+    DEFAULT_ION_TOKEN &&
+
+    defaultLoadMode === "cesium-ion"
+
+  ) {
+
+    return t({
+
+      zh: "已读取 Cesium Ion 默认配置，可点击“加载”。",
+
+      en: "Cesium Ion defaults loaded; click Load.",
+
+    })
+
+  }
+
+  return defaultLoadMode === "url"
+
+    ? t({
+
+        zh: "输入 tileset.json URL 后点击“加载”。",
+
+        en: "Enter tileset.json URL then click Load.",
+
+      })
+
+    : t({
+
+        zh: "输入 Cesium Ion asset id 和 token 后点击“加载”。",
+
+        en: "Enter Cesium Ion asset id and token then click Load.",
+
+      })
+
+}
+
+
+
+const tilesetSchema = () =>
+
+  ({
+
+    source: {
+
+      $: { label: t({ zh: "数据源", en: "Source" }) },
+
+      loadMode: {
+
+        value: defaultLoadMode,
+
+        options: {
+
+          [t({ zh: "tileset.json URL", en: "tileset.json URL" })]: "url",
+
+          "Cesium Ion": "cesium-ion",
+
+        },
+
+        label: t({ zh: "加载方式", en: "Load mode" }),
+
+      },
+
+      tilesetUrl: {
+
+        value: DEFAULT_TILESET_URL,
+
+        label: t({ zh: "tileset.json URL", en: "tileset.json URL" }),
+
+      },
+
+      ionAssetId: {
+
+        value: DEFAULT_ION_ASSET_ID,
+
+        label: t({ zh: "Cesium Ion asset id", en: "Cesium Ion asset id" }),
+
+      },
+
+      ionToken: {
+
+        value: "",
+
+        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
+
+      },
+
+    },
+
+    options: {
+
+      $: { label: t({ zh: "选项", en: "Options" }) },
+
+      visible: {
+
+        value: true,
+
+        label: t({ zh: "显示 3D Tiles", en: "Show 3D Tiles" }),
+
+      },
+
+      flyTo: {
+
+        value: true,
+
+        label: t({ zh: "加载后飞行到 3D Tiles", en: "Fly to 3D Tiles after load" }),
+
+      },
+
+    },
+
+    actions: {
+
+      $: { label: t({ zh: "操作", en: "Actions" }) },
+
+      load: {
+
+        onClick: () => loadSelectedTileset(),
+
+        label: t({ zh: "加载", en: "Load" }),
+
+      },
+
+      remove: {
+
+        onClick: () => {
+
+          clearActiveLayer()
+
+          setStatus(t({ zh: "3D Tiles 已移除。", en: "3D Tiles removed." }))
+
+        },
+
+        label: t({ zh: "移除", en: "Remove" }),
+
+      },
+
+    },
+
+    status: {
+
+      $: { label: t({ zh: "状态", en: "Status" }) },
+
+      message: {
+
+        type: "hint" as const,
+
+        value: getInitialStatus(),
+
+      },
+
+    },
+
+  }) as const
+
+
+
+function bindPanelInteractions(
+
+  currentPanel: TelluxPanel<ReturnType<typeof tilesetSchema>>
+
 ) {
-  setStatus(t({ zh: "已读取 Cesium Ion 默认配置，可点击“加载”。", en: "Cesium Ion defaults loaded; click Load." }))
-} else {
-  setStatus(
-    getSelectedTilesetSource() === "url"
-      ? t({ zh: "输入 tileset.json URL 后点击“加载”。", en: "Enter tileset.json URL then click Load." })
-      : t({ zh: "输入 Cesium Ion asset id 和 token 后点击“加载”。", en: "Enter Cesium Ion asset id and token then click Load." })
+
+  const { controls } = currentPanel
+
+  const cleanups: Array<() => void> = []
+
+
+
+  syncSourceFieldState(currentPanel)
+
+
+
+  cleanups.push(
+
+    controls.effect(() => {
+
+      void controls.source.loadMode
+
+      syncSourceFieldState(currentPanel)
+
+    })
+
   )
+
+
+
+  cleanups.push(
+
+    controls.effect(() => {
+
+      void controls.options.visible
+
+      syncLayerVisibility(currentPanel)
+
+      setStatus(
+
+        activeLayer
+
+          ? t(
+
+              { zh: "3D Tiles 已{state}。", en: "3D Tiles is {state}." },
+
+              {
+
+                state: controls.options.visible
+
+                  ? t({ zh: "显示", en: "shown" })
+
+                  : t({ zh: "隐藏", en: "hidden" }),
+
+              }
+
+            )
+
+          : t({ zh: "还没有加载 3D Tiles。", en: "No 3D Tiles loaded yet." })
+
+      )
+
+    })
+
+  )
+
+
+
+  return () => {
+
+    for (const cleanup of cleanups) cleanup()
+
+  }
+
 }
+
+
+
+panel = createTelluxPanel(tilesetSchema, {
+
+  id: "3d-tiles-panel",
+
+  title: () => t({ zh: "3D Tiles 加载", en: "3D Tiles loading" }),
+
+  statusPath: "status.message",
+
+  onRebuild: bindPanelInteractions,
+
+})
+
+
+
+if (DEFAULT_TILESET_URL && defaultLoadMode === "url") {
+
+  loadUrlTileset()
+
+}
+
+
 
 window.addEventListener("beforeunload", () => {
+
+  panel?.dispose()
+
   viewer.destroy()
+
 })
+

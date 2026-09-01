@@ -1,24 +1,10 @@
 import type { TilesetLayer } from "../src"
 import tellux from "../src"
 import { bootExampleI18n, t } from "./i18n"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 import { exampleMapServiceConfig } from "./shared"
-import { setupExamplePanels } from "./example-panel"
 
 bootExampleI18n()
-setupExamplePanels()
-
-const container = document.querySelector("#viewer")
-const assetIdInput = document.querySelector<HTMLInputElement>("#ion-asset-id")
-const tokenInput = document.querySelector<HTMLInputElement>("#ion-token")
-const statusElement = document.querySelector<HTMLElement>("#tileset-status")
-const loadButton = document.querySelector<HTMLButtonElement>("#load-tileset")
-const flyToCityButton =
-  document.querySelector<HTMLButtonElement>("#fly-to-city")
-const pointSizeInput =
-  document.querySelector<HTMLInputElement>("#point-size")
-const attenuationInput =
-  document.querySelector<HTMLInputElement>("#point-attenuation")
-const edlInput = document.querySelector<HTMLInputElement>("#point-edl")
 
 const MELBOURNE_POINT_CLOUD_ASSET_ID = "43978"
 const DEFAULT_ASSET_ID =
@@ -34,24 +20,13 @@ const MELBOURNE_VIEW = {
   roll: 0,
 }
 
+const container = document.querySelector("#viewer")
+
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (
-  !assetIdInput ||
-  !tokenInput ||
-  !loadButton ||
-  !flyToCityButton ||
-  !pointSizeInput ||
-  !attenuationInput ||
-  !edlInput
-) {
-  throw new Error("Point cloud controls not found.")
-}
-
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -77,35 +52,28 @@ const viewer = new tellux.Viewer(container, {
 ;(window as any).viewer = viewer
 viewer.clock.hourUTC = 2
 
-assetIdInput.value = DEFAULT_ASSET_ID
-tokenInput.value = ""
-tokenInput.placeholder = DEFAULT_ION_TOKEN
-  ? t({ zh: "留空使用默认 token", en: "Leave empty to use default token" })
-  : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" })
-
-attenuationInput.checked = true
-edlInput.checked = true
-
+let panel: TelluxPanel | undefined
 let activeLayer: TilesetLayer | null = null
 
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
-function getMaximumAttenuation() {
-  const size = Number.parseFloat(pointSizeInput.value)
+function getMaximumAttenuation(currentPanel: TelluxPanel<ReturnType<typeof pointCloudSchema>>) {
+  const size = currentPanel.controls.shading.pointSize
   return Number.isFinite(size) ? Math.min(32, Math.max(1, size)) : 8
 }
 
-function syncPointCloudShading() {
+function syncPointCloudShading(currentPanel: TelluxPanel<ReturnType<typeof pointCloudSchema>>) {
   if (!activeLayer) return
-  const shading = activeLayer.pointCloudShading
-  shading.attenuation = attenuationInput.checked
-  shading.eyeDomeLighting = edlInput.checked
-  shading.eyeDomeLightingStrength = 0.55
-  shading.eyeDomeLightingRadius = 1.0
-  shading.maximumAttenuation = getMaximumAttenuation()
-  shading.geometricErrorScale = 1
+  const { shading } = currentPanel.controls
+  const shadingState = activeLayer.pointCloudShading
+  shadingState.attenuation = shading.attenuation
+  shadingState.eyeDomeLighting = shading.edl
+  shadingState.eyeDomeLightingStrength = 0.55
+  shadingState.eyeDomeLightingRadius = 1.0
+  shadingState.maximumAttenuation = getMaximumAttenuation(currentPanel)
+  shadingState.geometricErrorScale = 1
 }
 
 function flyToMelbourne() {
@@ -125,8 +93,9 @@ function flyToMelbourne() {
 }
 
 function loadPointCloudTileset() {
-  const assetId = assetIdInput.value.trim() || DEFAULT_ASSET_ID
-  const apiToken = tokenInput.value.trim() || DEFAULT_ION_TOKEN
+  if (!panel) return
+  const assetId = panel.controls.load.assetId.trim() || DEFAULT_ASSET_ID
+  const apiToken = panel.controls.load.token.trim() || DEFAULT_ION_TOKEN
 
   if (!assetId || !apiToken) {
     setStatus(
@@ -145,12 +114,12 @@ function loadPointCloudTileset() {
     assetId,
     apiToken,
     pointCloudShading: {
-      attenuation: attenuationInput.checked,
-      eyeDomeLighting: edlInput.checked,
+      attenuation: panel.controls.shading.attenuation,
+      eyeDomeLighting: panel.controls.shading.edl,
       eyeDomeLightingStrength: 0.55,
       eyeDomeLightingRadius: 1.0,
       geometricErrorScale: 1,
-      maximumAttenuation: getMaximumAttenuation(),
+      maximumAttenuation: getMaximumAttenuation(panel),
       normalShading: true,
     },
   })
@@ -191,23 +160,97 @@ function loadPointCloudTileset() {
   )
 }
 
-loadButton.addEventListener("click", loadPointCloudTileset)
-flyToCityButton.addEventListener("click", flyToMelbourne)
-pointSizeInput.addEventListener("input", syncPointCloudShading)
-attenuationInput.addEventListener("change", syncPointCloudShading)
-edlInput.addEventListener("change", syncPointCloudShading)
+function getInitialStatus() {
+  return DEFAULT_ION_TOKEN
+    ? t({
+        zh: "已加载点云 3D Tiles（Tellux pointCloudShading：attenuation / EDL）。等待瓦片细化中...",
+        en: "Point cloud 3D Tiles loaded (Tellux pointCloudShading: attenuation / EDL). Waiting for tile refinement...",
+      })
+    : t({
+        zh: "输入 Cesium Ion token 后加载 Melbourne Point Cloud。",
+        en: "Enter a Cesium Ion token to load Melbourne Point Cloud.",
+      })
+}
+
+const pointCloudSchema = () =>
+  ({
+    load: {
+      $: { label: t({ zh: "加载", en: "Load" }) },
+      hint: {
+        type: "hint" as const,
+        value: t({
+          zh: "Melbourne Point Cloud 示例；unlit 点云配合 attenuation / EDL。",
+          en: "Melbourne Point Cloud demo; unlit points with attenuation / EDL.",
+        }),
+      },
+      assetId: {
+        value: DEFAULT_ASSET_ID,
+        label: t({ zh: "Cesium Ion asset id", en: "Cesium Ion asset id" }),
+      },
+      token: {
+        value: "",
+        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
+      },
+      loadTileset: {
+        onClick: () => loadPointCloudTileset(),
+        label: t({ zh: "加载", en: "Load" }),
+      },
+      flyTo: {
+        onClick: () => flyToMelbourne(),
+        label: t({ zh: "飞到墨尔本", en: "Fly to Melbourne" }),
+      },
+    },
+    shading: {
+      $: { label: t({ zh: "点云着色", en: "Point cloud shading" }) },
+      pointSize: {
+        value: 8,
+        min: 1,
+        max: 32,
+        step: 1,
+        label: t({ zh: "点大小", en: "Point size" }),
+      },
+      attenuation: {
+        value: true,
+        label: t({ zh: "距离衰减", en: "Attenuation" }),
+      },
+      edl: {
+        value: true,
+        label: t({ zh: "眼穹光照 EDL", en: "Eye-dome lighting" }),
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: getInitialStatus(),
+      },
+    },
+  }) as const
+
+function bindPanelInteractions(
+  currentPanel: TelluxPanel<ReturnType<typeof pointCloudSchema>>
+) {
+  const { controls } = currentPanel
+  return controls.effect(() => {
+    void controls.shading.pointSize
+    void controls.shading.attenuation
+    void controls.shading.edl
+    syncPointCloudShading(currentPanel)
+  })
+}
+
+panel = createTelluxPanel(pointCloudSchema, {
+  id: "point-cloud-panel",
+  title: () => t({ zh: "点云 3D Tiles", en: "Point cloud 3D Tiles" }),
+  statusPath: "status.message",
+  onRebuild: bindPanelInteractions,
+})
 
 if (DEFAULT_ION_TOKEN) {
   loadPointCloudTileset()
-} else {
-  setStatus(
-    t({
-      zh: "输入 Cesium Ion token 后加载 Melbourne Point Cloud。",
-      en: "Enter a Cesium Ion token to load Melbourne Point Cloud.",
-    })
-  )
 }
 
 window.addEventListener("beforeunload", () => {
+  panel?.dispose()
   viewer.destroy()
 })

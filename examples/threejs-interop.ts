@@ -37,7 +37,6 @@ if (!flyToModelButton || !toggleAnimationButton) {
 }
 
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {

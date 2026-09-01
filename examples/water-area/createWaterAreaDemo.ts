@@ -1,4 +1,5 @@
-import type { TilesetLayer, Viewer } from '../../src'
+import type { TilesRenderer } from '3d-tiles-renderer'
+import type { Viewer } from '../../src'
 
 import { WaterAreaTilesOverlay } from './WaterAreaImageOverlay'
 import { WaterAreaMaterialPlugin } from './WaterAreaMaterialPlugin'
@@ -18,11 +19,15 @@ import {
 } from './WaterAreaWaveFrame'
 import { disposeWaterAreaWorkerPool } from './worker/pool'
 
+export const WATER_AREA_ION_TERRAIN_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_TERRAIN_ASSET_ID ?? '1'
+export const WATER_AREA_ION_IMAGERY_ASSET_ID =
+  import.meta.env.VITE_CESIUM_ION_IMAGERY_ASSET_ID ?? '2'
+export const WATER_AREA_IMAGERY_LAYER_ID = 'water-area-ion-imagery'
+
 export interface CreateWaterAreaDemoOptions {
   viewer: Viewer
   apiToken: string
-  assetId?: number
-  id?: string
   show?: boolean
   appearance?: WaterAreaAppearanceOptions
   optics?: WaterAreaOpticsOptions
@@ -33,18 +38,37 @@ export interface CreateWaterAreaDemoOptions {
 }
 
 export interface WaterAreaDemo {
-  layer: TilesetLayer
+  tileset: TilesRenderer
   show: boolean
   appearance: WaterAreaAppearance
   optics: WaterAreaOptics
   dispose(): Promise<void>
 }
 
+export function configureWaterAreaMap(viewer: Viewer, apiToken: string): void {
+  viewer.layers.removeAll()
+  viewer.layers.add({
+    id: WATER_AREA_IMAGERY_LAYER_ID,
+    name: 'Cesium Ion Imagery',
+    source: {
+      type: 'cesium-ion',
+      apiToken,
+      assetId: WATER_AREA_ION_IMAGERY_ASSET_ID
+    }
+  })
+  viewer.setTerrain({
+    type: 'cesium-ion',
+    assetId: WATER_AREA_ION_TERRAIN_ASSET_ID,
+    apiToken,
+    tileLoading: {
+      enableTileSplitting: true
+    }
+  })
+}
+
 export function createWaterAreaDemo({
   viewer,
   apiToken,
-  assetId = 2275207,
-  id = 'water-area-google-photorealistic',
   show,
   appearance = {},
   optics = {},
@@ -53,17 +77,14 @@ export function createWaterAreaDemo({
   if (viewer.rendererType !== 'webgpu') {
     throw new Error('Water Area requires a WebGPU viewer.')
   }
+
+  configureWaterAreaMap(viewer, apiToken)
+
+  const tileset = viewer.tileset
   const resolvedWaveOrigin = resolveWaterAreaWaveOrigin(
     waveOrigin,
     viewer.camera.getState()
   )
-  const layer = viewer.load3DTileset({
-    type: 'cesium-ion',
-    id,
-    assetId,
-    apiToken,
-    creasedNormals: true
-  })
   const overlay = new WaterAreaTilesOverlay()
   const materialPlugin = new WaterAreaMaterialPlugin(
     {
@@ -82,12 +103,12 @@ export function createWaterAreaDemo({
     enableTileSplitting: false
   })
 
-  layer.tileset.registerPlugin(materialPlugin)
-  layer.tileset.registerPlugin(overlayPlugin)
+  tileset.registerPlugin(materialPlugin)
+  tileset.registerPlugin(overlayPlugin)
 
   let disposed = false
   return {
-    layer,
+    tileset,
     appearance: materialPlugin.appearance,
     optics: materialPlugin.optics,
     get show(): boolean {
@@ -99,7 +120,7 @@ export function createWaterAreaDemo({
     async dispose(): Promise<void> {
       if (disposed) return
       disposed = true
-      layer.remove()
+      overlayPlugin.dispose()
       materialPlugin.dispose()
       await disposeWaterAreaWorkerPool()
     }

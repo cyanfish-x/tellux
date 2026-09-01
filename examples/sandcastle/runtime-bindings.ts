@@ -13,6 +13,7 @@ export const HISM_RUNTIME_BINDING_NAMES = [
 
 export const WATER_AREA_RUNTIME_BINDING_NAMES = [
   'createWaterAreaDemo',
+  'setupWaterAreaPanel',
   'DEFAULT_WATER_AREA_APPEARANCE',
   'normalizeWaterAreaAppearance',
   'DEFAULT_WATER_AREA_OPTICS',

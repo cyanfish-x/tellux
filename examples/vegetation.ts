@@ -2,12 +2,11 @@ import * as THREE from "three"
 import { bootExampleI18n, t } from "./i18n"
 import { Tree } from "@dgreenheck/ez-tree"
 import tellux from "../src"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
-import { setupExamplePanels } from "./example-panel"
 
 bootExampleI18n()
-setupExamplePanels()
 
 const CENTER_LONGITUDE = 103.561611
 const CENTER_LATITUDE = 31.016963
@@ -60,27 +59,12 @@ type Forest = {
 }
 
 const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#vegetation-status")
-const countElement = document.querySelector<HTMLElement>("#vegetation-count")
-const samplingStatusElement = document.querySelector<HTMLElement>(
-  "#vegetation-sampling-status"
-)
-const flyToForestButton =
-  document.querySelector<HTMLButtonElement>("#fly-to-forest")
-const regenerateButton = document.querySelector<HTMLButtonElement>(
-  "#regenerate-vegetation"
-)
 
 if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-if (!flyToForestButton || !regenerateButton) {
-  throw new Error("Vegetation controls not found.")
-}
-
 const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -123,19 +107,27 @@ const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
 })
 
+let panel: TelluxPanel | undefined
 let forest: Forest | null = null
 let generationToken = 0
 let animationFrame = 0
 
-flyToForestButton.disabled = true
-regenerateButton.disabled = true
-
 function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
+  panel?.setStatus(message)
 }
 
-function setSamplingStatus(message: string) {
-  if (samplingStatusElement) samplingStatusElement.textContent = message
+function setInstanceCount(value: string) {
+  if (panel) panel.controls.readout.instances = value
+}
+
+function setSamplingReadout(value: string) {
+  if (panel) panel.controls.readout.sampling = value
+}
+
+function setActionDisabled(disabled: boolean) {
+  if (!panel) return
+  panel.setFieldDisabled("actions.flyTo", disabled)
+  panel.setFieldDisabled("actions.regenerate", disabled)
 }
 
 function waitForBrowserPaint() {
@@ -179,10 +171,9 @@ function buildPresetTemplate(name: string, baseScale: number): PresetTemplate {
 
 async function createForest(templates: PresetTemplate[]) {
   const token = ++generationToken
-  flyToForestButton.disabled = true
-  regenerateButton.disabled = true
-  countElement && (countElement.textContent = "-")
-  setSamplingStatus("-")
+  setActionDisabled(true)
+  setInstanceCount("-")
+  setSamplingReadout("-")
   setStatus(t({ zh: "正在生成森林散布点（泊松分布）...", en: "Generating forest placements (Poisson)..." }))
 
   forest?.dispose()
@@ -219,7 +210,7 @@ async function createForest(templates: PresetTemplate[]) {
   } catch (error) {
     console.error("Failed to sample terrain height for vegetation.", error)
     setStatus(t({ zh: "地表高度采样失败，请检查地形数据源是否可访问。", en: "Surface height sampling failed." }))
-    regenerateButton.disabled = false
+    setActionDisabled(false)
     return
   } finally {
     console.timeEnd(samplingTimerLabel)
@@ -238,14 +229,14 @@ async function createForest(templates: PresetTemplate[]) {
 
   if (sampledPlacements.length === 0) {
     setStatus(t({ zh: "地表高度未命中，未加载植被。", en: "No surface hits; vegetation not loaded." }))
-    regenerateButton.disabled = false
+    setActionDisabled(false)
     return
   }
 
   const heights = sampledPlacements.map((item) => item.height)
   const minHeight = Math.min(...heights)
   const maxHeight = Math.max(...heights)
-  setSamplingStatus(`${minHeight.toFixed(2)}m - ${maxHeight.toFixed(2)}m`)
+  setSamplingReadout(`${minHeight.toFixed(2)}m - ${maxHeight.toFixed(2)}m`)
 
   forest = buildInstancedForest(templates, sampledPlacements)
   if (token !== generationToken) {
@@ -255,10 +246,8 @@ async function createForest(templates: PresetTemplate[]) {
   }
 
   viewer.scene.threeScene.add(forest.group)
-  flyToForestButton.disabled = false
-  regenerateButton.disabled = false
-  countElement &&
-    (countElement.textContent = `${sampledPlacements.length} / ${TREE_COUNT}`)
+  setActionDisabled(false)
+  setInstanceCount(`${sampledPlacements.length} / ${TREE_COUNT}`)
   setStatus(
     t({ zh: "已在 ({lon}, {lat}) 周边 {r}m 范围内放置 {n} 棵程序化植被。", en: "Placed {n} procedural trees within {r}m of ({lon}, {lat})." }, {
       lon: CENTER_LONGITUDE.toFixed(6),
@@ -487,22 +476,72 @@ function animateWind() {
   }
 }
 
-flyToForestButton.addEventListener("click", () => {
-  if (!forest) return
-  flyToForestView()
+const vegetationSchema = () =>
+  ({
+    actions: {
+      $: { label: t({ zh: "操作", en: "Actions" }) },
+      flyTo: {
+        onClick: () => {
+          if (!forest) return
+          flyToForestView()
+        },
+        label: t({ zh: "飞到森林", en: "Fly to forest" }),
+      },
+      regenerate: {
+        onClick: () => {
+          void createForest(
+            PRESETS.map((preset) => buildPresetTemplate(preset.name, preset.baseScale))
+          )
+        },
+        label: t({ zh: "重新生成", en: "Regenerate" }),
+      },
+    },
+    readout: {
+      $: { label: t({ zh: "信息", en: "Info" }) },
+      center: {
+        type: "hint" as const,
+        label: "Center",
+        value: "103.561611, 31.016963",
+      },
+      instances: {
+        type: "hint" as const,
+        label: "Instances",
+        value: "-",
+      },
+      source: {
+        type: "hint" as const,
+        label: "Source",
+        value: "terrain",
+      },
+      sampling: {
+        type: "hint" as const,
+        label: "Sampling",
+        value: "-",
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: t({ zh: "正在准备植被场景...", en: "Preparing vegetation scene..." }),
+      },
+    },
+  }) as const
+
+panel = createTelluxPanel(vegetationSchema, {
+  id: "vegetation-panel",
+  title: () => t({ zh: "程序化植被森林", en: "Procedural vegetation forest" }),
+  statusPath: "status.message",
 })
 
-regenerateButton.addEventListener("click", () => {
-  void createForest(
-    PRESETS.map((preset) => buildPresetTemplate(preset.name, preset.baseScale))
-  )
-})
+setActionDisabled(true)
 
 window.addEventListener("beforeunload", () => {
   generationToken += 1
   cancelAnimationFrame(animationFrame)
   forest?.dispose()
   locationReadout.destroy()
+  panel?.dispose()
   viewer.destroy()
 })
 

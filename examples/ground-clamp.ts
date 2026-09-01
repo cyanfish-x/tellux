@@ -1,126 +1,165 @@
-import tellux from "../src"
-import { bootExampleI18n, t } from "./i18n"
-import { exampleMapServiceConfig } from "./shared"
-import { mountLocationReadout } from "./location-readout"
-import { setupExamplePanels } from "./example-panel"
-
-bootExampleI18n()
-setupExamplePanels()
-
-
-const container = document.querySelector("#viewer")
-const statusElement = document.querySelector<HTMLElement>("#clamp-status")
-const toggleClampInput = document.querySelector<HTMLInputElement>("#toggle-clamp")
-const toggleReferenceInput =
-  document.querySelector<HTMLInputElement>("#toggle-reference")
-
-if (!(container instanceof HTMLElement)) {
-  throw new Error("Viewer container not found.")
-}
-if (!toggleClampInput || !toggleReferenceInput) {
-  throw new Error("Ground-clamp controls not found.")
-}
-
-// 以美国大峡谷（起伏剧烈）为演示区域：一条贴地折线跨越峡谷南北缘，随地形起伏贴合；
-// 一条同经纬、固定绝对高的对比折线则以直线弦段穿过峡谷，直观展示"贴地 vs 不贴地"。
-// Grand Canyon demo: a ground-clamped polyline drapes rim-to-rim over terrain,
-// while a same-waypoint fixed-height polyline cuts straight through as a contrast.
-const ROUTE: Array<[number, number]> = [
-  [-112.145, 36.045],
-  [-112.125, 36.095],
-  [-112.105, 36.14],
-  [-112.085, 36.19],
-]
-
-// 对比线的绝对高（米）：取南北缘量级，峡谷底部约 800m，故它会明显悬空。
-const REFERENCE_HEIGHT = 2200
-
-const viewer = new tellux.Viewer(container, {
-  dracoDecoderPath: "/draco/",
-  terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
-    {
-      source: exampleMapServiceConfig.createImagerySource(),
-    },
-  ],
-  camera: {
-    latitude: 36.005,
-    longitude: -112.11,
-    height: 5200,
-    heading: 4,
-    pitch: -28,
-    roll: 0,
-  },
-  scene: {
-    atmosphere: {
-      show: true,
-      lighting: {
-        mode: "light-source",
-      },
-      fallbackAmbientLight: {
-        intensity: 0.85,
-      },
-    },
-    clouds: {
-      show: false,
-    },
-  },
-})
-
-;(window as any).viewer = viewer
-
-const locationReadout = mountLocationReadout(viewer, {
-  parent: container.parentElement ?? document.body,
-})
-
-// 贴地折线：clamp: true → GPU 深度分类真·贴地。width 语义为米（贴地 ribbon 宽度）。
-viewer.entities.add({
-  id: "clamp-route",
-  polyline: {
-    positions: ROUTE,
-    clamp: true,
-    width: 60,
-    color: "#22d3ee",
-  },
-  properties: { kind: "clamp", label: t({ zh: "贴地折线", en: "Clamped polyline" }) },
-})
-
-// 对比折线：同经纬、固定绝对高、普通像素宽 Line2。会以弦段悬空穿越峡谷。
-viewer.entities.add({
-  id: "reference-route",
-  polyline: {
-    positions: ROUTE.map(
-      ([lon, lat]) => [lon, lat, REFERENCE_HEIGHT] as [number, number, number]
-    ),
-    width: 3,
-    color: "#facc15",
-  },
-  properties: { kind: "reference", label: t({ zh: "固定高折线", en: "Fixed-height polyline" }) },
-})
-
-if (!exampleMapServiceConfig.createTerrainOptions()) {
-  setStatus(
-    t({ zh: "未配置默认地形服务，无地形数据，贴地效果不可见。", en: "No default terrain; clamp effect not visible." })
-  )
-} else {
-  setStatus(t({ zh: "青色线贴合地形起伏；黄色线固定高，悬空穿越峡谷。", en: "Cyan follows terrain; yellow is fixed-height across the canyon." }))
-}
-
-toggleClampInput.addEventListener("change", () => {
-  const entity = viewer.entities.getById("clamp-route")
-  if (entity) entity.show = toggleClampInput.checked
-})
-
-toggleReferenceInput.addEventListener("change", () => {
-  const entity = viewer.entities.getById("reference-route")
-  if (entity) entity.show = toggleReferenceInput.checked
-})
-
-function setStatus(message: string) {
-  if (statusElement) statusElement.textContent = message
-}
-
-window.addEventListener("beforeunload", () => {
-  locationReadout.destroy()
-  viewer.destroy()
-})
+import tellux from "../src"
+import { bootExampleI18n, t } from "./i18n"
+import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
+import { exampleMapServiceConfig } from "./shared"
+import { mountLocationReadout } from "./location-readout"
+
+bootExampleI18n()
+
+const container = document.querySelector("#viewer")
+
+if (!(container instanceof HTMLElement)) {
+  throw new Error("Viewer container not found.")
+}
+
+const ROUTE: Array<[number, number]> = [
+  [-112.145, 36.045],
+  [-112.125, 36.095],
+  [-112.105, 36.14],
+  [-112.085, 36.19],
+]
+
+const REFERENCE_HEIGHT = 2200
+
+const viewer = new tellux.Viewer(container, {
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
+  layers: [
+    {
+      source: exampleMapServiceConfig.createImagerySource(),
+    },
+  ],
+  camera: {
+    latitude: 36.005,
+    longitude: -112.11,
+    height: 5200,
+    heading: 4,
+    pitch: -28,
+    roll: 0,
+  },
+  scene: {
+    atmosphere: {
+      show: true,
+      lighting: {
+        mode: "light-source",
+      },
+      fallbackAmbientLight: {
+        intensity: 0.85,
+      },
+    },
+    clouds: {
+      show: false,
+    },
+  },
+})
+
+;(window as any).viewer = viewer
+
+const locationReadout = mountLocationReadout(viewer, {
+  parent: container.parentElement ?? document.body,
+})
+
+viewer.entities.add({
+  id: "clamp-route",
+  polyline: {
+    positions: ROUTE,
+    clamp: true,
+    width: 60,
+    color: "#22d3ee",
+  },
+  properties: { kind: "clamp", label: t({ zh: "贴地折线", en: "Clamped polyline" }) },
+})
+
+viewer.entities.add({
+  id: "reference-route",
+  polyline: {
+    positions: ROUTE.map(
+      ([lon, lat]) => [lon, lat, REFERENCE_HEIGHT] as [number, number, number]
+    ),
+    width: 3,
+    color: "#facc15",
+  },
+  properties: {
+    kind: "reference",
+    label: t({ zh: "固定高折线", en: "Fixed-height polyline" }),
+  },
+})
+
+function getInitialStatus() {
+  if (!exampleMapServiceConfig.createTerrainOptions()) {
+    return t({
+      zh: "未配置默认地形服务，无地形数据，贴地效果不可见。",
+      en: "No default terrain; clamp effect not visible.",
+    })
+  }
+  return t({
+    zh: "青色线贴合地形起伏；黄色线固定高，悬空穿越峡谷。",
+    en: "Cyan follows terrain; yellow is fixed-height across the canyon.",
+  })
+}
+
+const groundClampSchema = () =>
+  ({
+    display: {
+      $: { label: t({ zh: "显示", en: "Display" }) },
+      hint: {
+        type: "hint" as const,
+        value: t({
+          zh: "polyline.clamp: true 依赖 GPU 深度分类贴地；青色为贴地折线，黄色为固定高对比折线。",
+          en: "polyline.clamp: true uses GPU depth classification; cyan = clamped, yellow = fixed-height reference.",
+        }),
+      },
+      clamp: {
+        value: true,
+        label: t({ zh: "贴地折线", en: "Clamped polyline" }),
+      },
+      reference: {
+        value: true,
+        label: t({ zh: "固定高折线", en: "Fixed-height polyline" }),
+      },
+    },
+    status: {
+      $: { label: t({ zh: "状态", en: "Status" }) },
+      message: {
+        type: "hint" as const,
+        value: getInitialStatus(),
+      },
+    },
+  }) as const
+
+function bindPanelInteractions(currentPanel: TelluxPanel<ReturnType<typeof groundClampSchema>>) {
+  const { controls } = currentPanel
+  const cleanups: Array<() => void> = []
+
+  cleanups.push(
+    controls.effect(() => {
+      void controls.display.clamp
+      const entity = viewer.entities.getById("clamp-route")
+      if (entity) entity.show = controls.display.clamp
+    })
+  )
+
+  cleanups.push(
+    controls.effect(() => {
+      void controls.display.reference
+      const entity = viewer.entities.getById("reference-route")
+      if (entity) entity.show = controls.display.reference
+    })
+  )
+
+  return () => {
+    for (const cleanup of cleanups) cleanup()
+  }
+}
+
+const panel = createTelluxPanel(groundClampSchema, {
+  id: "ground-clamp-panel",
+  title: () => t({ zh: "贴地折线", en: "Ground-clamped polyline" }),
+  statusPath: "status.message",
+  onRebuild: bindPanelInteractions,
+})
+
+window.addEventListener("beforeunload", () => {
+  locationReadout.destroy()
+  panel.dispose()
+  viewer.destroy()
+})

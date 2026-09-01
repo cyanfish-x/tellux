@@ -89,6 +89,7 @@
     "dotenv": "^17.4.2",
     "gh-pages": "^6.3.0",
     "husky": "^9.1.7",
+    "leva-vanilla": "link:../leva-vanilla",
     "monaco-editor": "^0.52.2",
     "msdf-bmfont-xml": "^2.8.0",
     "pbf": "^4.0.2",

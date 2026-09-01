@@ -43,6 +43,7 @@ describe('Sandcastle optional runtime bindings', () => {
   it('injects every runtime value imported by the water-area example', () => {
     expect(WATER_AREA_RUNTIME_BINDING_NAMES).toEqual([
       'createWaterAreaDemo',
+      'setupWaterAreaPanel',
       'DEFAULT_WATER_AREA_APPEARANCE',
       'normalizeWaterAreaAppearance',
       'DEFAULT_WATER_AREA_OPTICS',

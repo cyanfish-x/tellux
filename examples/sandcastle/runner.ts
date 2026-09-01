@@ -11,10 +11,14 @@ import {
   defaultTiandituToken,
   defaultTiandituTokens,
   showTokenNotice,
+  getTokenNoticeMessage,
   exampleMapServiceConfig,
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
 import { setupExamplePanels } from "../example-panel"
+import { createTelluxPanel } from "../example-panel-leva"
+import { ExampleMessage, showExampleMessage } from "../example-message"
+import { setupSymbolPanel } from "../setupSymbolPanel"
 import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
 import type { BootExampleI18nOptions } from "../i18n"
 import {
@@ -23,6 +27,7 @@ import {
   detectOptionalRuntimeBindings,
 } from "./runtime-bindings"
 import exampleStyles from "../styles.css?raw"
+import levaStyles from "../../../leva-vanilla/src/styles/index.css?inline"
 import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
 const STORAGE_PREFIX = "tellux:sandcastle-run:"
@@ -86,8 +91,15 @@ function loadPayload() {
   return rawPayload ? (JSON.parse(rawPayload) as SandcastleRunPayload) : null
 }
 
+function injectExampleStyles(document: Document) {
+  const style = document.createElement("style")
+  style.textContent = `${levaStyles}\n${exampleStyles}`
+  return style
+}
+
 function prepareHtml(html: string) {
   const document = new DOMParser().parseFromString(html, "text/html")
+  let injectedStyles = false
   document
     .querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet"][href]')
     .forEach((link) => {
@@ -96,10 +108,12 @@ function prepareHtml(html: string) {
         return
       }
 
-      const style = document.createElement("style")
-      style.textContent = exampleStyles
-      link.replaceWith(style)
+      link.replaceWith(injectExampleStyles(document))
+      injectedStyles = true
     })
+  if (!injectedStyles) {
+    document.head.append(injectExampleStyles(document))
+  }
   if (!document.querySelector("base")) {
     const base = document.createElement("base")
     base.href = "../"
@@ -160,9 +174,14 @@ async function executeExampleScript(source: string) {
     "defaultTiandituToken",
     "defaultTiandituTokens",
     "showTokenNotice",
+    "getTokenNoticeMessage",
     "mountLocationReadout",
     "formatHeight",
     "setupExamplePanels",
+    "createTelluxPanel",
+    "setupSymbolPanel",
+    "showExampleMessage",
+    "ExampleMessage",
     "createWindSwayLeavesMaterial",
     "exampleMapServiceConfig",
     "HISM_DEMO_CENTER",
@@ -196,9 +215,14 @@ async function executeExampleScript(source: string) {
     defaultTiandituToken,
     defaultTiandituTokens,
     showTokenNotice,
+    getTokenNoticeMessage,
     mountLocationReadout,
     formatHeight,
     setupExamplePanels,
+    createTelluxPanel,
+    setupSymbolPanel,
+    showExampleMessage,
+    ExampleMessage,
     createWindSwayLeavesMaterial,
     exampleMapServiceConfig,
     ...HISM_RUNTIME_BINDING_NAMES.map(

@@ -1561,448 +1561,161 @@ select.field__input {
   font-variant-numeric: tabular-nums;
 }
 
-/* ----- 示例页统一控件面板（example-panel，leva 风格） ----- */
-.example-panel,
-.leva-panel {
-  --ep-bg: #181c20;
-  --ep-bg-elevated: #22262b;
-  --ep-border: #2a2f36;
-  --ep-text: #d8dde3;
-  --ep-muted: #8b949e;
-  --ep-accent: var(--tellux-accent);
-  --ep-accent-hover: var(--tellux-accent-hover);
-  --ep-accent-ink: var(--tellux-accent-ink);
-  --ep-accent-bright: var(--tellux-accent-bright);
-  --ep-input: #2c3138;
-  --ep-guide: #3a414b;
-  --ep-font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 10;
-  width: min(300px, calc(100vw - 24px));
-  max-height: calc(100vh - 24px);
-  overflow: auto;
-  border: 1px solid var(--ep-border);
-  border-radius: 8px;
-  background: var(--ep-bg);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-  color: var(--ep-text);
-  font-family: var(--ep-font);
-  font-size: 12px;
-  line-height: 1.4;
-  -webkit-font-smoothing: antialiased;
-}
-
-.example-panel--wide,
-.leva-panel.example-panel--wide {
-  width: min(360px, calc(100vw - 24px));
-}
-
-.example-panel__chrome,
-.leva-panel__chrome {
-  position: relative;
+/* ----- 示例页 Message 提示（Element UI Message 风格） ----- */
+.example-message-stack {
+  position: fixed;
+  top: var(--example-message-offset, 16px);
+  left: 50%;
+  z-index: 120;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  padding: 8px 34px;
-  border-bottom: 1px solid var(--ep-border);
-  background: var(--ep-bg-elevated);
+  width: min(560px, calc(100vw - 32px));
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
-.example-panel--collapsed > .example-panel__chrome,
-.example-panel--collapsed > .leva-panel__chrome,
-.leva-panel--collapsed > .example-panel__chrome,
-.leva-panel--collapsed > .leva-panel__chrome {
-  border-bottom: 0;
+.example-message {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow:
+    0 18px 48px rgba(2, 6, 23, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  color: #f8fafc;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: auto;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
-.example-panel__fold,
-.leva-panel__fold {
-  position: absolute;
-  left: 8px;
-  top: 50%;
+.example-message--enter {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.example-message--leave {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.example-message__icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.example-message__body {
+  min-width: 0;
+}
+
+.example-message__title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.example-message__description {
+  margin-top: 4px;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.example-message__close {
+  display: grid;
+  place-items: center;
   width: 22px;
   height: 22px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
-  cursor: pointer;
-  transform: translateY(-50%);
-}
-
-.example-panel__fold::before,
-.leva-panel__fold::before {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  content: "";
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 6px 4px 0 4px;
-  border-color: var(--ep-muted) transparent transparent transparent;
-  transform: translate(-50%, -40%) rotate(0deg);
-  transition: transform 0.22s ease;
-}
-
-.example-panel--collapsed > .example-panel__chrome > .example-panel__fold::before,
-.example-panel--collapsed > .example-panel__chrome > .leva-panel__fold::before,
-.example-panel--collapsed > .leva-panel__chrome > .example-panel__fold::before,
-.example-panel--collapsed > .leva-panel__chrome > .leva-panel__fold::before,
-.leva-panel--collapsed > .example-panel__chrome > .example-panel__fold::before,
-.leva-panel--collapsed > .example-panel__chrome > .leva-panel__fold::before,
-.leva-panel--collapsed > .leva-panel__chrome > .example-panel__fold::before,
-.leva-panel--collapsed > .leva-panel__chrome > .leva-panel__fold::before {
-  transform: translate(-50%, -40%) rotate(-90deg);
-}
-
-.example-panel__fold:hover,
-.leva-panel__fold:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.example-panel__fold:hover::before,
-.leva-panel__fold:hover::before {
-  border-top-color: var(--ep-accent-bright);
-}
-
-.example-panel__title,
-.leva-panel__title {
-  min-width: 0;
-  max-width: 100%;
-  color: var(--ep-text);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.example-panel__collapse,
-.leva-panel__collapse {
-  overflow: hidden;
-}
-
-.example-panel__content,
-.leva-panel__content {
-  min-height: 0;
-}
-
-.example-panel__folder,
-.leva-folder {
-  border-bottom: 1px solid var(--ep-border);
-}
-
-.example-panel__folder:last-child,
-.leva-folder:last-child {
-  border-bottom: 0;
-}
-
-.example-panel__folder-summary,
-.leva-folder__summary {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px 8px 26px;
-  list-style: none;
-  color: var(--ep-text);
-  cursor: pointer;
-  user-select: none;
-}
-
-.example-panel__folder-summary::-webkit-details-marker,
-.leva-folder__summary::-webkit-details-marker {
-  display: none;
-}
-
-.example-panel__folder-summary::before,
-.leva-folder__summary::before {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  content: "";
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 4px 0 4px 6px;
-  border-color: transparent transparent transparent var(--ep-muted);
-  transform: translateY(-50%) rotate(0deg);
-  transition: transform 0.22s ease;
-}
-
-.example-panel__folder[open] > .example-panel__folder-summary::before,
-.example-panel__folder[open] > .leva-folder__summary::before,
-.leva-folder[open] > .example-panel__folder-summary::before,
-.leva-folder[open] > .leva-folder__summary::before {
-  transform: translateY(-50%) rotate(90deg);
-}
-
-.example-panel__folder-summary:hover,
-.leva-folder__summary:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.example-panel__folder-collapse,
-.leva-folder__collapse {
-  overflow: hidden;
-}
-
-.example-panel__folder-body,
-.leva-folder__body {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 0;
-  margin: 0 0 8px;
-  padding: 2px 10px 8px 18px;
-}
-
-.example-panel__folder-body::before,
-.leva-folder__body::before {
-  position: absolute;
-  top: 0;
-  bottom: 4px;
-  left: 12px;
-  content: "";
-  width: 1px;
-  background: var(--ep-guide);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .example-panel__fold::before,
-  .leva-panel__fold::before,
-  .example-panel__folder-summary::before,
-  .leva-folder__summary::before {
-    transition: none;
-  }
-}
-
-.example-panel__row,
-.leva-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 26px;
+  color: #94a3b8;
+  font-size: 18px;
+  line-height: 1;
   cursor: pointer;
 }
 
-.example-panel__row--input,
-.leva-row--input {
-  cursor: default;
+.example-message__close:hover {
+  background: rgba(148, 163, 184, 0.12);
+  color: #f8fafc;
 }
 
-.example-panel__row--stack,
-.example-panel__field {
-  display: grid;
-  gap: 4px;
-  cursor: default;
+.example-message--success {
+  border-color: rgba(52, 211, 153, 0.42);
 }
 
-.example-panel__label,
-.leva-row__label {
-  color: var(--ep-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.example-message--success .example-message__icon {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
 }
 
-.example-panel__field > .example-panel__label {
-  white-space: normal;
-  color: var(--ep-muted);
-  font-size: 11px;
+.example-message--warning {
+  border-color: rgba(251, 191, 36, 0.42);
 }
 
-.example-panel__checkbox,
-.leva-checkbox {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: var(--ep-accent);
-  cursor: pointer;
+.example-message--warning .example-message__icon {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
 }
 
-.example-panel__input,
-.example-panel__select,
-.leva-input {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 26px;
-  padding: 3px 8px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  color: var(--ep-text);
-  background: var(--ep-input);
-  font: inherit;
-  font-variant-numeric: tabular-nums;
+.example-message--error {
+  border-color: rgba(248, 113, 113, 0.48);
+  background: rgba(45, 12, 14, 0.94);
 }
 
-.example-panel__row .example-panel__input,
-.example-panel__row .leva-input,
-.leva-row .example-panel__input,
-.leva-row .leva-input {
-  width: 80px;
-  text-align: right;
+.example-message--error .example-message__icon {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
 }
 
-.example-panel__input:focus,
-.example-panel__select:focus,
-.leva-input:focus {
-  border-color: var(--ep-accent);
-  outline: none;
+.example-message--info {
+  border-color: rgba(96, 165, 250, 0.42);
 }
 
-.example-panel__input::-webkit-outer-spin-button,
-.example-panel__input::-webkit-inner-spin-button,
-.leva-input::-webkit-outer-spin-button,
-.leva-input::-webkit-inner-spin-button {
-  margin: 0;
-  -webkit-appearance: none;
+.example-message--info .example-message__icon {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
 }
 
-.example-panel__input[type="number"],
-.leva-input[type="number"] {
-  appearance: textfield;
-  -moz-appearance: textfield;
+/* ----- leva-vanilla 示例面板：Tellux accent 主题覆盖 ----- */
+#leva__root .leva__base {
+  --leva-colors-accent1: #1a9e7a;
+  --leva-colors-accent2: var(--tellux-accent);
+  --leva-colors-accent3: var(--tellux-accent-hover);
 }
 
-.example-panel__select {
-  cursor: pointer;
+/* 按钮：与 Sandcastle Run（sandcastle-button--primary）同色 */
+#leva__root .leva__input--button {
+  color: var(--tellux-accent-ink);
+  background-color: var(--tellux-accent);
+  border: 1px solid var(--tellux-accent-border);
 }
 
-.example-panel__button,
-.leva-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 28px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 4px;
-  color: var(--ep-accent-ink);
-  background: var(--ep-accent);
-  font: inherit;
-  letter-spacing: 0.01em;
-  cursor: pointer;
+#leva__root .leva__input--button:hover {
+  color: var(--tellux-accent-ink);
+  background-color: var(--tellux-accent-hover);
+  box-shadow: none;
 }
 
-.example-panel__button:hover:not(:disabled),
-.leva-button:hover:not(:disabled) {
-  background: var(--ep-accent-hover);
-}
-
-.example-panel__button:disabled,
-.leva-button:disabled {
-  opacity: 0.55;
-  cursor: wait;
-}
-
-.example-panel__button--ghost,
-.leva-button--ghost {
-  color: var(--ep-text);
-  background: var(--ep-input);
-}
-
-.example-panel__button--ghost:hover:not(:disabled),
-.leva-button--ghost:hover:not(:disabled) {
-  background: #353b44;
-}
-
-.example-panel__hint,
-.example-panel__status,
-.leva-hint,
-.leva-status {
-  margin: 0;
-  color: var(--ep-muted);
-  font-size: 11px;
-  line-height: 1.45;
-  word-break: break-word;
-}
-
-.example-panel__status,
-.leva-status {
+#leva__root .leva__hint-text {
   color: #e8c56a;
-}
-
-.example-panel__pick,
-.leva-pick {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 8px;
-  align-items: start;
-}
-
-.example-panel__pick-key,
-.leva-pick__key {
-  color: var(--ep-accent-bright);
-}
-
-.example-panel__pick-value,
-.leva-pick__value {
-  color: var(--ep-text);
-  word-break: break-word;
-}
-
-.example-panel__readout {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 10px;
-  margin: 0;
-}
-
-.example-panel__readout dt {
-  color: var(--ep-muted);
-}
-
-.example-panel__readout dd {
-  margin: 0;
-  color: var(--ep-text);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  word-break: break-word;
-}
-
-.example-panel__radio-group {
-  display: grid;
-  gap: 6px;
-}
-
-.example-panel__radio {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 26px;
-  cursor: pointer;
-}
-
-.example-panel__radio input {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  accent-color: var(--ep-accent);
-  cursor: pointer;
-}
-
-.example-panel .layer-manager__list {
-  gap: 6px;
-}
-
-.example-panel .layer-manager__item {
-  min-height: 0;
-  padding: 8px;
-  border-color: var(--ep-border);
-  border-radius: 4px;
-  background: var(--ep-input);
 }
 
 .location-panel {

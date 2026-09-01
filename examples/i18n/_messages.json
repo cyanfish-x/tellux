@@ -935,6 +935,10 @@
     "还没有加载高斯泼溅。",
     "No Gaussian splats loaded yet."
   ],
+  "example.gaussian-splat-3d-tiles.status.loadFail": [
+    "高斯泼溅 tileset 加载失败：{message}",
+    "Failed to load Gaussian splat tileset: {message}"
+  ],
   "example.google-photorealistic-3d-tiles.docTitle": [
     "Tellux 城市级海量模型加载",
     "Tellux City-scale Massive Models"
@@ -2120,8 +2124,8 @@
     "WebGPU Water Area"
   ],
   "example.water-area.registry.description": [
-    "使用 OSM Shortbread MVT Worker 遮罩为 Google Photorealistic 3D Tiles 渲染水域材质。",
-    "Render water materials on Google Photorealistic 3D Tiles with worker-generated OSM Shortbread MVT masks."
+    "使用 OSM Shortbread MVT Worker 遮罩，在 Cesium Ion 地形与卫星影像上渲染水域材质。",
+    "Render water materials on Cesium Ion terrain and satellite imagery with worker-generated OSM Shortbread MVT masks."
   ],
   "example.water-area.docTitle": [
     "Tellux WebGPU 水域渲染",
