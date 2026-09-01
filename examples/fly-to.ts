@@ -167,10 +167,10 @@ function tweenClockTo(target: Date, durationSeconds: number, flightId: number) {
   if (delta > SECONDS_PER_DAY / 2) delta -= SECONDS_PER_DAY
   else if (delta < -SECONDS_PER_DAY / 2) delta += SECONDS_PER_DAY
 
-  viewer.clock.setCurrentTime(new Date(startOfDay + startSeconds * 1000))
+  viewer.clock.currentTime = new Date(startOfDay + startSeconds * 1000)
 
   if (delta === 0 || durationSeconds <= 0) {
-    viewer.clock.setCurrentTime(target)
+    viewer.clock.currentTime = target
     return
   }
 
@@ -180,15 +180,14 @@ function tweenClockTo(target: Date, durationSeconds: number, flightId: number) {
     if (flightId !== activeFlightId) return
     const raw = Math.min(Math.max((now - startedAt) / durationMs, 0), 1)
     if (raw >= 1) {
-      viewer.clock.setCurrentTime(target)
+      viewer.clock.currentTime = target
       timeTweenId = null
       return
     }
     const eased =
       raw < 0.5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2
-    viewer.clock.setCurrentTime(
+    viewer.clock.currentTime =
       new Date(startOfDay + (startSeconds + delta * eased) * 1000)
-    )
     timeTweenId = requestAnimationFrame(step)
   }
   timeTweenId = requestAnimationFrame(step)
@@ -261,7 +260,7 @@ function flyToDestination(destination: FlightDestination) {
       tweenClockTo(datetime, duration, flightId)
     } else {
       stopTimeTween()
-      viewer.clock.setCurrentTime(datetime)
+      viewer.clock.currentTime = datetime
     }
   } else {
     stopTimeTween()
@@ -285,7 +284,7 @@ function flyToDestination(destination: FlightDestination) {
       if (flightId !== activeFlightId) return
       stopTimeTween()
       stopFocalTween()
-      if (datetime) viewer.clock.setCurrentTime(datetime)
+      if (datetime) viewer.clock.currentTime = datetime
       if (focalLength) setFocalLength(focalLength)
       setStatus(t({ zh: "已抵达{label}。", en: "Arrived at {label}." }, { label }))
     },

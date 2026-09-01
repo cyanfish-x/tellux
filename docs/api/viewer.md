@@ -52,7 +52,40 @@ const viewer = await tellux.Viewer.create(container, {
 
 类型：`Clock`
 
-用于太阳方向和时间推进的场景时钟。
+统一的场景模拟时钟。当前内置消费者是太阳、月亮、大气和 Timeline；应用可以通过事件将实体、轨迹或其他业务状态接入同一时间源。
+
+初始化时，`currentTime` 支持 `Date | string | number`：
+
+```ts
+const viewer = new Viewer(container, {
+  clock: {
+    currentTime: new Date('2026-09-01T08:00:00Z'),
+    shouldAnimate: true,
+    multiplier: 3600
+  },
+  widgets: {
+    timeline: true
+  }
+})
+```
+
+运行时 `currentTime` 只接受有效的 `Date`。读取和赋值都会复制对象，因此原地修改返回值不会绕过 Clock 的状态通知：
+
+```ts
+viewer.clock.currentTime = new Date()
+viewer.clock.shouldAnimate = false
+viewer.clock.multiplier = -60 // 负倍率表示倒放
+
+viewer.clock.on('change', (event) => {
+  console.log(event.reason, event.currentTime)
+})
+```
+
+`tick(deltaSeconds)` 接受非负有限秒数，并返回当前时间副本。Viewer 默认在渲染循环中自动调用它；使用 Viewer 时不要再从应用侧重复推进。
+
+启用 Timeline 时，控件按浏览器本地时区显示日期和时刻，以 `+8`、`-5` 等 UTC 偏移量标识时区，并以本地自然日作为默认范围；`Clock.currentTime` 仍然表示与时区无关的绝对时间点。
+
+Timeline 启用后，若未提供 Clock 配置，时间默认从当前真实时间开始以 `1×` 持续流动；如需初始暂停，显式设置 `clock.shouldAnimate: false`。
 
 ### `layers`
 

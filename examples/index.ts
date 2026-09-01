@@ -60,6 +60,8 @@ document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((link) => {
 
 if (globeContainer instanceof HTMLElement) {
   const globeLoader = document.querySelector("#portal-globe-loader")
+  const initialClockTime = new Date()
+  initialClockTime.setUTCHours(9, 12, 0, 0)
 
   const hideGlobeLoader = () => {
     if (!(globeLoader instanceof HTMLElement) || globeLoader.dataset.hidden === "true") {
@@ -76,6 +78,10 @@ if (globeContainer instanceof HTMLElement) {
   }
 
   const viewer = new tellux.Viewer(globeContainer, {
+    clock: {
+      currentTime: initialClockTime,
+      shouldAnimate: false,
+    },
     terrain: exampleMapServiceConfig.createTerrainOptions(),
     layers: [
       {
@@ -105,8 +111,6 @@ if (globeContainer instanceof HTMLElement) {
 
   viewer.scene.clouds.layer.altitude = 1500
   viewer.scene.clouds.layer.height = 650
-  viewer.clock.hourUTC = 9.2
-  viewer.clock.animate = false
   ;(window as any).viewer = viewer
   ;(window as any).portalViewer = viewer
 

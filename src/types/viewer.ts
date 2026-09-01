@@ -2,6 +2,7 @@ import type { ImageryLayerOptions } from './imagery'
 import type { ViewerSceneOptions } from './scene'
 import type { TerrainOptions } from './terrain'
 import type { ViewerWidgetOptions } from './widgets'
+import type { ClockOptions } from '../Clock'
 
 /**
  * Viewer 使用的 Three.js renderer 类型。
@@ -118,6 +119,23 @@ export interface ViewerOptions {
     /** 透视相机远裁剪面（米），默认 `1000000`。Perspective camera far clipping plane in meters. Defaults to `1000000`. */
     far?: number
   }
+  /**
+   * 初始场景时钟配置。
+   *
+   * `currentTime` 支持 `Date`、日期字符串或毫秒时间戳；运行时请通过
+   * `viewer.clock.currentTime = date` 赋值有效的 `Date` 对象。
+   * 启用 `widgets.timeline` 且未显式设置 `shouldAnimate` 时默认自动推进；若
+   * `currentTime` 和 `multiplier` 也省略，则从当前真实时间开始以 `1×` 流动。
+   *
+   * Initial scene clock options.
+   *
+   * `currentTime` accepts a `Date`, date string, or millisecond timestamp.
+   * At runtime, assign a valid `Date` through `viewer.clock.currentTime = date`.
+   * When `widgets.timeline` is enabled and `shouldAnimate` is omitted, time
+   * advances by default. If `currentTime` and `multiplier` are also omitted,
+   * it starts at the current system time and follows real time at `1x`.
+   */
+  clock?: ClockOptions
   /**
    * 初始场景和后处理配置。
    *

@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { Camera } from './Camera'
-import { Clock } from './Clock'
+import { Clock, type ClockChangeEvent } from './Clock'
 import { EntityManager } from './entities/EntityManager'
 import { EntityRenderManager } from './entities/EntityRenderManager'
 import { SymbolOcclusionPass } from './entities/SymbolOcclusionPass'
@@ -45,6 +45,7 @@ import {
   resolveModelMaterialMode,
   resolveSceneContentMaterialMode,
   resolveSurfaceMaterialMode,
+  resolveViewerClockOptions,
   resolveViewerCameraOptions,
   resolveViewerResolutionScale,
   resolveViewerSceneOptions
@@ -80,7 +81,16 @@ import type {
 import type { GlobeControls } from '3d-tiles-renderer'
 
 export { Camera } from './Camera'
-export { Clock } from './Clock'
+export {
+  Clock,
+  type ClockChangeEvent,
+  type ClockChangeReason,
+  type ClockEventListener,
+  type ClockEventMap,
+  type ClockOptions,
+  type ClockTickEvent,
+  type DateTimeInput
+} from './Clock'
 export { Entity, type EntityContext } from './entities/Entity'
 export {
   PointGraphics,
@@ -331,9 +341,9 @@ export class Viewer {
    */
   readonly ready: Promise<void>
   /**
-   * 用于太阳方向的场景时钟。
+   * 场景统一模拟时钟。当前用于驱动太阳、月亮和大气方向。
    *
-   * Scene clock used for sun direction.
+   * Unified scene simulation clock. Currently drives sun, moon, and atmosphere directions.
    */
   readonly clock: Clock
   /**
@@ -424,6 +434,11 @@ export class Viewer {
   private isDestroyed = false
   private currentResolutionScale: number
   private currentToneMappingExposure: number
+  private readonly handleClockChange = (event: ClockChangeEvent) => {
+    if (event.reason === 'currentTime' || event.reason === 'tick') {
+      this.atmosphere?.updateSunDirection(event.currentTime)
+    }
+  }
 
   /**
    * 创建 Viewer 并等待 renderer 初始化完成。
@@ -536,7 +551,9 @@ export class Viewer {
       this.scene.syncRuntimeEffects()
       this.webgpuLensFlare?.sync(this.scene.postProcess.lensFlare)
       this.webgpuTemporalAntialias?.setEnabled(this.scene.postProcess.taa.enabled)
-      this.clock = new Clock(() => this.atmosphere?.updateSunDirection(this.clock.currentTime))
+      this.clock = new Clock(resolveViewerClockOptions(options))
+      this.clock.on('change', this.handleClockChange)
+      constructionScope.defer(() => this.clock.off('change', this.handleClockChange))
 
       this.dracoLoader = new DRACOLoader()
       constructionScope.defer(() => this.dracoLoader.dispose())
@@ -1141,6 +1158,7 @@ export class Viewer {
     if (this.isDestroyed) return
 
     this.isDestroyed = true
+    this.clock.off('change', this.handleClockChange)
     this.camera.cancelFlight()
     this.renderLoop.dispose()
     this.viewport.dispose()

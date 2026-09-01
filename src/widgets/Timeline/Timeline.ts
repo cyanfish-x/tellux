@@ -1,22 +1,27 @@
 import { SpringControl } from '../../SpringControl'
+import type { ClockChangeEvent } from '../../Clock'
 import type { Viewer } from '../../Viewer'
 import {
   CLOCK_MULTIPLIER_SLIDER_MAX,
   clockMultiplierToSliderValue,
-  createUTCDatePreservingTimeOfDay,
-  dateFromUTCDayNumberAndTimeOfDay,
+  createLocalDatePreservingTimeOfDay,
+  dateFromLocalDayNumberAndTimeOfDay,
+  formatLocalClock,
+  formatLocalDate,
   formatMultiplier,
-  formatUTCMonthDay,
-  getDaysInUTCYear,
-  getUTCDayNumber,
-  getUTCDayOfYear,
-  getUTCTimeOfDayHours,
+  formatLocalMonthDay,
+  getDaysInLocalYear,
+  getLocalDayNumber,
+  getLocalDayOfYear,
+  getLocalDayRange,
+  getLocalTimeOfDayHours,
+  getLocalTimeZoneLabel,
   resolveDynamicDayRange,
   resolveLinkedCloudSpeed,
   shiftTimelineWindow,
   shouldWriteControlValue,
   sliderValueToClockMultiplier,
-  startOfUTCDay,
+  startOfLocalDay,
 } from './logic'
 import { installTimelineStyles } from './styles'
 import type { TimelineOptions } from './types'
@@ -44,12 +49,14 @@ interface CivilTimeSpring {
  * Viewer 时间条控件。
  *
  * 控制 {@link Viewer.clock} 的播放、倍率与当前时间。仅在
- * `linkCloudSpeed: true` 时按播放态联动 `scene.clouds.speed`。
+ * `linkCloudSpeed: true` 时按播放态联动 `scene.clouds.speed`。日期、时刻和
+ * 日范围按浏览器本地时区显示与交互。
  *
  * Timeline widget for a Viewer.
  *
  * Controls {@link Viewer.clock} playback, multiplier, and current time. Only
- * links `scene.clouds.speed` when `linkCloudSpeed: true`.
+ * links `scene.clouds.speed` when `linkCloudSpeed: true`. Dates, clock values,
+ * and day ranges use the browser's local time zone.
  */
 export class Timeline {
   private readonly viewer: Viewer
@@ -84,22 +91,13 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   installTimelineStyles()
 
   const linkCloudSpeed = options.linkCloudSpeed === true
-  const initialTime = resolveDate(options.currentTime) ?? viewer.clock.currentTime
-  if (options.currentTime !== undefined) {
-    viewer.clock.currentTime = initialTime
-  }
-  if (options.animate !== undefined) {
-    viewer.clock.animate = options.animate
-  }
-  if (options.multiplier !== undefined) {
-    viewer.clock.multiplier = options.multiplier
-  }
+  const initialTime = viewer.clock.currentTime
 
   const baseCloudSpeed = viewer.scene.clouds.speed
   const syncCloudSpeed = () => {
     const nextSpeed = resolveLinkedCloudSpeed(
       linkCloudSpeed,
-      viewer.clock.animate,
+      viewer.clock.shouldAnimate,
       baseCloudSpeed,
       viewer.clock.multiplier
     )
@@ -108,9 +106,12 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   }
 
   const dynamicDayRange = options.startTime === undefined && options.endTime === undefined
-  let rangeStart = resolveDate(options.startTime) ?? startOfUTCDay(initialTime)
+  let rangeStart = resolveDate(options.startTime) ?? startOfLocalDay(initialTime)
   let rangeEnd =
-    resolveDate(options.endTime) ?? new Date(rangeStart.getTime() + MILLISECONDS_PER_DAY)
+    resolveDate(options.endTime) ??
+    (dynamicDayRange
+      ? getLocalDayRange(initialTime).rangeEnd
+      : new Date(rangeStart.getTime() + MILLISECONDS_PER_DAY))
   if (rangeEnd.getTime() <= rangeStart.getTime()) {
     rangeEnd = new Date(rangeStart.getTime() + MILLISECONDS_PER_DAY)
   }
@@ -170,7 +171,6 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   dateOutput.className = 'tellux-timeline__date'
   const tzBadge = document.createElement('span')
   tzBadge.className = 'tellux-timeline__tz'
-  tzBadge.textContent = 'UTC'
   meta.append(dateOutput, tzBadge)
   chronograph.append(clockOutput, meta)
 
@@ -241,9 +241,19 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   /** UI 设定时间；大号时钟 / 日期 / scrub / 日序只读它。 */
   let targetTime = new Date(initialTime.getTime())
   const civilSpring = createCivilTimeSpring(initialTime, options.spring)
+  const syncTargetTimeFromClock = (event: ClockChangeEvent) => {
+    if (
+      (event.reason === 'currentTime' || event.reason === 'tick') &&
+      !isSpringDrivingClock &&
+      activeControl !== 'range' &&
+      activeControl !== 'day'
+    ) {
+      targetTime = event.currentTime
+    }
+  }
 
   const composeSpringDate = (dayNumber: number, timeOfDay: number) =>
-    dateFromUTCDayNumberAndTimeOfDay(dayNumber, timeOfDay)
+    dateFromLocalDayNumberAndTimeOfDay(dayNumber, timeOfDay)
 
   /** 控件读数用的设定值（不是 spring 中间值）。 */
   const getDisplayTime = () => targetTime
@@ -251,8 +261,8 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   const updateRangeBounds = () => {
     const durationSeconds = getRangeDurationSeconds(rangeStart, rangeEnd)
     input.max = String(durationSeconds)
-    startLabel.textContent = formatUTCDate(rangeStart)
-    endLabel.textContent = formatUTCDate(rangeEnd)
+    startLabel.textContent = formatLocalDate(rangeStart)
+    endLabel.textContent = formatLocalDate(rangeEnd)
   }
 
   const syncDynamicRange = (anchorTime: Date) => {
@@ -278,14 +288,14 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   }
 
   const syncDayControl = (date: Date) => {
-    const year = date.getUTCFullYear()
+    const year = date.getFullYear()
     const dayOfYear =
-      activeControl === 'day' ? Number(dayInput.value) : getUTCDayOfYear(date)
-    dayInput.max = String(getDaysInUTCYear(year))
+      activeControl === 'day' ? Number(dayInput.value) : getLocalDayOfYear(date)
+    dayInput.max = String(getDaysInLocalYear(year))
     if (shouldWriteControlValue('day', activeControl)) {
-      dayInput.value = String(getUTCDayOfYear(date))
+      dayInput.value = String(getLocalDayOfYear(date))
     }
-    dayValue.textContent = formatUTCMonthDay(year, dayOfYear)
+    dayValue.textContent = formatLocalMonthDay(year, dayOfYear)
   }
 
   const syncSpeedControl = (multiplier: number) => {
@@ -313,9 +323,10 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     if (shouldWriteControlValue('range', activeControl)) {
       input.value = String(dateToOffsetSeconds(displayTime, rangeStart, rangeEnd))
     }
-    clockOutput.textContent = formatUTCClock(displayTime)
-    dateOutput.textContent = formatUTCDate(displayTime)
-    const isPlaying = viewer.clock.animate
+    clockOutput.textContent = formatLocalClock(displayTime)
+    dateOutput.textContent = formatLocalDate(displayTime)
+    tzBadge.textContent = getLocalTimeZoneLabel(displayTime)
+    const isPlaying = viewer.clock.shouldAnimate
     if (playButton.dataset.playing !== String(isPlaying)) {
       playButton.dataset.playing = String(isPlaying)
       playButton.setAttribute('aria-label', isPlaying ? '暂停时间' : '播放时间')
@@ -347,14 +358,14 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     if (!isSpringDrivingClock) {
       resetCivilSpring(civilSpring, viewer.clock.currentTime)
     }
-    civilSpring.dayNumber.target = getUTCDayNumber(date)
-    civilSpring.timeOfDay.target = getUTCTimeOfDayHours(date)
+    civilSpring.dayNumber.target = getLocalDayNumber(date)
+    civilSpring.timeOfDay.target = getLocalTimeOfDayHours(date)
     isSpringDrivingClock = true
   }
 
   const pauseClock = () => {
-    if (!viewer.clock.animate) return
-    viewer.clock.animate = false
+    if (!viewer.clock.shouldAnimate) return
+    viewer.clock.shouldAnimate = false
   }
 
   const applyRangeFromInput = () => {
@@ -406,7 +417,7 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
 
   const applyDayOfYearFromInput = () => {
     pauseClock()
-    const nextTime = createUTCDatePreservingTimeOfDay(
+    const nextTime = createLocalDatePreservingTimeOfDay(
       getDisplayTime(),
       Number(dayInput.value)
     )
@@ -439,8 +450,8 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   }
 
   playButton.addEventListener('click', () => {
-    viewer.clock.animate = !viewer.clock.animate
-    if (viewer.clock.animate) {
+    viewer.clock.shouldAnimate = !viewer.clock.shouldAnimate
+    if (viewer.clock.shouldAnimate) {
       // Start playback from the set-point, not a mid-spring lighting sample.
       isSpringDrivingClock = false
       viewer.clock.currentTime = new Date(targetTime.getTime())
@@ -475,12 +486,13 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
 
   updateRangeBounds()
   syncDisplay()
+  viewer.clock.on('change', syncTargetTimeFromClock)
 
   return {
     update(deltaTime: number) {
       // Playback advances clock; keep the UI set-point locked to it unless seeking/springing.
       if (
-        viewer.clock.animate &&
+        viewer.clock.shouldAnimate &&
         !isSpringDrivingClock &&
         activeControl !== 'range' &&
         activeControl !== 'day'
@@ -494,6 +506,7 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
       syncDisplay()
     },
     dispose() {
+      viewer.clock.off('change', syncTargetTimeFromClock)
       window.removeEventListener('pointerup', endActiveControl)
       window.removeEventListener('blur', endActiveControl)
       if (linkCloudSpeed) {
@@ -514,14 +527,14 @@ function createCivilTimeSpring(
     options === undefined || options === true ? DEFAULT_SPRING_OPTIONS : options
 
   return {
-    dayNumber: new SpringControl(getUTCDayNumber(initialTime), springOptions),
-    timeOfDay: new SpringControl(getUTCTimeOfDayHours(initialTime), springOptions),
+    dayNumber: new SpringControl(getLocalDayNumber(initialTime), springOptions),
+    timeOfDay: new SpringControl(getLocalTimeOfDayHours(initialTime), springOptions),
   }
 }
 
 function resetCivilSpring(spring: CivilTimeSpring, date: Date) {
-  spring.dayNumber.reset(getUTCDayNumber(date))
-  spring.timeOfDay.reset(getUTCTimeOfDayHours(date))
+  spring.dayNumber.reset(getLocalDayNumber(date))
+  spring.timeOfDay.reset(getLocalTimeOfDayHours(date))
 }
 
 function resolveDate(value: Date | string | number | undefined) {
@@ -538,18 +551,6 @@ function dateToOffsetSeconds(date: Date, start: Date, end: Date) {
 
 function getRangeDurationSeconds(start: Date, end: Date) {
   return Math.max(1, Math.round((end.getTime() - start.getTime()) / 1000))
-}
-
-function formatUTCDate(date: Date) {
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
-}
-
-function formatUTCClock(date: Date) {
-  return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`
-}
-
-function pad(value: number) {
-  return String(value).padStart(2, '0')
 }
 
 function clamp(value: number, min: number, max: number) {

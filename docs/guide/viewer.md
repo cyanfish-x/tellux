@@ -16,6 +16,29 @@ viewer.renderer
 
 这些属性暴露的是面向应用侧的控制入口。业务代码优先通过这些入口操作，不建议直接穿透内部模块状态。
 
+## 场景时钟
+
+`viewer.clock` 是统一的场景模拟时间源。初始化和运行时使用同一字段路径；配置边界支持 `Date`、日期字符串和毫秒时间戳，运行时赋值只接受有效 `Date`：
+
+```ts
+const viewer = new Viewer(container, {
+  clock: {
+    currentTime: '2026-09-01T08:00:00Z',
+    shouldAnimate: true,
+    multiplier: 3600
+  }
+})
+
+viewer.clock.currentTime = new Date()
+viewer.clock.shouldAnimate = false
+```
+
+Clock 当前自动驱动太阳、月亮和大气方向。业务轨迹或实体动画不会被内置实现自动更新，但可以监听 `change` 或 `tick` 事件接入同一时间源。负 `multiplier` 表示倒放。
+
+Timeline 控件将这个绝对时间点转换为浏览器本地时间显示，默认范围是当前本地自然日。跨越夏令时切换时，一天可能是 23 或 25 小时，控件会保持本地日期和钟点语义。
+
+启用 Timeline 且省略 Clock 配置时，时钟默认从当前真实时间开始以 `1×` 流动；显式配置 `clock.shouldAnimate: false` 可保持初始暂停。
+
 ## 场景配置
 
 `scene` 配置按能力分组：`atmosphere` 管大气、天空和光照，`clouds` 管体积云，`surface` 管基础地球表面材质，`postProcess` 管后处理。

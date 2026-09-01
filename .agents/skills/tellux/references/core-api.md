@@ -58,10 +58,35 @@ viewer.scene          // 场景控制（大气/云/后处理）— 见 scene-eff
 viewer.camera         // 相机 — 见下文
 viewer.layers         // 影像图层管理器 — 见下文
 viewer.controls       // 地球交互控制器（拖拽/滚轮）
-viewer.clock          // 场景时钟（驱动太阳方向）
+viewer.clock          // 统一场景模拟时钟（内置驱动太阳、月亮和大气）
 viewer.renderer       // 底层 Three.js renderer
 viewer.tileset        // 底层 3D Tiles renderer（地形开启时返回地形渲染器）
 ```
+
+### 场景时钟
+
+初始化时 `currentTime` 支持 `Date | string | number`；运行时只赋值有效 `Date`。读取和赋值都会复制 `Date`：
+
+```ts
+const viewer = new tellux.Viewer(container, {
+  clock: {
+    currentTime: new Date('2026-09-01T08:00:00Z'),
+    shouldAnimate: true,
+    multiplier: 3600
+  }
+})
+
+viewer.clock.currentTime = new Date()
+viewer.clock.shouldAnimate = false
+viewer.clock.on('tick', ({ currentTime }) => {
+  // 可在这里驱动应用自己的轨迹或业务时间状态
+})
+```
+
+负 `multiplier` 表示倒放。Viewer 已在渲染循环中调用 `clock.tick()`，应用侧不要重复推进。
+
+Timeline 显示和交互使用浏览器本地时区；`viewer.clock.currentTime` 本身仍是绝对时间点。
+启用 Timeline 且未显式配置 Clock 时，默认从当前真实时间开始以 `1×` 流动；显式设置 `clock.shouldAnimate: false` 可保持暂停。
 
 ## 相机
 

@@ -63,38 +63,18 @@ export interface DebugSettingsPanelOptions {
  */
 export interface TimelineOptions {
   /**
-   * 时间条起始时间。默认使用当前时钟所在 UTC 日期的 00:00。
+   * 时间条起始时间。默认使用当前时钟所在本地日期的 00:00。
    *
-   * Timeline start time. Defaults to 00:00 UTC on the current clock date.
+   * Timeline start time. Defaults to 00:00 local time on the current clock date.
    */
   startTime?: Date | string | number
   /**
-   * 时间条结束时间。默认使用起始时间后 24 小时。
+   * 时间条结束时间。默认动态日范围使用下一本地日期的 00:00；显式提供起始时间时，默认使用其后 24 小时。
    *
-   * Timeline end time. Defaults to 24 hours after the start time.
+   * Timeline end time. Dynamic day ranges default to 00:00 on the next local
+   * date; with an explicit start time, defaults to 24 hours after it.
    */
   endTime?: Date | string | number
-  /**
-   * 初始当前时间。不传时沿用 {@link Viewer.clock} 的当前时间。
-   *
-   * Initial current time. Uses the current {@link Viewer.clock} time when
-   * omitted.
-   */
-  currentTime?: Date | string | number
-  /**
-   * 初始是否播放时间。不传时沿用 {@link Viewer.clock} 的当前状态。
-   *
-   * Initial time animation state. Uses the current {@link Viewer.clock} state
-   * when omitted.
-   */
-  animate?: boolean
-  /**
-   * 初始播放倍率。不传时沿用 {@link Viewer.clock} 的当前倍率。
-   *
-   * Initial playback multiplier. Uses the current {@link Viewer.clock}
-   * multiplier when omitted.
-   */
-  multiplier?: number
   /**
    * 是否将播放态下的 `clock.multiplier` 联动到 `scene.clouds.speed`，默认 `false`。
    *
@@ -140,13 +120,17 @@ export interface ViewerWidgetOptions {
   /**
    * 是否挂载内置时间条，默认 `false`。
    *
-   * 传入对象时会作为时间条初始配置。时间控制（播放 / 倍率 / 当前时间）由
-   * Timeline 负责；云速联动需显式设置 `linkCloudSpeed: true`。
+   * 传入对象时可配置显示范围与交互。时钟初始状态通过 `ViewerOptions.clock`
+   * 配置；启用时间条且未显式设置 `clock.shouldAnimate` 时默认自动推进，完整
+   * Clock 配置省略时从当前真实时间以 `1×` 流动；云速联动需显式设置
+   * `linkCloudSpeed: true`。
    *
    * Whether to mount the built-in timeline. Defaults to `false`.
    *
-   * Pass an object to provide initial timeline options. Timeline owns clock
-   * playback / multiplier / current time; cloud-speed linking requires
+   * Pass an object to configure the displayed range and interaction. Clock
+   * state is initialized through `ViewerOptions.clock`. Enabling the timeline
+   * advances time unless `clock.shouldAnimate` is explicitly set. With clock
+   * options omitted, it follows real time at `1x`. Cloud-speed linking requires
    * `linkCloudSpeed: true`.
    */
   timeline?: boolean | TimelineOptions

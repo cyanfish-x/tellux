@@ -1,4 +1,5 @@
 import { DEFAULT_CAMERA } from './constants'
+import type { ClockOptions } from './Clock'
 import type { SurfaceMaterialOptions } from './materials/materialMode'
 import type { ModelMaterialMode } from './models/GltfModelLayer'
 import type { ResolvedSceneOptions } from './Scene'
@@ -15,6 +16,14 @@ import type {
 
 export type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
 export type SceneTilesetMaterialMode = 'basic' | 'standard'
+
+export function resolveViewerClockOptions(options: ViewerOptions): ClockOptions {
+  return {
+    ...options.clock,
+    shouldAnimate:
+      options.clock?.shouldAnimate ?? Boolean(options.widgets?.timeline)
+  }
+}
 
 export function resolveViewerCameraOptions(options: ViewerOptions['camera']) {
   return {

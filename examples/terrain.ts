@@ -24,8 +24,13 @@ if (!(container instanceof HTMLElement)) {
 }
 
 const defaultTerrain = exampleMapServiceConfig.createTerrainOptions()
+const initialClockTime = new Date()
+initialClockTime.setUTCHours(11, 0, 0, 0)
 
 const viewer = new tellux.Viewer(container, {
+  clock: {
+    currentTime: initialClockTime,
+  },
   terrain: defaultTerrain,
   layers: [
     {
@@ -47,7 +52,6 @@ const viewer = new tellux.Viewer(container, {
   },
 })
 
-viewer.clock.hourUTC = 11
 ;(window as any).viewer = viewer
 
 const initialSource: TerrainSource =

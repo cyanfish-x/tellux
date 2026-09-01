@@ -3,48 +3,65 @@ export const MAX_CLOCK_MULTIPLIER = 86400
 export const CLOCK_MULTIPLIER_SLIDER_MAX = Math.log2(MAX_CLOCK_MULTIPLIER + 1)
 export const CLOUD_SPEED_MULTIPLIER_CAP = 60
 
-export function startOfUTCDay(date: Date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+export function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-export function getUTCDayOfYear(date: Date) {
-  const year = date.getUTCFullYear()
+export function getLocalDayOfYear(date: Date) {
+  const year = date.getFullYear()
   const start = Date.UTC(year, 0, 1)
-  const current = Date.UTC(year, date.getUTCMonth(), date.getUTCDate())
+  const current = Date.UTC(year, date.getMonth(), date.getDate())
   return Math.floor((current - start) / MILLISECONDS_PER_DAY) + 1
 }
 
-export function getDaysInUTCYear(year: number) {
+export function getDaysInLocalYear(year: number) {
   return (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / MILLISECONDS_PER_DAY
 }
 
-export function formatUTCMonthDay(year: number, dayOfYear: number) {
-  const safeYear = Math.round(toFinite(year, new Date().getUTCFullYear()))
+export function formatLocalMonthDay(year: number, dayOfYear: number) {
+  const safeYear = Math.round(toFinite(year, new Date().getFullYear()))
   const safeDayOfYear = clamp(
     Math.round(toFinite(dayOfYear, 1)),
     1,
-    getDaysInUTCYear(safeYear)
+    getDaysInLocalYear(safeYear)
   )
-  const date = new Date(Date.UTC(safeYear, 0, safeDayOfYear))
-  return `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`
+  const date = new Date(safeYear, 0, safeDayOfYear)
+  return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
-export function getUTCTimeOfDayHours(date: Date) {
+export function formatLocalDate(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+export function formatLocalClock(date: Date) {
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+export function getLocalTimeZoneLabel(date: Date) {
+  const offsetMinutes = -date.getTimezoneOffset()
+  const sign = offsetMinutes >= 0 ? '+' : '-'
+  const absoluteMinutes = Math.abs(offsetMinutes)
+  const hours = Math.floor(absoluteMinutes / 60)
+  const minutes = absoluteMinutes % 60
+  return minutes === 0 ? `${sign}${hours}` : `${sign}${hours}:${pad(minutes)}`
+}
+
+export function getLocalTimeOfDayHours(date: Date) {
   return (
-    date.getUTCHours() +
-    date.getUTCMinutes() / 60 +
-    date.getUTCSeconds() / 3600 +
-    date.getUTCMilliseconds() / 3_600_000
+    date.getHours() +
+    date.getMinutes() / 60 +
+    date.getSeconds() / 3600 +
+    date.getMilliseconds() / 3_600_000
   )
 }
 
 /**
- * UTC 日序号（相对 Unix 纪元的整日），与日内时刻拆开后可分别做 spring。
- * Absolute UTC day index since the Unix epoch; spring separately from time-of-day.
+ * 本地民用日期的日序号，与本地日内时刻拆开后可分别做 spring。
+ * Local civil-day index; spring separately from local time-of-day.
  */
-export function getUTCDayNumber(date: Date) {
+export function getLocalDayNumber(date: Date) {
   return Math.floor(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) /
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) /
       MILLISECONDS_PER_DAY
   )
 }
@@ -53,11 +70,12 @@ export function getUTCDayNumber(date: Date) {
  * 对齐 takram：用 floor(day) + timeOfDay 合成日期，改「年内日」时不会扫过黑夜。
  * Matches takram: compose with floor(day) + timeOfDay so day jumps keep solar altitude.
  */
-export function dateFromUTCDayNumberAndTimeOfDay(
+export function dateFromLocalDayNumberAndTimeOfDay(
   dayNumber: number,
   timeOfDayHours: number
 ) {
   const day = Math.floor(toFinite(dayNumber, 0))
+  const civilDate = new Date(day * MILLISECONDS_PER_DAY)
   const hours = toFinite(timeOfDayHours, 0)
   const hour = Math.floor(hours)
   const minuteFloat = (hours - hour) * 60
@@ -65,14 +83,22 @@ export function dateFromUTCDayNumberAndTimeOfDay(
   const secondFloat = (minuteFloat - minute) * 60
   const second = Math.floor(secondFloat)
   const ms = Math.round((secondFloat - second) * 1000)
-  return new Date(day * MILLISECONDS_PER_DAY + hour * 3600000 + minute * 60000 + second * 1000 + ms)
+  return new Date(
+    civilDate.getUTCFullYear(),
+    civilDate.getUTCMonth(),
+    civilDate.getUTCDate(),
+    hour,
+    minute,
+    second,
+    ms
+  )
 }
 
-export function createUTCDatePreservingTimeOfDay(date: Date, dayOfYear: number) {
+export function createLocalDatePreservingTimeOfDay(date: Date, dayOfYear: number) {
   const nextDate = new Date(date)
-  nextDate.setUTCMonth(
+  nextDate.setMonth(
     0,
-    clamp(Math.round(dayOfYear), 1, getDaysInUTCYear(date.getUTCFullYear()))
+    clamp(Math.round(dayOfYear), 1, getDaysInLocalYear(date.getFullYear()))
   )
   return nextDate
 }
@@ -82,9 +108,13 @@ export function isTimeInsideRange(date: Date, start: Date, end: Date) {
   return time >= start.getTime() && time <= end.getTime()
 }
 
-export function getUTCDayRange(date: Date) {
-  const rangeStart = startOfUTCDay(date)
-  const rangeEnd = new Date(rangeStart.getTime() + MILLISECONDS_PER_DAY)
+export function getLocalDayRange(date: Date) {
+  const rangeStart = startOfLocalDay(date)
+  const rangeEnd = new Date(
+    rangeStart.getFullYear(),
+    rangeStart.getMonth(),
+    rangeStart.getDate() + 1
+  )
   return { rangeStart, rangeEnd }
 }
 
@@ -103,7 +133,7 @@ export function resolveDynamicDayRange(
     return { rangeStart, rangeEnd, changed: false }
   }
 
-  return { ...getUTCDayRange(anchorTime), changed: true }
+  return { ...getLocalDayRange(anchorTime), changed: true }
 }
 
 export function shiftTimelineWindow(
@@ -113,11 +143,10 @@ export function shiftTimelineWindow(
   direction: -1 | 1,
   dynamicDayRange: boolean
 ) {
-  const duration = rangeEnd.getTime() - rangeStart.getTime()
-  const nextTime = new Date(currentTime.getTime() + direction * duration)
-
   if (dynamicDayRange) {
-    const dayRange = getUTCDayRange(nextTime)
+    const nextTime = new Date(currentTime)
+    nextTime.setDate(nextTime.getDate() + direction)
+    const dayRange = getLocalDayRange(nextTime)
     return {
       rangeStart: dayRange.rangeStart,
       rangeEnd: dayRange.rangeEnd,
@@ -125,6 +154,8 @@ export function shiftTimelineWindow(
     }
   }
 
+  const duration = rangeEnd.getTime() - rangeStart.getTime()
+  const nextTime = new Date(currentTime.getTime() + direction * duration)
   return {
     rangeStart: new Date(rangeStart.getTime() + direction * duration),
     rangeEnd: new Date(rangeEnd.getTime() + direction * duration),
@@ -176,4 +207,8 @@ function toFinite(value: number, fallback: number) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, '0')
 }

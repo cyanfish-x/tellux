@@ -31,6 +31,15 @@ import {
 } from './rendering/applyRTCInstancing'
 
 export { RTCAutoUniforms, applyRTCInstancing, setRTCMatrixAt }
+export type {
+  ClockChangeEvent,
+  ClockChangeReason,
+  ClockEventListener,
+  ClockEventMap,
+  ClockOptions,
+  ClockTickEvent,
+  DateTimeInput
+} from './Clock'
 
 export {
   Camera,

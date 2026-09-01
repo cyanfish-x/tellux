@@ -27,7 +27,13 @@ if (!hoverElement || !popupElement) {
   throw new Error("3D Tiles picking overlays not found.")
 }
 
+const initialClockTime = new Date()
+initialClockTime.setUTCHours(16, 0, 0, 0)
+
 const viewer = new tellux.Viewer(container, {
+  clock: {
+    currentTime: initialClockTime,
+  },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -63,7 +69,6 @@ const viewer = new tellux.Viewer(container, {
 })
 
 ;(window as any).viewer = viewer
-viewer.clock.hourUTC = 16
 
 let panel: TelluxPanel | undefined
 let activeLayer: TilesetLayer | null = null

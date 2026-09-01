@@ -39,7 +39,13 @@ if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
+const initialClockTime = new Date()
+initialClockTime.setUTCHours(initialDaytimeHourUTC, 0, 0, 0)
+
 const viewer = new tellux.Viewer(container, {
+  clock: {
+    currentTime: initialClockTime,
+  },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -70,7 +76,6 @@ const viewer = new tellux.Viewer(container, {
   resolutionScale: 1,
 })
 
-viewer.clock.setHourUTC(initialDaytimeHourUTC)
 viewer.scene.clouds.layer.altitude = dujiangyanView.clouds.layerAltitude
 viewer.scene.clouds.layer.height = dujiangyanView.clouds.layerHeight
 ;(window as any).viewer = viewer

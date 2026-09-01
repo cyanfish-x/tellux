@@ -62,7 +62,19 @@ const defaultLoadMode: TilesetSource =
 
 
 
+const initialClockTime = new Date()
+
+initialClockTime.setUTCHours(10, 0, 0, 0)
+
+
+
 const viewer = new tellux.Viewer(container, {
+
+  clock: {
+
+    currentTime: initialClockTime,
+
+  },
 
   terrain: exampleMapServiceConfig.createTerrainOptions(),
 
@@ -108,7 +120,6 @@ const viewer = new tellux.Viewer(container, {
 
 ;(window as any).viewer = viewer
 
-viewer.clock.hourUTC = 10
 
 
 

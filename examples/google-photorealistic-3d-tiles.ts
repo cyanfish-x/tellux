@@ -27,7 +27,13 @@ if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
+const initialClockTime = new Date()
+initialClockTime.setUTCHours(21, 0, 0, 0)
+
 const viewer = new tellux.Viewer(container, {
+  clock: {
+    currentTime: initialClockTime,
+  },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
     {
@@ -55,7 +61,6 @@ const viewer = new tellux.Viewer(container, {
 })
 
 ;(window as any).viewer = viewer
-viewer.clock.hourUTC = 21
 viewer.tileset.group.visible = false
 
 let panel: TelluxPanel | undefined

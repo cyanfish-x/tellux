@@ -28,6 +28,8 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 - `SampleHeightMostDetailedOptions`
 - `ViewerRendererOptions`
 - `ViewerRendererType`
+- `ClockOptions`
+- `DateTimeInput`
 
 底层 Three.js renderer 实例类型也从 `tellux` 导出，用于在外部渲染循环或自定义 pass 中直接操作 renderer：
 
@@ -168,6 +170,13 @@ const viewer = new tellux.Viewer(container, {
     fov: 75,             // 透视相机垂直视场角（度），默认 75
     near: 10,            // 近裁剪面（米），默认 10
     far: 1000000         // 远裁剪面（米），默认 1000000
+  },
+
+  // —— 场景时钟：currentTime 初始化支持 Date / 日期字符串 / 毫秒时间戳
+  clock: {
+    currentTime: '2026-09-01T08:00:00Z',
+    shouldAnimate: false, // 是否随渲染循环推进；省略时，开启 Timeline 则默认 true，否则 false
+    multiplier: 1        // 模拟时间倍率，默认 1；负数表示倒放
   },
 
   // —— 场景：按 atmosphere / clouds / surface / postProcess 分组
@@ -326,7 +335,7 @@ const viewer = new tellux.Viewer(container, {
   // —— 内置控件
   widgets: {
     settingPanel: false, // 是否挂载内置调试设置面板，默认 false；传对象作为初始值
-    timeline: false      // 是否挂载内置时间条，默认 false；传对象可配置起止时间 / 倍率 / 弹簧 / linkCloudSpeed（默认关）
+    timeline: false      // 是否挂载内置时间条，默认 false；启用后若未显式配置 shouldAnimate，则时钟默认播放
   }
 })
 ```
