@@ -42,9 +42,10 @@ const viewer = new tellux.Viewer(container, {
       show: true,
       lighting: {
         mode: "light-source",
+        skyLight: false,
       },
       fallbackAmbientLight: {
-        intensity: 0.05,
+        show: false,
       },
     },
     clouds: {

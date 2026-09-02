@@ -94,6 +94,19 @@ viewer.scene.atmosphere.shadow.sampleCount = 8
 - 不要把渲染循环当成状态同步兜底。render/update 适合推进时间、相机、资源和渲染，不适合补齐用户参数同步。
 - 当一个 manager 需要读取多个字段共同决定底层行为时，优先使用快照、adapter、manager/facade 边界，而不是让多个 setter 互相隐式依赖。
 
+## 保留 PBR 模型的共享环境贴图边界
+
+`addModel({ materialMode: 'preserve' })` 会保留 glTF 的 PBR 与 emissive 材质。WebGL 的 `post-process` 光照不会给这些 PBR 材质提供常规 Three.js 光源，因此 `AtmosphereManager` 会在场景上临时安装由 `RoomEnvironment` 生成的共享 PMREM 环境贴图。
+
+这份环境贴图属于 `post-process + preserve` 的适配资源，不能只根据“场景中存在 preserve 模型”启用。`Scene.environment` 对整个 Three.js 场景生效；如果在 `light-source` 模式仍保留它，地形和影像瓦片也会持续收到 IBL，出现太阳、天空光和 Ambient 全部关闭后夜间瓦片仍然明亮的假象。
+
+当前约束是：
+
+- 仅当光照模式为 `post-process` 且至少存在一个 preserve 模型时安装共享环境贴图。
+- 切换到 `light-source` 时立即清理这份内部环境贴图，白天由太阳方向光照亮，夜间只保留真实 emissive 内容。
+- 清理时只移除 `AtmosphereManager` 自己安装的纹理，并恢复此前的 `environmentIntensity`，不能覆盖应用自行设置的 `Scene.environment`。
+- 排查“关灯后材质仍亮”时，除了枚举 `Light`，还必须检查 `Scene.environment`、材质 `envMap` 和 `lightMap`。
+
 ## 设计评审清单
 
 新增或调整 `Scene` 与 rendering manager 交互前，至少检查：

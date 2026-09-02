@@ -96,6 +96,13 @@ const DEFAULT_CLOUD_SPEED = 0.001
 const CLOUD_LAYER_OFFSETS = [0, 250]
 const CLOUD_LAYER_HEIGHT_SCALES = [1, 1200 / 650]
 
+export function shouldUsePostProcessMaterialEnvironment(
+  lightingMode: AtmosphereLightingMode,
+  hasPreservedMaterials: boolean
+) {
+  return lightingMode === 'post-process' && hasPreservedMaterials
+}
+
 export class AtmosphereManager {
   readonly aerialPerspectiveEffect: AerialPerspectiveEffect
   readonly cloudsEffect: CloudsEffect
@@ -385,6 +392,7 @@ export class AtmosphereManager {
     this.currentLightingMode = mode
     this.currentSunLight = sunLight
     this.currentSkyLight = skyLight
+    this.syncMaterialEnvironment()
     this.syncLightSourceVisibility()
     this.updateNightLights()
   }
@@ -403,7 +411,10 @@ export class AtmosphereManager {
   private syncMaterialEnvironment() {
     if (!this.lightSourceScene) return
 
-    if (!this.usePostProcessMaterialLights) {
+    if (!shouldUsePostProcessMaterialEnvironment(
+      this.currentLightingMode,
+      this.usePostProcessMaterialLights
+    )) {
       this.clearMaterialEnvironment()
       return
     }
