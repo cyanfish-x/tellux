@@ -25,6 +25,10 @@ export interface AtmosphereRuntimeState {
   skyLight: boolean
   sunLightIntensity: number
   skyLightIntensity: number
+  photometric: {
+    enabled: boolean
+    sunIlluminance: number
+  }
   night: AtmosphereNightRuntimeState
   sun: boolean
   moon: boolean

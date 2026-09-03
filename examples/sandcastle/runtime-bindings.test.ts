@@ -14,7 +14,8 @@ describe('Sandcastle optional runtime bindings', () => {
       gaussianSplat: false,
       hism: false,
       tree: false,
-      waterArea: false
+      waterArea: false,
+      threejsInterop: false
     })
   })
 
@@ -55,6 +56,16 @@ describe('Sandcastle optional runtime bindings', () => {
       const origin = DEFAULT_WATER_AREA_WAVE_ORIGIN
       const optics = normalizeWaterAreaOptics(DEFAULT_WATER_AREA_OPTICS)
     `).waterArea).toBe(true)
+  })
+
+  it('detects the threejs-interop helper without widening the base runner graph', () => {
+    expect(detectOptionalRuntimeBindings(`
+      const rig = setupLittlestTokyoNightRig(model.root, emissiveMap)
+    `).threejsInterop).toBe(true)
+
+    expect(detectOptionalRuntimeBindings(`
+      const altitude = computeSunAltitudeAtLocation(lon, lat, date)
+    `).threejsInterop).toBe(true)
   })
 
   it('does not confuse generic shared helpers with HISM helpers', () => {

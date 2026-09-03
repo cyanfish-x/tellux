@@ -190,8 +190,9 @@ Tellux 当前状态：
 
 Tellux 当前状态：
 
-- 当前未接入 `LightingMaskPass`。
-- 如果后续要让用户添加的 PBR 模型不受后处理光照重复影响，可以把该能力作为高级渲染选项。
+- `@takram/three-atmosphere@0.19.1` **没有**导出 `LightingMaskPass` / `aerialPerspectiveEffect.lightingMask`。
+- Tellux 自写 [`LightingMaskPass`](../../src/rendering/LightingMaskPass.ts)，经 shader patch 采样 `telluxLightingMaskBuffer`。mask=1 为 globe 后处理光照，mask=0 为 `addModel({ lighting: 'local' })` 保留已着色 radiance。
+- 详见 [ADR 0004](../架构/adr/0004-local-vs-globe-lighting.md)。
 
 ## 与云层合成
 
@@ -222,6 +223,6 @@ Tellux 当前用法：
 
 - 大气用户可调面已较完整（`lighting` / `night` / `scattering` / `sky` / `shadow` / `fallbackAmbientLight`）；优先保持领域分组与 init/runtime 同构。
 - 支持预计算纹理外部 URL 或本地资产注入。
-- 用 `LightingMaskPass` 区分地表、3D Tiles、自定义对象和透明对象的光照路径。
+- 升级 `@takram/three-atmosphere` 后，评估把自写 lighting mask 接到官方 `lightingMask` 属性；透明物体叠在 local 模型上仍不支持（上游同样限制）。
 - 评估独立 `SkyMaterial` 天空对象（当前不急需）。
 - 为调试提供大气 LUT、太阳方向、月亮方向和云影合成状态输出。

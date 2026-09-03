@@ -7,7 +7,9 @@ import { sceneValueNormalizers } from './scene/SceneValueNormalization'
 import type {
   AtmosphereLightingMode,
   SurfaceMaterialMode,
+  ViewerAtmospherePhotometricOptions,
   ViewerAtmosphereStarsOptions,
+  ViewerAutoExposureOptions,
   ViewerBloomOptions,
   ViewerLensFlareOptions,
   ViewerOptions,
@@ -55,7 +57,8 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
         skyLightIntensity: normalize.skyLightIntensity(
           options?.atmosphere?.lighting?.skyLightIntensity ?? 1
         ),
-        albedoScale: normalize.albedoScale(options?.atmosphere?.lighting?.albedoScale ?? 1)
+        albedoScale: normalize.albedoScale(options?.atmosphere?.lighting?.albedoScale ?? 1),
+        photometric: resolvePhotometricOptions(options?.atmosphere?.lighting?.photometric)
       },
       night: {
         enabled: options?.atmosphere?.night?.enabled ?? false,
@@ -169,6 +172,7 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
       smaa: resolvePostProcessStageOptions(options?.postProcess?.smaa, true),
       taa: resolvePostProcessStageOptions(options?.postProcess?.taa, false),
       dithering: resolvePostProcessStageOptions(options?.postProcess?.dithering, false),
+      autoExposure: resolveAutoExposureOptions(options?.postProcess?.autoExposure),
       toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 5
     },
     highlight: {
@@ -290,6 +294,30 @@ function resolveLensFlareOptions(
       range: normalize.lensFlareThresholdRange(options.threshold?.range ?? 1)
     },
     quality
+  }
+}
+
+function resolvePhotometricOptions(
+  options: boolean | ViewerAtmospherePhotometricOptions | undefined
+): ResolvedSceneOptions['atmosphere']['lighting']['photometric'] {
+  const values = typeof options === 'boolean' || options === undefined ? {} : options
+  return {
+    enabled: typeof options === 'boolean' ? options : options?.enabled ?? false,
+    sunIlluminance: sceneValueNormalizers.sunIlluminance(values.sunIlluminance ?? 111000)
+  }
+}
+
+function resolveAutoExposureOptions(
+  options: boolean | ViewerAutoExposureOptions | undefined
+): ResolvedSceneOptions['postProcess']['autoExposure'] {
+  const values = typeof options === 'boolean' || options === undefined ? {} : options
+  const min = sceneValueNormalizers.autoExposureMin(values.min ?? 2)
+  const max = sceneValueNormalizers.autoExposureMax(values.max ?? 10)
+  return {
+    enabled: typeof options === 'boolean' ? options : options?.enabled ?? false,
+    min: Math.min(min, max),
+    max: Math.max(min, max),
+    speed: sceneValueNormalizers.autoExposureSpeed(values.speed ?? 1.5)
   }
 }
 

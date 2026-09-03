@@ -44,7 +44,7 @@ class BloomSettings {
     this.onChange()
   }
 
-  /** Bloom 强度。Bloom intensity. */
+  /** Bloom 强度（亮部混合系数）。Bloom intensity (bright-pass mix). */
   get intensity() {
     return this.options.intensity
   }
@@ -185,6 +185,52 @@ class LensFlareSettings {
   }
 }
 
+class AutoExposureSettings {
+  constructor(
+    private readonly options: ResolvedSceneOptions['postProcess']['autoExposure']
+  ) {}
+
+  /**
+   * 是否启用自动曝光。
+   *
+   * Whether auto exposure is enabled.
+   */
+  get enabled() {
+    return this.options.enabled
+  }
+
+  set enabled(value: boolean) {
+    this.options.enabled = value
+  }
+
+  /** 白天曝光下限。Daytime exposure floor. */
+  get min() {
+    return this.options.min
+  }
+
+  set min(value: number) {
+    this.options.min = sceneValueNormalizers.autoExposureMin(value)
+  }
+
+  /** 夜晚曝光上限。Nighttime exposure ceiling. */
+  get max() {
+    return this.options.max
+  }
+
+  set max(value: number) {
+    this.options.max = sceneValueNormalizers.autoExposureMax(value)
+  }
+
+  /** 适应速度。Adaptation speed. */
+  get speed() {
+    return this.options.speed
+  }
+
+  set speed(value: number) {
+    this.options.speed = sceneValueNormalizers.autoExposureSpeed(value)
+  }
+}
+
 export class PostProcessSettings {
   /** Bloom 后处理阶段。Bloom post-processing stage. */
   readonly bloom: BloomSettings
@@ -196,6 +242,13 @@ export class PostProcessSettings {
   readonly taa: PostProcessStage
   /** 抖动后处理阶段。Dithering post-processing stage. */
   readonly dithering: PostProcessStage
+  /**
+   * 自动曝光。用夜因子在 min（白天）与 max（夜晚）之间平滑插值曝光。
+   *
+   * Auto exposure. Smoothly interpolates exposure between min (day) and max
+   * (night) from the night factor.
+   */
+  readonly autoExposure: AutoExposureSettings
 
   constructor(options: ResolvedSceneOptions['postProcess'], onChange: () => void) {
     this.bloom = new BloomSettings(options.bloom, onChange)
@@ -203,5 +256,6 @@ export class PostProcessSettings {
     this.smaa = new PostProcessStage(options.smaa.enabled, onChange)
     this.taa = new PostProcessStage(options.taa.enabled, onChange)
     this.dithering = new PostProcessStage(options.dithering.enabled, onChange)
+    this.autoExposure = new AutoExposureSettings(options.autoExposure)
   }
 }

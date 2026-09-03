@@ -22,6 +22,8 @@ viewer.scene.atmosphere.lighting.sunLight = true
 viewer.scene.atmosphere.lighting.skyLight = true
 viewer.scene.atmosphere.lighting.sunLightIntensity = 1.2
 viewer.scene.atmosphere.lighting.skyLightIntensity = 0.8
+viewer.scene.atmosphere.lighting.photometric.enabled = true
+viewer.scene.atmosphere.lighting.photometric.sunIlluminance = 111000
 ```
 
 ### post-process 注意事项
@@ -130,10 +132,11 @@ viewer.scene.postProcess.lensFlare.intensity = 0.005
 viewer.scene.postProcess.lensFlare.quality = 'medium'
 viewer.scene.postProcess.taa.enabled = true // WebGPU，默认 false
 viewer.scene.postProcess.dithering.enabled = false
+viewer.scene.postProcess.autoExposure.enabled = false
 viewer.toneMappingExposure = 10
 ```
 
-> Bloom 在 WebGL / WebGPU 均可用，基于整帧 HDR 亮度提取；夜景模型应保留 glTF 原生 `emissiveMap`，并按需提高 `emissiveIntensity`。WebGPU 顺序固定为 Bloom → LensFlare → TAA；SMAA / 抖动仍不渲染。
+> Bloom 在 WebGL / WebGPU 均可用，基于整帧 HDR 亮度提取。`luminanceThreshold` 比的是 AgX / 曝光之前的线性 luma，不是屏幕看起来有多亮。`intensity` 乘的是已经提取的亮部，不是画面亮度百分比。城市夜景用 `addModel({ lighting: 'local' })`，点光挂在带 `scale` 的 glTF 根上并按 `(scale / 0.01)²` 补偿 intensity，打开 `photometric`（只缩放太阳）+ `autoExposure`；不要关太阳。夜景不依赖 Bloom（上游 Non-geospatial 未开）。WebGPU 顺序固定为 Bloom → LensFlare → TAA；SMAA / 抖动仍不渲染。WebGPU 暂无 lighting mask。
 
 ## 完整初始化示例
 
@@ -159,6 +162,7 @@ const viewer = new tellux.Viewer(container, {
       bloom: { enabled: false, intensity: 1, luminanceThreshold: 1, luminanceSmoothing: 0.03, radius: 0.85 },
       lensFlare: { enabled: true, intensity: 0.005, quality: 'medium' },
       smaa: true,
+      autoExposure: false,
       toneMappingExposure: 10
     }
   }

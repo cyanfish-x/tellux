@@ -192,7 +192,11 @@ const viewer = new tellux.Viewer(container, {
         skyLight: true,          // 是否应用天空环境光照，默认 true
         sunLightIntensity: 1,    // 太阳光源辐射强度缩放（主要作用于 light-source），默认 1
         skyLightIntensity: 1,    // 天空光探针辐射强度缩放（主要作用于 light-source），默认 1
-        albedoScale: 1           // 后处理光照反照率缩放（主要作用于 post-process），默认 1
+        albedoScale: 1,          // 后处理光照反照率缩放（主要作用于 post-process），默认 1
+        photometric: {           // 光度单位，默认关闭
+          enabled: false,
+          sunIlluminance: 111000 // 正午太阳照度锚（lux），映射 Takram 强度缩放，不是 GPU intensity=111000
+        }
       },
 
       // 夜间光照：太阳落山后的补光
@@ -296,10 +300,16 @@ const viewer = new tellux.Viewer(container, {
     // bloom / lensFlare / smaa / taa / dithering 也可传 boolean，等价于 { enabled }
     postProcess: {
       toneMappingExposure: 10, // 色调映射曝光，默认 10；运行时也可用 viewer.toneMappingExposure 调整
+      autoExposure: {          // 自动曝光，默认关闭；用太阳高度在 min（白天）与 max（夜晚）之间插值
+        enabled: false,
+        min: 2,
+        max: 10,
+        speed: 1.5
+      },
       bloom: {
         enabled: false,             // 是否启用亮部泛光，默认 false
-        intensity: 1,               // 泛光强度，默认 1
-        luminanceThreshold: 1,      // HDR 亮度阈值，默认 1
+        intensity: 1,               // 泛光强度，默认 1；乘的是已提取亮部，不是画面亮度百分比
+        luminanceThreshold: 1,      // HDR 线性亮度阈值（AgX / 曝光之前），默认 1
         luminanceSmoothing: 0.03,   // 阈值过渡宽度 0~1，默认 0.03
         radius: 0.85                // 模糊扩散半径 0~1，默认 0.85
       },

@@ -746,12 +746,13 @@ Tellux 不修改 Takram 等第三方库源码，而是在运行时通过 shader 
 | `telluxPostProcessNightSkyIntensity` | 夜空散射强度 |
 | `telluxPostProcessNightMoonGlowIntensity` | 月晕强度 |
 | `telluxPostProcessDayLightFactor` | 日夜过渡因子 |
+| `telluxLightingMaskBuffer` | 局部光照 mask（1=globe 后处理光照，0=local 保留 inputColor） |
 
 **Patch 注入点（正则替换）：**
 1. uniform 声明 → 在 `uniform float albedoScale;` 后追加
 2. 天空 radiance → 在 `getSkyRadiance(...)` 后追加 `× dayLightFactor`
 3. 夜空 → 在 `outputColor.a = 1.0; #else // SKY` 前注入地平线辉光 + 月晕
-4. 地面夜间光照 → 在 `#endif // defined(SUN_LIGHT)` 后注入 moon/ambient diffuse
+4. 地面光照 → 在 `#endif // defined(SUN_LIGHT)` 后：仅 `SUN_LIGHT`/`SKY_LIGHT` 路径乘 dayLightFactor；再 `mix` lighting mask；月光只作用于 globe 像素。**light-source 已着色 radiance 不再乘 dayLightFactor。**
 5. 散射遮罩 → 替换 `radiance = radiance + inscatter;` 为带 inscatterIntensity × horizonMask × dayLightFactor 的版本
 
 ### 13.2 CloudsEffect Patches

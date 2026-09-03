@@ -17,6 +17,7 @@ import {
   getMoonDirectionECEF,
   getSunDirectionECEF
 } from '@takram/three-atmosphere'
+import { Ellipsoid } from '@takram/three-geospatial'
 
 import type { AtmosphereRuntimeState, CloudRuntimeState } from './AtmosphereRuntimeState'
 import { getTelluxAssetUrl } from '../config'
@@ -24,6 +25,7 @@ import type { TelluxWebGPURenderer } from './RendererAdapter'
 import { normalizeAtmosphereRuntimeState } from '../scene/SceneValueNormalization'
 import type { AtmosphereLightingMode } from '../types'
 import { AtmosphereTextureLoader } from './AtmosphereTextureLoader'
+import { scaleSunLightIntensity } from './photometric'
 import type { WebGPUPostProcessingGraph } from './WebGPUPostProcessingManager'
 
 type WebGPUNode = Node
@@ -51,6 +53,8 @@ type LightNodeLibrary = WebGPURenderer['library'] & {
 const WEBGPU_STARS_VISUAL_LUMINANCE = 10
 const FALLBACK_WEBGPU_STARS_INTENSITY_SCALE = 800_000
 
+const DEFAULT_NIGHT_TRANSITION_RANGE: [number, number] = [-0.08, 0.05]
+
 export class WebGPUAtmosphereManager {
   readonly atmosphereContext = new AtmosphereContext()
   readonly sunLightSource = new AtmosphereLight(1, 'sun')
@@ -68,12 +72,16 @@ export class WebGPUAtmosphereManager {
   private readonly moonDirection = new THREE.Vector3()
   private readonly inertialToECEFMatrix = new THREE.Matrix4()
   private readonly moonFixedToECIMatrix = new THREE.Matrix4()
+  private readonly cameraPosition = new THREE.Vector3()
+  private readonly cameraSurfaceNormal = new THREE.Vector3()
   private readonly textureLoader = new AtmosphereTextureLoader()
   private lightSourceScene: THREE.Scene | null = null
   private currentShowAtmosphere = true
   private currentLightingMode: AtmosphereLightingMode = 'post-process'
   private currentSunLight = true
   private currentSkyLight = true
+  private currentNightFactor = 0
+  private currentNightTransitionRange: [number, number] = [...DEFAULT_NIGHT_TRANSITION_RANGE]
   private currentStarsVisible = true
   private currentStarsIntensity = FALLBACK_WEBGPU_STARS_INTENSITY_SCALE
   private currentStarsPointSize = 1
@@ -154,7 +162,11 @@ export class WebGPUAtmosphereManager {
     this.syncStarsState()
     this.applyAtmosphereParameters(state)
     this.applyLightingMode(state.lightingMode, state.sunLight, state.skyLight)
-    this.sunLightSource.intensity = Math.max(0, this.toFinite(state.sunLightIntensity, 1))
+    this.sunLightSource.intensity = Math.max(
+      0,
+      this.toFinite(scaleSunLightIntensity(state.sunLightIntensity, state.photometric), 1)
+    )
+    this.currentNightTransitionRange = [...state.night.transitionRange]
     this.moonLightSource.intensity = state.night.enabled && state.night.moonLight
       ? Math.max(0, this.toFinite(state.night.moonLightIntensity, 0.18))
       : 0
@@ -172,6 +184,10 @@ export class WebGPUAtmosphereManager {
   }
 
   setPostProcessMaterialLights(_enabled: boolean) {}
+
+  getNightFactor() {
+    return this.currentNightFactor
+  }
 
   loadTextures() {
     if (this.isDisposed || this.isStarsLoading || this.starsReady) return
@@ -211,6 +227,21 @@ export class WebGPUAtmosphereManager {
     this.moonLightSource.target.position.copy(this.sunLightSource.target.position)
     this.sunLightSource.target.updateMatrixWorld(true)
     this.moonLightSource.target.updateMatrixWorld(true)
+    this.updateNightFactor()
+  }
+
+  private updateNightFactor() {
+    this.camera.getWorldPosition(this.cameraPosition)
+    if (this.cameraPosition.lengthSq() === 0) {
+      this.currentNightFactor = 0
+      return
+    }
+
+    Ellipsoid.WGS84.getSurfaceNormal(this.cameraPosition, this.cameraSurfaceNormal)
+    const sunAltitude = this.cameraSurfaceNormal.dot(this.sunDirection)
+    const nightEnd = Math.min(this.currentNightTransitionRange[0], this.currentNightTransitionRange[1])
+    const dayStart = Math.max(this.currentNightTransitionRange[0], this.currentNightTransitionRange[1])
+    this.currentNightFactor = 1 - THREE.MathUtils.smoothstep(sunAltitude, nightEnd, dayStart)
   }
 
   dispose() {

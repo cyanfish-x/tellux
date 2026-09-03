@@ -20,6 +20,10 @@ export interface ResolvedSceneOptions {
       sunLightIntensity: number
       skyLightIntensity: number
       albedoScale: number
+      photometric: {
+        enabled: boolean
+        sunIlluminance: number
+      }
     }
     night: {
       enabled: boolean
@@ -122,6 +126,12 @@ export interface ResolvedSceneOptions {
     }
     dithering: {
       enabled: boolean
+    }
+    autoExposure: {
+      enabled: boolean
+      min: number
+      max: number
+      speed: number
     }
     toneMappingExposure: number
   }

@@ -1,9 +1,15 @@
 import tellux from "../src"
-import type { Material, Mesh, MeshStandardMaterial, Object3D } from "three"
+import * as THREE from "three"
 import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
+import {
+  computeSunAltitudeAtLocation,
+  isNightLightsOn,
+  setupLittlestTokyoNightRig,
+  type LittlestTokyoNightRig,
+} from "./littlest-tokyo-night"
 
 bootExampleI18n()
 
@@ -11,6 +17,10 @@ const MODEL_LONGITUDE = 113.9958
 const MODEL_LATITUDE = 30.0072
 const MODEL_HEIGHT = 0
 const MODEL_URL = "https://threejs.org/examples/models/gltf/LittlestTokyo.glb"
+const EMISSIVE_TEXTURE_URL = "/littlest-tokyo/emissive.jpg"
+
+const initialClockTime = new Date()
+initialClockTime.setHours(22, 0, 0, 0)
 
 const container = document.querySelector("#viewer")
 
@@ -19,9 +29,8 @@ if (!(container instanceof HTMLElement)) {
 }
 
 const viewer = new tellux.Viewer(container, {
-  // 武汉当地 20:00（UTC+8），直接展示模型自发光在夜景中的效果。
   clock: {
-    currentTime: "2026-09-01T12:00:00Z",
+    currentTime: initialClockTime,
   },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
   layers: [
@@ -42,24 +51,42 @@ const viewer = new tellux.Viewer(container, {
       show: true,
       lighting: {
         mode: "light-source",
-        skyLight: false,
+        sunLight: true,
+        skyLight: true,
+        photometric: {
+          enabled: true,
+          sunIlluminance: 111000,
+        },
+      },
+      night: {
+        enabled: true,
+        moonLight: true,
+        ambientLight: true,
       },
       fallbackAmbientLight: {
         show: false,
+      },
+      sky: {
+        stars: {
+          show: true,
+        },
       },
     },
     clouds: {
       show: false,
     },
     postProcess: {
-      toneMappingExposure: 1,
-      bloom: {
+      toneMappingExposure: 10,
+      autoExposure: {
         enabled: true,
-        intensity: 2,
-        luminanceThreshold: 0.8,
-        luminanceSmoothing: 0.05,
-        radius: 0.55,
+        min: 2,
+        max: 10,
+        speed: 1.2,
       },
+      // 对齐上游 Non-geospatial：不开 Bloom。镜头光晕自带 mipmap 模糊，也会像泛光。
+      bloom: false,
+      lensFlare: false,
+      taa:true
     },
     highlight: {
       outline: {
@@ -71,7 +98,10 @@ const viewer = new tellux.Viewer(container, {
     },
   },
   widgets: {
-    timeline: true,
+    timeline: {
+      // 夜景开关直接读 clock；关闭 spring 避免 UI 已到 19:00 而 clock 仍停在 18:00 导致灯灭。
+      spring: false,
+    },
   },
 })
 
@@ -79,7 +109,7 @@ const viewer = new tellux.Viewer(container, {
 
 let isAnimationPlaying = true
 let model: ReturnType<typeof viewer.addModel> | null = null
-let emissiveMaterials: MeshStandardMaterial[] = []
+let nightRig: LittlestTokyoNightRig | null = null
 let panel: TelluxPanel<ReturnType<typeof interopSchema>> | undefined
 const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
@@ -97,6 +127,11 @@ function setActionDisabled(disabled: boolean) {
   if (!panel) return
   panel.setFieldDisabled("actions.flyTo", disabled)
   panel.setFieldDisabled("actions.playing", disabled)
+  panel.setFieldDisabled("lights.brightness", disabled)
+}
+
+function resolveNightLightGain() {
+  return panel?.controls.lights.brightness ?? 1
 }
 
 function flyToModel() {
@@ -118,39 +153,19 @@ function syncAnimationFromPanel() {
   }
 }
 
-function syncBloomFromPanel() {
-  if (!panel) return
+function syncNightLightsFromSun() {
+  if (!nightRig) return
 
-  const bloom = panel.controls.bloom
-  viewer.scene.postProcess.bloom.enabled = bloom.enabled
-  viewer.scene.postProcess.bloom.intensity = bloom.intensity
-  viewer.scene.postProcess.bloom.luminanceThreshold = bloom.luminanceThreshold
-  viewer.scene.postProcess.bloom.radius = bloom.radius
-  for (const material of emissiveMaterials) {
-    material.emissiveIntensity = bloom.emissiveIntensity
-  }
+  const sunAltitude = computeSunAltitudeAtLocation(
+    MODEL_LONGITUDE,
+    MODEL_LATITUDE,
+    viewer.clock.currentTime
+  )
+  nightRig.setLightIntensity(isNightLightsOn(sunAltitude) * resolveNightLightGain())
 }
 
-function isMeshStandardMaterial(material: Material): material is MeshStandardMaterial {
-  return (material as MeshStandardMaterial).isMeshStandardMaterial === true
-}
-
-function collectEmissiveMaterials(root: Object3D) {
-  const materials = new Set<MeshStandardMaterial>()
-  root.traverse((object) => {
-    if (!(object as Mesh).isMesh) return
-    const material = (object as Mesh).material
-    const entries = Array.isArray(material) ? material : [material]
-    for (const entry of entries) {
-      if (
-        isMeshStandardMaterial(entry) &&
-        (entry.emissiveMap !== null || entry.emissive.getHex() !== 0)
-      ) {
-        materials.add(entry)
-      }
-    }
-  })
-  return [...materials]
+function handleClockUpdate() {
+  syncNightLightsFromSun()
 }
 
 async function loadModelOnSampledGround() {
@@ -196,6 +211,10 @@ async function loadModelOnSampledGround() {
     return
   }
 
+  const emissiveMap = await new THREE.TextureLoader().loadAsync(EMISSIVE_TEXTURE_URL)
+  emissiveMap.colorSpace = THREE.SRGBColorSpace
+  emissiveMap.flipY = false
+
   model = viewer.addModel({
     type: "gltf",
     id: "littlest-tokyo",
@@ -205,13 +224,14 @@ async function loadModelOnSampledGround() {
     heading: 160,
     alignToGround: true,
     materialMode: "preserve",
+    lighting: "local",
     animate: true,
   })
 
   try {
     const layer = await model.ready
-    emissiveMaterials = collectEmissiveMaterials(layer.root)
-    syncBloomFromPanel()
+    nightRig = setupLittlestTokyoNightRig(layer.model ?? layer.root, emissiveMap)
+    syncNightLightsFromSun()
     setReadyStatus(
       t({ zh: "{n} 个动画通道", en: "{n} animation clip(s)" }, { n: layer.animations.length })
     )
@@ -220,14 +240,18 @@ async function loadModelOnSampledGround() {
     setStatus(
       t(
         {
-          zh: "Littlest Tokyo 已在采样高度 {h} 米处加入场景；检测到 {n} 个自发光材质并启用夜景 Bloom。",
-          en: "Littlest Tokyo added at sampled height {h} m; detected {n} emissive material(s) with night bloom enabled.",
+          zh: "Littlest Tokyo 已加入场景；已挂载 {n} 个夜景材质、{l} 盏模型灯光。拖动时间轴切换昼夜。",
+          en: "Littlest Tokyo added; attached {n} night emissive material(s) and {l} model light(s). Scrub the timeline for day/night.",
         },
-        { h: modelHeight.toFixed(2), n: emissiveMaterials.length }
+        {
+          n: nightRig.emissiveMaterials.length,
+          l: nightRig.lights.length,
+        }
       )
     )
   } catch (error) {
     console.error(error)
+    emissiveMap.dispose()
     setStatus(
       t({
         zh: "模型加载失败，请检查网络或 three.js 示例资源是否可访问。",
@@ -245,12 +269,8 @@ const interopSchema = () =>
         type: "hint" as const,
         value: t(
           {
-            zh: "加载 Three.js 官方 keyframes 模型，作为原生 Object3D 放到经度 {lon}、纬度 {lat} 的地表位置。",
-            en: "Load the official Three.js keyframes model as a native Object3D at longitude {lon}, latitude {lat}.",
-          },
-          {
-            lon: MODEL_LONGITUDE.toFixed(6),
-            lat: MODEL_LATITUDE.toFixed(6),
+            zh: "对齐 Cesium for Unreal 动态光照：灯一直开、白天被太阳冲淡、夜里广告牌和点光成为主体。拖时间轴，曝光随太阳高度走。",
+            en: "Matches Cesium for Unreal dynamic lighting: lights stay on, daylight washes them out, and at night the signs and point lights take over. Scrub the timeline; exposure follows sun altitude.",
           }
         ),
       },
@@ -263,39 +283,14 @@ const interopSchema = () =>
         label: t({ zh: "播放动画", en: "Play animation" }),
       },
     },
-    bloom: {
-      $: { label: t({ zh: "夜景自发光", en: "Night emissive" }) },
-      enabled: {
-        value: true,
-        label: t({ zh: "启用 Bloom", en: "Enable bloom" }),
-      },
-      intensity: {
-        value: 2,
+    lights: {
+      $: { label: t({ zh: "灯光", en: "Lights" }) },
+      brightness: {
+        value: 1,
         min: 0,
         max: 4,
         step: 0.05,
-        label: t({ zh: "Bloom 强度", en: "Bloom intensity" }),
-      },
-      luminanceThreshold: {
-        value: 0.8,
-        min: 0,
-        max: 3,
-        step: 0.05,
-        label: t({ zh: "亮度阈值", en: "Luminance threshold" }),
-      },
-      radius: {
-        value: 0.55,
-        min: 0,
-        max: 1,
-        step: 0.05,
-        label: t({ zh: "扩散半径", en: "Bloom radius" }),
-      },
-      emissiveIntensity: {
-        value: 20,
-        min: 0,
-        max: 20,
-        step: 0.5,
-        label: t({ zh: "模型自发光", en: "Model emissive" }),
+        label: t({ zh: "光源亮度", en: "Light brightness" }),
       },
     },
     readout: {
@@ -333,13 +328,9 @@ function bindPanelInteractions(
 ) {
   return currentPanel.controls.effect(() => {
     void currentPanel.controls.actions.playing
-    void currentPanel.controls.bloom.enabled
-    void currentPanel.controls.bloom.intensity
-    void currentPanel.controls.bloom.luminanceThreshold
-    void currentPanel.controls.bloom.radius
-    void currentPanel.controls.bloom.emissiveIntensity
+    void currentPanel.controls.lights.brightness
     syncAnimationFromPanel()
-    syncBloomFromPanel()
+    syncNightLightsFromSun()
   })
 }
 
@@ -350,6 +341,8 @@ panel = createTelluxPanel(interopSchema, {
   onRebuild: bindPanelInteractions,
 })
 
+viewer.clock.on("change", handleClockUpdate)
+viewer.clock.on("tick", handleClockUpdate)
 setActionDisabled(true)
 void loadModelOnSampledGround()
 
@@ -384,6 +377,9 @@ viewer.on("click", (event) => {
 })
 
 window.addEventListener("beforeunload", () => {
+  viewer.clock.off("change", handleClockUpdate)
+  viewer.clock.off("tick", handleClockUpdate)
+  nightRig?.dispose()
   locationReadout.destroy()
   panel?.dispose()
   viewer.destroy()

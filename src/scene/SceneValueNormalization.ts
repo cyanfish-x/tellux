@@ -75,6 +75,10 @@ export const sceneValueNormalizers = {
   bloomLuminanceThreshold: (value: number) => nonNegative(value, 1),
   bloomLuminanceSmoothing: (value: number) => clamped(value, 0.03, 0, 1),
   bloomRadius: (value: number) => clamped(value, 0.85, 0, 1),
+  autoExposureMin: (value: number) => nonNegative(value, 2),
+  autoExposureMax: (value: number) => nonNegative(value, 10),
+  autoExposureSpeed: (value: number) => nonNegative(value, 1.5),
+  sunIlluminance: (value: number) => nonNegative(value, 111000),
   lensFlareIntensity: (value: number) => nonNegative(value, 0.005),
   lensFlareThresholdLevel: (value: number) => nonNegative(value, 10),
   lensFlareThresholdRange: (value: number) => nonNegative(value, 1),
@@ -92,6 +96,10 @@ export function normalizeAtmosphereRuntimeState(
     inscatterHorizonRange: normalize.inscatterHorizonRange(state.inscatterHorizonRange),
     sunLightIntensity: normalize.sunLightIntensity(state.sunLightIntensity),
     skyLightIntensity: normalize.skyLightIntensity(state.skyLightIntensity),
+    photometric: {
+      ...state.photometric,
+      sunIlluminance: normalize.sunIlluminance(state.photometric.sunIlluminance)
+    },
     night: {
       ...state.night,
       moonLightIntensity: normalize.moonLightIntensity(state.night.moonLightIntensity),

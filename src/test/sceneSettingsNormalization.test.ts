@@ -13,7 +13,10 @@ describe('scene setting normalization', () => {
         lighting: {
           sunLightIntensity: -2,
           skyLightIntensity: Number.NaN,
-          albedoScale: -1
+          albedoScale: -1,
+          photometric: {
+            sunIlluminance: -1
+          }
         },
         night: {
           moonLightIntensity: -0.2,
@@ -65,6 +68,11 @@ describe('scene setting normalization', () => {
             level: -2,
             range: Number.NaN
           }
+        },
+        autoExposure: {
+          min: -1,
+          max: Number.NaN,
+          speed: -2
         }
       }
     })
@@ -72,7 +80,11 @@ describe('scene setting normalization', () => {
     expect(options.atmosphere.lighting).toMatchObject({
       sunLightIntensity: 0,
       skyLightIntensity: 1,
-      albedoScale: 0
+      albedoScale: 0,
+      photometric: {
+        enabled: false,
+        sunIlluminance: 0
+      }
     })
     expect(options.atmosphere.night).toMatchObject({
       moonLightIntensity: 0,
@@ -136,6 +148,12 @@ describe('scene setting normalization', () => {
     expect(options.postProcess.smaa).toEqual({ enabled: true })
     expect(options.postProcess.taa).toEqual({ enabled: false })
     expect(options.postProcess.dithering).toEqual({ enabled: false })
+    expect(options.postProcess.autoExposure).toEqual({
+      enabled: false,
+      min: 0,
+      max: 10,
+      speed: 0
+    })
   })
 
   it('accepts boolean shorthand for stars and post-process stages', () => {
@@ -173,6 +191,8 @@ describe('scene setting normalization', () => {
     )
 
     settings.lighting.sunLightIntensity = -2
+    settings.lighting.photometric.enabled = true
+    settings.lighting.photometric.sunIlluminance = -1
     settings.night.transitionRange = [0.4, -0.2]
     settings.scattering.horizonRange = [2, -1]
     settings.scattering.miePhaseFunctionG = 4
@@ -182,6 +202,8 @@ describe('scene setting normalization', () => {
     settings.sky.stars.pointSize = Number.NaN
 
     expect(settings.lighting.sunLightIntensity).toBe(0)
+    expect(settings.lighting.photometric.enabled).toBe(true)
+    expect(settings.lighting.photometric.sunIlluminance).toBe(0)
     expect(settings.night.transitionRange).toEqual([-0.2, 0.4])
     expect(settings.scattering.horizonRange).toEqual([0, 1])
     expect(settings.scattering.miePhaseFunctionG).toBe(0.99)
@@ -193,6 +215,10 @@ describe('scene setting normalization', () => {
     const state = applyAtmosphereState.mock.lastCall?.[0]
     expect(state).toMatchObject({
       sunLightIntensity: 0,
+      photometric: {
+        enabled: true,
+        sunIlluminance: 0
+      },
       inscatterHorizonRange: [0, 1],
       miePhaseFunctionG: 0.99,
       sunAngularRadius: 0.1,
@@ -287,5 +313,22 @@ describe('scene setting normalization', () => {
     expect(settings.bloom.luminanceSmoothing).toBe(1)
     expect(settings.bloom.radius).toBe(0)
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('keeps auto-exposure getters normalized after runtime updates', () => {
+    const settings = new PostProcessSettings(
+      resolveViewerSceneOptions(undefined).postProcess,
+      vi.fn()
+    )
+
+    settings.autoExposure.enabled = true
+    settings.autoExposure.min = 12
+    settings.autoExposure.max = 3
+    settings.autoExposure.speed = -1
+
+    expect(settings.autoExposure.enabled).toBe(true)
+    expect(settings.autoExposure.min).toBe(12)
+    expect(settings.autoExposure.max).toBe(3)
+    expect(settings.autoExposure.speed).toBe(0)
   })
 })

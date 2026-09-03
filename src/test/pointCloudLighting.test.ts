@@ -4,18 +4,18 @@ import { describe, expect, it } from 'vitest'
 
 import { patchAerialPerspectiveShader } from '../rendering/AtmosphereShaderPatches'
 
+function patchedFragment(sunLight: boolean, skyLight: boolean) {
+  const effect = new AerialPerspectiveEffect(new THREE.PerspectiveCamera())
+  effect.sunLight = sunLight
+  effect.skyLight = skyLight
+  effect.normalBuffer = new THREE.Texture()
+  patchAerialPerspectiveShader(effect, new THREE.Color())
+  return (effect as unknown as { getFragmentShader(): string }).getFragmentShader()
+}
+
 describe('patchAerialPerspectiveShader point-cloud lighting', () => {
   it('keeps degenerate normals unlit without injecting custom weak lighting', () => {
-    const effect = new AerialPerspectiveEffect(new THREE.PerspectiveCamera())
-    effect.sunLight = true
-    effect.skyLight = true
-    effect.normalBuffer = new THREE.Texture()
-
-    patchAerialPerspectiveShader(effect, new THREE.Color())
-
-    const fragmentShader = (
-      effect as unknown as { getFragmentShader(): string }
-    ).getFragmentShader()
+    const fragmentShader = patchedFragment(true, true)
 
     expect(fragmentShader).toContain(
       'if (!degenerateNormal) {\n    radiance = getSunSkyIrradiance'
@@ -29,10 +29,40 @@ describe('patchAerialPerspectiveShader point-cloud lighting', () => {
     expect(fragmentShader).not.toContain('vec3 telluxGlobeN =')
     expect(fragmentShader).not.toContain('telluxNdotL')
     expect(fragmentShader).toContain(
-      'bool telluxUnlitPointCloud = degenerateNormal && texture(normalBuffer, uv).a < 0.5;'
-    )
-    expect(fragmentShader).toContain(
       'if (!telluxUnlitPointCloud) {\n    applyTransmittanceInscatter'
     )
+  })
+
+  it('does not guess self-lit pixels from luma', () => {
+    const fragmentShader = patchedFragment(true, true)
+
+    expect(fragmentShader).not.toContain('telluxSelfLitMask')
+    expect(fragmentShader).not.toContain('telluxSelfLitRadiance')
+    expect(fragmentShader).not.toContain('telluxSceneLuma')
+  })
+
+  it('does not scale already-lit light-source radiance by dayLightFactor', () => {
+    const fragmentShader = patchedFragment(false, false)
+
+    expect(fragmentShader).toContain('telluxGlobeLightingMask')
+    expect(fragmentShader).toContain(
+      'radiance = mix(inputColor.rgb, radiance, telluxGlobeLightingMask)'
+    )
+    expect(fragmentShader).not.toMatch(
+      /#endif \/\/ defined\(SUN_LIGHT\) \|\| defined\(SKY_LIGHT\)\s+if \(!degenerateNormal\) \{\s+float telluxDayLightFactor/
+    )
+    expect(fragmentShader).toContain(
+      '#if defined(SUN_LIGHT) || defined(SKY_LIGHT)\n  if (!degenerateNormal) {\n    radiance *= telluxPostProcessDayLightFactor;'
+    )
+  })
+
+  it('keeps local lighting-mask pixels as inputColor after globe night lighting', () => {
+    const fragmentShader = patchedFragment(true, true)
+
+    expect(fragmentShader).toContain('uniform sampler2D telluxLightingMaskBuffer;')
+    expect(fragmentShader).toContain(
+      'float telluxGlobeLightingMask = texture(telluxLightingMaskBuffer, uv).r;'
+    )
+    expect(fragmentShader).toContain('telluxNightRadiance *= telluxGlobeLightingMask;')
   })
 })

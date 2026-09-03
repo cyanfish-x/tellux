@@ -190,6 +190,36 @@ export interface ViewerAtmosphereLightingOptions {
    * Albedo scale for post-process lighting. Defaults to `1`.
    */
   albedoScale?: number
+  /**
+   * 光度单位。启用后太阳用正午 lux 锚（默认 111000）映射 Takram 强度缩放。
+   * 只缩放太阳，不会改点光或自发光。局部灯应与 Takram 太阳同一套场景单位
+   * （约 O(1)），不要把 Cesium 的 UE 10→111000 lux 比值写进 `emissiveIntensity`。
+   * 默认关闭，以免未改灯的地球示例过曝。
+   *
+   * Photometric units. When enabled, the noon lux anchor (default 111000) maps
+   * to a Takram sun intensity scale only; it does not convert point lights or
+   * emissive. Local lights should share the Takram sun's scene units (~O(1)).
+   * Disabled by default so unadjusted globe examples do not overexpose.
+   */
+  photometric?: boolean | ViewerAtmospherePhotometricOptions
+}
+
+/**
+ * 大气光度单位配置。
+ *
+ * Atmosphere photometric-unit options.
+ */
+export interface ViewerAtmospherePhotometricOptions {
+  /** 是否启用光度单位，默认 `false`。Enables photometric units. Defaults to `false`. */
+  enabled?: boolean
+  /**
+   * 正午太阳照度锚（lux），默认 `111000`。只作为 Takram 强度缩放的语义锚，
+   * 不会写成 `SunDirectionalLight.intensity = 111000`。
+   *
+   * Noon sun illuminance anchor in lux. Defaults to `111000`. This is a
+   * semantic scale for Takram intensity, not a GPU light intensity of 111000.
+   */
+  sunIlluminance?: number
 }
 
 /**
@@ -415,9 +445,21 @@ export interface ViewerPostProcessStageOptions {
 export interface ViewerBloomOptions {
   /** 是否启用 Bloom，默认 `false`。Enables bloom. Defaults to `false`. */
   enabled?: boolean
-  /** Bloom 强度，默认 `1`。Bloom intensity. Defaults to `1`. */
+  /**
+   * Bloom 强度，默认 `1`。这是亮部提取之后的混合系数，不是画面亮度百分比。
+   *
+   * Bloom intensity. Defaults to `1`. Mix factor of the extracted bright pass,
+   * not a percentage of scene brightness.
+   */
   intensity?: number
-  /** 参与 Bloom 的亮度阈值，默认 `1`。Luminance threshold for bloom. Defaults to `1`. */
+  /**
+   * 参与 Bloom 的线性 HDR 亮度阈值，默认 `1`。比较发生在 AgX / 曝光之前，
+   * 不是屏幕最终观感。
+   *
+   * Linear HDR luminance threshold for bloom. Defaults to `1`. Compared before
+   * AgX / exposure, not against the final displayed brightness.
+   */
+  luminanceThreshold?: number
   luminanceThreshold?: number
   /** 亮度阈值过渡宽度，范围 `0` 到 `1`，默认 `0.03`。Luminance threshold smoothing from `0` to `1`. Defaults to `0.03`. */
   luminanceSmoothing?: number
@@ -490,6 +532,30 @@ export interface ViewerPostProcessOptions {
    * Dithering options. A `boolean` is treated as `{ enabled }`.
    */
   dithering?: boolean | ViewerPostProcessStageOptions
+  /**
+   * 自动曝光。用太阳高度 / 夜因子平滑插值 `toneMappingExposure`。默认关闭。
+   *
+   * Auto exposure. Smoothly interpolates `toneMappingExposure` from sun
+   * altitude / night factor. Disabled by default.
+   */
+  autoExposure?: boolean | ViewerAutoExposureOptions
   /** 渲染器色调映射曝光值，默认 `10`。Renderer tone mapping exposure. Defaults to `10`. */
   toneMappingExposure?: number
+}
+
+/**
+ * 自动曝光配置。地球主光是太阳，用夜因子在 min（白天）与 max（夜晚）之间插值。
+ *
+ * Auto-exposure options. Globe key light is the sun, so night factor
+ * interpolates between min (day) and max (night).
+ */
+export interface ViewerAutoExposureOptions {
+  /** 是否启用自动曝光，默认 `false`。Enables auto exposure. Defaults to `false`. */
+  enabled?: boolean
+  /** 白天曝光下限，默认 `2`。Daytime exposure floor. Defaults to `2`. */
+  min?: number
+  /** 夜晚曝光上限，默认 `10`。Nighttime exposure ceiling. Defaults to `10`. */
+  max?: number
+  /** 适应速度，默认 `1.5`。Adaptation speed. Defaults to `1.5`. */
+  speed?: number
 }

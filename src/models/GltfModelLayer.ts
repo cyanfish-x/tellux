@@ -1,7 +1,9 @@
 import * as THREE from 'three'
 import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import type { AddModelOptions, ModelLayer } from '../types'
+import type { AddModelOptions, GltfModelLightingMode, ModelLayer } from '../types'
 import { applyMaterialModeToObject, type RenderMaterialMode } from '../materials/materialMode'
+import { setObjectLocalLighting } from '../rendering/localLighting'
+import { resolveGltfModelLighting, shouldPreserveGltfModelMaterial } from './resolveGltfModelLighting'
 import { disposeObject } from './disposeObject'
 
 export type ModelMaterialMode = RenderMaterialMode
@@ -18,6 +20,7 @@ export class GltfModelLayer implements ModelLayer {
   private readyState: 'pending' | 'resolved' | 'rejected' = 'pending'
   private resolveReady!: (layer: ModelLayer) => void
   private rejectReady!: (reason?: unknown) => void
+  readonly lighting: GltfModelLightingMode
 
   constructor(
     readonly id: string,
@@ -29,6 +32,8 @@ export class GltfModelLayer implements ModelLayer {
     this.root.name = id
     this.root.visible = options.visible ?? true
     this.root.matrixAutoUpdate = false
+    this.lighting = resolveGltfModelLighting(options)
+    setObjectLocalLighting(this.root, this.lighting === 'local')
     this.currentAnimationChannel = options.animationChannel ?? 0
     this.ready = new Promise<ModelLayer>((resolve, reject) => {
       this.resolveReady = resolve
@@ -65,6 +70,7 @@ export class GltfModelLayer implements ModelLayer {
       const model = gltf.scene
       this.applyModelTransform(model)
       this.applyMaterialMode(model)
+      setObjectLocalLighting(model, this.lighting === 'local')
       this.root.add(model)
       this.currentModel = model
       this.animations.splice(0, this.animations.length, ...gltf.animations)
@@ -170,7 +176,7 @@ export class GltfModelLayer implements ModelLayer {
   }
 
   private shouldPreserveMaterial() {
-    return this.options.materialMode === 'preserve'
+    return shouldPreserveGltfModelMaterial(this.options)
   }
 
   private resolveReadyLayer() {

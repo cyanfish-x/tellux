@@ -11,6 +11,7 @@ export const POST_PROCESS_NIGHT_COLOR_UNIFORM = 'telluxPostProcessNightColor'
 export const POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM = 'telluxPostProcessNightSkyIntensity'
 export const POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM = 'telluxPostProcessNightMoonGlowIntensity'
 export const POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM = 'telluxPostProcessDayLightFactor'
+export const LIGHTING_MASK_BUFFER_UNIFORM = 'telluxLightingMaskBuffer'
 export const CLOUDS_NIGHT_MOON_INTENSITY_UNIFORM = 'telluxCloudsNightMoonIntensity'
 export const CLOUDS_NIGHT_AMBIENT_INTENSITY_UNIFORM = 'telluxCloudsNightAmbientIntensity'
 export const CLOUDS_NIGHT_COLOR_UNIFORM = 'telluxCloudsNightColor'
@@ -31,6 +32,16 @@ interface PatchableShaderMaterial {
 }
 
 type DynamicUniforms = Map<string, THREE.Uniform>
+
+let defaultLightingMaskTexture: THREE.DataTexture | null = null
+
+function getDefaultLightingMaskTexture() {
+  if (!defaultLightingMaskTexture) {
+    defaultLightingMaskTexture = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1)
+    defaultLightingMaskTexture.needsUpdate = true
+  }
+  return defaultLightingMaskTexture
+}
 
 export function getEffectUniform<T>(effect: AerialPerspectiveEffect, name: string) {
   return ((effect.uniforms as unknown as DynamicUniforms).get(name) ?? null) as THREE.Uniform<T> | null
@@ -124,6 +135,7 @@ export function patchAerialPerspectiveShader(effect: AerialPerspectiveEffect, ni
   uniforms.set(POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM, new THREE.Uniform(0))
   uniforms.set(POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM, new THREE.Uniform(0))
   uniforms.set(POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM, new THREE.Uniform(1))
+  uniforms.set(LIGHTING_MASK_BUFFER_UNIFORM, new THREE.Uniform(getDefaultLightingMaskTexture()))
 
   const shaderEffect = effect as unknown as PatchableEffectShader
   const fragmentShader = shaderEffect.getFragmentShader()
@@ -141,7 +153,8 @@ export function patchAerialPerspectiveShader(effect: AerialPerspectiveEffect, ni
       `uniform vec3 ${POST_PROCESS_NIGHT_COLOR_UNIFORM};`,
       `uniform float ${POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM};`,
       `uniform float ${POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM};`,
-      `uniform float ${POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM};`
+      `uniform float ${POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM};`,
+      `uniform sampler2D ${LIGHTING_MASK_BUFFER_UNIFORM};`
     ].join('\n')
   )
   if (withUniform === fragmentShader) {
@@ -202,16 +215,18 @@ export function patchAerialPerspectiveShader(effect: AerialPerspectiveEffect, ni
     [
       '#endif // defined(SUN_LIGHT) || defined(SKY_LIGHT)',
       '',
-      `  if (!degenerateNormal) {`,
+      `  float telluxGlobeLightingMask = texture(${LIGHTING_MASK_BUFFER_UNIFORM}, uv).r;`,
+      '  #if defined(SUN_LIGHT) || defined(SKY_LIGHT)',
+      '  if (!degenerateNormal) {',
       `    radiance *= ${POST_PROCESS_DAY_LIGHT_FACTOR_UNIFORM};`,
       '  }',
+      '  #endif // defined(SUN_LIGHT) || defined(SKY_LIGHT)',
+      '  radiance = mix(inputColor.rgb, radiance, telluxGlobeLightingMask);',
       `  if (!degenerateNormal && (${POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM} > 0.0 || ${POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM} > 0.0)) {`,
       '    vec3 telluxNightDiffuse = inputColor.rgb * albedoScale * RECIPROCAL_PI;',
       '    float telluxNightMoonDiffuse = max(dot(normalize(normalECEF), moonDirection), 0.0);',
       `    vec3 telluxNightRadiance = telluxNightDiffuse * ${POST_PROCESS_NIGHT_COLOR_UNIFORM} * (${POST_PROCESS_NIGHT_AMBIENT_INTENSITY_UNIFORM} + ${POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM} * telluxNightMoonDiffuse);`,
-      '    #ifdef HAS_LIGHTING_MASK',
-      '    telluxNightRadiance *= texture(lightingMaskBuffer, uv).LIGHTING_MASK_CHANNEL_;',
-      '    #endif // HAS_LIGHTING_MASK',
+      '    telluxNightRadiance *= telluxGlobeLightingMask;',
       '    radiance += telluxNightRadiance;',
       '  }',
       '',

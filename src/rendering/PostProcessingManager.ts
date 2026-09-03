@@ -7,6 +7,7 @@ import type { PointCloudEdlAggregate } from '../tiles/PointCloudShadingControlle
 import type { AtmosphereManager } from './AtmosphereManager'
 import { applyLensFlareAppearanceState } from './lensFlareAppearance'
 import { applyBloomAppearanceState } from './bloomAppearance'
+import { LightingMaskPass } from './LightingMaskPass'
 import { PointCloudEdlPass } from './PointCloudEdlEffect'
 
 const CLOUD_RENDER_MAX_HEIGHT = 27000
@@ -61,6 +62,7 @@ function createPointCloudAwareNormalMaterial() {
 export class PostProcessingManager {
   private readonly effectAdapters: ThreeEffectPass[] = []
   private readonly normalAdapter: ThreeEffectPass
+  private readonly lightingMaskPass: LightingMaskPass
   private readonly cloudAtmosphereAdapter: ThreeEffectPass
   private readonly atmosphereAdapter: ThreeEffectPass
   private readonly pointCloudEdlPass: PointCloudEdlPass
@@ -103,6 +105,8 @@ export class PostProcessingManager {
       () => this.camera
     )
     this.normalAdapter = new EffectPassAdapter(normalPass, () => this.camera)
+    this.lightingMaskPass = new LightingMaskPass(threeScene, this.camera)
+    this.atmosphere.setLightingMaskMap(this.lightingMaskPass.texture)
     this.pointCloudEdlPass = new PointCloudEdlPass(threeScene, this.camera)
     this.bloomEffect = new BloomEffect({ mipmapBlur: true })
     this.bloomAdapter = new EffectPassAdapter(
@@ -122,6 +126,7 @@ export class PostProcessingManager {
 
     this.effectAdapters.push(
       this.normalAdapter,
+      this.lightingMaskPass,
       this.cloudAtmosphereAdapter,
       this.atmosphereAdapter,
       this.pointCloudEdlPass,
@@ -144,6 +149,10 @@ export class PostProcessingManager {
 
   updateForCameraHeight(currentHeight: number | null) {
     this.syncEffects(currentHeight, false)
+  }
+
+  setHasLocalLighting(enabled: boolean) {
+    this.lightingMaskPass.hasLocalLighting = enabled
   }
 
   setDeltaTime(deltaTime: number) {
@@ -193,6 +202,7 @@ export class PostProcessingManager {
 
     if (shouldRenderAtmosphere) {
       nextEffects.push(this.normalAdapter)
+      nextEffects.push(this.lightingMaskPass)
     }
     if (this.groundClampPass) {
       // 贴地分类：读并集深度、渲分类几何、合成回主色。空场景时 pass 内部 no-op。

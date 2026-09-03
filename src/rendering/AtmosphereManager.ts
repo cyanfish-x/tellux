@@ -35,6 +35,7 @@ import {
   POST_PROCESS_NIGHT_MOON_GLOW_INTENSITY_UNIFORM,
   POST_PROCESS_NIGHT_MOON_INTENSITY_UNIFORM,
   POST_PROCESS_NIGHT_SKY_INTENSITY_UNIFORM,
+  LIGHTING_MASK_BUFFER_UNIFORM,
   STARS_DAY_LIGHT_FACTOR_UNIFORM,
   getCloudsMaterialUniform,
   getEffectUniform,
@@ -49,6 +50,7 @@ import type {
   CloudRuntimeState
 } from './AtmosphereRuntimeState'
 import { applyCloudAppearanceState } from './cloudAppearance'
+import { scaleSunLightIntensity } from './photometric'
 import {
   normalizeAtmosphereRuntimeState,
   normalizeCloudRuntimeState
@@ -143,6 +145,7 @@ export class AtmosphereManager {
   private isUsingLightSourceLighting = false
   private isUsingMaterialLightSources = false
   private usePostProcessMaterialLights = false
+  private currentNightFactor = 0
   private lightSourceScene: THREE.Scene | null = null
   private previousEnvironmentIntensity: number | null = null
   private isDisposed = false
@@ -227,6 +230,15 @@ export class AtmosphereManager {
     this.updateNightLights()
   }
 
+  setLightingMaskMap(texture: THREE.Texture) {
+    const uniform = getEffectUniform<THREE.Texture>(this.aerialPerspectiveEffect, LIGHTING_MASK_BUFFER_UNIFORM)
+    if (uniform) uniform.value = texture
+  }
+
+  getNightFactor() {
+    return this.currentNightFactor
+  }
+
   updateSunDirection(currentTime: Date) {
     const sunDirection = this.sunDirection
     const moonDirection = this.moonDirection
@@ -273,7 +285,10 @@ export class AtmosphereManager {
     this.aerialPerspectiveEffect.transmittance = state.transmittance
     this.aerialPerspectiveEffect.inscatter = state.inscatter
     this.applyLightingMode(state.lightingMode, state.sunLight, state.skyLight)
-    this.sunLightSource.intensity = Math.max(0, this.toFinite(state.sunLightIntensity, 1))
+    this.sunLightSource.intensity = Math.max(
+      0,
+      this.toFinite(scaleSunLightIntensity(state.sunLightIntensity, state.photometric), 1)
+    )
     this.skyLightSource.intensity = Math.max(0, this.toFinite(state.skyLightIntensity, 1))
     this.aerialPerspectiveEffect.sun = state.sun
     this.aerialPerspectiveEffect.moon = state.moon
@@ -455,7 +470,8 @@ export class AtmosphereManager {
     const hasCameraPosition = this.updateCameraPositionECEF()
     const cameraHeight = hasCameraPosition ? this.getCameraHeightAboveEllipsoid() : 0
     const normal = useNightLights && hasCameraPosition ? this.getCameraSurfaceNormal() : null
-    const nightFactor = normal ? this.getNightFactor(normal, state.transitionRange) : 0
+    const nightFactor = normal ? this.getNightFactorFromSun(normal, state.transitionRange) : 0
+    this.currentNightFactor = nightFactor
     const moonFactor = normal ? this.getMoonVisibilityFactor(normal) * this.getMoonPhaseFactor(state) : 0
     const moonIntensity =
       useNightLights && state.moonLight
@@ -526,7 +542,7 @@ export class AtmosphereManager {
     return this.aerialPerspectiveEffect.ellipsoid.getSurfaceNormal(this.cameraPositionECEF, this.cameraSurfaceNormal)
   }
 
-  private getNightFactor(surfaceNormal: THREE.Vector3, range: [number, number]) {
+  private getNightFactorFromSun(surfaceNormal: THREE.Vector3, range: [number, number]) {
     const sunAltitude = surfaceNormal.dot(this.sunDirection)
     const [nightEnd, dayStart] = this.normalizeRange(range, DEFAULT_NIGHT_TRANSITION_RANGE)
     return 1 - THREE.MathUtils.smoothstep(sunAltitude, nightEnd, dayStart)

@@ -185,6 +185,7 @@ export type {
   GeoJSONGeometry,
   GeoJSONGetStyleCallback,
   GeoJSONImagerySourceOptions,
+  GltfModelLightingMode,
   GltfModelMaterialMode,
   GltfModelOptions,
   ColorInput,
@@ -248,12 +249,14 @@ export type {
   ViewerPickOptions,
   ViewerPickResult,
   ViewerAtmosphereLightingOptions,
+  ViewerAtmospherePhotometricOptions,
   ViewerAtmosphereNightOptions,
   ViewerAtmosphereOptions,
   ViewerAtmosphereScatteringOptions,
   ViewerAtmosphereShadowOptions,
   ViewerAtmosphereSkyOptions,
   ViewerAtmosphereStarsOptions,
+  ViewerAutoExposureOptions,
   ViewerBloomOptions,
   ViewerCloudLayerOptions,
   ViewerCloudLookOptions,
@@ -753,6 +756,9 @@ export class Viewer {
         },
         setPostProcessMaterialLights: (enabled) => {
           this.atmosphere?.setPostProcessMaterialLights(enabled)
+        },
+        setHasLocalLighting: (enabled) => {
+          this.postProcessing?.setHasLocalLighting(enabled)
         }
       })
       constructionScope.defer(() => this.models.dispose())
@@ -831,6 +837,22 @@ export class Viewer {
     this.highlightManager.syncStyleFromSettings()
   }
 
+  private updateAutoExposure(deltaTime: number) {
+    const autoExposure = this.scene.postProcess.autoExposure
+    if (!autoExposure.enabled) return
+
+    const nightFactor = this.atmosphere?.getNightFactor() ?? 0
+    const min = Math.min(autoExposure.min, autoExposure.max)
+    const max = Math.max(autoExposure.min, autoExposure.max)
+    const target = THREE.MathUtils.lerp(min, max, nightFactor)
+    const next =
+      autoExposure.speed <= 0
+        ? target
+        : THREE.MathUtils.damp(this.currentToneMappingExposure, target, autoExposure.speed, deltaTime)
+    if (Math.abs(next - this.currentToneMappingExposure) < 1e-4) return
+    this.toneMappingExposure = next
+  }
+
   /**
    * 注册 Viewer 事件监听函数。
    *
@@ -903,14 +925,17 @@ export class Viewer {
    *
    * `type` 固定为 `gltf`，`url` 可以指向 `.gltf` 或 `.glb` 文件。
    * 当 `animate` 为 `true` 时，默认播放第一个动画通道；可通过
-   * `animationChannel` 指定其他动画通道。
+   * `animationChannel` 指定其他动画通道。`lighting: 'local'` 保留点光和自发光，
+   * 不被大气日夜因子当作地表反照率处理；省略时 `preserve` 默认为 `local`。
    *
    * Loads a glTF / GLB model and adds it to the scene at cartographic
    * coordinates.
    *
    * `type` is `gltf`; `url` can point to either a `.gltf` or `.glb` file. When
    * `animate` is `true`, the first animation channel plays by default; use
-   * `animationChannel` to choose another channel.
+   * `animationChannel` to choose another channel. `lighting: 'local'` keeps
+   * point lights and emissive radiance out of atmosphere day/night albedo
+   * scaling; omitted `preserve` defaults to `local`.
    */
   addModel(options: AddModelOptions): ModelLayer {
     return this.models.add(options)
@@ -1216,6 +1241,7 @@ export class Viewer {
       this.atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
     }
     this.atmosphere?.updateLightSources()
+    this.updateAutoExposure(deltaTime)
     this.models.update(deltaTime)
     this.hismManager.update(deltaTime)
     this.highlightManager.update()

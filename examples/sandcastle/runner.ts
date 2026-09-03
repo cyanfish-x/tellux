@@ -23,6 +23,7 @@ import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
 import type { BootExampleI18nOptions } from "../i18n"
 import {
   HISM_RUNTIME_BINDING_NAMES,
+  THREEJS_INTEROP_RUNTIME_BINDING_NAMES,
   WATER_AREA_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
 } from "./runtime-bindings"
@@ -195,6 +196,7 @@ async function executeExampleScript(source: string) {
     "generateFastPlacements",
     "generatePoissonPlacements",
     ...WATER_AREA_RUNTIME_BINDING_NAMES,
+    ...THREEJS_INTEROP_RUNTIME_BINDING_NAMES,
     "t",
     "bootExampleI18n",
     "__sandcastleImportMeta",
@@ -231,6 +233,9 @@ async function executeExampleScript(source: string) {
     ...WATER_AREA_RUNTIME_BINDING_NAMES.map(
       (name) => optionalBindings.waterArea[name]
     ),
+    ...THREEJS_INTEROP_RUNTIME_BINDING_NAMES.map(
+      (name) => optionalBindings.threejsInterop[name]
+    ),
     t,
     bootExampleI18nInRunner,
     sandcastleImportMeta
@@ -239,7 +244,7 @@ async function executeExampleScript(source: string) {
 
 async function loadOptionalRuntimeBindings(source: string) {
   const required = detectOptionalRuntimeBindings(source)
-  const [gaussianSplatModule, treeModule, hismModule, waterAreaModule] =
+  const [gaussianSplatModule, treeModule, hismModule, waterAreaModule, threejsInteropModule] =
     await Promise.all([
       required.gaussianSplat
         ? import("3d-tiles-rendererjs-3dgs-plugin")
@@ -252,6 +257,9 @@ async function loadOptionalRuntimeBindings(source: string) {
         : null,
       required.waterArea
         ? import("../water-area/sandcastleBindings")
+        : null,
+      required.threejsInterop
+        ? import("../threejs-interop/sandcastleBindings")
         : null,
     ])
 
@@ -266,6 +274,12 @@ async function loadOptionalRuntimeBindings(source: string) {
       Pick<
         typeof import("../water-area/sandcastleBindings"),
         (typeof WATER_AREA_RUNTIME_BINDING_NAMES)[number]
+      >
+    >,
+    threejsInterop: (threejsInteropModule ?? {}) as Partial<
+      Pick<
+        typeof import("../threejs-interop/sandcastleBindings"),
+        (typeof THREEJS_INTEROP_RUNTIME_BINDING_NAMES)[number]
       >
     >,
   }

@@ -355,7 +355,7 @@ model.remove()
 
 `type` 固定 `'gltf'`，`url` 可指 `.gltf` 或 `.glb`。`scale` 支持数字（均匀）或 `[x,y,z]`。需要贴合地形时先用 `sampleHeight` 查高度再传入 `height`。
 
-需要呈现建筑窗灯等夜间自发光时，使用 `materialMode: 'preserve'` 保留 glTF 的 `emissiveMap` / `emissiveFactor`，再开启 `viewer.scene.postProcess.bloom`。Bloom 按整帧 HDR 亮度提取，不会自动判断昼夜；应用可随 `viewer.clock` 调整 Bloom 或材质 `emissiveIntensity`。
+需要呈现建筑窗灯等夜间自发光时，使用 `lighting: 'local'`（`materialMode: 'preserve'` 时默认就是 local）保留 glTF 的 `emissiveMap` / 点光，并打开 `viewer.scene.atmosphere.lighting.photometric` 与 `viewer.scene.postProcess.autoExposure`。`photometric` 只缩放 Takram 太阳。点光要挂在带 `scale` 的模型根上；若上游把 `gltf.scene` 做了 bbox 平移而灯是兄弟节点，写入未平移模型时要用 `L - offset`。intensity 随世界尺度按距离平方补偿（上游 Non-geospatial 是 `scale={0.01}` / `0.1`）。夜景不依赖 Bloom，不要关太阳。
 
 ## HISM 大规模实例化
 

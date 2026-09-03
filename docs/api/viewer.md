@@ -167,6 +167,8 @@ viewer.on('click', (event) => {
 
 加载 glTF / GLB 模型并按经纬高加入场景。返回的 `ModelLayer.ready` 在加载失败或加载完成前移除模型时拒绝；需要感知错误时应显式 `await` 或 `catch`。Tellux 会在内部观察该拒绝，因此只使用句柄而不等待 `ready` 时不会产生未处理 Promise 拒绝。
 
+`lighting: 'local'` 保留点光和自发光，不被大气日夜因子当地表处理；省略时 `materialMode: 'preserve'` 默认为 `local`，`auto` 默认为 `globe`。
+
 ### `flyToTarget(target, options?)`
 
 平滑飞行到目标，并让相机最终看向目标点。

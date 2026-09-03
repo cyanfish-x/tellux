@@ -8,6 +8,15 @@ import type { CartographicInput } from './spatial'
  */
 export type GltfModelMaterialMode = 'auto' | 'preserve'
 
+/**
+ * 模型光照域。`globe` 走大气后处理日夜；`local` 保留 forward 已着色 radiance
+ *（点光、自发光、广告牌）。
+ *
+ * Model lighting domain. `globe` uses atmosphere post-process day/night;
+ * `local` keeps forward-lit radiance (point lights, emissive, billboards).
+ */
+export type GltfModelLightingMode = 'globe' | 'local'
+
 export interface GltfModelOptions {
   /** 模型类型。Model type. */
   type: 'gltf'
@@ -28,6 +37,15 @@ export interface GltfModelOptions {
    * original glTF / GLB materials.
    */
   materialMode?: GltfModelMaterialMode
+  /**
+   * 模型光照域。省略时 `preserve` 默认为 `local`，`auto` 默认为 `globe`。
+   * `local` 会保留 glTF 材质，避免 `post-process` 把 PBR 当 albedo。
+   *
+   * Model lighting domain. When omitted, `preserve` defaults to `local` and
+   * `auto` defaults to `globe`. `local` keeps glTF materials so `post-process`
+   * lighting does not treat PBR as albedo.
+   */
+  lighting?: GltfModelLightingMode
   /**
    * 模型放置坐标。数组输入顺序为 `[经度, 纬度, 高度]`；对象输入使用
    * `{ longitude, latitude, height }`。
@@ -97,6 +115,12 @@ export interface ModelLayer {
    * the model is removed before loading completes.
    */
   readonly ready: Promise<ModelLayer>
+  /**
+   * 该模型使用的光照域。
+   *
+   * Lighting domain used by this model.
+   */
+  readonly lighting: GltfModelLightingMode
   /** 是否显示该模型。Whether the model is visible. */
   show: boolean
   /**

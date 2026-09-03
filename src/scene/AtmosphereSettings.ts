@@ -74,6 +74,10 @@ export class AtmosphereSettings {
       skyLight: this.lighting.skyLight,
       sunLightIntensity: this.lighting.sunLightIntensity,
       skyLightIntensity: this.lighting.skyLightIntensity,
+      photometric: {
+        enabled: this.lighting.photometric.enabled,
+        sunIlluminance: this.lighting.photometric.sunIlluminance
+      },
       night: {
         enabled: this.night.enabled,
         moonLight: this.night.moonLight,

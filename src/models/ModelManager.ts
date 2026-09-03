@@ -9,6 +9,7 @@ export interface ModelManagerOptions {
   getMaterialMode: () => ModelMaterialMode
   applyModelMatrix: (options: AddModelOptions, target: THREE.Matrix4) => void
   setPostProcessMaterialLights: (enabled: boolean) => void
+  setHasLocalLighting: (enabled: boolean) => void
 }
 
 export class ModelManager {
@@ -39,6 +40,7 @@ export class ModelManager {
     this.models.set(id, model)
     this.options.scene.add(model.root)
     this.syncPostProcessMaterialLights()
+    this.syncLocalLighting()
     void model.load()
     return model
   }
@@ -61,17 +63,25 @@ export class ModelManager {
     })
     this.models.clear()
     this.syncPostProcessMaterialLights()
+    this.syncLocalLighting()
   }
 
   private removeModel(model: GltfModelLayer) {
     this.models.delete(model.id)
     this.options.scene.remove(model.root)
     this.syncPostProcessMaterialLights()
+    this.syncLocalLighting()
   }
 
   private syncPostProcessMaterialLights() {
     this.options.setPostProcessMaterialLights(
       Array.from(this.models.values()).some((model) => model.preservesMaterial)
+    )
+  }
+
+  private syncLocalLighting() {
+    this.options.setHasLocalLighting(
+      Array.from(this.models.values()).some((model) => model.lighting === 'local')
     )
   }
 

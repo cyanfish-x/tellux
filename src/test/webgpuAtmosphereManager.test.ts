@@ -216,6 +216,10 @@ function createAtmosphereState(overrides: Partial<AtmosphereRuntimeState> = {}):
     skyLight: true,
     sunLightIntensity: 1,
     skyLightIntensity: 1,
+    photometric: {
+      enabled: false,
+      sunIlluminance: 111000
+    },
     night: {
       enabled: true,
       moonLight: true,
