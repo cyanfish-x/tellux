@@ -160,7 +160,7 @@ export const en: MessageTable = {
   'example.vegetation.registry.title': 'Procedural Vegetation Forest',
   'example.vegetation.registry.description': 'Preparing vegetation scene...',
   'example.threejs-interop.registry.title': 'Three.js Interop',
-  'example.threejs-interop.registry.description': 'Loading Littlest Tokyo...',
+  'example.threejs-interop.registry.description': 'Place Littlest Tokyo on the globe with WebGPU and TAA.',
   'example.hism-forest.registry.title': 'HISM Forest Benchmark',
   'example.hism-forest.registry.description': 'Preparing HISM scene...',
   'example.hism-compare.registry.title': 'Legacy vs HISM Compare',

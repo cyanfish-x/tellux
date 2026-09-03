@@ -636,8 +636,8 @@
     "Three.js Interop"
   ],
   "example.threejs-interop.registry.description": [
-    "正在加载 Littlest Tokyo...",
-    "Loading Littlest Tokyo..."
+    "WebGPU 下将 Littlest Tokyo 放到地球上，并启用 TAA。",
+    "Place Littlest Tokyo on the globe with WebGPU and TAA."
   ],
   "example.hism-forest.registry.title": [
     "HISM 森林基准",

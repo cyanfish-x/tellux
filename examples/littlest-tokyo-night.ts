@@ -10,7 +10,9 @@ import {
   RectAreaLight,
   Vector3,
 } from "three"
+import { RectAreaLightTexturesLib } from "three/addons/lights/RectAreaLightTexturesLib.js"
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js"
+import { RectAreaLightNode } from "three/webgpu"
 
 const MODEL_ELLIPSOID = Ellipsoid.WGS84
 const DEG2RAD = Math.PI / 180
@@ -90,7 +92,9 @@ let rectAreaLightUniformsReady = false
 
 function ensureRectAreaLightUniforms() {
   if (rectAreaLightUniformsReady) return
+  // WebGL 走 UniformsLib；WebGPU / TSL 必须再把同一套 LTC 贴图交给 RectAreaLightNode。
   RectAreaLightUniformsLib.init()
+  RectAreaLightNode.setLTC(RectAreaLightTexturesLib)
   rectAreaLightUniformsReady = true
 }
 

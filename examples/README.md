@@ -118,6 +118,6 @@ VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
 
 ## Three.js 原生互操作示例
 
-`threejs-interop.html` 演示通过 `viewer.addModel({ type: 'gltf', ... })` 加载 Three.js
-官方 keyframes glTF / GLB 动画模型，放置到经度 `114`、纬度 `30` 的地表位置，并自动播放第
-`0` 个动画通道。
+`threejs-interop.html` 用 `Viewer.create` 走 WebGPU（`postProcess.taa` 开启，描边关闭），
+通过 `viewer.addModel({ type: 'gltf', ... })` 加载 Three.js 官方 keyframes glTF / GLB
+动画模型，放置到经度 `114`、纬度 `30` 的地表位置，并自动播放第 `0` 个动画通道。需要浏览器支持 WebGPU。

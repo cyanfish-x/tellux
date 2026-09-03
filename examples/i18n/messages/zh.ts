@@ -160,7 +160,7 @@ export const zh: MessageTable = {
   'example.vegetation.registry.title': '程序化植被森林',
   'example.vegetation.registry.description': '正在准备植被场景...',
   'example.threejs-interop.registry.title': 'Three.js 原生互操作',
-  'example.threejs-interop.registry.description': '正在加载 Littlest Tokyo...',
+  'example.threejs-interop.registry.description': 'WebGPU 下将 Littlest Tokyo 放到地球上，并启用 TAA。',
   'example.hism-forest.registry.title': 'HISM 森林基准',
   'example.hism-forest.registry.description': '正在准备 HISM 场景...',
   'example.hism-compare.registry.title': 'Legacy vs HISM 性能对比',

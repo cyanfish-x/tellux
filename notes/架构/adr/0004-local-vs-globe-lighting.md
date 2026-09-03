@@ -18,8 +18,8 @@ Cesium for Unreal / CesiumSunSky 用正午 111000 lux 做太阳语义锚。Tellu
 2. **Shader 契约**：`light-source` 已着色 radiance **不**乘 `dayLightFactor`，不用 luma 猜自发光，不用 albedo 月光替换局部像素。`post-process` 的太阳/天光重建仍乘日夜因子。自写 `LightingMaskPass` + `telluxLightingMaskBuffer`：1=globe，0=local 保留 `inputColor`。
 3. **光度**：`scene.atmosphere.lighting.photometric.{ enabled, sunIlluminance: 111000 }`。内部 `TakramScale = sunIlluminance / 111000`，禁止 `SunDirectionalLight.intensity = 111000`。该 API **只缩放太阳**，不改点光或自发光。局部灯 / `emissiveIntensity` 与 Takram 太阳同一套场景单位（约 O(1)～几）。默认关闭。
 4. **自动曝光**：`scene.postProcess.autoExposure.{ enabled, min, max, speed }`，用已有 `nightFactor`（太阳高度）平滑插值 `toneMappingExposure`。默认关闭。地球主光是太阳，不用直方图。
-5. **验收形态**：`examples/threejs-interop.ts` 必须同时打开 photometric、local lighting、autoExposure。对齐上游 Non-geospatial：**不开 Bloom / 镜头光晕**。其它示例保持旧默认。
-6. **WebGPU**：同一套 photometric 换算和 `getNightFactor()`；lighting mask 仍是 WebGL `setEffects` 路径。不在 WebGPU 复制一份 GLSL mask。
+5. **验收形态**：`examples/threejs-interop.ts` 走 `Viewer.create` + `renderer.type: 'webgpu'`，必须同时打开 photometric、local lighting、autoExposure 与 `postProcess.taa`。对齐上游 Non-geospatial：**不开 Bloom / 镜头光晕**；WebGPU 下关闭 `highlight.outline`。其它示例保持旧默认。
+6. **WebGPU**：同一套 photometric 换算和 `getNightFactor()`；lighting mask 仍是 WebGL `setEffects` 路径。不在 WebGPU 复制一份 GLSL mask。验收页停在 `light-source`，不靠 mask 在 `post-process` 下抠局部灯。
 
 ## 被否决的方案
 

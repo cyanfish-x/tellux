@@ -131,12 +131,13 @@ const viewer = new tellux.Viewer(container, {
 
 ## 光度单位与自动曝光
 
-对齐 Cesium for Unreal / CesiumSunSky 的观感时，验收示例 `threejs-interop` 会同时打开：
+对齐 Cesium for Unreal / CesiumSunSky 的观感时，验收示例 `threejs-interop` 走 WebGPU（`Viewer.create` + `renderer.type: 'webgpu'`），并同时打开：
 
 1. `lighting.photometric`：太阳用正午 111000 lux 语义锚，只缩放 Takram 太阳（默认仍是 intensity≈1）。**不要**把 Cesium 的 UE 10→111000 lux 比值（×11100）写进 `emissiveIntensity`。点光挂在带 `scale` 的模型根上，intensity 按世界距离平方补偿。
-2. `addModel({ lighting: 'local' })`：灯和广告牌不被大气夜因子灭掉。
+2. `addModel({ lighting: 'local' })`：灯和广告牌不被大气夜因子灭掉。WebGPU 没有 lighting mask，该页必须停在 `light-source`，不要切到 `post-process`。
 3. `postProcess.autoExposure`：按太阳高度在白天曝光 `min` 与夜晚曝光 `max` 之间平滑插值。不要手拧 `toneMappingExposure` 当验收。
-4. 对齐上游 Non-geospatial：**不开 Bloom**。夜景靠自发光、点光和自动曝光。点光必须挂在带 `scale` 的 glTF 根上；intensity 按 `(modelScale / 0.01)² × 0.1` 放大，才能在墙上留下和上游沙盘一样的暖色 spill。
+4. `postProcess.taa`：时间抗锯齿（仅 WebGPU）。`highlight.outline` 在 WebGPU 无效，该页已关闭。
+5. 对齐上游 Non-geospatial：**不开 Bloom**。夜景靠自发光、点光和自动曝光。点光必须挂在带 `scale` 的 glTF 根上；intensity 按 `(modelScale / 0.01)² × 0.1` 放大，才能在墙上留下和上游沙盘一样的暖色 spill。
 
 其它地球示例默认 **不** 开 photometric / autoExposure，以免全球过曝。UE 的「扩展亮度范围」不是自动曝光；Tellux 已是 HalfFloat + AgX，不再抄同名开关。
 
