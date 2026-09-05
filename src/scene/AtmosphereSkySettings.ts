@@ -3,13 +3,17 @@ import { sceneValueNormalizers } from './SceneValueNormalization'
 import { SceneToggle } from './SceneToggle'
 
 class AtmosphereStarsSettings {
-  private readonly visibility: SceneToggle
+  readonly #options: ResolvedSceneOptions['atmosphere']['sky']['stars']
+  readonly #onStateChange: () => void
+  readonly #visibility: SceneToggle
 
   constructor(
-    private readonly options: ResolvedSceneOptions['atmosphere']['sky']['stars'],
-    private readonly onStateChange: () => void
+    options: ResolvedSceneOptions['atmosphere']['sky']['stars'],
+    onStateChange: () => void
   ) {
-    this.visibility = new SceneToggle(options.show, onStateChange)
+    this.#options = options
+    this.#onStateChange = onStateChange
+    this.#visibility = new SceneToggle(options.show, onStateChange)
   }
 
   /**
@@ -18,31 +22,31 @@ class AtmosphereStarsSettings {
    * Whether the star field is shown.
    */
   get show() {
-    return this.visibility.show
+    return this.#visibility.show
   }
 
   set show(value: boolean) {
-    this.visibility.show = value
+    this.#visibility.show = value
   }
 
   /** 星空亮度缩放。Star field brightness scale. */
   get intensity() {
-    return this.options.intensity
+    return this.#options.intensity
   }
 
   set intensity(value: number) {
-    this.options.intensity = sceneValueNormalizers.starsIntensity(value)
-    this.onStateChange()
+    this.#options.intensity = sceneValueNormalizers.starsIntensity(value)
+    this.#onStateChange()
   }
 
   /** 星点大小（像素点）。Star point size in pixels. */
   get pointSize() {
-    return this.options.pointSize
+    return this.#options.pointSize
   }
 
   set pointSize(value: number) {
-    this.options.pointSize = sceneValueNormalizers.starsPointSize(value)
-    this.onStateChange()
+    this.#options.pointSize = sceneValueNormalizers.starsPointSize(value)
+    this.#onStateChange()
   }
 }
 

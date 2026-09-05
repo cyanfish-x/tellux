@@ -3,12 +3,12 @@ import type { ResolvedPostProcessOptions } from './SceneOptions'
 import { sceneValueNormalizers } from './SceneValueNormalization'
 
 class PostProcessStage {
-  private isEnabled: boolean
-  private readonly onChange: () => void
+  #isEnabled: boolean
+  readonly #onChange: () => void
 
   constructor(isEnabled: boolean, onChange: () => void) {
-    this.isEnabled = isEnabled
-    this.onChange = onChange
+    this.#isEnabled = isEnabled
+    this.#onChange = onChange
   }
 
   /**
@@ -17,49 +17,55 @@ class PostProcessStage {
    * Whether this post-processing stage is enabled.
    */
   get enabled() {
-    return this.isEnabled
+    return this.#isEnabled
   }
 
   set enabled(value: boolean) {
-    if (this.isEnabled === value) return
-    this.isEnabled = value
-    this.onChange()
+    if (this.#isEnabled === value) return
+    this.#isEnabled = value
+    this.#onChange()
   }
 }
 
 class BloomSettings {
+  readonly #options: ResolvedPostProcessOptions['bloom']
+  readonly #onChange: () => void
+
   constructor(
-    private readonly options: ResolvedPostProcessOptions['bloom'],
-    private readonly onChange: () => void
-  ) {}
+    options: ResolvedPostProcessOptions['bloom'],
+    onChange: () => void
+  ) {
+    this.#options = options
+    this.#onChange = onChange
+  }
 
   /** Bloom 是否启用。Whether bloom is enabled. */
   get enabled() {
-    return this.options.enabled
+    return this.#options.enabled
   }
 
   set enabled(value: boolean) {
-    if (this.options.enabled === value) return
-    this.options.enabled = value
-    this.onChange()
+    if (this.#options.enabled === value) return
+    this.#options.enabled = value
+    this.#onChange()
   }
 
   /** Bloom 强度（亮部混合系数）。Bloom intensity (bright-pass mix). */
   get intensity() {
-    return this.options.intensity
+    return this.#options.intensity
   }
 
   set intensity(value: number) {
-    this.setNumber('intensity', sceneValueNormalizers.bloomIntensity(value))
+    this.#setNumber('intensity', sceneValueNormalizers.bloomIntensity(value))
   }
 
   /** 亮度提取阈值。Luminance threshold. */
   get luminanceThreshold() {
-    return this.options.luminanceThreshold
+    return this.#options.luminanceThreshold
   }
 
   set luminanceThreshold(value: number) {
-    this.setNumber(
+    this.#setNumber(
       'luminanceThreshold',
       sceneValueNormalizers.bloomLuminanceThreshold(value)
     )
@@ -67,11 +73,11 @@ class BloomSettings {
 
   /** 亮度阈值过渡宽度。Luminance threshold smoothing. */
   get luminanceSmoothing() {
-    return this.options.luminanceSmoothing
+    return this.#options.luminanceSmoothing
   }
 
   set luminanceSmoothing(value: number) {
-    this.setNumber(
+    this.#setNumber(
       'luminanceSmoothing',
       sceneValueNormalizers.bloomLuminanceSmoothing(value)
     )
@@ -79,69 +85,75 @@ class BloomSettings {
 
   /** Bloom 扩散半径。Bloom radius. */
   get radius() {
-    return this.options.radius
+    return this.#options.radius
   }
 
   set radius(value: number) {
-    this.setNumber('radius', sceneValueNormalizers.bloomRadius(value))
+    this.#setNumber('radius', sceneValueNormalizers.bloomRadius(value))
   }
 
-  private setNumber(
+  #setNumber(
     key: 'intensity' | 'luminanceThreshold' | 'luminanceSmoothing' | 'radius',
     value: number
   ) {
-    if (this.options[key] === value) return
-    this.options[key] = value
-    this.onChange()
+    if (this.#options[key] === value) return
+    this.#options[key] = value
+    this.#onChange()
   }
 }
 
 class LensFlareThresholdSettings {
+  readonly #options: ResolvedPostProcessOptions['lensFlare']['threshold']
+  readonly #onChange: () => void
+
   constructor(
-    private readonly options: ResolvedPostProcessOptions['lensFlare']['threshold'],
-    private readonly onChange: () => void
-  ) {}
+    options: ResolvedPostProcessOptions['lensFlare']['threshold'],
+    onChange: () => void
+  ) {
+    this.#options = options
+    this.#onChange = onChange
+  }
 
   /** 亮部提取阈值。Bright-pass threshold level. */
   get level() {
-    return this.options.level
+    return this.#options.level
   }
 
   set level(value: number) {
     const next = sceneValueNormalizers.lensFlareThresholdLevel(value)
-    if (this.options.level === next) return
-    this.options.level = next
-    this.onChange()
+    if (this.#options.level === next) return
+    this.#options.level = next
+    this.#onChange()
   }
 
   /** 亮部提取过渡宽度。Bright-pass threshold range. */
   get range() {
-    return this.options.range
+    return this.#options.range
   }
 
   set range(value: number) {
     const next = sceneValueNormalizers.lensFlareThresholdRange(value)
-    if (this.options.range === next) return
-    this.options.range = next
-    this.onChange()
+    if (this.#options.range === next) return
+    this.#options.range = next
+    this.#onChange()
   }
 }
 
 class LensFlareSettings {
   readonly threshold: LensFlareThresholdSettings
-  private isEnabled: boolean
-  private currentIntensity: number
-  private currentQuality: LensFlareQuality
-  private readonly onChange: () => void
+  #isEnabled: boolean
+  #currentIntensity: number
+  #currentQuality: LensFlareQuality
+  readonly #onChange: () => void
 
   constructor(
     options: ResolvedPostProcessOptions['lensFlare'],
     onChange: () => void
   ) {
-    this.onChange = onChange
-    this.isEnabled = options.enabled
-    this.currentIntensity = options.intensity
-    this.currentQuality = options.quality
+    this.#onChange = onChange
+    this.#isEnabled = options.enabled
+    this.#currentIntensity = options.intensity
+    this.#currentQuality = options.quality
     this.threshold = new LensFlareThresholdSettings(options.threshold, onChange)
   }
 
@@ -151,44 +163,46 @@ class LensFlareSettings {
    * Whether lens flare is enabled.
    */
   get enabled() {
-    return this.isEnabled
+    return this.#isEnabled
   }
 
   set enabled(value: boolean) {
-    if (this.isEnabled === value) return
-    this.isEnabled = value
-    this.onChange()
+    if (this.#isEnabled === value) return
+    this.#isEnabled = value
+    this.#onChange()
   }
 
   /** 光晕强度。Lens flare intensity. */
   get intensity() {
-    return this.currentIntensity
+    return this.#currentIntensity
   }
 
   set intensity(value: number) {
     const next = sceneValueNormalizers.lensFlareIntensity(value)
-    if (this.currentIntensity === next) return
-    this.currentIntensity = next
-    this.onChange()
+    if (this.#currentIntensity === next) return
+    this.#currentIntensity = next
+    this.#onChange()
   }
 
   /** 光晕质量档位。Lens flare quality preset. */
   get quality() {
-    return this.currentQuality
+    return this.#currentQuality
   }
 
   set quality(value: LensFlareQuality) {
     const next = sceneValueNormalizers.lensFlareQuality(value)
-    if (this.currentQuality === next) return
-    this.currentQuality = next
-    this.onChange()
+    if (this.#currentQuality === next) return
+    this.#currentQuality = next
+    this.#onChange()
   }
 }
 
 class AutoExposureSettings {
-  constructor(
-    private readonly options: ResolvedPostProcessOptions['autoExposure']
-  ) {}
+  readonly #options: ResolvedPostProcessOptions['autoExposure']
+
+  constructor(options: ResolvedPostProcessOptions['autoExposure']) {
+    this.#options = options
+  }
 
   /**
    * 是否启用自动曝光。
@@ -196,38 +210,38 @@ class AutoExposureSettings {
    * Whether auto exposure is enabled.
    */
   get enabled() {
-    return this.options.enabled
+    return this.#options.enabled
   }
 
   set enabled(value: boolean) {
-    this.options.enabled = value
+    this.#options.enabled = value
   }
 
   /** 白天曝光下限。Daytime exposure floor. */
   get min() {
-    return this.options.min
+    return this.#options.min
   }
 
   set min(value: number) {
-    this.options.min = sceneValueNormalizers.autoExposureMin(value)
+    this.#options.min = sceneValueNormalizers.autoExposureMin(value)
   }
 
   /** 夜晚曝光上限。Nighttime exposure ceiling. */
   get max() {
-    return this.options.max
+    return this.#options.max
   }
 
   set max(value: number) {
-    this.options.max = sceneValueNormalizers.autoExposureMax(value)
+    this.#options.max = sceneValueNormalizers.autoExposureMax(value)
   }
 
   /** 适应速度。Adaptation speed. */
   get speed() {
-    return this.options.speed
+    return this.#options.speed
   }
 
   set speed(value: number) {
-    this.options.speed = sceneValueNormalizers.autoExposureSpeed(value)
+    this.#options.speed = sceneValueNormalizers.autoExposureSpeed(value)
   }
 }
 

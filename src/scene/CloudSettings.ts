@@ -12,10 +12,16 @@ export function applyCloudSettings(settings: CloudSettings) {
 }
 
 class CloudLayerSettings {
+  readonly #options: ResolvedSceneOptions['clouds']['layer']
+  readonly #onChange: () => void
+
   constructor(
-    private readonly options: ResolvedSceneOptions['clouds']['layer'],
-    private readonly onChange: () => void
-  ) {}
+    options: ResolvedSceneOptions['clouds']['layer'],
+    onChange: () => void
+  ) {
+    this.#options = options
+    this.#onChange = onChange
+  }
 
   /**
    * 低云层组云底高度（米）。
@@ -23,14 +29,14 @@ class CloudLayerSettings {
    * Base altitude of the low cloud layer group in meters.
    */
   get altitude() {
-    return this.options.altitude
+    return this.#options.altitude
   }
 
   set altitude(value: number) {
     const next = sceneValueNormalizers.cloudLayerAltitude(value)
-    if (this.options.altitude === next) return
-    this.options.altitude = next
-    this.onChange()
+    if (this.#options.altitude === next) return
+    this.#options.altitude = next
+    this.#onChange()
   }
 
   /**
@@ -39,22 +45,28 @@ class CloudLayerSettings {
    * Height of the low cloud layer group in meters.
    */
   get height() {
-    return this.options.height
+    return this.#options.height
   }
 
   set height(value: number) {
     const next = sceneValueNormalizers.cloudLayerHeight(value)
-    if (this.options.height === next) return
-    this.options.height = next
-    this.onChange()
+    if (this.#options.height === next) return
+    this.#options.height = next
+    this.#onChange()
   }
 }
 
 class CloudLookSettings {
+  readonly #options: ResolvedSceneOptions['clouds']['look']
+  readonly #onChange: () => void
+
   constructor(
-    private readonly options: ResolvedSceneOptions['clouds']['look'],
-    private readonly onChange: () => void
-  ) {}
+    options: ResolvedSceneOptions['clouds']['look'],
+    onChange: () => void
+  ) {
+    this.#options = options
+    this.#onChange = onChange
+  }
 
   /**
    * 是否启用 shape detail。
@@ -62,13 +74,13 @@ class CloudLookSettings {
    * Whether cloud shape detail is enabled.
    */
   get detail() {
-    return this.options.detail
+    return this.#options.detail
   }
 
   set detail(value: boolean) {
-    if (this.options.detail === value) return
-    this.options.detail = value
-    this.onChange()
+    if (this.#options.detail === value) return
+    this.#options.detail = value
+    this.#onChange()
   }
 
   /**
@@ -77,13 +89,13 @@ class CloudLookSettings {
    * Whether cloud turbulence is enabled.
    */
   get turbulence() {
-    return this.options.turbulence
+    return this.#options.turbulence
   }
 
   set turbulence(value: boolean) {
-    if (this.options.turbulence === value) return
-    this.options.turbulence = value
-    this.onChange()
+    if (this.#options.turbulence === value) return
+    this.#options.turbulence = value
+    this.#onChange()
   }
 
   /**
@@ -92,21 +104,27 @@ class CloudLookSettings {
    * Whether cloud haze is enabled.
    */
   get haze() {
-    return this.options.haze
+    return this.#options.haze
   }
 
   set haze(value: boolean) {
-    if (this.options.haze === value) return
-    this.options.haze = value
-    this.onChange()
+    if (this.#options.haze === value) return
+    this.#options.haze = value
+    this.#onChange()
   }
 }
 
 class CloudShadowSettings {
+  readonly #options: ResolvedSceneOptions['clouds']['shadow']
+  readonly #onChange: () => void
+
   constructor(
-    private readonly options: ResolvedSceneOptions['clouds']['shadow'],
-    private readonly onChange: () => void
-  ) {}
+    options: ResolvedSceneOptions['clouds']['shadow'],
+    onChange: () => void
+  ) {
+    this.#options = options
+    this.#onChange = onChange
+  }
 
   /**
    * 云影质量档位。
@@ -114,14 +132,14 @@ class CloudShadowSettings {
    * Cloud shadow quality preset.
    */
   get quality() {
-    return this.options.quality
+    return this.#options.quality
   }
 
   set quality(value: CloudShadowQuality) {
     const next = sceneValueNormalizers.cloudShadowQuality(value)
-    if (this.options.quality === next) return
-    this.options.quality = next
-    this.onChange()
+    if (this.#options.quality === next) return
+    this.#options.quality = next
+    this.#onChange()
   }
 }
 
@@ -149,15 +167,15 @@ export class CloudSettings {
     this.currentLightShafts = options.lightShafts
     this.currentCoverage = options.coverage
     this.currentSpeed = options.speed
-    const onLayerChange = () => this.apply()
+    const onLayerChange = () => this.#apply()
     const onLookOrShadowChange = () => {
-      this.apply()
+      this.#apply()
       this.onEffectsChange()
     }
     this.layer = new CloudLayerSettings(options.layer, onLayerChange)
     this.look = new CloudLookSettings(options.look, onLookOrShadowChange)
     this.shadow = new CloudShadowSettings(options.shadow, onLookOrShadowChange)
-    cloudApply.set(this, () => this.apply())
+    cloudApply.set(this, () => this.#apply())
   }
 
   /**
@@ -186,7 +204,7 @@ export class CloudSettings {
     if (this.currentQuality === value) return
 
     this.currentQuality = value
-    this.apply()
+    this.#apply()
     this.onEffectsChange()
   }
 
@@ -203,7 +221,7 @@ export class CloudSettings {
     if (this.currentLightShafts === value) return
 
     this.currentLightShafts = value
-    this.apply()
+    this.#apply()
     this.onEffectsChange()
   }
 
@@ -221,7 +239,7 @@ export class CloudSettings {
     if (this.currentCoverage === next) return
 
     this.currentCoverage = next
-    this.apply()
+    this.#apply()
   }
 
   /**
@@ -239,10 +257,10 @@ export class CloudSettings {
     if (this.currentSpeed === nextSpeed) return
 
     this.currentSpeed = nextSpeed
-    this.apply()
+    this.#apply()
   }
 
-  private apply() {
+  #apply() {
     this.applyCloudsState(this.getRuntimeState())
   }
 

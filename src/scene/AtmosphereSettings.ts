@@ -33,7 +33,7 @@ export class AtmosphereSettings {
     onSurfaceMaterialModeChange: () => void
   ) {
     const onStateChange = () => {
-      this.apply()
+      this.#apply()
     }
     this.visibility = new SceneToggle(options.show, onEffectsChange)
     this.lighting = new AtmosphereLightingSettings(
@@ -47,7 +47,7 @@ export class AtmosphereSettings {
     this.sky = new AtmosphereSkySettings(options.sky, onStateChange)
     this.shadow = new AtmosphereShadowSettings(options.shadow, onStateChange)
     this.fallbackAmbientLight = new FallbackAmbientLightSettings(options.fallbackAmbientLight, fallbackAmbientLightSource)
-    atmosphereApply.set(this, () => this.apply())
+    atmosphereApply.set(this, () => this.#apply())
   }
 
   /**
@@ -63,7 +63,7 @@ export class AtmosphereSettings {
     this.visibility.show = value
   }
 
-  private apply() {
+  #apply() {
     this.applyAtmosphereState(this.getRuntimeState())
   }
 

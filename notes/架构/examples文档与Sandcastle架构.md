@@ -164,7 +164,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 
 | 范围 | 预算口径 | raw 上限 | gzip 上限 |
 | --- | --- | ---: | ---: |
-| 核心 `index.js` | 单一库入口 | 600 KiB | 160 KiB |
+| 核心 `index.js` | 单一库入口 | 640 KiB | 165 KiB |
 | 首页 | 入口及其静态 JS import 图 | 2.8 MiB | 800 KiB |
 | Sandcastle 编辑器 | 入口及其静态 JS import 图 | 5.25 MiB | 1.35 MiB |
 | Sandcastle runner | 入口及其静态 JS import 图 | 3 MiB | 800 KiB |
@@ -177,6 +177,8 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 入口预算只递归静态 `imports`，不把 `dynamicImports` 计入首屏；异步重能力有独立预算。这样既能阻止普通入口意外吃进专用依赖，又不会用整个多页站点的总产物体积掩盖责任边界。
 
 预算超过或目标产物缺失时构建直接失败。调整上限前必须先说明增长来自哪个领域能力，并在本节更新基线；不要只提高 Vite 的通用 chunk warning 阈值。
+
+核心 `index.js` 在 1.0 公开 API 稳定窗口从 600 / 160 KiB 调到 640 / 165 KiB：增长来自领域门面（`tilesets` / `models` / `terrain` / `globe` / `renderer` / `postProcess` / `highlighter` / `controls`）和调试面板嵌套 options，不是示例站入口。
 
 ### 示例控件面板
 

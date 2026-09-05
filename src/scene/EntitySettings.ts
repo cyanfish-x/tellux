@@ -2,10 +2,16 @@ import type { EntityTransparencyMode } from '../types'
 import type { ResolvedSceneOptions } from './SceneOptions'
 
 class EntityTransparencySettings {
+  readonly #options: ResolvedSceneOptions['entities']['transparency']
+  readonly #onChange: (mode: EntityTransparencyMode) => void
+
   constructor(
-    private readonly options: ResolvedSceneOptions['entities']['transparency'],
-    private readonly onChange: (mode: EntityTransparencyMode) => void
-  ) {}
+    options: ResolvedSceneOptions['entities']['transparency'],
+    onChange: (mode: EntityTransparencyMode) => void
+  ) {
+    this.#options = options
+    this.#onChange = onChange
+  }
 
   /**
    * 实体透明渲染模式。与初始化 {@link ViewerSceneOptions.entities}`.transparency.mode` 同构。
@@ -19,13 +25,13 @@ class EntityTransparencySettings {
    * available, otherwise sorted transparency.
    */
   get mode() {
-    return this.options.mode
+    return this.#options.mode
   }
 
   set mode(value: EntityTransparencyMode) {
-    if (this.options.mode === value) return
-    this.options.mode = value
-    this.onChange(value)
+    if (this.#options.mode === value) return
+    this.#options.mode = value
+    this.#onChange(value)
   }
 }
 

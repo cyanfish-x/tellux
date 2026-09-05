@@ -194,13 +194,13 @@ export class HighlightManager {
     }
     const self = this
     highlightHost.set(this, {
-      syncStyleFromSettings: () => self.syncStyleFromSettings(),
-      update: () => self.update(),
+      syncStyleFromSettings: () => self.#syncStyleFromSettings(),
+      update: () => self.#update(),
       get outlineEffect() {
         return self.outlineHighlighter.effect
       }
     })
-    this.syncStyleFromSettings()
+    this.#syncStyleFromSettings()
   }
 
   /**
@@ -345,7 +345,7 @@ export class HighlightManager {
    *
    * Syncs highlighter styles into the outline and overlay implementations.
    */
-  private syncStyleFromSettings() {
+  #syncStyleFromSettings() {
     const { settings } = this.options
     this.outlineHighlighter.setStyle({
       enabled: settings.outline.enabled,
@@ -375,7 +375,7 @@ export class HighlightManager {
    *
    * Per-frame HISM proxy sync (LOD / matrices); call after hismManager.update.
    */
-  private update() {
+  #update() {
     const selectChanged = this.selectHism?.update() ?? false
     const hoverChanged = this.hoverHism?.update() ?? false
     if (selectChanged || hoverChanged) {

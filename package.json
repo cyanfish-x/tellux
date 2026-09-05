@@ -25,7 +25,7 @@
     }
   },
   "scripts": {
-    "build": "vite build && node actions/copy-assets.js && tsc -p tsconfig.types.json",
+    "build": "vite build && node actions/copy-assets.js && tsc -p tsconfig.types.json && pnpm vitest run src/test/distApiSurface.test.ts",
     "build:examples": "vitepress build docs && vite build --config examples/vite.config.ts",
     "docs:build": "vitepress build docs",
     "docs:dev": "vitepress dev docs --host 0.0.0.0 --port 5174",

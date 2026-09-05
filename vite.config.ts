@@ -69,8 +69,8 @@ export default defineConfig({
       {
         name: 'core index',
         select: selectFilesMatching(/^index\.js$/),
-        maxBytes: 600 * KiB,
-        maxGzipBytes: 160 * KiB
+        maxBytes: 640 * KiB,
+        maxGzipBytes: 165 * KiB
       },
       {
         name: 'assets entry',

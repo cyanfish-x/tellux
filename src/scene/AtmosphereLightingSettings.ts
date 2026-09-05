@@ -98,10 +98,16 @@ export class AtmosphereLightingSettings {
 }
 
 class AtmospherePhotometricSettings {
+  readonly #options: ResolvedSceneOptions['atmosphere']['lighting']['photometric']
+  readonly #onStateChange: () => void
+
   constructor(
-    private readonly options: ResolvedSceneOptions['atmosphere']['lighting']['photometric'],
-    private readonly onStateChange: () => void
-  ) {}
+    options: ResolvedSceneOptions['atmosphere']['lighting']['photometric'],
+    onStateChange: () => void
+  ) {
+    this.#options = options
+    this.#onStateChange = onStateChange
+  }
 
   /**
    * 是否启用光度单位。
@@ -109,13 +115,13 @@ class AtmospherePhotometricSettings {
    * Whether photometric units are enabled.
    */
   get enabled() {
-    return this.options.enabled
+    return this.#options.enabled
   }
 
   set enabled(value: boolean) {
-    if (this.options.enabled === value) return
-    this.options.enabled = value
-    this.onStateChange()
+    if (this.#options.enabled === value) return
+    this.#options.enabled = value
+    this.#onStateChange()
   }
 
   /**
@@ -124,11 +130,11 @@ class AtmospherePhotometricSettings {
    * Noon sun illuminance anchor in lux.
    */
   get sunIlluminance() {
-    return this.options.sunIlluminance
+    return this.#options.sunIlluminance
   }
 
   set sunIlluminance(value: number) {
-    this.options.sunIlluminance = sceneValueNormalizers.sunIlluminance(value)
-    this.onStateChange()
+    this.#options.sunIlluminance = sceneValueNormalizers.sunIlluminance(value)
+    this.#onStateChange()
   }
 }
