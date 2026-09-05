@@ -187,11 +187,9 @@ export interface TextOptions {
   /** 字重，默认 'normal'。 */
   fontWeight?: 'normal' | 'bold' | number
   /** 填充色，默认白色。按目标显示色解析。 */
-  fillColor?: ColorInput
-  /** 描边色；仅 outlineWidth>0 生效。 */
-  outlineColor?: ColorInput
-  /** 描边像素宽，默认 0。 */
-  outlineWidth?: number
+  color?: ColorInput
+  /** 描边。缺省则无描边；传入对象即开启。 */
+  outline?: { color?: ColorInput; width?: number }
   /** 背景色；缺省透明。按目标显示色解析。 */
   backgroundColor?: ColorInput
   /** 内边距 [x, y]（像素），默认 [4, 2]。 */
@@ -228,7 +226,7 @@ export interface SymbolOptions {
 ```ts
 export interface EntityOptions {
   id?: string
-  position?: CartographicInput
+  position?: LonLatHeightLike
   point?: PointOptions
   polyline?: PolylineOptions
   polygon?: PolygonOptions
@@ -266,8 +264,8 @@ export class TextGraphics {
   constructor(private readonly graphic: SymbolGraphic) {}
   get text(): string
   set text(v: string)            // 触发 canvas 重建
-  get fillColor(): number
-  set fillColor(v: ColorInput)
+  get color(): number
+  set color(v: ColorInput)
   get outlineColor(): number
   set outlineColor(v: ColorInput)
   get backgroundColor(): number
@@ -286,7 +284,7 @@ viewer.entities.add({
   position: [121.4737, 31.2304, 50],
   symbol: {
     icon: { image: '/markers/poi.png', scale: 1 },
-    text: { text: '陆家嘴', fillColor: '#ffffff', outlineColor: '#0f172a', outlineWidth: 2 },
+    text: { text: '陆家嘴', color: '#ffffff', outline: { color: '#0f172a', width: 2 } },
     anchor: 'bottom',
     textRelative: 'right',
   },

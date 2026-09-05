@@ -374,13 +374,13 @@ async function main() {
     id: "tianditu-imagery-xyz",
     name: t({ zh: "天地图影像 XYZ", en: "Tianditu imagery XYZ" }),
     source: tiandituImageryXYZLayer,
-    visible: Boolean(defaultTiandituToken),
+    show: Boolean(defaultTiandituToken),
   },
   {
     id: "nsmc-geos-wms",
     name: t({ zh: "风云卫星 GEOS 红外云图 WMS", en: "FY GEOS IR cloud WMS" }),
     source: nsmcGeosWMSOverlay,
-    visible: true,
+    show: true,
     style: {
       opacity: 0.85,
     },
@@ -389,7 +389,7 @@ async function main() {
     id: "tianditu-imagery-wmts",
     name: t({ zh: "天地图影像注记 WMTS", en: "Tianditu imagery annotation WMTS" }),
     source: tiandituImageryWMTSOverlay,
-    visible: Boolean(defaultTiandituToken),
+    show: Boolean(defaultTiandituToken),
     style: {
       opacity: 1,
     },
@@ -398,7 +398,7 @@ async function main() {
     id: "chengdu-admin-geojson",
     name: t({ zh: "成都市行政区划", en: "Chengdu administrative boundaries" }),
     source: chengduAdminOverlay,
-    visible: adminLayerReady,
+    show: adminLayerReady,
     style: {
       ...chengduAdminStyle,
       opacity: 0.92,
@@ -407,14 +407,18 @@ async function main() {
 ]
 
 const viewer = new tellux.Viewer(container, {
-  layers: initialLayers,
+  overlays: initialLayers,
   camera: {
-    latitude: 30.5728,
-    longitude: 104.0668,
-    height: 420000,
-    heading: 0,
-    pitch: -89,
-    roll: 0,
+    destination: {
+      longitude: 104.0668,
+      latitude: 30.5728,
+      height: 420000,
+    },
+    orientation: {
+      heading: 0,
+      pitch: -89,
+      roll: 0,
+    },
   },
   scene: {
     atmosphere: {
@@ -431,7 +435,7 @@ const viewer = new tellux.Viewer(container, {
 ;(window as any).viewer = viewer
 
 overlayLayers.forEach((item) => {
-  const layer = viewer.layers.get(item.key)
+  const layer = viewer.overlays.get(item.key)
   if (!layer) {
     throw new Error(`Layer "${item.key}" not found.`)
   }

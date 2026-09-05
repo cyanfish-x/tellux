@@ -35,18 +35,22 @@ const viewer = new tellux.Viewer(container, {
     currentTime: initialClockTime,
   },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {
-    latitude: 40.69114333714821,
-    longitude: -74.01881302800248,
-    height: 753,
-    heading: 21.27879878293835,
-    pitch: -21.34390550872461,
-    roll: 0.0716951918898415,
+    destination: {
+      longitude: -74.01881302800248,
+      latitude: 40.69114333714821,
+      height: 753,
+    },
+    orientation: {
+      heading: 21.27879878293835,
+      pitch: -21.34390550872461,
+      roll: 0.0716951918898415,
+    },
   },
   scene: {
     atmosphere: {
@@ -90,13 +94,13 @@ function getFeatureKey(feature: Picked3DTilesFeature) {
 
 function clearHover() {
   hoverKey = null
-  viewer.highlight.setHover(null)
+  viewer.highlighter.setHover(null)
   hoverElement.hidden = true
 }
 
 function clearSelection() {
   selectedKey = null
-  viewer.highlight.clear()
+  viewer.highlighter.clear()
   popupElement.hidden = true
 }
 
@@ -123,11 +127,13 @@ function loadTileset() {
   }
 
   clearActiveLayer()
-  activeLayer = viewer.load3DTileset({
-    type: "cesium-ion",
+  activeLayer = viewer.tilesets.add({
+    source: {
+      type: "cesium-ion",
+      assetId: assetId,
+      apiToken: apiToken,
+    },
     id: "example-3d-tiles-picking",
-    assetId,
-    apiToken,
   })
   setStatus(
     t({
@@ -152,13 +158,13 @@ function handleMouseMove(event: ViewerMouseMoveEvent) {
 
   if (nextHoverKey === selectedKey) {
     hoverKey = nextHoverKey
-    viewer.highlight.setHover(null)
+    viewer.highlighter.setHover(null)
     return
   }
 
   if (nextHoverKey !== hoverKey) {
     hoverKey = nextHoverKey
-    viewer.highlight.setHover(event.pick)
+    viewer.highlighter.setHover(event.pick)
   }
 }
 
@@ -171,9 +177,9 @@ function handleClick(event: ViewerClickEvent) {
   }
 
   selectedKey = getFeatureKey(feature)
-  viewer.highlight.set(event.pick)
+  viewer.highlighter.set(event.pick)
   if (hoverKey === selectedKey) {
-    viewer.highlight.setHover(null)
+    viewer.highlighter.setHover(null)
   }
   renderFeaturePopup(feature)
 }

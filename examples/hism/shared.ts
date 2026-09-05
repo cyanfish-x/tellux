@@ -56,12 +56,23 @@ export function createHismDemoViewerOptions(options?: { includeTerrain?: boolean
   const includeTerrain = options?.includeTerrain !== false
   return {
     terrain: includeTerrain ? exampleMapServiceConfig.createTerrainOptions() : undefined,
-    layers: [
+    overlays: [
       {
         source: exampleMapServiceConfig.createImagerySource(),
       },
     ],
-    camera: { ...HISM_DEMO_VIEW_POSE },
+    camera: {
+      destination: {
+        longitude: HISM_DEMO_VIEW_POSE.longitude,
+        latitude: HISM_DEMO_VIEW_POSE.latitude,
+        height: HISM_DEMO_VIEW_POSE.height,
+      },
+      orientation: {
+        heading: HISM_DEMO_VIEW_POSE.heading,
+        pitch: HISM_DEMO_VIEW_POSE.pitch,
+        roll: HISM_DEMO_VIEW_POSE.roll,
+      },
+    },
     scene: {
       atmosphere: {
         show: true,
@@ -69,8 +80,8 @@ export function createHismDemoViewerOptions(options?: { includeTerrain?: boolean
         fallbackAmbientLight: { intensity: 0.85 },
       },
       clouds: { show: false },
-      postProcess: { toneMappingExposure: 7 },
     },
+    postProcess: { toneMappingExposure: 7 },
   }
 }
 

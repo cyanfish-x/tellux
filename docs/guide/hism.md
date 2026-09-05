@@ -117,11 +117,11 @@ viewer.addHismLayer({
 viewer.on('click', (event) => {
   const hit = viewer.pick(event.position, { layers: ['hismInstance'] })
   if (!hit || hit.type !== 'hismInstance') {
-    viewer.highlight.clear()
+    viewer.highlighter.clear()
     return
   }
 
-  viewer.highlight.set(hit) // 后处理描边：整实例全部 parts
+  viewer.highlighter.set(hit) // 后处理描边：整实例全部 parts
   const { instance } = hit
   console.log(instance.layerId)
   console.log(instance.instanceId)
@@ -131,7 +131,7 @@ viewer.on('click', (event) => {
 })
 ```
 
-拾取是纯查询，**不会**自动显示黄色标记。与 `viewer.highlight` 描边并用时建议关闭标记对象创建：
+拾取是纯查询，**不会**自动显示黄色标记。与 `viewer.highlighter` 描边并用时建议关闭标记对象创建：
 
 ```ts
 new tellux.Viewer(container, {

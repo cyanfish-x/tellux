@@ -218,15 +218,15 @@ TerrainTilesetFactory.create(terrainOptions, layers)
   └─ 公共插件（Fade + UpdateOnChange）
 ```
 
-- 运行时 `setTerrain()` 可热切换地形/无地形模式
+- 运行时 `terrain.set()` 可热切换地形/无地形模式
 - 切换时重建 terrain tileset 并同步 surface visibility
 
 ### 5.3 场景 3D Tiles（独立场景）
 
-通过 `load3DTileset()` 加载的建筑、点云等独立 3D Tiles：
+通过 `tilesets.add()` 加载的建筑、点云等独立 3D Tiles：
 
 ```
-load3DTileset(options)
+tilesets.add(options)
   ├─ type: 'url' → 直接 URL
   └─ type: 'cesium-ion' → CesiumIonAuthPlugin
   ├─ GLTFExtensionsPlugin (dracoLoader + materialsUnlitCompatibility)

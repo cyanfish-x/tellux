@@ -1,10 +1,10 @@
 # Highlight 统一高亮方案
 
-> 状态：**已被取代（历史背景）**
-> 取代文档：`notes/架构/API稳定版破坏式变更方案.md` 批次 B9
-> 目标门面：`viewer.highlighter`（操作 + 样式都在该对象上；不再使用 `viewer.highlight` / `scene.highlight`）
+> 状态：**历史背景（1.0 已落地）**
+> 现行公开门面：`viewer.highlighter`（操作 + `outline` / `overlay` 样式都在该对象上）
+> 取代说明：`notes/架构/API稳定版破坏式变更方案.md` 批次 B9；用户迁移见 `docs/guide/migration-1.0.md`
 
-本文记录 2026-07 落地时的原始设计，解释当时为什么把样式挂在 `scene.highlight`。实现或扩展高亮时 **不要** 按本文的公开路径写代码，以 1.0 方案 B9 为准。
+本文记录 2026-07 落地时的原始设计，解释当时为什么把样式挂在 `scene.highlight`。实现或扩展高亮时 **不要** 按下文的 0.2 公开路径写代码，用 `viewer.highlighter`。
 
 ---
 

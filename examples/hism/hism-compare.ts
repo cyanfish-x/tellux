@@ -86,7 +86,7 @@ const viewer = new tellux.Viewer(
 
 ;(window as any).viewer = viewer
 
-const rtcUniforms = new tellux.RTCAutoUniforms(viewer.camera.threeCamera)
+const rtcUniforms = new tellux.RTCAutoUniforms(viewer.camera.raw)
 
 let templates: PresetTemplate[] = []
 let activeScene: ActiveScene | null = null
@@ -198,7 +198,7 @@ async function initializeTemplates(mode: RenderMode, count: number) {
 function disposeActiveScene() {
   if (!activeScene) return
   if (activeScene.mode === "legacy") {
-    viewer.scene.threeScene.remove(activeScene.group)
+    viewer.scene.raw.remove(activeScene.group)
     activeScene.group.traverse((child) => {
       const mesh = child as THREE.InstancedMesh
       if (mesh.isInstancedMesh) mesh.dispose()
@@ -319,7 +319,7 @@ async function buildLegacyScene(
     drawCalls += 2
   }
 
-  viewer.scene.threeScene.add(group)
+  viewer.scene.raw.add(group)
   onProgress(1)
   return {
     mode: "legacy" as const,

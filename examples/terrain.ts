@@ -32,18 +32,22 @@ const viewer = new tellux.Viewer(container, {
     currentTime: initialClockTime,
   },
   terrain: defaultTerrain,
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {
-    latitude: 30.755465691598996,
-    longitude: 103.51293447705049,
-    height: 1946.2165657669584,
-    heading: -93.06516054169673,
-    pitch: -9.028828445592675,
-    roll: 0.00005229266806157685,
+    destination: {
+      longitude: 103.51293447705049,
+      latitude: 30.755465691598996,
+      height: 1946.2165657669584,
+    },
+    orientation: {
+      heading: -93.06516054169673,
+      pitch: -9.028828445592675,
+      roll: 0.00005229266806157685,
+    },
   },
   scene: {
     clouds: {
@@ -151,22 +155,22 @@ function enableSelectedTerrain() {
     return
   }
 
-  viewer.setTerrain(terrain)
+  viewer.terrain.set(terrain)
   setStatus(
     getSelectedTerrainSource() === "tianditu"
       ? t({
-          zh: "天地图 swdx 地形已通过 viewer.setTerrain 加载。",
-          en: "Tianditu swdx terrain loaded via viewer.setTerrain.",
+          zh: "天地图 swdx 地形已通过 viewer.terrain.set 加载。",
+          en: "Tianditu swdx terrain loaded via viewer.terrain.set.",
         })
       : t({
-          zh: "Cesium Ion 地形已通过 viewer.setTerrain 加载。",
-          en: "Cesium Ion terrain loaded via viewer.setTerrain.",
+          zh: "Cesium Ion 地形已通过 viewer.terrain.set 加载。",
+          en: "Cesium Ion terrain loaded via viewer.terrain.set.",
         })
   )
 }
 
 function disableTerrain() {
-  viewer.setTerrain(null)
+  viewer.terrain.clear()
   setStatus(
     t({
       zh: "地形已关闭，Viewer 已切回无地形模式。",

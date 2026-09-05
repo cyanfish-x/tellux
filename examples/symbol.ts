@@ -20,18 +20,22 @@ const SURFACE_OFFSET = 50
 
 const viewer = new tellux.Viewer(container, {
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {
-    latitude: 31.2204,
-    longitude: 121.4648,
-    height: 1180,
-    heading: 7.58,
-    pitch: -50.4,
-    roll: 0,
+    destination: {
+      longitude: 121.4648,
+      latitude: 31.2204,
+      height: 1180,
+    },
+    orientation: {
+      heading: 7.58,
+      pitch: -50.4,
+      roll: 0,
+    },
   },
   scene: {
     atmosphere: {
@@ -95,9 +99,8 @@ poiList.forEach(([lon, lat, label, icon], index) => {
         text: label,
         font: "SimHei",
         fontSize: 15,
-        fillColor: "#ffffff",
-        outlineColor: "#0f172a",
-        outlineWidth: 1.2,
+        color: "#ffffff",
+        outline: { color: "#0f172a", width: 1.2 },
       },
       anchor: "bottom",
       textRelative: "right",
@@ -126,9 +129,8 @@ labelList.forEach(([lon, lat, label], index) => {
         text: label,
         font: "SimHei",
         fontSize: 14,
-        fillColor: "#fde68a",
-        outlineColor: "#7c2d12",
-        outlineWidth: 1.2,
+        color: "#fde68a",
+        outline: { color: "#7c2d12", width: 1.2 },
       },
       anchor: "center",
     },
@@ -172,9 +174,8 @@ viewer.entities.add({
       fontSize: 13,
       lineHeight: 1.3,
       maxWidth: 120,
-      fillColor: "#e0f2fe",
-      outlineColor: "#082f49",
-      outlineWidth: 1.2,
+      color: "#e0f2fe",
+      outline: { color: "#082f49", width: 1.2 },
       backgroundColor: "rgba(15, 23, 42, 0.72)",
       backgroundCornerRadius: 6,
       padding: [8, 5],
@@ -190,15 +191,14 @@ viewer.entities.add({
 viewer.entities.add({
   id: "coexist",
   position: [FOCUS_LONGITUDE - 0.014, FOCUS_LATITUDE + 0.006, SURFACE_OFFSET],
-  point: { pixelSize: 10, color: "#34d399", outlineColor: "#0f172a", outlineWidth: 2 },
+  point: { pixelSize: 10, color: "#34d399", outline: { color: "#0f172a", width: 2 } },
   symbol: {
     text: {
       text: t({ zh: "圆点 + 标签", en: "Dot + label" }),
       font: "SimHei",
       fontSize: 13,
-      fillColor: "#ffffff",
-      outlineColor: "#064e3b",
-      outlineWidth: 1.2,
+      color: "#ffffff",
+      outline: { color: "#064e3b", width: 1.2 },
     },
     anchor: "right",
     pixelOffset: [-8, 0],
@@ -242,7 +242,7 @@ function recolorFirstLabel() {
   const text = entity?.symbol?.text
   if (!text) return
   recolorIndex = (recolorIndex + 1) % recolorPalette.length
-  text.fillColor = recolorPalette[recolorIndex]
+  text.color = recolorPalette[recolorIndex]
   panelHandle?.setStatus(
     t(
       {
@@ -320,9 +320,8 @@ async function generateStressSymbols() {
               text: label,
               font: "SimHei",
               fontSize: 12,
-              fillColor: "#ffffff",
-              outlineColor: "#0f172a",
-              outlineWidth: 1,
+              color: "#ffffff",
+              outline: { color: "#0f172a", width: 1 },
             },
             anchor: "bottom",
             textRelative: "right",

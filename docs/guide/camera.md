@@ -24,13 +24,17 @@ Tellux 的相机采用 Cesium 风格的视角模型，用 **经纬高 + heading 
 ```ts
 const viewer = new tellux.Viewer(container, {
   camera: {
-    latitude: 31.2304,
-    longitude: 121.4737,
-    height: 1200,
-    heading: 0,
-    pitch: -25,
-    roll: 0
-  }
+      destination: {
+        longitude: 121.4737,
+        latitude: 31.2304,
+        height: 1200,
+      },
+      orientation: {
+        heading: 0,
+        pitch: -25,
+        roll: 0,
+      },
+    }
 })
 ```
 
@@ -114,15 +118,19 @@ viewer.flyToTarget(customObject3D, { distance: 500 })
 
 ```ts
 viewer.camera.setView({
-  latitude: 39.9042,
-  longitude: 116.4074,
-  height: 2000,
-  heading: 0,
-  pitch: -45
+  destination: {
+    latitude: 39.9042,
+    longitude: 116.4074,
+    height: 2000
+  },
+  orientation: {
+    heading: 0,
+    pitch: -45
+  }
 })
 ```
 
-`setView` 的 `height` 省略时沿用当前相机高度。
+`setView` 的 `destination` 省略高度时沿用当前相机高度。
 
 ## 取消飞行
 
@@ -140,18 +148,18 @@ viewer.camera.cancelFlight()
 // 当前相机相对椭球表面的海拔高度（米）
 const height = viewer.camera.getCurrentHeight()
 
-// 当前完整视角（latitude / longitude / height / heading / pitch / roll）
+// 当前完整视角（`destination` + `orientation`）
 const state = viewer.camera.getState()
 ```
 
-`getState()` 返回的对象可以直接回传给 `setView` 或用作 `flyTo` 的 `destination`，便于保存和恢复视角。
+`getState()` 返回的对象可以直接回传给 `setView` 或 `flyTo`，便于保存和恢复视角。
 
 ## 底层 Three.js 相机
 
-如需接入自定义渲染管线或 raycaster，可通过 `viewer.camera.threeCamera` 拿到底层 `THREE.PerspectiveCamera`：
+如需接入自定义渲染管线或 raycaster，可通过 `viewer.camera.raw` 拿到底层 `THREE.PerspectiveCamera`：
 
 ```ts
-const threeCamera = viewer.camera.threeCamera
+const threeCamera = viewer.camera.raw
 ```
 
 通常不需要直接操作它，Tellux 的控制器、飞行和采样都已经在内部维护它的位置和朝向。

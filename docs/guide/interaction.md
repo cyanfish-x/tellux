@@ -34,7 +34,7 @@ viewer.off('click', onClick)
 | `type` | `'click' \| 'mousemove'` | 事件类型。 |
 | `originalEvent` | `MouseEvent` | 原始 DOM 鼠标事件。 |
 | `position` | `ScreenPosition` | 相对 canvas 左上角的像素坐标 `{ x, y }`。 |
-| `cartographic` | `CartographicCoordinates \| null` | 鼠标位置对应的经纬高。未命中 3D Tiles 或椭球时为 `null`。 |
+| `cartographic` | `LonLatHeight \| null` | 鼠标位置对应的经纬高。未命中 3D Tiles 或椭球时为 `null`。 |
 | `pick` | `ViewerPickResult \| null` | 最近命中的可选中对象。 |
 | `picks` | `ViewerPickResult[]` | 命中列表。`click` 为完整 drill（近→远）；`mousemove` 仅为最近一条（与 `pick` 同构的单元素或空）。 |
 
@@ -220,11 +220,11 @@ results.forEach((result, i) => {
 
 ## 高亮
 
-拾取之后若需要视觉选中态，使用统一门面 `viewer.highlight`：整对象走后处理描边，3D Tiles feature 走叠加几何，HISM 实例走 proxy 描边。`viewer.highlight.set(viewer.pick(pos))` 可直接传入 `ViewerPickResult`（`entity` 类型当前无高亮，会被忽略）。详见「[高亮](./highlight)」。
+拾取之后若需要视觉选中态，使用统一门面 `viewer.highlighter`：整对象走后处理描边，3D Tiles feature 走叠加几何，HISM 实例走 proxy 描边。`viewer.highlighter.set(viewer.pick(pos))` 可直接传入 `ViewerPickResult`（`entity` 类型当前无高亮，会被忽略）。详见「[高亮](./highlight)」。
 
 ```ts
 viewer.on('click', (event) => {
-  if (event.pick) viewer.highlight.set(event.pick)
-  else viewer.highlight.clear()
+  if (event.pick) viewer.highlighter.set(event.pick)
+  else viewer.highlighter.clear()
 })
 ```

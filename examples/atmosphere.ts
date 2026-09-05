@@ -47,14 +47,25 @@ const viewer = new tellux.Viewer(container, {
     currentTime: initialClockTime,
   },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {
-    ...dujiangyanView,
-    far: 8000000,
+    destination: {
+      longitude: dujiangyanView.longitude,
+      latitude: dujiangyanView.latitude,
+      height: dujiangyanView.height,
+    },
+    orientation: {
+      heading: dujiangyanView.heading,
+      pitch: dujiangyanView.pitch,
+      roll: dujiangyanView.roll,
+    },
+    projection: {
+      far: 8000000,
+    },
   },
   scene: {
     atmosphere: {
@@ -73,7 +84,9 @@ const viewer = new tellux.Viewer(container, {
       linkCloudSpeed: true,
     },
   },
-  resolutionScale: 1,
+  renderer: {
+    resolutionScale: 1,
+  },
 })
 
 viewer.scene.clouds.layer.altitude = dujiangyanView.clouds.layerAltitude

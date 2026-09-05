@@ -11,7 +11,7 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `id` | `string` | 实体 id，缺省时自动生成；同一 Viewer 内不可重复。 |
-| `position` | `CartographicInput` | 实体经纬高位置，点图形与 symbol 图形会跟随它。 |
+| `position` | `LonLatHeightLike` | 实体经纬高位置，点图形与 symbol 图形会跟随它。 |
 | `point` | `PointOptions` | 点图形配置。 |
 | `polyline` | `PolylineOptions` | 折线图形配置。 |
 | `polygon` | `PolygonOptions` | 多边形图形配置。 |
@@ -25,7 +25,7 @@
 viewer.entities.add({
   id: 'poi-1',
   position: [121.4737, 31.2304, 50],
-  point: { pixelSize: 12, color: '#ffd166', outlineColor: '#0f172a', outlineWidth: 2 },
+  point: { pixelSize: 12, color: '#ffd166', outline: { color: '#0f172a', width: 2 } },
   properties: { kind: 'poi', label: '陆家嘴' }
 })
 ```
@@ -42,13 +42,12 @@ viewer.entities.add({
 | --- | --- | --- |
 | `pixelSize` | `8` | 像素直径。 |
 | `color` | 白色 | 填充颜色。 |
-| `outlineColor` | — | 描边颜色；仅 `outlineWidth > 0` 时生效。 |
-| `outlineWidth` | `0` | 描边像素宽度，`0` 表示无描边。 |
+| `outline` | — | 可选子对象，存在即开启描边；`width` 默认 `1`。 |
 
 ```ts
 viewer.entities.add({
   position: [121.4737, 31.2304, 50],
-  point: { pixelSize: 12, color: '#38bdf8', outlineColor: '#0f172a', outlineWidth: 2 }
+  point: { pixelSize: 12, color: '#38bdf8', outline: { color: '#0f172a', width: 2 } }
 })
 ```
 
@@ -114,8 +113,7 @@ viewer.entities.add({
 | `extrudeHeight` | — | 拉伸顶面高度（米）；缺省时为平面。 |
 | `fill` | `true` | 是否填充。 |
 | `color` | 白色 | 填充颜色，支持 `rgba(...)` / `#rrggbbaa` 的 alpha。 |
-| `outline` | `false` | 是否显示描边。 |
-| `outlineColor` | — | 描边颜色。 |
+| `outline` | — | 可选子对象，存在即开启描边。WebGL 下线宽恒为 1。 |
 | `clamp` | `false` | `true` 时贴合地形与 3D Tiles；仅 WebGL。 |
 
 ```ts
@@ -125,8 +123,7 @@ viewer.entities.add({
     positions: [[121.46, 31.23], [121.48, 31.23], [121.48, 31.22], [121.46, 31.22]],
     height: 50,
     color: 'rgba(45, 212, 191, 0.35)',
-    outline: true,
-    outlineColor: '#5eead4'
+    outline: { color: '#5eead4' }
   }
 })
 
@@ -137,8 +134,7 @@ viewer.entities.add({
     height: 50,
     extrudeHeight: 350,
     color: 'rgba(244, 114, 182, 0.55)',
-    outline: true,
-    outlineColor: '#f9a8d4'
+    outline: { color: '#f9a8d4' }
   }
 })
 
@@ -169,7 +165,7 @@ viewer.entities.add({
   position: [121.4737, 31.2304, 50],
   symbol: {
     icon: { image: '/markers/poi.png', scale: 1, color: '#ef4444' },
-    text: { text: '陆家嘴', fillColor: '#ffffff', outlineColor: '#0f172a', outlineWidth: 2 },
+    text: { text: '陆家嘴', color: '#ffffff', outline: { color: '#0f172a', width: 2 } },
     anchor: 'bottom',
     textRelative: 'right',
   },
@@ -192,7 +188,7 @@ SDF 方案下，图标按其 alpha 通道作为剪影生成距离场：可任意
 
 ### 文字（text）
 
-文字用 canvas 光栅化（仅 alpha 覆盖）后生成 SDF 纹理：改 `fillColor` / `outlineColor` / `backgroundColor` 不重建纹理（即时生效），改 `text` / `fontSize` 才重建。
+文字用 canvas 光栅化（仅 alpha 覆盖）后生成 SDF 纹理：改 `color` / `outline.color` / `backgroundColor` 不重建纹理（即时生效），改 `text` / `fontSize` 才重建。
 
 | 选项 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -200,9 +196,8 @@ SDF 方案下，图标按其 alpha 通道作为剪影生成距离场：可任意
 | `font` | `'sans-serif'` | 字体族（复用浏览器系统字体，中文零成本）。 |
 | `fontSize` | `16` | 字号（CSS 像素）。 |
 | `fontWeight` | `'normal'` | 字重。 |
-| `fillColor` | 白色 | 填充色（WYSIWYG）。 |
-| `outlineColor` | — | 描边色；仅 `outlineWidth > 0` 生效。 |
-| `outlineWidth` | `0` | 描边像素宽，字形外圈距离化抗锯齿。 |
+| `color` | 白色 | 填充色（WYSIWYG）。 |
+| `outline` | — | 可选子对象，存在即开启描边；`width` 默认 `1`。 |
 | `backgroundColor` | 透明 | 背景色（圆角矩形）。 |
 | `backgroundCornerRadius` | `0` | 背景圆角半径（CSS 像素）。 |
 | `padding` | `[4, 2]` | 背景内边距 `[x, y]`（CSS 像素）。 |
@@ -226,7 +221,7 @@ SDF 方案下，图标按其 alpha 通道作为剪影生成距离场：可任意
 
 ```ts
 const entity = viewer.entities.getById('poi-0')
-entity.symbol.text.fillColor = '#ff5555'   // 改色不重建纹理
+entity.symbol.text.color = '#ff5555'   // 改色不重建纹理
 entity.symbol.text.text = '新名称'          // 改文字会重建
 entity.symbol.icon.scale = 1.2
 ```

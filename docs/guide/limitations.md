@@ -22,7 +22,7 @@ WebGPU 是实验能力，以下能力在 WebGPU 模式下**不渲染或不支持
 
 - WebGPU 模式**不会在不支持的环境上自动回退 WebGL**：不支持时 `renderer.init()` 会 reject，`Viewer.create(...)` 抛错。应用层需自行检测，或设置 `renderer.forceWebGL: true` 走 WebGL2 fallback backend。
 - WebGPU renderer 需异步初始化，推荐用 `Viewer.create(...)`；用 `new Viewer(...)` 时先 `await viewer.ready`。
-- WebGPU TAA 默认关闭。启用 `scene.postProcess.taa` 后会申请高精度 velocity MRT，并为历史颜色维护两张随 drawing buffer 尺寸变化的纹理；动态材质与 `InstancedMesh` 的运动矢量需按项目场景做视觉回归。
+- WebGPU TAA 默认关闭。启用 `postProcess.taa` 后会申请高精度 velocity MRT，并为历史颜色维护两张随 drawing buffer 尺寸变化的纹理；动态材质与 `InstancedMesh` 的运动矢量需按项目场景做视觉回归。
 
 ## 数据与图层
 

@@ -39,18 +39,24 @@ async function main() {
       currentTime: initialClockTime,
     },
     terrain: exampleMapServiceConfig.createTerrainOptions(),
-    layers: [
+    overlays: [
       {
         source: exampleMapServiceConfig.createImagerySource(),
       },
     ],
     camera: {
-      latitude: MODEL_LATITUDE,
-      longitude: MODEL_LONGITUDE,
-      height: 3500,
-      heading: -35,
-      pitch: -28,
-      far: 40000000,
+      destination: {
+        longitude: MODEL_LONGITUDE,
+        latitude: MODEL_LATITUDE,
+        height: 3500,
+      },
+      orientation: {
+        heading: -35,
+        pitch: -28,
+      },
+      projection: {
+        far: 40000000,
+      },
     },
     scene: {
       atmosphere: {
@@ -70,7 +76,7 @@ async function main() {
           ambientLight: true,
         },
         fallbackAmbientLight: {
-          show: false,
+          enabled: false,
         },
         sky: {
           stars: {
@@ -81,23 +87,23 @@ async function main() {
       clouds: {
         show: false,
       },
-      postProcess: {
-        toneMappingExposure: 10,
-        autoExposure: {
-          enabled: true,
-          min: 2,
-          max: 10,
-          speed: 1.2,
-        },
-        // 对齐上游 Non-geospatial：不开 Bloom。镜头光晕自带 mipmap 模糊，也会像泛光。
-        bloom: false,
-        lensFlare: true,
-        taa: true,
+    },
+    postProcess: {
+      toneMappingExposure: 10,
+      autoExposure: {
+        enabled: true,
+        min: 2,
+        max: 10,
+        speed: 1.2,
       },
-      highlight: {
-        outline: {
-          enabled: false,
-        },
+      // 对齐上游 Non-geospatial：不开 Bloom。镜头光晕自带 mipmap 模糊，也会像泛光。
+      bloom: false,
+      lensFlare: true,
+      taa: true,
+    },
+    highlighter: {
+      outline: {
+        enabled: false,
       },
     },
     widgets: {
@@ -111,7 +117,7 @@ async function main() {
   ;(window as any).viewer = viewer
 
   let isAnimationPlaying = true
-  let model: ReturnType<typeof viewer.addModel> | null = null
+  let model: ReturnType<typeof viewer.models.add> | null = null
   let nightRig: LittlestTokyoNightRig | null = null
   let panel: TelluxPanel<ReturnType<typeof interopSchema>> | undefined
   const locationReadout = mountLocationReadout(viewer, {
@@ -218,7 +224,7 @@ async function main() {
     emissiveMap.colorSpace = THREE.SRGBColorSpace
     emissiveMap.flipY = false
 
-    model = viewer.addModel({
+    model = viewer.models.add({
       type: "gltf",
       id: "littlest-tokyo",
       url: MODEL_URL,
@@ -301,7 +307,7 @@ async function main() {
         api: {
           type: "hint" as const,
           label: "API",
-          value: "viewer.addModel",
+          value: "viewer.models.add",
         },
         coords: {
           type: "hint" as const,
@@ -351,14 +357,14 @@ async function main() {
 
   viewer.on("click", (event) => {
     if (!model) {
-      viewer.highlight.clear()
+      viewer.highlighter.clear()
       return
     }
 
     // 传入 root 时默认只测 object 层，避免地形 / 瓦片抢先命中
     const hit = viewer.pick(event.position, { root: model.root })
     if (hit?.type === "object") {
-      viewer.highlight.set(model.root)
+      viewer.highlighter.set(model.root)
       setStatus(
         t(
           {
@@ -372,7 +378,7 @@ async function main() {
         )
       )
     } else {
-      viewer.highlight.clear()
+      viewer.highlighter.clear()
       setStatus(
         t({ zh: "未命中模型，已清除高亮。", en: "No model hit; highlight cleared." })
       )

@@ -77,7 +77,7 @@ describe("createExampleMapServiceConfig", () => {
     })
     expect(config.createTerrainOptions()).toMatchObject({
       type: "tianditu",
-      token: baseOptions.tiandituTokens,
+      apiToken: baseOptions.tiandituTokens,
     })
   })
 })

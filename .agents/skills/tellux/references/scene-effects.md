@@ -1,10 +1,10 @@
 # 场景效果：大气 / 光照 / 体积云 / 后处理 / 地表材质
 
-所有视觉氛围能力都在 `viewer.scene` 下，按领域分组。**初始化配置与运行时入口同构**（路径一致），下文示例两种用法通用。
+所有视觉氛围能力按领域分组：大气 / 云 / 地表在 `viewer.scene` 下，后处理在顶层 `viewer.postProcess`。**初始化配置与运行时入口同构**（路径一致），下文示例两种用法通用。
 
 ## 光照模式（先选模式再调参）
 
-Tellux 有两种大气光照模式，默认 `light-source`。这是最关键的选择，决定材质和受光方式。
+Tellux 有两种大气光照模式，默认 `post-process`。这是最关键的选择，决定材质和受光方式。
 
 ```ts
 viewer.scene.atmosphere.lighting.mode = 'light-source'   // 或 'post-process'
@@ -12,8 +12,8 @@ viewer.scene.atmosphere.lighting.mode = 'light-source'   // 或 'post-process'
 
 | 模式 | 原理 | 适用 |
 | --- | --- | --- |
-| `'light-source'`（默认） | 用 Takram 太阳方向光 + 天空光探针，材质走 Three.js 常规受光 | 3D Tiles、地形、overlay、自定义模型、PBR——**大多数 GIS 场景** |
-| `'post-process'` | 把渲染结果当 albedo，在 `AerialPerspectiveEffect` 里应用大气光照 | 需要统一大气后处理的高级场景；输入材质必须是不受光的（basic / unlit） |
+| `'post-process'`（默认） | 把渲染结果当 albedo，在 `AerialPerspectiveEffect` 里应用大气光照 | 需要统一大气后处理的高级场景；输入材质必须是不受光的（basic / unlit） |
+| `'light-source'` | 用 Takram 太阳方向光 + 天空光探针，材质走 Three.js 常规受光 | 3D Tiles、地形、overlay、自定义模型、PBR——**大多数 GIS 场景** |
 
 ### light-source 调光
 
@@ -31,7 +31,13 @@ viewer.scene.atmosphere.lighting.photometric.sunIlluminance = 111000
 PBR / 受光材质在 post-process 模式下光源会被关闭，瓦片可能变暗变黑。此时要么改回 `light-source`，要么给需要后处理光照的 3D Tiles 用 `materialMode: 'unlit'`：
 
 ```ts
-const layer = viewer.load3DTileset({ type: 'url', url: '...', materialMode: 'unlit' })
+const layer = viewer.tilesets.add({
+  source: {
+    type: 'url',
+    url: '...'
+  },
+  materialMode: 'unlit'
+})
 viewer.scene.atmosphere.lighting.albedoScale = 0.6
 ```
 
@@ -83,7 +89,7 @@ viewer.scene.atmosphere.night.useMoonPhase = true         // 按月相衰减月�
 viewer.scene.atmosphere.shadow.radius = 8         // 体积云投地阴影的模糊半径
 viewer.scene.atmosphere.shadow.sampleCount = 4    // 1~16
 
-viewer.scene.atmosphere.fallbackAmbientLight.show = true   // 独立于夜景的兜底环境光
+viewer.scene.atmosphere.fallbackAmbientLight.enabled = true   // 独立于夜景的兜底环境光
 viewer.scene.atmosphere.fallbackAmbientLight.intensity = 0.5
 ```
 
@@ -109,7 +115,7 @@ viewer.scene.clouds.shadow.quality = 'medium' // 'low' | 'medium' | 'high'
 
 ## 地表材质
 
-只作用于 Viewer 管理的基础地球和地形，不影响 `load3DTileset` / `addModel`。
+只作用于 Viewer 管理的基础地球和地形，不影响 `tilesets.add` / `models.add`。
 
 ```ts
 viewer.scene.surface.materialMode = 'auto'   // 'auto'(随光照) | 'basic' | 'standard'
@@ -123,20 +129,20 @@ viewer.scene.surface.material.useRoughnessMap = false   // 关掉可避免海面
 每个阶段用 `.enabled` 单独控制；色调曝光是顶层属性。
 
 ```ts
-viewer.scene.postProcess.smaa.enabled = true
-viewer.scene.postProcess.bloom.enabled = true
-viewer.scene.postProcess.bloom.intensity = 1.2
-viewer.scene.postProcess.bloom.luminanceThreshold = 0.6
-viewer.scene.postProcess.lensFlare.enabled = true
-viewer.scene.postProcess.lensFlare.intensity = 0.005
-viewer.scene.postProcess.lensFlare.quality = 'medium'
-viewer.scene.postProcess.taa.enabled = true // WebGPU，默认 false
-viewer.scene.postProcess.dithering.enabled = false
-viewer.scene.postProcess.autoExposure.enabled = false
-viewer.toneMappingExposure = 10
+viewer.postProcess.smaa.enabled = true
+viewer.postProcess.bloom.enabled = true
+viewer.postProcess.bloom.intensity = 1.2
+viewer.postProcess.bloom.luminanceThreshold = 0.6
+viewer.postProcess.lensFlare.enabled = true
+viewer.postProcess.lensFlare.intensity = 0.005
+viewer.postProcess.lensFlare.quality = 'medium'
+viewer.postProcess.taa.enabled = true // WebGPU，默认 false
+viewer.postProcess.dithering.enabled = false
+viewer.postProcess.autoExposure.enabled = false
+viewer.postProcess.toneMappingExposure = 10
 ```
 
-> Bloom 在 WebGL / WebGPU 均可用，基于整帧 HDR 亮度提取。`luminanceThreshold` 比的是 AgX / 曝光之前的线性 luma，不是屏幕看起来有多亮。`intensity` 乘的是已经提取的亮部，不是画面亮度百分比。城市夜景用 `addModel({ lighting: 'local' })`，点光挂在带 `scale` 的 glTF 根上并按 `(scale / 0.01)²` 补偿 intensity，打开 `photometric`（只缩放太阳）+ `autoExposure`；不要关太阳。夜景不依赖 Bloom（上游 Non-geospatial 未开）。WebGPU 顺序固定为 Bloom → LensFlare → TAA；SMAA / 抖动仍不渲染。WebGPU 暂无 lighting mask。
+> Bloom 在 WebGL / WebGPU 均可用，基于整帧 HDR 亮度提取。`luminanceThreshold` 比的是 AgX / 曝光之前的线性 luma，不是屏幕看起来有多亮。`intensity` 乘的是已经提取的亮部，不是画面亮度百分比。城市夜景用 `models.add({ lighting: 'local' })`，点光挂在带 `scale` 的 glTF 根上并按 `(scale / 0.01)²` 补偿 intensity，打开 `photometric`（只缩放太阳）+ `autoExposure`；不要关太阳。夜景不依赖 Bloom（上游 Non-geospatial 未开）。WebGPU 顺序固定为 Bloom → LensFlare → TAA；SMAA / 抖动仍不渲染。WebGPU 暂无 lighting mask。
 
 ## 完整初始化示例
 
@@ -157,14 +163,14 @@ const viewer = new tellux.Viewer(container, {
       look: { detail: true, turbulence: true, haze: true },
       shadow: { quality: 'medium' }
     },
-    surface: { materialMode: 'auto', material: { roughness: 1, useRoughnessMap: false } },
-    postProcess: {
-      bloom: { enabled: false, intensity: 1, luminanceThreshold: 1, luminanceSmoothing: 0.03, radius: 0.85 },
-      lensFlare: { enabled: true, intensity: 0.005, quality: 'medium' },
-      smaa: true,
-      autoExposure: false,
-      toneMappingExposure: 10
-    }
+    surface: { materialMode: 'auto', material: { roughness: 1, useRoughnessMap: false } }
+  },
+  postProcess: {
+    bloom: { enabled: false, intensity: 1, luminanceThreshold: 1, luminanceSmoothing: 0.03, radius: 0.85 },
+    lensFlare: { enabled: true, intensity: 0.005, quality: 'medium' },
+    smaa: true,
+    autoExposure: false,
+    toneMappingExposure: 5
   }
 })
 ```

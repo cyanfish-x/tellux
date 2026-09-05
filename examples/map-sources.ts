@@ -96,7 +96,7 @@ function createTiandituTerrainOptions(
   if (!firstToken) return undefined
   return {
     type: "tianditu",
-    token: options.tiandituTokens,
+    apiToken: options.tiandituTokens,
     urls: buildTiandituTerrainServiceUrls(firstToken),
     tileLoading: { enableTileSplitting: true },
   }

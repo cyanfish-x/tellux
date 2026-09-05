@@ -8,10 +8,17 @@
 viewer.scene
 viewer.camera
 viewer.clock
-viewer.layers
-viewer.controls
-viewer.tileset
+viewer.overlays
+viewer.tilesets
+viewer.models
+viewer.terrain
+viewer.globe
 viewer.renderer
+viewer.postProcess
+viewer.highlighter
+viewer.controls
+viewer.hism
+viewer.entities
 ```
 
 这些属性暴露的是面向应用侧的控制入口。业务代码优先通过这些入口操作，不建议直接穿透内部模块状态。
@@ -41,7 +48,7 @@ Timeline 控件将这个绝对时间点转换为浏览器本地时间显示，�
 
 ## 场景配置
 
-`scene` 配置按能力分组：`atmosphere` 管大气、天空和光照，`clouds` 管体积云，`surface` 管基础地球表面材质，`postProcess` 管后处理。
+`scene` 配置按能力分组：`atmosphere` 管大气、天空和光照，`clouds` 管体积云，`surface` 管基础地球表面材质。后处理在顶层 `postProcess`。
 
 ```ts
 const viewer = new Viewer(container, {
@@ -61,12 +68,12 @@ const viewer = new Viewer(container, {
     },
     surface: {
       materialMode: 'auto'
-    },
-    postProcess: {
-      toneMappingExposure: 10,
-      smaa: true,
-      taa: false // 仅 WebGPU；按需启用
     }
+  },
+  postProcess: {
+    toneMappingExposure: 5,
+    smaa: true,
+    taa: false // 仅 WebGPU；按需启用
   }
 })
 ```
@@ -77,8 +84,8 @@ const viewer = new Viewer(container, {
 viewer.scene.atmosphere.lighting.mode = 'post-process'
 viewer.scene.atmosphere.sky.stars.show = false
 viewer.scene.clouds.quality = 'high'
-viewer.scene.postProcess.smaa.enabled = true
-viewer.scene.postProcess.taa.enabled = true // WebGPU
+viewer.postProcess.smaa.enabled = true
+viewer.postProcess.taa.enabled = true // WebGPU
 ```
 
 上面的示例只展示了常用字段。`ViewerOptions` 的全部配置项（地形、相机、大气散射参数、云、后处理、renderer、控件等）及每个字段的默认值、单位和取值说明，见 [类型入口 — 配置项参考](../api/types.md#配置项参考)。
@@ -141,7 +148,7 @@ await viewer.ready
 viewer.render()
 ```
 
-WebGPU 支持目前是实验能力。基础地球、3D Tiles、地形、影像、模型、拾取、大气天空 / 空气透视和星空会走 WebGPU 管线；体积云以及 SMAA、抖动等 WebGL 后处理会降级为不渲染。`scene.postProcess.lensFlare` 已复用同一套强度、阈值与质量档 API；`scene.postProcess.taa` 是已支持的时间抗锯齿，默认关闭，启用后会使用高精度运动矢量和深度重投影历史画面。两者的图顺序为 LensFlare → TAA。星空沿用 `scene.atmosphere.sky.stars` 的 `show`、`intensity` 与 `pointSize` 配置。WebGPU 大气首版使用 Takram node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射。
+WebGPU 支持目前是实验能力。基础地球、3D Tiles、地形、影像、模型、拾取、大气天空 / 空气透视和星空会走 WebGPU 管线；体积云以及 SMAA、抖动等 WebGL 后处理会降级为不渲染。`postProcess.lensFlare` 已复用同一套强度、阈值与质量档 API；`postProcess.taa` 是已支持的时间抗锯齿，默认关闭，启用后会使用高精度运动矢量和深度重投影历史画面。两者的图顺序为 LensFlare → TAA。星空沿用 `scene.atmosphere.sky.stars` 的 `show`、`intensity` 与 `pointSize` 配置。WebGPU 大气首版使用 Takram node-based 管线，`light-source` 光照模式支持更完整，部分 WebGL 专属的散射调试参数暂不映射。
 
 ## 事件
 

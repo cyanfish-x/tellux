@@ -50,18 +50,22 @@ if (!(container instanceof HTMLElement)) {
 
 const viewer = new tellux.Viewer(container, {
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {
-    latitude: 33.54814875712769,
-    longitude: 102.44504184115536,
-    height: 4348.650119598099,
-    heading: -23.80650527077907,
-    pitch: -16.634341482316092,
-    roll: 0.00005099704147283671,
+    destination: {
+      longitude: 102.44504184115536,
+      latitude: 33.54814875712769,
+      height: 4348.650119598099,
+    },
+    orientation: {
+      heading: -23.80650527077907,
+      pitch: -16.634341482316092,
+      roll: 0.00005099704147283671,
+    },
   },
   scene: {
     atmosphere: {
@@ -200,7 +204,7 @@ async function createHorseHerd() {
     return
   }
 
-  viewer.scene.threeScene.add(herd.group)
+  viewer.scene.raw.add(herd.group)
   setActionsDisabled(false)
   setInstanceCount(`${sampledPlacements.length} / ${HORSE_COUNT}`)
   setAnimationReadout("Morph targets instancing")
@@ -289,7 +293,7 @@ async function buildHorseHerd(
     phases,
     startedAt: performance.now() / 1000,
     dispose() {
-      viewer.scene.threeScene.remove(group)
+      viewer.scene.raw.remove(group)
       mixer.stopAllAction()
       geometry.dispose()
       disposeMaterial(material)

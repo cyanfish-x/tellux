@@ -67,10 +67,10 @@ object.matrix.copy(matrix)
 
 ## 放置 glTF 模型
 
-如果只是要加载一个 glTF / GLB 模型放到经纬度上，不必手动算矩阵，直接用 `viewer.addModel`：
+如果只是要加载一个 glTF / GLB 模型放到经纬度上，不必手动算矩阵，直接用 `viewer.models.add`：
 
 ```ts
-const model = viewer.addModel({
+const model = viewer.models.add({
   type: 'gltf',
   url: '/models/wind-turbine.glb',
   coordinates: {
@@ -83,7 +83,7 @@ const model = viewer.addModel({
 })
 ```
 
-`addModel` 内部已经处理了矩阵计算、光照模式下的材质适配和 Draco 解码。模型高度未指定时默认为 `0`（贴椭球面）；需要让模型贴合地形时，先用 `sampleHeight` 查询当地高度再传入。
+`models.add` 内部已经处理了矩阵计算、光照模式下的材质适配和 Draco 解码。模型高度未指定时默认为 `0`（贴椭球面）；需要让模型贴合地形时，先用 `sampleHeight` 查询当地高度再传入。
 
 ## 放置自定义 Three.js 对象
 
@@ -101,10 +101,10 @@ marker.matrixAutoUpdate = false
 marker.matrix.copy(
   viewer.cartographicToMatrix4([121.4737, 31.2304, 100])
 )
-viewer.scene.threeScene.add(marker)
+viewer.scene.raw.add(marker)
 ```
 
-`viewer.scene.threeScene` 是底层 Three.js `Scene`，自定义对象加到这里会参与 Tellux 的渲染。
+`viewer.scene.raw` 是底层 Three.js `Scene`，自定义对象加到这里会参与 Tellux 的渲染。
 
 ::: tip 尺度单位是米
 底层场景单位是米。地球半径约 637 万米，所以 marker 几何的尺寸要按"真实米"来理解——半径 `50` 的球在地球尺度上只是一个点，要看得见需要放大或贴近地表查看。

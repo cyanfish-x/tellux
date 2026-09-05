@@ -47,10 +47,10 @@ object.matrix.copy(matrix)
 
 ## 放置 glTF 模型
 
-直接用 `addModel`，内部已处理矩阵和 Draco：
+直接用 `models.add`，内部已处理矩阵和 Draco：
 
 ```ts
-const model = viewer.addModel({
+const model = viewer.models.add({
   type: 'gltf',
   url: '/models/wind-turbine.glb',
   coordinates: { longitude: 121.4737, latitude: 31.2304, height: 0 },
@@ -72,7 +72,7 @@ const marker = new THREE.Mesh(
 )
 marker.matrixAutoUpdate = false
 marker.matrix.copy(viewer.cartographicToMatrix4([121.4737, 31.2304, 100]))
-viewer.scene.threeScene.add(marker)   // 加到这里参与 Tellux 渲染
+viewer.scene.raw.add(marker)   // 加到这里参与 Tellux 渲染
 ```
 
 > **尺度单位是米**。地球半径约 637 万米，半径 50 的球在地表尺度只是一个点，要看得见需放大或贴近查看。

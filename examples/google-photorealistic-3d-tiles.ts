@@ -35,7 +35,7 @@ const viewer = new tellux.Viewer(container, {
     currentTime: initialClockTime,
   },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
@@ -61,7 +61,7 @@ const viewer = new tellux.Viewer(container, {
 })
 
 ;(window as any).viewer = viewer
-viewer.tileset.group.visible = false
+viewer.globe.show = false
 
 let panel: TelluxPanel | undefined
 let activeLayer: TilesetLayer | null = null
@@ -197,11 +197,13 @@ function loadGooglePhotorealisticTiles() {
   }
 
   activeLayer?.remove()
-  activeLayer = viewer.load3DTileset({
-    type: "cesium-ion",
+  activeLayer = viewer.tilesets.add({
+    source: {
+      type: "cesium-ion",
+      assetId: GOOGLE_PHOTOREALISTIC_ASSET_ID,
+      apiToken: apiToken,
+    },
     id: "google-photorealistic-3d-tiles",
-    assetId: GOOGLE_PHOTOREALISTIC_ASSET_ID,
-    apiToken,
     creasedNormals: true,
   })
   materialDebugTileCount = 0
@@ -214,8 +216,8 @@ function loadGooglePhotorealisticTiles() {
   flyToTokyo()
   setStatus(
     t({
-      zh: "已通过 viewer.load3DTileset 加载城市级海量 3D Tiles 模型。",
-      en: "City-scale 3D Tiles loaded via viewer.load3DTileset.",
+      zh: "已通过 viewer.tilesets.add 加载城市级海量 3D Tiles 模型。",
+      en: "City-scale 3D Tiles loaded via viewer.tilesets.add.",
     })
   )
 }
@@ -223,8 +225,8 @@ function loadGooglePhotorealisticTiles() {
 function getInitialStatus() {
   return DEFAULT_ION_TOKEN
     ? t({
-        zh: "已通过 viewer.load3DTileset 加载城市级海量 3D Tiles 模型。",
-        en: "City-scale 3D Tiles loaded via viewer.load3DTileset.",
+        zh: "已通过 viewer.tilesets.add 加载城市级海量 3D Tiles 模型。",
+        en: "City-scale 3D Tiles loaded via viewer.tilesets.add.",
       })
     : t({
         zh: "输入 Cesium Ion token 后加载城市级海量 3D Tiles 模型。",

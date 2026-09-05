@@ -60,12 +60,12 @@ viewer.scene.atmosphere.lighting.skyLight = true
 viewer.scene.atmosphere.lighting.albedoScale = 0.6
 ```
 
-Tellux 会根据当前光照模式自动调整 Viewer 管理的基础地表、地形、`load3DTileset` 瓦片和 `addModel` 模型材质：`post-process` 使用不受 Three.js 光源影响的 basic 材质，`light-source` 使用 standard 材质。
+Tellux 会根据当前光照模式自动调整 Viewer 管理的基础地表、地形、`tilesets.add` 瓦片和 `models.add` 模型材质：`post-process` 使用不受 Three.js 光源影响的 basic 材质，`light-source` 使用 standard 材质。
 
-城市夜景、广告牌、窗灯这类 **局部光源** 应使用 `addModel({ lighting: 'local' })`（`materialMode: 'preserve'` 时默认就是 `local`）。局部模型走 forward 着色，大气不再把已着色 radiance 当地表反照率乘以日夜因子。`post-process` 模式下 `local` 会强制保留 glTF 材质。
+城市夜景、广告牌、窗灯这类 **局部光源** 应使用 `models.add({ lighting: 'local' })`（`materialMode: 'preserve'` 时默认就是 `local`）。局部模型走 forward 着色，大气不再把已着色 radiance 当地表反照率乘以日夜因子。`post-process` 模式下 `local` 会强制保留 glTF 材质。
 
 ```ts
-const model = viewer.addModel({
+const model = viewer.models.add({
   type: 'gltf',
   url: '/city.glb',
   coordinates: [121.47, 31.23, 0],
@@ -79,10 +79,12 @@ const model = viewer.addModel({
 摄影测量 3D Tiles 的几何法线可能缺失或不稳定。此时可以为该 3D Tiles 图层重新生成折痕法线，让 `NormalPass` 为后处理光照提供更稳定的几何法线：
 
 ```ts
-const layer = viewer.load3DTileset({
-  type: 'cesium-ion',
-  assetId: 2275207,
-  apiToken,
+const layer = viewer.tilesets.add({
+  source: {
+    type: 'cesium-ion',
+    assetId: 2275207,
+    apiToken
+  },
   creasedNormals: true
 })
 ```
@@ -93,7 +95,7 @@ const layer = viewer.load3DTileset({
 
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
-| `atmosphere.lighting.mode` | `'light-source'` | 大气光照模式，可选 `'light-source'` 或 `'post-process'`。 |
+| `atmosphere.lighting.mode` | `'post-process'` | 大气光照模式，可选 `'light-source'` 或 `'post-process'`。 |
 | `atmosphere.lighting.sunLight` | `true` | 是否应用太阳直射光照。 |
 | `atmosphere.lighting.skyLight` | `true` | 是否应用天空环境光照。 |
 | `atmosphere.lighting.sunLightIntensity` | `1` | 太阳光源辐射强度缩放，主要作用于 `light-source` 模式。 |
@@ -104,7 +106,7 @@ const layer = viewer.load3DTileset({
 | `surface.material.roughness` | `1` | 基础地表和 terrain 的 standard 材质粗糙度。 |
 | `surface.material.metalness` | `0` | 基础地表和 terrain 的 standard 材质金属度。 |
 | `surface.material.useRoughnessMap` | `false` | 是否沿用 terrain watermask 等上游粗糙度贴图。 |
-| `atmosphere.fallbackAmbientLight.show` | `true` | 是否启用夜间兜底环境光。 |
+| `atmosphere.fallbackAmbientLight.enabled` | `true` | 是否启用夜间兜底环境光。 |
 | `atmosphere.fallbackAmbientLight.intensity` | `0.5` | 夜间兜底环境光最大强度。 |
 
 ## 初始配置示例
@@ -121,7 +123,7 @@ const viewer = new tellux.Viewer(container, {
         skyLightIntensity: 0.8
       },
       fallbackAmbientLight: {
-        show: true,
+        enabled: true,
         intensity: 0.5
       }
     }
@@ -134,17 +136,17 @@ const viewer = new tellux.Viewer(container, {
 对齐 Cesium for Unreal / CesiumSunSky 的观感时，验收示例 `threejs-interop` 走 WebGPU（`Viewer.create` + `renderer.type: 'webgpu'`），并同时打开：
 
 1. `lighting.photometric`：太阳用正午 111000 lux 语义锚，只缩放 Takram 太阳（默认仍是 intensity≈1）。**不要**把 Cesium 的 UE 10→111000 lux 比值（×11100）写进 `emissiveIntensity`。点光挂在带 `scale` 的模型根上，intensity 按世界距离平方补偿。
-2. `addModel({ lighting: 'local' })`：灯和广告牌不被大气夜因子灭掉。WebGPU 没有 lighting mask，该页必须停在 `light-source`，不要切到 `post-process`。
+2. `models.add({ lighting: 'local' })`：灯和广告牌不被大气夜因子灭掉。WebGPU 没有 lighting mask，该页必须停在 `light-source`，不要切到 `post-process`。
 3. `postProcess.autoExposure`：按太阳高度在白天曝光 `min` 与夜晚曝光 `max` 之间平滑插值。不要手拧 `toneMappingExposure` 当验收。
-4. `postProcess.taa`：时间抗锯齿（仅 WebGPU）。`highlight.outline` 在 WebGPU 无效，该页已关闭。
+4. `postProcess.taa`：时间抗锯齿（仅 WebGPU）。`highlighter.outline` 在 WebGPU 无效，该页已关闭。
 5. 对齐上游 Non-geospatial：**不开 Bloom**。夜景靠自发光、点光和自动曝光。点光必须挂在带 `scale` 的 glTF 根上；intensity 按 `(modelScale / 0.01)² × 0.1` 放大，才能在墙上留下和上游沙盘一样的暖色 spill。
 
 其它地球示例默认 **不** 开 photometric / autoExposure，以免全球过曝。UE 的「扩展亮度范围」不是自动曝光；Tellux 已是 HalfFloat + AgX，不再抄同名开关。
 
 ```ts
 viewer.scene.atmosphere.lighting.photometric.enabled = true
-viewer.scene.postProcess.autoExposure.enabled = true
-viewer.scene.postProcess.autoExposure.min = 2
-viewer.scene.postProcess.autoExposure.max = 10
-viewer.scene.postProcess.autoExposure.speed = 1.2
+viewer.postProcess.autoExposure.enabled = true
+viewer.postProcess.autoExposure.min = 2
+viewer.postProcess.autoExposure.max = 10
+viewer.postProcess.autoExposure.speed = 1.2
 ```

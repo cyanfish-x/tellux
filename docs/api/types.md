@@ -29,7 +29,8 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 - `ViewerRendererOptions`
 - `ViewerRendererType`
 - `ClockOptions`
-- `DateTimeInput`
+- `LonLat` / `LonLatHeight` / `LonLatLike` / `LonLatHeightLike`
+- `CameraDestination` / `CameraSetViewOptions` / `ViewerControls`
 
 底层 Three.js renderer 实例类型也从 `tellux` 导出，用于在外部渲染循环或自定义 pass 中直接操作 renderer：
 
@@ -39,7 +40,7 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 
 ## 场景配置
 
-`ViewerOptions.scene` 使用按领域分组的配置结构，避免把大气、云、地表和后处理参数拍平成同一层。
+`ViewerOptions.scene` 使用按领域分组的配置结构，避免把大气、云和地表参数拍平成同一层。后处理在顶层 `ViewerOptions.postProcess`。
 
 ```ts
 const viewer = new Viewer(container, {
@@ -67,7 +68,7 @@ const viewer = new Viewer(container, {
         }
       },
       fallbackAmbientLight: {
-        show: true,
+        enabled: true,
         intensity: 0.5
       }
     },
@@ -101,19 +102,19 @@ const viewer = new Viewer(container, {
         metalness: 0,
         useRoughnessMap: false
       }
-    },
-    postProcess: {
-      toneMappingExposure: 10,
-      lensFlare: {
-        enabled: true,
-        intensity: 0.005,
-        threshold: { level: 10, range: 1 },
-        quality: 'medium'
-      },
-      smaa: { enabled: true },
-      taa: { enabled: false },
-      dithering: { enabled: false }
     }
+  },
+  postProcess: {
+    toneMappingExposure: 5,
+    lensFlare: {
+      enabled: true,
+      intensity: 0.005,
+      threshold: { level: 10, range: 1 },
+      quality: 'medium'
+    },
+    smaa: { enabled: true },
+    taa: { enabled: false },
+    dithering: { enabled: false }
   }
 })
 ```
@@ -128,9 +129,9 @@ viewer.scene.clouds.quality = 'high'
 viewer.scene.clouds.coverage = 0.35
 viewer.scene.surface.materialMode = 'standard'
 viewer.scene.surface.material.roughness = 0.9
-viewer.scene.postProcess.smaa.enabled = true
-viewer.scene.postProcess.taa.enabled = true // WebGPU
-viewer.toneMappingExposure = 8
+viewer.postProcess.smaa.enabled = true
+viewer.postProcess.taa.enabled = true // WebGPU
+viewer.postProcess.toneMappingExposure = 8
 ```
 
 详细的逐项说明见下文「配置项参考」。
@@ -139,18 +140,18 @@ viewer.toneMappingExposure = 8
 
 下面用一个带注释的完整配置对象说明 `ViewerOptions` 的每一项。结构上和真实配置同构：每一层对应一个领域对象，每个字段的注释标明了功能、默认值和单位。注释里标「默认 xxx」的即为不传时的取值；未标默认值的字段默认为空或未启用。
 
-初始化配置与运行时入口同构（路径一致），因此这里的字段路径同时适用于 `new Viewer(container, { ... })` 的初始值和 `viewer.scene.*` 的运行时修改。
+初始化配置与运行时入口同构（路径一致），因此这里的字段路径同时适用于 `new Viewer(container, { ... })` 的初始值和 `viewer.scene.*` / `viewer.postProcess.*` 的运行时修改。
 
 ```ts
 const viewer = new tellux.Viewer(container, {
   // —— 影像图层：按数组顺序从下到上贴到裸球或地形表面，详见「地形与影像」
-  layers: [
+  overlays: [
     { name: '底图', source: { type: 'xyz', url: '...', levels: 19 } }
   ],
 
   // —— 地形：Cesium quantized-mesh 格式，自托管 url 或 cesium-ion。不传为裸球
   terrain: {
-    // type: 'cesium-ion' 或省略（按 url 处理）
+    type: 'url',
     url: 'https://example.com/terrain/layer.json',
     tileLoading: {
       errorTarget: 1,            // 地形瓦片目标屏幕空间误差，越小越精细，默认 1
@@ -161,16 +162,22 @@ const viewer = new tellux.Viewer(container, {
 
   // —— 相机：经纬度和姿态角用「度」，height / near / far 用「米」
   camera: {
-    latitude: 35.6812,   // 初始纬度（度），默认 35.6812
-    longitude: 139.8,    // 初始经度（度），默认 139.8
-    height: 500,         // 初始相机高度（米），默认 500
-    heading: -90,        // 航向角（度），相对当地正北顺时针，默认 -90
-    pitch: -10,          // 俯仰角（度），0 水平、-90 垂直俯视，默认 -10
-    roll: 0,             // 翻滚角（度），默认 0
-    fov: 75,             // 透视相机垂直视场角（度），默认 75
-    near: 10,            // 近裁剪面（米），默认 10
-    far: 1000000         // 远裁剪面（米），默认 1000000
-  },
+      destination: {
+        longitude: 139.8,
+        latitude: 35.6812,
+        height: 500,
+      },
+      orientation: {
+        heading: -90,
+        pitch: -10,
+        roll: 0,
+      },
+      projection: {
+        fov: 75,
+        near: 10,
+        far: 1000000         // 远裁剪面（米），默认 1000000,
+      },
+    },
 
   // —— 场景时钟：currentTime 初始化支持 Date / 日期字符串 / 毫秒时间戳
   clock: {
@@ -179,7 +186,7 @@ const viewer = new tellux.Viewer(container, {
     multiplier: 1        // 模拟时间倍率，默认 1；负数表示倒放
   },
 
-  // —— 场景：按 atmosphere / clouds / surface / postProcess 分组
+  // —— 场景：按 atmosphere / clouds / surface 分组；后处理见顶层 postProcess
   scene: {
     // 大气：天空、空气透视、光照、夜景、云影
     atmosphere: {
@@ -187,7 +194,7 @@ const viewer = new tellux.Viewer(container, {
 
       // 光照：详见「光照模式与参数」
       lighting: {
-        mode: 'light-source',    // 光照模式 'light-source' | 'post-process'，默认 'light-source'
+        mode: 'post-process',    // 光照模式 'light-source' | 'post-process'，默认 'post-process'
         sunLight: true,          // 是否应用太阳直射光照，默认 true
         skyLight: true,          // 是否应用天空环境光照，默认 true
         sunLightIntensity: 1,    // 太阳光源辐射强度缩放（主要作用于 light-source），默认 1
@@ -253,7 +260,7 @@ const viewer = new tellux.Viewer(container, {
 
       // 兜底环境光：独立于夜景，保证暗面不纯黑
       fallbackAmbientLight: {
-        show: true,       // 是否启用，默认 true
+        enabled: true,    // 是否启用，默认 true
         intensity: 0.5    // 最大强度，默认 0.5
       }
     },
@@ -286,7 +293,7 @@ const viewer = new tellux.Viewer(container, {
       }
     },
 
-    // 地表材质：只作用于基础地球和地形，不影响 load3DTileset / addModel
+    // 地表材质：只作用于基础地球和地形，不影响 tilesets.add / models.add
     surface: {
       materialMode: 'auto',    // 'auto'（随光照模式）| 'basic' | 'standard'，默认 'auto'
       material: {
@@ -294,38 +301,38 @@ const viewer = new tellux.Viewer(container, {
         metalness: 0,          // 表面金属度 0~1，默认 0
         useRoughnessMap: false // 是否沿用地形 / 上游粗糙度贴图，默认 false（避免海面强反光）
       }
-    },
-
-    // 后处理（Bloom / TAA / 镜头光晕支持 WebGPU；SMAA / 抖动为 WebGL 专属）
-    // bloom / lensFlare / smaa / taa / dithering 也可传 boolean，等价于 { enabled }
-    postProcess: {
-      toneMappingExposure: 10, // 色调映射曝光，默认 10；运行时也可用 viewer.toneMappingExposure 调整
-      autoExposure: {          // 自动曝光，默认关闭；用太阳高度在 min（白天）与 max（夜晚）之间插值
-        enabled: false,
-        min: 2,
-        max: 10,
-        speed: 1.5
-      },
-      bloom: {
-        enabled: false,             // 是否启用亮部泛光，默认 false
-        intensity: 1,               // 泛光强度，默认 1；乘的是已提取亮部，不是画面亮度百分比
-        luminanceThreshold: 1,      // HDR 线性亮度阈值（AgX / 曝光之前），默认 1
-        luminanceSmoothing: 0.03,   // 阈值过渡宽度 0~1，默认 0.03
-        radius: 0.85                // 模糊扩散半径 0~1，默认 0.85
-      },
-      lensFlare: {
-        enabled: true,         // 是否启用镜头光晕，默认 true
-        intensity: 0.005,      // 光晕强度，默认 0.005
-        threshold: {
-          level: 10,           // 亮部提取阈值，默认 10
-          range: 1             // 亮部提取过渡宽度，默认 1
-        },
-        quality: 'medium'      // 光晕质量档位 'low' | 'medium' | 'high'，默认 medium
-      },
-      smaa: { enabled: true },      // 是否启用 SMAA 抗锯齿，默认 true
-      taa: { enabled: false },      // 是否启用 WebGPU TAA，默认 false
-      dithering: { enabled: false } // 是否启用抖动（减少色带），默认 false
     }
+  },
+
+  // —— 后处理（Bloom / TAA / 镜头光晕支持 WebGPU；SMAA / 抖动为 WebGL 专属）
+  // bloom / lensFlare / smaa / taa / dithering 也可传 boolean，等价于 { enabled }
+  postProcess: {
+    toneMappingExposure: 5,  // 色调映射曝光，默认 5；运行时也可用 viewer.postProcess.toneMappingExposure 调整
+    autoExposure: {          // 自动曝光，默认关闭；用太阳高度在 min（白天）与 max（夜晚）之间插值
+      enabled: false,
+      min: 2,
+      max: 10,
+      speed: 1.5
+    },
+    bloom: {
+      enabled: false,             // 是否启用亮部泛光，默认 false
+      intensity: 1,               // 泛光强度，默认 1；乘的是已提取亮部，不是画面亮度百分比
+      luminanceThreshold: 1,      // HDR 线性亮度阈值（AgX / 曝光之前），默认 1
+      luminanceSmoothing: 0.03,   // 阈值过渡宽度 0~1，默认 0.03
+      radius: 0.85                // 模糊扩散半径 0~1，默认 0.85
+    },
+    lensFlare: {
+      enabled: true,         // 是否启用镜头光晕，默认 true
+      intensity: 0.005,      // 光晕强度，默认 0.005
+      threshold: {
+        level: 10,           // 亮部提取阈值，默认 10
+        range: 1             // 亮部提取过渡宽度，默认 1
+      },
+      quality: 'medium'      // 光晕质量档位 'low' | 'medium' | 'high'，默认 medium
+    },
+    smaa: { enabled: true },      // 是否启用 SMAA 抗锯齿，默认 true
+    taa: { enabled: false },      // 是否启用 WebGPU TAA，默认 false
+    dithering: { enabled: false } // 是否启用抖动（减少色带），默认 false
   },
 
   // —— Renderer：底层 Three.js renderer 创建配置，详见「Renderer 类型」
@@ -334,24 +341,19 @@ const viewer = new tellux.Viewer(container, {
     transparent: false, // 是否启用透明渲染背景，优先级高于顶层 transparent
     antialias: undefined, // 是否启用 renderer 级抗锯齿
     samples: undefined,   // 多重采样数量
-    forceWebGL: undefined // 仅 type:'webgpu' 生效，强制走 Three.js WebGL2 fallback backend
+    forceWebGL: undefined, // 仅 type:'webgpu' 生效，强制走 Three.js WebGL2 fallback backend
+    resolutionScale: Math.min(window.devicePixelRatio, 2) // 像素比，降低可提升性能
   },
 
   // —— 渲染循环
   useDefaultRenderLoop: true,  // 是否自动启动渲染循环，默认 true；接外部循环时设 false 并手动 render()
-
-  // —— 像素比：降低可提升性能，默认 min(devicePixelRatio, 2)
-  resolutionScale: Math.min(window.devicePixelRatio, 2),
-
-  // —— 透明背景：新代码优先用 renderer.transparent，默认 false
-  transparent: false,
 
   // —— Draco 解码器路径，默认 '/draco/'（完整 decoder，支持 mesh 与点云）
   dracoDecoderPath: '/draco/',
 
   // —— 内置控件
   widgets: {
-    settingPanel: false, // 是否挂载内置调试设置面板，默认 false；传对象作为初始值
+    settingsPanel: false, // 是否挂载内置调试设置面板，默认 false；传对象作为初始值
     timeline: false      // 是否挂载内置时间条，默认 false；启用后若未显式配置 shouldAnimate，则时钟默认播放
   }
 })
@@ -359,11 +361,11 @@ const viewer = new tellux.Viewer(container, {
 
 几个值得注意的约定：
 
-- **领域边界**：scene 内部按 atmosphere / clouds / surface / postProcess / highlight 分组，而不是用前缀字段拍平。新增同领域能力时会扩展对应分组对象，而非新增顶层前缀字段。
+- **领域边界**：scene 内部按 atmosphere / clouds / surface 分组；后处理在顶层 `postProcess`，高亮在顶层 `highlighter`。新增同领域能力时会扩展对应分组对象，而非新增顶层前缀字段。
 - **单位**：对外 API 统一使用度和米——经纬度、heading / pitch / roll 用度，高度、裁剪面、云层高度用米；角半径（`sunAngularRadius` 等）是弧度。
 - **WebGPU 限制**：`clouds` 以及 `postProcess` 的 SMAA / 抖动在 WebGPU 模式下不渲染，调整开关无视觉效果；`bloom`、`lensFlare` 与 `taa` 已接入统一后处理图，顺序为 Bloom → LensFlare → TAA；`sky.stars` 已支持，并沿用其 `show`、`intensity` 和 `pointSize` 配置。
 - **Entity 透明**：`scene.entities.transparency.mode` 默认 `auto`；WebGL 后处理管线可用时使用 weighted blended OIT，WebGPU 或不支持时退回 `sorted`。`weighted-oit` 能减少 entity 之间随视角跳变的排序异常，但它是工程近似，不是逐片元严格排序；`sorted` 保留 Three.js 默认透明排序路径，便于兼容和排查。
-- **作用范围**：`surface` 只影响 Viewer 管理的基础地球和地形；`load3DTileset` / `addModel` 加载的内容有自己的材质模式（见「光照模式与参数」）。
+- **作用范围**：`surface` 只影响 Viewer 管理的基础地球和地形；`tilesets.add` / `models.add` 加载的内容有自己的材质模式（见「光照模式与参数」）。
 
 ## Renderer 类型
 
@@ -387,20 +389,23 @@ WebGPU renderer 需要异步初始化。推荐用 `Viewer.create(...)`，它会�
 ## 坐标类型
 
 ```ts
-type CartographicCoordinateTuple = [
-  longitude: number,
-  latitude: number,
-  height?: number
-]
-
-interface CartographicCoordinates {
-  latitude: number
-  longitude: number
-  height: number
+interface LonLat {
+  readonly longitude: number
+  readonly latitude: number
 }
+
+interface LonLatHeight extends LonLat {
+  readonly height: number
+}
+
+type LonLatLike = LonLat | readonly [longitude: number, latitude: number]
+
+type LonLatHeightLike =
+  | LonLatHeight
+  | readonly [longitude: number, latitude: number, height: number]
 ```
 
-数组输入顺序是 `[经度, 纬度, 高度]`。对象输入使用 `{ longitude, latitude, height }`。
+`LonLat` 只有经纬度；`LonLatHeight` 高度必填。数组输入顺序是 `[经度, 纬度]` 或 `[经度, 纬度, 高度]`。实现不会把缺省高度补成 `0`。
 
 ## 事件类型
 
@@ -411,4 +416,4 @@ viewer.on('mousemove', (event) => {
 })
 ```
 
-`event.position` 是相对于 canvas 左上角的像素坐标，`event.cartographic` 是命中的经纬高，未命中时为 `null`。
+`event.position` 是相对于 canvas 左上角的像素坐标，`event.cartographic` 是命中的经纬高（`LonLatHeight`），未命中时为 `null`。

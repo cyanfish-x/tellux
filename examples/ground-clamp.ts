@@ -23,18 +23,22 @@ const REFERENCE_HEIGHT = 2200
 
 const viewer = new tellux.Viewer(container, {
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
-  camera: {
-    latitude: 36.005,
-    longitude: -112.11,
-    height: 5200,
-    heading: 4,
-    pitch: -28,
-    roll: 0,
+  camera: {
+    destination: {
+      longitude: -112.11,
+      latitude: 36.005,
+      height: 5200,
+    },
+    orientation: {
+      heading: 4,
+      pitch: -28,
+      roll: 0,
+    },
   },
   scene: {
     atmosphere: {

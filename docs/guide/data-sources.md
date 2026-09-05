@@ -40,7 +40,7 @@ const viewer = new tellux.Viewer(container, {
 全球卫星影像 XYZ 瓦片是最常用的底图之一。将 `url` 替换为你的 XYZ 服务地址：
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: 'World Imagery',
   source: {
     type: 'xyz',
@@ -55,7 +55,7 @@ viewer.layers.add({
 科学 WMS 服务通常提供大量全球专题图层（土地覆盖、气溶胶、温度等）。下面以土地覆盖图层为例，通过 `preprocessURL` 追加 `TIME` 参数：
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: 'Land Cover',
   source: {
     type: 'wms',
@@ -86,7 +86,7 @@ viewer.layers.add({
 ```ts
 const tiandituToken = YOUR_TIANDITU_TOKEN
 
-viewer.layers.add({
+viewer.overlays.add({
   name: '天地图影像',
   source: {
     type: 'wmts',
@@ -113,7 +113,7 @@ viewer.layers.add({
 Cesium Ion 也提供 Bing 等影像底图（如 Bing 航空 asset id `2`）：
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: 'Bing aerial',
   source: {
     type: 'cesium-ion',
@@ -130,7 +130,7 @@ viewer.layers.add({
 MVT 适合大规模矢量数据叠加。配合 `getStyle` 回调按 MVT 内部图层名区分样式：
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: '矢量设施',
   source: {
     type: 'mvt',
@@ -157,7 +157,7 @@ viewer.layers.add({
 GeoJSON 适合中量级矢量数据（行政区划、业务边界等），可以直接传对象或 URL：
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: '行政区',
   source: {
     type: 'geojson',
@@ -179,10 +179,12 @@ viewer.layers.add({
 自托管或已获授权的 3D Tiles 可直接用 `tileset.json` URL 加载：
 
 ```ts
-const layer = viewer.load3DTileset({
+const layer = viewer.tilesets.add({
   id: 'discrete-lod',
-  type: 'url',
-  url: 'https://example.com/tileset.json'
+  source: {
+    type: 'url',
+    url: 'https://example.com/tileset.json'
+  }
 })
 
 viewer.flyToTarget(layer.tileset, { distance: 1200 })
@@ -193,11 +195,13 @@ viewer.flyToTarget(layer.tileset, { distance: 1200 })
 摄影测量、建筑群等大型 3D Tiles 通常托管在 Cesium Ion，通过 asset id 加载：
 
 ```ts
-const layer = viewer.load3DTileset({
+const layer = viewer.tilesets.add({
   id: 'photogrammetry',
-  type: 'cesium-ion',
-  apiToken: YOUR_CESIUM_ION_TOKEN,
-  assetId: 75343
+  source: {
+    type: 'cesium-ion',
+    assetId: 75343,
+    apiToken: YOUR_CESIUM_ION_TOKEN
+  }
 })
 ```
 
@@ -218,7 +222,7 @@ function normalizeSatelliteWmsUrl(url: string): string {
   return next.toString()
 }
 
-viewer.layers.add({
+viewer.overlays.add({
   name: '卫星红外',
   source: {
     type: 'wms',

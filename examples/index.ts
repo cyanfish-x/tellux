@@ -83,19 +83,25 @@ if (globeContainer instanceof HTMLElement) {
       shouldAnimate: false,
     },
     terrain: exampleMapServiceConfig.createTerrainOptions(),
-    layers: [
+    overlays: [
       {
         source: exampleMapServiceConfig.createImagerySource(),
       },
     ],
     camera: {
-      latitude: 37.3006381769495,
-      longitude: 109.11101722751532,
-      height: 6406304.285449645,
-      heading: -10.737398475171885,
-      pitch: -89.81337176751433,
-      roll: 0.648027734186861,
-      far: 8000000,
+      destination: {
+        longitude: 109.11101722751532,
+        latitude: 37.3006381769495,
+        height: 6406304.285449645,
+      },
+      orientation: {
+        heading: -10.737398475171885,
+        pitch: -89.81337176751433,
+        roll: 0.648027734186861,
+      },
+      projection: {
+        far: 8000000,
+      },
     },
     scene: {
       atmosphere: {
@@ -106,7 +112,9 @@ if (globeContainer instanceof HTMLElement) {
         coverage: 0.35,
       },
     },
-    resolutionScale: Math.min(window.devicePixelRatio, 1.5),
+    renderer: {
+      resolutionScale: Math.min(window.devicePixelRatio, 1.5),
+    },
   })
 
   viewer.scene.clouds.layer.altitude = 1500
@@ -134,7 +142,7 @@ if (globeContainer instanceof HTMLElement) {
   // so setView cleanly owns the camera; while interacting the rAF is stopped and controls fully owns it.
   let autoRotateFrameId: number | null = null
   let resumeTimerId: ReturnType<typeof setTimeout> | null = null
-  let autoLongitude = viewer.camera.getState().longitude
+  let autoLongitude = viewer.camera.getState().destination.longitude
   let lastFrameTime = 0
 
   const tickAutoRotate = (now: number) => {
@@ -152,7 +160,11 @@ if (globeContainer instanceof HTMLElement) {
         autoLongitude += AUTO_ROTATE_SPEED_DEG_PER_SEC * deltaTime
         // 只推进经度，其余视角参数从当前状态读回，保持高度/俯仰/朝向稳定。
         // Advance longitude only; read the rest back from the current state to keep height/pitch/heading stable.
-        viewer.camera.setView({ ...viewer.camera.getState(), longitude: autoLongitude })
+        const state = viewer.camera.getState()
+        viewer.camera.setView({
+          destination: { ...state.destination, longitude: autoLongitude },
+          orientation: state.orientation,
+        })
       }
     }
     autoRotateFrameId = requestAnimationFrame(tickAutoRotate)
@@ -184,7 +196,7 @@ if (globeContainer instanceof HTMLElement) {
       resumeTimerId = null
       // 从用户操作后的当前位置续转，避免跳回自转离开时的经度。
       // Resume from wherever the user left the camera instead of snapping back to the longitude when rotation paused.
-      autoLongitude = viewer.camera.getState().longitude
+      autoLongitude = viewer.camera.getState().destination.longitude
       startAutoRotate()
     }, AUTO_ROTATE_RESUME_DELAY)
   }

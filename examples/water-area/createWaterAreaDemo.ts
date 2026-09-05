@@ -46,8 +46,8 @@ export interface WaterAreaDemo {
 }
 
 export function configureWaterAreaMap(viewer: Viewer, apiToken: string): void {
-  viewer.layers.removeAll()
-  viewer.layers.add({
+  viewer.overlays.removeAll()
+  viewer.overlays.add({
     id: WATER_AREA_IMAGERY_LAYER_ID,
     name: 'Cesium Ion Imagery',
     source: {
@@ -56,7 +56,7 @@ export function configureWaterAreaMap(viewer: Viewer, apiToken: string): void {
       assetId: WATER_AREA_ION_IMAGERY_ASSET_ID
     }
   })
-  viewer.setTerrain({
+  viewer.terrain.set({
     type: 'cesium-ion',
     assetId: WATER_AREA_ION_TERRAIN_ASSET_ID,
     apiToken,
@@ -74,13 +74,13 @@ export function createWaterAreaDemo({
   optics = {},
   waveOrigin
 }: CreateWaterAreaDemoOptions): WaterAreaDemo {
-  if (viewer.rendererType !== 'webgpu') {
+  if (viewer.renderer.type !== 'webgpu') {
     throw new Error('Water Area requires a WebGPU viewer.')
   }
 
   configureWaterAreaMap(viewer, apiToken)
 
-  const tileset = viewer.tileset
+  const tileset = viewer.globe.raw
   const resolvedWaveOrigin = resolveWaterAreaWaveOrigin(
     waveOrigin,
     viewer.camera.getState()

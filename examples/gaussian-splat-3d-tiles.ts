@@ -36,8 +36,19 @@ const viewer = new tellux.Viewer(container, {
   },
   useDefaultRenderLoop: false,
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  camera: SAMPLE_VIEW,
-  layers: [
+  camera: {
+    destination: {
+      longitude: SAMPLE_VIEW.longitude,
+      latitude: SAMPLE_VIEW.latitude,
+      height: SAMPLE_VIEW.height,
+    },
+    orientation: {
+      heading: SAMPLE_VIEW.heading,
+      pitch: SAMPLE_VIEW.pitch,
+      roll: SAMPLE_VIEW.roll,
+    },
+  },
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
@@ -118,7 +129,7 @@ function syncSplatVisibility() {
 function clearActiveTileset() {
   if (!activeTileset) return
 
-  viewer.scene.threeScene.remove(activeTileset.group)
+  viewer.scene.raw.remove(activeTileset.group)
   activeTileset.dispose()
   activeTileset = null
   previousLoadedTileCount = -1
@@ -126,13 +137,13 @@ function clearActiveTileset() {
 
 function createGaussianSplatTileset(url: string) {
   const tileset = new TilesRenderer(url)
-  tileset.setCamera(viewer.camera.threeCamera)
-  tileset.setResolutionFromRenderer(viewer.camera.threeCamera, viewer.renderer)
+  tileset.setCamera(viewer.camera.raw)
+  tileset.setResolutionFromRenderer(viewer.camera.raw, viewer.renderer.raw)
   tileset.errorTarget = 0.8
   tileset.registerPlugin(
     new GaussianSplatPlugin({
-      renderer: viewer.renderer,
-      scene: viewer.scene.threeScene,
+      renderer: viewer.renderer.raw,
+      scene: viewer.scene.raw,
       minRaycastOpacity: 0.08,
       sparkRendererOptions: {
         focalAdjustment: 2,
@@ -191,7 +202,7 @@ function loadGaussianSplatTileset() {
   activeTileset = createGaussianSplatTileset(url)
   attachTilesetErrorHandler(activeTileset)
   syncSplatVisibility()
-  viewer.scene.threeScene.add(activeTileset.group)
+  viewer.scene.raw.add(activeTileset.group)
   flyToSample()
   setStatus(
     t({
@@ -222,9 +233,9 @@ function updateSplatStatus() {
 }
 
 function frame(time: number) {
-  const camera = viewer.camera.threeCamera
+  const camera = viewer.camera.raw
   if (activeTileset && !loadFailed) {
-    activeTileset.setResolutionFromRenderer(camera, viewer.renderer)
+    activeTileset.setResolutionFromRenderer(camera, viewer.renderer.raw)
     if (activeTileset.group.visible) {
       try {
         activeTileset.update()

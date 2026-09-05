@@ -50,9 +50,10 @@ import tellux from 'tellux'
 
 const viewer = new tellux.Viewer('viewer', {
   terrain: {
+    type: 'url',
     url: 'https://example.com/terrain/'
   },
-  layers: [
+  overlays: [
     {
       source: {
         type: 'xyz',
@@ -61,10 +62,14 @@ const viewer = new tellux.Viewer('viewer', {
     }
   ],
   camera: {
-    longitude: 121.4737,
-    latitude: 31.2304,
-    height: 1200,
-    pitch: -25
+    destination: {
+      longitude: 121.4737,
+      latitude: 31.2304,
+      height: 1200
+    },
+    orientation: {
+      pitch: -25
+    }
   }
 })
 ```

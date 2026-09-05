@@ -123,7 +123,7 @@ results.forEach((result, i) => {
 
 ## 高亮
 
-`viewer.highlight` 统一选中态视觉；可直接传入 `ViewerPickResult`（`entity` 当前无高亮、会被忽略）：
+`viewer.highlighter` 统一选中态视觉；可直接传入 `ViewerPickResult`（`entity` 当前无高亮、会被忽略）：
 
 - `Object3D` / `type: 'object'` → WebGL 后处理描边
 - `Picked3DTilesFeature` / `type: 'tilesFeature'` → 半透明叠加几何
@@ -131,11 +131,11 @@ results.forEach((result, i) => {
 
 ```ts
 viewer.on('click', (event) => {
-  if (event.pick) viewer.highlight.set(event.pick)
-  else viewer.highlight.clear()
+  if (event.pick) viewer.highlighter.set(event.pick)
+  else viewer.highlighter.clear()
 })
-viewer.highlight.setHover(event.pick)
-viewer.highlight.clear()
+viewer.highlighter.setHover(event.pick)
+viewer.highlighter.clear()
 ```
 
 WebGPU 下描边不可用；Tiles overlay 仍可用。建议 `hism: { showPickMarker: false }` 与描边并用。

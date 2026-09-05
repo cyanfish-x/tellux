@@ -34,12 +34,23 @@ const viewer = new tellux.Viewer(container, {
     currentTime: initialClockTime,
   },
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
-  camera: MELBOURNE_VIEW,
+  camera: {
+    destination: {
+      longitude: MELBOURNE_VIEW.longitude,
+      latitude: MELBOURNE_VIEW.latitude,
+      height: MELBOURNE_VIEW.height,
+    },
+    orientation: {
+      heading: MELBOURNE_VIEW.heading,
+      pitch: MELBOURNE_VIEW.pitch,
+      roll: MELBOURNE_VIEW.roll,
+    },
+  },
   scene: {
     atmosphere: {
       lighting: {
@@ -113,11 +124,13 @@ function loadPointCloudTileset() {
   }
 
   activeLayer?.remove()
-  activeLayer = viewer.load3DTileset({
-    type: "cesium-ion",
+  activeLayer = viewer.tilesets.add({
+    source: {
+      type: "cesium-ion",
+      assetId: assetId,
+      apiToken: apiToken,
+    },
     id: "example-point-cloud-3d-tiles",
-    assetId,
-    apiToken,
     pointCloudShading: {
       attenuation: panel.controls.shading.attenuation,
       eyeDomeLighting: panel.controls.shading.edl,

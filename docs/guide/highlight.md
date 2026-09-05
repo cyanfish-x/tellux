@@ -1,6 +1,6 @@
 # 高亮
 
-Tellux 提供统一的 `viewer.highlight` 门面：按目标类型自动选择实现，调用方不必关心是描边还是贴膜。
+Tellux 提供统一的 `viewer.highlighter` 门面：按目标类型自动选择实现，调用方不必关心是描边还是贴膜。
 
 | 目标 | 视觉 | 实现 |
 | --- | --- | --- |
@@ -16,14 +16,14 @@ Tellux 提供统一的 `viewer.highlight` 门面：按目标类型自动选择�
 ```ts
 viewer.on('click', (event) => {
   if (event.pick) {
-    viewer.highlight.set(event.pick)
+    viewer.highlighter.set(event.pick)
     return
   }
-  viewer.highlight.clear()
+  viewer.highlighter.clear()
 })
 
 viewer.on('mousemove', (event) => {
-  viewer.highlight.setHover(event.pick)
+  viewer.highlighter.setHover(event.pick)
 })
 ```
 
@@ -31,17 +31,17 @@ viewer.on('mousemove', (event) => {
 
 ```ts
 const hit = viewer.pick(event.position, { root: model.root })
-if (hit?.type === 'object') viewer.highlight.set(model.root)
+if (hit?.type === 'object') viewer.highlighter.set(model.root)
 // 或显式：
-viewer.highlight.set({ type: 'object', object: mesh })
+viewer.highlighter.set({ type: 'object', object: mesh })
 ```
 
 HISM 单实例描边（描当前 LOD 下该实例的全部 parts）：
 
 ```ts
 const pick = viewer.pick(event.position, { layers: ['hismInstance'] })
-if (pick) viewer.highlight.set(pick)
-else viewer.highlight.clear()
+if (pick) viewer.highlighter.set(pick)
+else viewer.highlighter.clear()
 ```
 
 关闭黄色命中点标记（与描边并用时建议关闭）：
@@ -80,8 +80,8 @@ const viewer = new tellux.Viewer(container, {
 运行时：
 
 ```ts
-viewer.scene.highlight.outline.color = '#38bdf8'
-viewer.scene.highlight.overlay.opacity = 0.4
+viewer.highlighter.outline.color = '#38bdf8'
+viewer.highlighter.overlay.opacity = 0.4
 ```
 
 ## API

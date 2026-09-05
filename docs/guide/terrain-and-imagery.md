@@ -10,12 +10,12 @@ const tiandituToken = import.meta.env.VITE_TIANDITU_TOKEN ?? ''
 const viewer = new tellux.Viewer(container, {
   terrain: {
     type: 'tianditu',
-    token: tiandituToken,
+    apiToken: tiandituToken,
     tileLoading: {
       enableTileSplitting: true
     }
   },
-  layers: [
+  overlays: [
     {
       source: {
         type: 'xyz',
@@ -30,9 +30,9 @@ const viewer = new tellux.Viewer(container, {
 也可以显式传入多子域 swdx URL 列表（与 Cesium `GeoTerrainProvider` 官方示例一致）：
 
 ```ts
-viewer.setTerrain({
+viewer.terrain.set({
   type: 'tianditu',
-  token: tiandituToken,
+  apiToken: tiandituToken,
   urls: ['0', '1', '2', '3', '4', '5', '6', '7'].map(
     (subdomain) =>
       `https://t${subdomain}.tianditu.gov.cn/mapservice/swdx?T=elv_c&tk=${tiandituToken}`
@@ -45,6 +45,7 @@ viewer.setTerrain({
 ```ts
 const viewer = new tellux.Viewer(container, {
   terrain: {
+    type: 'url',
     url: 'https://example.com/terrain/layer.json',
     tileLoading: {
       errorTarget: 1,
@@ -58,18 +59,18 @@ const viewer = new tellux.Viewer(container, {
 运行时可以切换或移除地形：
 
 ```ts
-viewer.setTerrain({ url: 'https://example.com/terrain/' })
-viewer.setTerrain(null)
+viewer.terrain.set({ type: 'url', url: 'https://example.com/terrain/' })
+viewer.terrain.clear()
 ```
 
 ## 影像图层
 
-所有影像图层通过 `viewer.layers` 管理。`add(options)` 返回图层句柄，可以链式调用其方法。
+所有影像图层通过 `viewer.overlays` 管理。`add(options)` 返回图层句柄，可以链式调用其方法。
 
 ### XYZ 影像
 
 ```ts
-const layer = viewer.layers.add({
+const layer = viewer.overlays.add({
   name: 'World imagery',
   source: {
     type: 'xyz',
@@ -82,7 +83,7 @@ const layer = viewer.layers.add({
 ### WMS 影像
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: 'Boundary',
   source: {
     type: 'wms',
@@ -103,7 +104,7 @@ WMTS 支持 KVP 服务根 URL（由库自动拼装 GetTile 参数）或 RESTful 
 ```ts
 const tiandituToken = import.meta.env.VITE_TIANDITU_TOKEN ?? ''
 
-viewer.layers.add({
+viewer.overlays.add({
   name: '天地图影像',
   source: {
     type: 'wmts',
@@ -127,7 +128,7 @@ viewer.layers.add({
 ### Cesium Ion 影像
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: 'Bing aerial',
   source: {
     type: 'cesium-ion',
@@ -139,19 +140,19 @@ viewer.layers.add({
 
 ## 图层管理
 
-`viewer.layers.add(...)` 返回的图层句柄（`ImageryLayer`）提供运行时控制能力；也可以通过 `viewer.layers` 在管理器层面操作。
+`viewer.overlays.add(...)` 返回的图层句柄（`ImageryLayer`）提供运行时控制能力；也可以通过 `viewer.overlays` 在管理器层面操作。
 
 ### 显隐切换
 
 ```ts
-const layer = viewer.layers.add({ source: { /* ... */ } })
+const layer = viewer.overlays.add({ source: { /* ... */ } })
 
 // 通过句柄
 layer.show = false
 layer.setVisible(true)
 
 // 通过管理器（按 id）
-const layer = viewer.layers.get('my-layer')
+const layer = viewer.overlays.get('my-layer')
 layer.show = false
 ```
 
@@ -168,21 +169,21 @@ layer.setStyle({
 
 ### 图层排序
 
-图层在 viewer 中的渲染顺序由其在 `viewer.layers` 中的位置决定。可以通过句柄或管理器调整顺序：
+图层在 viewer 中的渲染顺序由其在 `viewer.overlays` 中的位置决定。可以通过句柄或管理器调整顺序：
 
 ```ts
 // 把图层移到最底层（最先绘制）
 layer.moveTo(0)
 
 // 通过管理器按 id 移动
-viewer.layers.move('my-layer', 2)
+viewer.overlays.move('my-layer', 2)
 ```
 
 ### 重命名
 
 ```ts
 layer.setName('卫星影像')
-viewer.layers.get('my-layer')?.setName('卫星影像')
+viewer.overlays.get('my-layer')?.setName('卫星影像')
 ```
 
 ### 移除图层
@@ -192,10 +193,10 @@ viewer.layers.get('my-layer')?.setName('卫星影像')
 layer.remove()
 
 // 通过管理器按 id 移除
-viewer.layers.remove('my-layer')
+viewer.overlays.remove('my-layer')
 
 // 一次移除全部
-viewer.layers.removeAll()
+viewer.overlays.removeAll()
 ```
 
 图层被移除后，原句柄会立即失效。继续调用 `setName`、`setVisible`、`setStyle` 或 `moveTo` 不会再修改句柄快照或 Viewer；重复调用 `remove()` 返回 `false`。即使之后添加了相同 id 的新图层，旧句柄也不能操作新图层。
@@ -204,10 +205,10 @@ viewer.layers.removeAll()
 
 ```ts
 // 获取全部图层（返回副本，不会影响内部顺序）
-const all = viewer.layers.getAll()
+const all = viewer.overlays.getAll()
 
 // 按 id 查找，不存在时返回 null
-const layer = viewer.layers.get('my-layer')
+const layer = viewer.overlays.get('my-layer')
 ```
 
 ## 矢量图层
@@ -219,7 +220,7 @@ const layer = viewer.layers.get('my-layer')
 `geojson` 源可以直接传入 GeoJSON 对象，或通过 `url` 让 Tellux 在初始化时请求：
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: '行政区',
   source: {
     type: 'geojson',
@@ -240,7 +241,7 @@ viewer.layers.add({
 需要按 feature 区分样式时，用 `getStyle` 回调，它接收 `(feature, properties)`，返回 `null` 表示不渲染该 feature：
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   source: {
     type: 'geojson',
     url: '/data/districts.geojson'
@@ -263,7 +264,7 @@ viewer.layers.add({
 `mvt` 源从瓦片 URL 模板加载矢量瓦片，适合大规模矢量数据：
 
 ```ts
-viewer.layers.add({
+viewer.overlays.add({
   name: '道路',
   source: {
     type: 'mvt',

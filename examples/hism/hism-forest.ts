@@ -302,11 +302,11 @@ function updateHud() {
 viewer.on("click", (event) => {
   const pick = viewer.pick(event.position, { layers: ["hismInstance"] })
   if (!pick || pick.type !== "hismInstance") {
-    viewer.highlight.clear()
+    viewer.highlighter.clear()
     if (hudPick) hudPick.textContent = t({ zh: "未命中 HISM 实例", en: "No HISM instance hit" })
     return
   }
-  viewer.highlight.set(pick)
+  viewer.highlighter.set(pick)
   const { instance } = pick
   if (hudPick) {
     hudPick.textContent = t({ zh: "命中 {layerId} · cluster {clusterKey} · archetype {archetypeIndex} · LOD {lodIndex} · instance {instanceId}", en: "Hit {layerId} · cluster {clusterKey} · archetype {archetypeIndex} · LOD {lodIndex} · instance {instanceId}" }, {
@@ -332,7 +332,7 @@ const hismForestSchema = () =>
       },
       regenerate: {
         onClick: () => {
-          viewer.highlight.clear()
+          viewer.highlighter.clear()
           void createScene(createTemplates())
         },
         label: t({ zh: "重新生成", en: "Regenerate" }),

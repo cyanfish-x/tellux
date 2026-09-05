@@ -9,7 +9,7 @@ import tellux from 'tellux'
 
 const viewer = new tellux.Viewer('viewer', {
   // 初始影像图层（数组顺序 = 从下到上绘制）
-  layers: [
+  overlays: [
     {
       name: 'ArcGIS 影像',
       source: {
@@ -28,11 +28,15 @@ const viewer = new tellux.Viewer('viewer', {
   },
   // 初始相机：经纬度/姿态用「度」，高度用「米」
   camera: {
-    latitude: 31.2304,
-    longitude: 121.4737,
-    height: 1200,
-    pitch: -25
-  },
+      destination: {
+        longitude: 121.4737,
+        latitude: 31.2304,
+        height: 1200,
+      },
+      orientation: {
+        pitch: -25,
+      },
+    },
   scene: {
     atmosphere: { lighting: { mode: 'light-source' } },
     clouds: { show: false }
@@ -54,13 +58,18 @@ const viewer = await tellux.Viewer.create(container, {
 ### 顶层常用属性
 
 ```ts
-viewer.scene          // 场景控制（大气/云/后处理）— 见 scene-effects.md
+viewer.scene          // 场景控制（大气/云/地表）— 见 scene-effects.md
 viewer.camera         // 相机 — 见下文
-viewer.layers         // 影像图层管理器 — 见下文
-viewer.controls       // 地球交互控制器（拖拽/滚轮）
+viewer.overlays       // 影像图层管理器 — 见下文
+viewer.tilesets       // 场景 3D Tiles
+viewer.models         // glTF 模型
+viewer.terrain        // 地形门面
+viewer.globe          // 裸球 / 地形表面（show / ellipsoid / raw）
+viewer.postProcess    // 后处理（曝光、Bloom、TAA）
+viewer.highlighter    // 统一高亮
+viewer.controls       // 地球交互控制器（拖拽/滚轮）；完整 API 在 .raw
 viewer.clock          // 统一场景模拟时钟（内置驱动太阳、月亮和大气）
-viewer.renderer       // 底层 Three.js renderer
-viewer.tileset        // 底层 3D Tiles renderer（地形开启时返回地形渲染器）
+viewer.renderer       // 渲染器门面；原生对象是 renderer.raw
 ```
 
 ### 场景时钟
@@ -128,16 +137,19 @@ viewer.flyToTarget(customObject3D, { distance: 500 })
 ### 瞬时切换 / 取消 / 读取
 
 ```ts
-viewer.camera.setView({ latitude: 39.9, longitude: 116.4, height: 2000, pitch: -45 })
+viewer.camera.setView({
+  destination: { latitude: 39.9, longitude: 116.4, height: 2000 },
+  orientation: { pitch: -45 }
+})
 viewer.camera.cancelFlight()                       // 取消进行中的飞行
 const height = viewer.camera.getCurrentHeight()    // 当前海拔（米）
 const state = viewer.camera.getState()             // 完整视角，可回传给 setView
-const threeCam = viewer.camera.threeCamera         // 底层 THREE.PerspectiveCamera
+const threeCam = viewer.camera.raw         // 底层 THREE.PerspectiveCamera
 ```
 
 ## 影像图层
 
-全部通过 `viewer.layers` 管理。`add()` 返回图层句柄，可链式调用。
+全部通过 `viewer.overlays` 管理。`add()` 返回图层句柄，可链式调用。
 
 ### 数据源（`source.type`）
 
@@ -152,13 +164,13 @@ const threeCam = viewer.camera.threeCamera         // 底层 THREE.PerspectiveCa
 
 ```ts
 // XYZ 底图
-viewer.layers.add({
+viewer.overlays.add({
   name: 'ArcGIS 影像',
   source: { type: 'xyz', url: 'https://example.com/imagery/{z}/{y}/{x}', levels: 19 }
 })
 
 // WMS（NASA GIBS 土地覆盖）
-viewer.layers.add({
+viewer.overlays.add({
   name: '土地覆盖',
   source: {
     type: 'wms',
@@ -173,7 +185,7 @@ viewer.layers.add({
 })
 
 // WMTS（天地图影像，需 tk 密钥）
-viewer.layers.add({
+viewer.overlays.add({
   name: '天地图影像',
   source: {
     type: 'wmts',
@@ -192,14 +204,14 @@ viewer.layers.add({
 })
 
 // GeoJSON
-viewer.layers.add({
+viewer.overlays.add({
   name: '行政区',
   source: { type: 'geojson', url: '/data/districts.geojson', resolution: 1024 },
   style: { fill: 'rgba(20,184,166,0.14)', stroke: '#ff0000', strokeWidth: 3 }
 })
 
 // MVT（按图层名区分样式）
-viewer.layers.add({
+viewer.overlays.add({
   name: '电力设施',
   source: { type: 'mvt', url: 'https://example.com/tiles/{z}/{x}/{y}.pbf', levels: 15, resolution: 1024 },
   style: {
@@ -216,7 +228,7 @@ viewer.layers.add({
 ### 图层管理（句柄方法）
 
 ```ts
-const layer = viewer.layers.add({ source: { /*...*/ } })
+const layer = viewer.overlays.add({ source: { /*...*/ } })
 
 layer.show = false                    // 显隐（或 layer.setVisible(true)）
 layer.setStyle({ opacity: 0.5 })      // 样式（opacity / color / fill / stroke...）
@@ -225,11 +237,11 @@ layer.setName('新名字')
 layer.remove()                        // 移除
 
 // 管理器层面
-viewer.layers.get('id')               // 按 id 查找，不存在返回 null
-viewer.layers.getAll()                // 全部（返回副本）
-viewer.layers.move('id', 2)
-viewer.layers.remove('id')
-viewer.layers.removeAll()
+viewer.overlays.get('id')               // 按 id 查找，不存在返回 null
+viewer.overlays.getAll()                // 全部（返回副本）
+viewer.overlays.move('id', 2)
+viewer.overlays.remove('id')
+viewer.overlays.removeAll()
 ```
 
 ### 矢量样式回调
@@ -246,13 +258,13 @@ viewer.layers.removeAll()
 ```ts
 // 初始化
 new tellux.Viewer(container, {
-  terrain: { url: 'https://example.com/terrain/layer.json' }
+  terrain: { type: 'url', url: 'https://example.com/terrain/layer.json' }
   // 或 cesium-ion: { type: 'cesium-ion', assetId: 1, apiToken }
 })
 
 // 运行时切换 / 移除
-viewer.setTerrain({ url: 'https://example.com/another/' })
-viewer.setTerrain(null)
+viewer.terrain.set({ type: 'url', url: 'https://example.com/another/' })
+viewer.terrain.clear()
 ```
 
 `tileLoading` 调参：
@@ -269,15 +281,18 @@ viewer.setTerrain(null)
 
 ```ts
 // 从 tileset.json
-const layer = viewer.load3DTileset({
+const layer = viewer.tilesets.add({
   id: 'city',
-  type: 'url',
-  url: 'https://example.com/tileset.json'
+  source: {
+    type: 'url',
+    url: 'https://example.com/tileset.json'
+  }
 })
 
 // 从 Cesium Ion
-const layer = viewer.load3DTileset({
-  id: 'photo', type: 'cesium-ion', apiToken, assetId: 75343
+const layer = viewer.tilesets.add({
+  id: 'photo',
+  source: { type: 'cesium-ion', apiToken, assetId: 75343 }
 })
 
 // 定位过去
@@ -286,8 +301,8 @@ viewer.flyToTarget(layer.tileset, { distance: 1200, pitch: -35 })
 // 句柄：TilesetLayer
 layer.show = false
 layer.remove()
-viewer.get3DTileset('city')
-viewer.remove3DTileset('city')
+viewer.tilesets.get('city')
+viewer.tilesets.remove('city')
 ```
 
 `materialMode` 和 `creasedNormals`：
@@ -298,10 +313,12 @@ viewer.remove3DTileset('city')
 `pointCloudShading`（Cesium 形点云着色；Tellux 默认关闭 attenuation / EDL）：
 
 ```ts
-viewer.load3DTileset({
-  type: 'cesium-ion',
-  apiToken,
-  assetId: 43978,
+viewer.tilesets.add({
+  source: {
+    type: 'cesium-ion',
+    apiToken,
+    assetId: 43978
+  },
   pointCloudShading: {
     attenuation: true,
     eyeDomeLighting: true,
@@ -317,9 +334,11 @@ layer.pointCloudShading.eyeDomeLightingStrength = 1.2
 `tileLoading`（场景 3D Tiles LOD）：
 
 ```ts
-viewer.load3DTileset({
-  type: 'url',
-  url: '/3dtiles/hk/tileset.json',
+viewer.tilesets.add({
+  source: {
+    type: 'url',
+    url: '/3dtiles/hk/tileset.json'
+  },
   creasedNormals: true,
   tileLoading: {
     errorTarget: 4,      // 目标屏幕空间误差（像素），越小越细，默认 16
@@ -330,10 +349,10 @@ viewer.load3DTileset({
 
 ## 模型（glTF / GLB）
 
-`addModel` 按经纬高放置，内部处理矩阵计算和 Draco 解码：
+`models.add` 按经纬高放置，内部处理矩阵计算和 Draco 解码：
 
 ```ts
-const model = viewer.addModel({
+const model = viewer.models.add({
   type: 'gltf',
   url: '/models/wind-turbine.glb',
   coordinates: { longitude: 121.4737, latitude: 31.2304, height: 0 },
@@ -355,7 +374,7 @@ model.remove()
 
 `type` 固定 `'gltf'`，`url` 可指 `.gltf` 或 `.glb`。`scale` 支持数字（均匀）或 `[x,y,z]`。需要贴合地形时先用 `sampleHeight` 查高度再传入 `height`。
 
-需要呈现建筑窗灯等夜间自发光时，使用 `lighting: 'local'`（`materialMode: 'preserve'` 时默认就是 local）保留 glTF 的 `emissiveMap` / 点光，并打开 `viewer.scene.atmosphere.lighting.photometric` 与 `viewer.scene.postProcess.autoExposure`。`photometric` 只缩放 Takram 太阳。点光要挂在带 `scale` 的模型根上；若上游把 `gltf.scene` 做了 bbox 平移而灯是兄弟节点，写入未平移模型时要用 `L - offset`。intensity 随世界尺度按距离平方补偿（上游 Non-geospatial 是 `scale={0.01}` / `0.1`）。夜景不依赖 Bloom，不要关太阳。
+需要呈现建筑窗灯等夜间自发光时，使用 `lighting: 'local'`（`materialMode: 'preserve'` 时默认就是 local）保留 glTF 的 `emissiveMap` / 点光，并打开 `viewer.scene.atmosphere.lighting.photometric` 与 `viewer.postProcess.autoExposure`。`photometric` 只缩放 Takram 太阳。点光要挂在带 `scale` 的模型根上；若上游把 `gltf.scene` 做了 bbox 平移而灯是兄弟节点，写入未平移模型时要用 `L - offset`。intensity 随世界尺度按距离平方补偿（上游 Non-geospatial 是 `scale={0.01}` / `0.1`）。夜景不依赖 Bloom，不要关太阳。
 
 ## HISM 大规模实例化
 
@@ -401,7 +420,7 @@ viewer.on('click', (e) => {
   const hit = viewer.pick(e.position, { layers: ['hismInstance'] })
   if (hit?.type === 'hismInstance') {
     console.log(hit.instance.layerId, hit.instance.instanceId)
-    viewer.highlight.set(hit)
+    viewer.highlighter.set(hit)
   }
 })
 
@@ -429,6 +448,6 @@ requestAnimationFrame(animate)
 像素比与色调曝光（顶层属性）：
 
 ```ts
-viewer.resolutionScale = 1.5
-viewer.toneMappingExposure = 8
+viewer.renderer.resolutionScale = 1.5
+viewer.postProcess.toneMappingExposure = 8
 ```

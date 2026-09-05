@@ -109,17 +109,21 @@ if (!(container instanceof HTMLElement)) {
 
 const viewer = new tellux.Viewer(container, {
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
-  camera: {
-    latitude: 30,
-    longitude: 103,
-    height: 1500000,
-    heading: 0,
-    pitch: -32,
+  camera: {
+    destination: {
+      longitude: 103,
+      latitude: 30,
+      height: 1500000,
+    },
+    orientation: {
+      heading: 0,
+      pitch: -32,
+    },
   },
   scene: {
     clouds: {
@@ -215,7 +219,7 @@ function stopFocalTween() {
 }
 
 function setFocalLength(focalLengthMm: number) {
-  const camera = viewer.camera.threeCamera
+  const camera = viewer.camera.raw
   camera.fov = focalLengthToFov(focalLengthMm)
   camera.updateProjectionMatrix()
 }
@@ -226,7 +230,7 @@ function tweenFocalLengthTo(
   flightId: number
 ) {
   stopFocalTween()
-  const startFocalLength = fovToFocalLength(viewer.camera.threeCamera.fov)
+  const startFocalLength = fovToFocalLength(viewer.camera.raw.fov)
   const delta = targetFocalLength - startFocalLength
   if (delta === 0 || durationSeconds <= 0) {
     setFocalLength(targetFocalLength)

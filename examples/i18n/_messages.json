@@ -328,8 +328,8 @@
     "Multi-source imagery"
   ],
   "portal.capabilities.f02.body": [
-    "通过统一的 <code>viewer.layers</code> 管理 XYZ、Cesium Ion imagery、WMS 和 MVT，支持透明度、显隐和顺序。",
-    "Manage XYZ, Cesium Ion imagery, WMS, and MVT via <code>viewer.layers</code>, with opacity, visibility, and ordering."
+    "通过统一的 <code>viewer.overlays</code> 管理 XYZ、Cesium Ion imagery、WMS 和 MVT，支持透明度、显隐和顺序。",
+    "Manage XYZ, Cesium Ion imagery, WMS, and MVT via <code>viewer.overlays</code>, with opacity, visibility, and ordering."
   ],
   "portal.capabilities.f03.title": [
     "3D Tiles 场景",
@@ -984,8 +984,8 @@
     "Enter token or set VITE_CESIUM_ION_TOKEN."
   ],
   "example.google-photorealistic-3d-tiles.status.loaded": [
-    "已通过 viewer.load3DTileset 加载城市级海量 3D Tiles 模型。",
-    "City-scale 3D Tiles loaded via viewer.load3DTileset."
+    "已通过 viewer.tilesets.add 加载城市级海量 3D Tiles 模型。",
+    "City-scale 3D Tiles loaded via viewer.tilesets.add."
   ],
   "example.google-photorealistic-3d-tiles.status.prompt": [
     "输入 Cesium Ion token 后加载城市级海量 3D Tiles 模型。",
@@ -1116,12 +1116,12 @@
     "Enter Ion terrain asset id and token, or set defaults."
   ],
   "example.terrain.status.loadedTianditu": [
-    "天地图 swdx 地形已通过 viewer.setTerrain 加载。",
-    "Tianditu swdx terrain loaded via viewer.setTerrain."
+    "天地图 swdx 地形已通过 viewer.terrain.set 加载。",
+    "Tianditu swdx terrain loaded via viewer.terrain.set."
   ],
   "example.terrain.status.loadedIon": [
-    "Cesium Ion 地形已通过 viewer.setTerrain 加载。",
-    "Cesium Ion terrain loaded via viewer.setTerrain."
+    "Cesium Ion 地形已通过 viewer.terrain.set 加载。",
+    "Cesium Ion terrain loaded via viewer.terrain.set."
   ],
   "example.terrain.status.disabled": [
     "地形已关闭，Viewer 已切回无地形模式。",

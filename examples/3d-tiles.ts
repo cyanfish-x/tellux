@@ -78,7 +78,7 @@ const viewer = new tellux.Viewer(container, {
 
   terrain: exampleMapServiceConfig.createTerrainOptions(),
 
-  layers: [
+  overlays: [
 
     {
 
@@ -225,16 +225,13 @@ function loadUrlTileset() {
 
   activateLayer(
 
-    viewer.load3DTileset({
-
-      type: "url",
-
+    viewer.tilesets.add({
+      source: {
+        type: "url",
+        url: url,
+      },
       id: "example-3d-tiles",
-
-      url,
-
       creasedNormals: true,
-
     }),
 
     "URL 3D Tiles"
@@ -279,18 +276,14 @@ function loadIonTileset() {
 
   activateLayer(
 
-    viewer.load3DTileset({
-
-      type: "cesium-ion",
-
+    viewer.tilesets.add({
+      source: {
+        type: "cesium-ion",
+        assetId: assetId,
+        apiToken: apiToken,
+      },
       id: "example-3d-tiles",
-
-      assetId,
-
-      apiToken,
-
       creasedNormals: true,
-
     }),
 
     "Cesium Ion 3D Tiles"

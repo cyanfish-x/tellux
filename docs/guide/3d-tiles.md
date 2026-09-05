@@ -5,20 +5,24 @@ Tellux 支持加载独立的 3D Tiles 场景数据。该能力适合倾斜摄影
 ## 从 tileset.json 加载
 
 ```ts
-const layer = viewer.load3DTileset({
-  type: 'url',
+const layer = viewer.tilesets.add({
   id: 'city',
-  url: 'https://example.com/tileset.json'
+  source: {
+    type: 'url',
+    url: 'https://example.com/tileset.json'
+  }
 })
 ```
 
 摄影测量等街景模型通常需要更细的 LOD，并配合 `creasedNormals` 改善后处理光照：
 
 ```ts
-const layer = viewer.load3DTileset({
-  type: 'url',
+const layer = viewer.tilesets.add({
   id: 'hk',
-  url: '/3dtiles/hk/tileset.json',
+  source: {
+    type: 'url',
+    url: '/3dtiles/hk/tileset.json'
+  },
   creasedNormals: true,
   tileLoading: {
     errorTarget: 4,
@@ -34,11 +38,13 @@ const layer = viewer.load3DTileset({
 ## 从 Cesium Ion 加载
 
 ```ts
-const layer = viewer.load3DTileset({
-  type: 'cesium-ion',
+const layer = viewer.tilesets.add({
   id: 'ion-tileset',
-  apiToken: cesiumIonToken,
-  assetId: 123456
+  source: {
+    type: 'cesium-ion',
+    assetId: 123456,
+    apiToken: cesiumIonToken
+  }
 })
 ```
 
@@ -47,10 +53,12 @@ Cesium Ion 上的 Melbourne Point Cloud（asset `43978`）这类资源使用 leg
 点云通过 Cesium 形 `pointCloudShading` 控制着色（实现跟 Tellux 大气管线，**不是**像素级复刻 Cesium）：
 
 ```ts
-const layer = viewer.load3DTileset({
-  type: 'cesium-ion',
-  apiToken,
-  assetId: 43978,
+const layer = viewer.tilesets.add({
+  source: {
+    type: 'cesium-ion',
+    apiToken,
+    assetId: 43978
+  },
   pointCloudShading: {
     attenuation: true,
     geometricErrorScale: 1,

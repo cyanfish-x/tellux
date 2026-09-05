@@ -10,18 +10,24 @@ async function main() {
       type: "webgpu",
     },
     terrain: exampleMapServiceConfig.createTerrainOptions(),
-    layers: [
+    overlays: [
       {
         source: exampleMapServiceConfig.createImagerySource(),
       },
     ],
     camera: {
-      latitude: 48,
-      longitude: -82,
-      height: 12000000,
-      heading: 0,
-      pitch: -90,
-      far: 30000000,
+      destination: {
+        longitude: -82,
+        latitude: 48,
+        height: 12000000,
+      },
+      orientation: {
+        heading: 0,
+        pitch: -90,
+      },
+      projection: {
+        far: 30000000,
+      },
     },
     scene: {
       atmosphere: {

@@ -53,18 +53,22 @@ if (!(container instanceof HTMLElement)) {
 
 const viewer = new tellux.Viewer(container, {
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {
-    latitude: 40.03178523327751,
-    longitude: -75.61915690102107,
-    height: 1121.7432408693376,
-    heading: 13.545497727639216,
-    pitch: -25.45946281708948,
-    roll: -0.000008662865451903576,
+    destination: {
+      longitude: -75.61915690102107,
+      latitude: 40.03178523327751,
+      height: 1121.7432408693376,
+    },
+    orientation: {
+      heading: 13.545497727639216,
+      pitch: -25.45946281708948,
+      roll: -0.000008662865451903576,
+    },
   },
   scene: {
     atmosphere: {
@@ -129,10 +133,12 @@ function waitForBrowserPaint() {
 
 async function initializeMixedSamplingScene() {
   setStatus(t({ zh: "正在加载 CesiumGS Discrete LOD 3D Tiles...", en: "Loading CesiumGS Discrete LOD 3D Tiles..." }))
-  tilesetLayer = viewer.load3DTileset({
-    type: "url",
+  tilesetLayer = viewer.tilesets.add({
+    source: {
+      type: "url",
+      url: MIXED_TILESET_URL,
+    },
     id: "mixed-height-sampling-tileset",
-    url: MIXED_TILESET_URL,
   })
 
   await waitForBrowserPaint()
@@ -224,7 +230,7 @@ async function createHorseHerd() {
     return
   }
 
-  viewer.scene.threeScene.add(herd.group)
+  viewer.scene.raw.add(herd.group)
   setActionsDisabled(false)
   setInstanceCount(`${sampledPlacements.length} / ${HORSE_COUNT}`)
   setStatus(
@@ -307,7 +313,7 @@ async function buildHorseHerd(
     phases,
     startedAt: performance.now() / 1000,
     dispose() {
-      viewer.scene.threeScene.remove(group)
+      viewer.scene.raw.remove(group)
       mixer.stopAllAction()
       geometry.dispose()
       disposeMaterial(material)

@@ -54,7 +54,7 @@ pnpm examples
 
 ## 3D Tiles 示例
 
-`3d-tiles.html` 演示 `viewer.load3DTileset(...)`。3D Tiles 会作为独立场景数据加入 Viewer，
+`3d-tiles.html` 演示 `viewer.tilesets.add(...)`。3D Tiles 会作为独立场景数据加入 Viewer，
 不参与影像 overlay 管线。示例支持直接加载 `tileset.json` URL，也支持加载 Cesium Ion 3D Tiles 资源。
 
 默认加载 `data.cyanfish.site` 的香港 3D Tiles：开发服务器下经 Vite proxy（`/3dtiles -> https://data.cyanfish.site`）
@@ -90,7 +90,7 @@ VITE_GAUSSIAN_SPLAT_3D_TILESET_URL=https://example.com/3dgs/tileset.json
 
 ## 天地图地形示例
 
-`terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.setTerrain(...)`，可在天地图
+`terrain.html` 演示 `ViewerOptions.terrain` 和 `viewer.terrain.set(...)`，可在天地图
 swdx `elv_c` 与 Cesium Ion terrain 之间切换。本地默认跟 `map-sources.config.ts`
 一样走 Cesium Ion；把 `localMapSourceProfile` 改成 `'tianditu'` 后，默认地形改为
 天地图 swdx（经 Vite 代理改写 Referer）。
@@ -119,5 +119,5 @@ VITE_CESIUM_TERRAIN_URL=https://example.com/terrain/
 ## Three.js 原生互操作示例
 
 `threejs-interop.html` 用 `Viewer.create` 走 WebGPU（`postProcess.taa` 开启，描边关闭），
-通过 `viewer.addModel({ type: 'gltf', ... })` 加载 Three.js 官方 keyframes glTF / GLB
+通过 `viewer.models.add({ type: 'gltf', ... })` 加载 Three.js 官方 keyframes glTF / GLB
 动画模型，放置到经度 `114`、纬度 `30` 的地表位置，并自动播放第 `0` 个动画通道。需要浏览器支持 WebGPU。

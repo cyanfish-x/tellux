@@ -87,33 +87,73 @@ viewer.clock.on('change', (event) => {
 
 Timeline 启用后，若未提供 Clock 配置，时间默认从当前真实时间开始以 `1×` 持续流动；如需初始暂停，显式设置 `clock.shouldAnimate: false`。
 
-### `layers`
+### `overlays`
 
 类型：`LayerManager`
 
-影像图层管理器。
+表面叠加图层管理器（影像 / WMS / WMTS / MVT / GeoJSON）。提供 `add()`、`get()`、`list()`、`remove()`。
+
+### `tilesets`
+
+类型：`SceneTilesetCollection`
+
+独立场景 3D Tiles 集合。提供 `add()`、`get()`、`list()`、`remove()`。不要与 {@link globe} 混淆：后者是裸球 / 地形表面。
+
+### `models`
+
+类型：`ModelManager`
+
+glTF 模型集合。`add(options)` 加载 glTF / GLB 并按经纬高放入场景。返回的 `ModelLayer.ready` 在加载失败或加载完成前移除模型时拒绝；需要感知错误时应显式 `await` 或 `catch`。Tellux 会在内部观察该拒绝，因此只使用句柄而不等待 `ready` 时不会产生未处理 Promise 拒绝。
+
+`lighting: 'local'` 保留点光和自发光，不被大气日夜因子当地表处理；省略时 `materialMode: 'preserve'` 默认为 `local`，`auto` 默认为 `globe`。
+
+### `terrain`
+
+类型：`Terrain`
+
+地形门面。`set(options)` 切换 Cesium quantized-mesh / Ion / 天地图地形；`clear()` 回到无地形模式。URL 地形必须带 `type: 'url'`。
+
+### `globe`
+
+类型：`Globe`
+
+地球表面（裸球或当前地形）。`show` 控制可见性且在切换地形后保持；`ellipsoid` 用于经纬高换算；`raw` 是底层 `TilesRenderer`。不要写 `globe.raw.group.visible`。
+
+### `postProcess`
+
+类型：`PostProcessSettings`
+
+顶层后处理运行时设置（曝光、Bloom、TAA、SMAA 等）。与 `ViewerOptions.postProcess` 同构。色调映射曝光走 `viewer.postProcess.toneMappingExposure`，不要直接改 `renderer.raw.toneMappingExposure`。
+
+### `highlighter`
+
+类型：`HighlightManager`
+
+统一高亮门面：`set` / `clear` / `setHover`，以及 `outline` / `overlay` 样式。初始化配置是 `ViewerOptions.highlighter`。
 
 ### `hism`
 
 类型：`HismManager`
 
-HISM 实例化图层管理器。提供 `add()`、`get()`、`list()`、`remove()`、`pick()`、`getRuntimeStats()` 以及 `rtcUniforms`（自定义材质接入 RTC 时使用）。等价于 `viewer.addHismLayer()` 等 Viewer 级方法的底层入口。
+HISM 实例化图层管理器。提供 `add()`、`get()`、`list()`、`remove()`、`pick()`、`getRuntimeStats()` 以及 `rtcUniforms`（自定义材质接入 RTC 时使用）。
 
-### `tileset`
+### `entities`
 
-底层 3D Tiles renderer。启用地形时返回地形渲染器，否则返回基础裸球渲染器。
+类型：`EntityManager`
+
+点 / 线 / 面实体集合。
 
 ### `controls`
 
-类型：`GlobeControls`
+类型：`ViewerControls`
 
-地球交互控制器，负责鼠标拖拽、滚轮缩放和平移等场景交互。
+地球交互控制器。公开类型已收窄；完整上游 API 在 `controls.raw`（与 `controls` 同一实例）。
 
 ### `renderer`
 
-类型：`TelluxRenderer`（`TelluxWebGLRenderer | TelluxWebGPURenderer`）
+类型：`ViewerRenderer`
 
-底层 Three.js renderer 实例。`renderer.type`（`renderer` 配置）决定具体类型，默认为 `webgl`。
+渲染器门面。`type` 为 `'webgl' | 'webgpu'`；`resolutionScale` 是像素比；原生 Three.js renderer 是 `renderer.raw`。不要调用 `renderer.raw.setPixelRatio()`。
 
 ### `ready`
 
@@ -126,18 +166,6 @@ renderer 初始化完成的就绪 Promise。`Viewer.create(...)` 会内部 `awai
 类型：`boolean`（可读写）
 
 Tellux 是否接管动画循环。默认 `true`。设为 `false` 后需自行调用 `viewer.render()` 推进渲染；此时 `sampleHeightMostDetailed` 等依赖每帧更新的任务也需要调用方手动推进。
-
-### `resolutionScale`
-
-类型：`number`（可读写）
-
-渲染器像素比，默认通常为设备像素比。降低可提升性能。
-
-### `toneMappingExposure`
-
-类型：`number`（可读写）
-
-渲染器色调映射曝光值。对应 `renderer.toneMappingExposure`，可运行时调整。
 
 ## 方法
 
@@ -163,31 +191,9 @@ viewer.on('click', (event) => {
 
 将经纬高和当地姿态转换为 Three.js 对象矩阵。
 
-### `addModel(options)`
-
-加载 glTF / GLB 模型并按经纬高加入场景。返回的 `ModelLayer.ready` 在加载失败或加载完成前移除模型时拒绝；需要感知错误时应显式 `await` 或 `catch`。Tellux 会在内部观察该拒绝，因此只使用句柄而不等待 `ready` 时不会产生未处理 Promise 拒绝。
-
-`lighting: 'local'` 保留点光和自发光，不被大气日夜因子当地表处理；省略时 `materialMode: 'preserve'` 默认为 `local`，`auto` 默认为 `globe`。
-
 ### `flyToTarget(target, options?)`
 
 平滑飞行到目标，并让相机最终看向目标点。
-
-### `setTerrain(terrain)`
-
-运行时切换 Cesium quantized-mesh 地形。传入 `null` 可回到无地形模式。
-
-### `load3DTileset(options)`
-
-加载独立的 3D Tiles 场景数据。
-
-### `get3DTileset(id)`
-
-根据 id 获取已加载的 3D Tiles renderer。
-
-### `remove3DTileset(id)`
-
-根据 id 移除已加载的 3D Tiles 图层。
 
 ### `pickCartographic(position)`
 
@@ -212,25 +218,17 @@ const firstTenHits = viewer.pickAll(pos, { limit: 10 })
 
 `options` 支持 `layers`、`root`、`recursive`、`tolerance`（点/线实体屏幕容差，CSS 像素）和 `limit`（全局排序后截取的最大结果数，默认不限制）。`limit` 不会减少各层内部射线遍历；高频调用仍应收窄 `layers` 并节流。
 
-### `addHismLayer(options)`
+### `sampleHeight(point, options?)` / `sampleHeight(points, options?)`
 
-添加 HISM 实例化图层，用于大规模静态 mesh（森林、岩石场等）。返回 `HismLayer` 句柄，支持 `show` 与 `remove()`。配置见 [HISM 指南](../guide/hism.md)。
-
-### `getHismLayer(id)` / `removeHismLayer(id)` / `getHismRuntimeStats()`
-
-按 id 获取或移除 HISM 图层；`getHismRuntimeStats()` 返回全局可见实例数、簇数、draw calls 与各 LOD 分布。
-
-### `sampleHeight(position, options?)`
-
-沿当地地表法线向下采样指定经纬度在当前已加载内容上的表面高度。同步、轻量，不请求视角外瓦片；未命中返回 `undefined`。`position` 支持元组 `[经度, 纬度, 高度?]` 或 `{ longitude, latitude, height }`。`options.source` 可选 `'all'`（默认）、`'terrain'`、`'tileset'`。
+沿当地地表法线向下采样指定经纬度在当前已加载内容上的表面高度。同步、轻量，不请求视角外瓦片；未命中返回 `undefined`。高度 `0` 是命中，用 `=== undefined` 判断 miss。`point` 为 `LonLatLike`：`{ longitude, latitude }` 或 `[经度, 纬度]`。传入数组时返回与输入等长的 `(number | undefined)[]`，逐元素与单点调用相等。`options.source` 可选 `'all'`（默认）、`'terrain'`、`'tileset'`。
 
 ```ts
 const height = viewer.sampleHeight([121.4737, 31.2304], { source: 'terrain' })
 ```
 
-### `sampleHeightMostDetailed(positions, options?)`
+### `sampleHeightMostDetailed(point, options?)` / `sampleHeightMostDetailed(points, options?)`
 
-异步、高精度、批量采样多个经纬度的地表高度。返回 `Promise<SampleHeightMostDetailedResult[]>`，与输入数组一一对应，未命中项为 `undefined`。会主动加载所需层级瓦片：地形模式按 quantized-mesh availability 加载最高层级并插值；3D Tiles / 混合模式在主场景临时添加局部加载区域，采样完成后该区域保留在主场景缓存中。
+异步、高精度采样地表高度。单点返回 `Promise<number | undefined>`；批量返回与输入数组一一对应的 `Promise<(number | undefined)[]>`。未命中项为 `undefined`。会主动加载所需层级瓦片：地形模式按 quantized-mesh availability 加载最高层级并插值；3D Tiles / 混合模式在主场景临时添加局部加载区域，采样完成后该区域保留在主场景缓存中。
 
 当 `useDefaultRenderLoop` 为 `false` 时，调用方必须继续调用 `render()` 推进采样，否则会超时返回 `undefined`。`options` 支持 `source`、`resolution`（默认 `256`）、`maxFrames`（默认 `120`）和 `debug`。
 

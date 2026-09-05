@@ -32,8 +32,19 @@ async function main() {
       type: "webgpu",
     },
     camera: {
-      ...WATER_AREA_VIEW,
-      far: 30000000,
+      destination: {
+        longitude: WATER_AREA_VIEW.longitude,
+        latitude: WATER_AREA_VIEW.latitude,
+        height: WATER_AREA_VIEW.height,
+      },
+      orientation: {
+        heading: WATER_AREA_VIEW.heading,
+        pitch: WATER_AREA_VIEW.pitch,
+        roll: WATER_AREA_VIEW.roll,
+      },
+      projection: {
+        far: 30000000,
+      },
     },
     scene: {
       atmosphere: {
@@ -47,9 +58,9 @@ async function main() {
       clouds: {
         show: false,
       },
-      postProcess: {
-        toneMappingExposure: 5,
-      },
+    },
+    postProcess: {
+      toneMappingExposure: 5,
     },
     widgets: {
       timeline: true,

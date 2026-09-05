@@ -66,18 +66,22 @@ if (!(container instanceof HTMLElement)) {
 
 const viewer = new tellux.Viewer(container, {
   terrain: exampleMapServiceConfig.createTerrainOptions(),
-  layers: [
+  overlays: [
     {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
   camera: {
-    latitude: VIEW_POSE.latitude,
-    longitude: VIEW_POSE.longitude,
-    height: VIEW_POSE.height,
-    heading: VIEW_POSE.heading,
-    pitch: VIEW_POSE.pitch,
-    roll: VIEW_POSE.roll,
+    destination: {
+      longitude: VIEW_POSE.longitude,
+      latitude: VIEW_POSE.latitude,
+      height: VIEW_POSE.height,
+    },
+    orientation: {
+      heading: VIEW_POSE.heading,
+      pitch: VIEW_POSE.pitch,
+      roll: VIEW_POSE.roll,
+    },
   },
   scene: {
     atmosphere: {
@@ -101,7 +105,7 @@ const viewer = new tellux.Viewer(container, {
 
 // RTC + EncodedCartesian3：相机 ECEF 位置编码 + 去平移 view matrix，所有
 // globe-scale 实例化 mesh 共享这一份 uniform，每帧由 animateWind 刷新。
-const rtcUniforms = new tellux.RTCAutoUniforms(viewer.camera.threeCamera)
+const rtcUniforms = new tellux.RTCAutoUniforms(viewer.camera.raw)
 
 const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
@@ -245,7 +249,7 @@ async function createForest(templates: PresetTemplate[]) {
     return
   }
 
-  viewer.scene.threeScene.add(forest.group)
+  viewer.scene.raw.add(forest.group)
   setActionDisabled(false)
   setInstanceCount(`${sampledPlacements.length} / ${TREE_COUNT}`)
   setStatus(
@@ -349,7 +353,7 @@ function buildInstancedForest(
     templates,
     startedAt: performance.now() / 1000,
     dispose() {
-      viewer.scene.threeScene.remove(group)
+      viewer.scene.raw.remove(group)
       // 几何与材质由 template.tree 持有，这里只释放实例化网格本身的 GPU 资源。
       group.traverse((child) => {
         const mesh = child as THREE.InstancedMesh
