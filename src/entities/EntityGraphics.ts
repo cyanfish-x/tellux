@@ -28,6 +28,40 @@ export class PointGraphics {
   set pixelSize(value: number) {
     this.graphic.setPixelSize(value)
   }
+
+  get opacity() {
+    return this.graphic.opacity
+  }
+
+  set opacity(value: number) {
+    this.graphic.setOpacity(value)
+  }
+
+  /**
+   * 描边颜色。未在初始化提供 `outline` 时写入无效。
+   *
+   * Outline color. Writes have no effect when `outline` was omitted at init.
+   */
+  get outlineColor() {
+    return this.graphic.outlineColor
+  }
+
+  set outlineColor(value: ColorInput) {
+    this.graphic.setOutlineColor(value)
+  }
+
+  /**
+   * 描边像素宽度。未在初始化提供 `outline` 时写入无效。
+   *
+   * Outline pixel width. Writes have no effect when `outline` was omitted at init.
+   */
+  get outlineWidth() {
+    return this.graphic.outlineWidth
+  }
+
+  set outlineWidth(value: number) {
+    this.graphic.setOutlineWidth(value)
+  }
 }
 
 /**
@@ -53,6 +87,14 @@ export class PolylineGraphics {
   set width(value: number) {
     this.graphic.setWidth(value)
   }
+
+  get opacity() {
+    return this.graphic.opacity
+  }
+
+  set opacity(value: number) {
+    this.graphic.setOpacity(value)
+  }
 }
 
 /**
@@ -77,6 +119,14 @@ export class PolygonGraphics {
 
   set outlineColor(value: ColorInput) {
     this.graphic.setOutlineColor(value)
+  }
+
+  get opacity() {
+    return this.graphic.opacity
+  }
+
+  set opacity(value: number) {
+    this.graphic.setOpacity(value)
   }
 }
 
@@ -165,11 +215,11 @@ export class TextGraphics {
     this.graphic.setText(value)
   }
 
-  get fillColor() {
+  get color() {
     return this.graphic.fillColorHex
   }
 
-  set fillColor(value: ColorInput) {
+  set color(value: ColorInput) {
     this.graphic.setFillColor(value)
   }
 

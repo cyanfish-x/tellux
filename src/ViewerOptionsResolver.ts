@@ -147,7 +147,7 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
         )
       },
       fallbackAmbientLight: {
-        show: options?.atmosphere?.fallbackAmbientLight?.show ?? true,
+        enabled: options?.atmosphere?.fallbackAmbientLight?.enabled ?? true,
         intensity: normalize.fallbackAmbientLightIntensity(
           options?.atmosphere?.fallbackAmbientLight?.intensity ?? 0.5
         )

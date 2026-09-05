@@ -5,6 +5,7 @@ import {
   DebugSettingsPanel,
   loadStoredDebugSettings
 } from './DebugSettingsPanel'
+import { mergeDebugSettings } from './DebugSettingsPanel'
 import { Timeline } from './Timeline'
 
 export class WidgetManager {
@@ -14,7 +15,7 @@ export class WidgetManager {
   private timeline: Timeline | null = null
 
   constructor(private readonly viewer: Viewer, options: ViewerWidgetOptions = {}) {
-    this.debugSettings = this.resolveSettingPanelOptions(options.settingPanel)
+    this.debugSettings = this.resolveSettingsPanelOptions(options.settingsPanel)
     this.timelineOptions = this.resolveTimelineOptions(options.timeline)
   }
 
@@ -45,16 +46,15 @@ export class WidgetManager {
     this.timeline = null
   }
 
-  private resolveSettingPanelOptions(options: ViewerWidgetOptions['settingPanel']): DebugSettingsPanelOptions | null {
+  private resolveSettingsPanelOptions(
+    options: ViewerWidgetOptions['settingsPanel']
+  ): DebugSettingsPanelOptions | null {
     if (!options) return null
 
     const storedSettings = loadStoredDebugSettings()
     if (options === true) return storedSettings
 
-    return {
-      ...options,
-      ...storedSettings
-    }
+    return mergeDebugSettings(options, storedSettings)
   }
 
   private resolveTimelineOptions(options: ViewerWidgetOptions['timeline']): TimelineOptions | null {

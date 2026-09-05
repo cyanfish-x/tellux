@@ -40,7 +40,7 @@ export class ImageryLayer {
     this.id = options.id
     this.source = options.source
     this.currentName = options.name
-    this.currentVisible = options.visible ?? true
+    this.currentVisible = options.show ?? true
     this.currentStyle = {
       opacity: 1,
       ...options.style

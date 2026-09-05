@@ -38,6 +38,7 @@ export class PolylineGraphic {
       linewidth: width,
       worldUnits: false,
       transparent: true,
+      opacity: options.opacity ?? 1,
       depthWrite: false,
       resolution: new THREE.Vector2(1, 1)
     })
@@ -54,6 +55,10 @@ export class PolylineGraphic {
 
   get width(): number {
     return this.material.linewidth
+  }
+
+  get opacity(): number {
+    return this.material.opacity
   }
 
   setPositions(worldPositions: THREE.Vector3[]) {
@@ -73,6 +78,10 @@ export class PolylineGraphic {
 
   setWidth(width: number) {
     this.material.linewidth = width
+  }
+
+  setOpacity(opacity: number) {
+    this.material.opacity = Math.max(0, Math.min(1, opacity))
   }
 
   syncResolution(width: number, height: number) {

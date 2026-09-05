@@ -158,7 +158,8 @@ export class SymbolGraphic {
     // ---- text ----
     const text = options.text
     this.textEnabled = Boolean(text)
-    const outlineWidth = text?.outlineWidth ?? 0
+    const textOutline = text?.outline
+    const outlineWidth = textOutline ? (textOutline.width ?? 1) : 0
     this.textConfig = {
       text: text?.text ?? '',
       font: text?.font ?? 'sans-serif',
@@ -168,8 +169,8 @@ export class SymbolGraphic {
       lineHeight: text?.lineHeight ?? 1.2,
       maxWidth: text?.maxWidth,
       padding: text?.padding ? [text.padding[0], text.padding[1]] : [4, 2],
-      fillColor: resolveDisplayColor(text?.fillColor ?? 0xffffff),
-      outlineColor: resolveDisplayColor(text?.outlineColor ?? 0x000000),
+      fillColor: resolveDisplayColor(text?.color ?? 0xffffff),
+      outlineColor: resolveDisplayColor(textOutline?.color ?? 0x000000),
       backgroundColor: text?.backgroundColor === undefined ? null : resolveDisplayColor(text.backgroundColor),
       backgroundCornerRadius: text?.backgroundCornerRadius ?? 0,
       opacity: text?.opacity ?? 1

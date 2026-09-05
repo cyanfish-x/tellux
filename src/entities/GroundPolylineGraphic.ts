@@ -88,7 +88,7 @@ export class GroundPolylineGraphic implements PolylinePickable {
         uInverseProjection: uniforms.uInverseProjection,
         // 每 graphic 独有：
         uColor: { value: this.resolveColor(this.currentColor) },
-        uOpacity: { value: 1 },
+        uOpacity: { value: options.opacity ?? 1 },
         uHalfWidthMeters: { value: Math.max(this.widthMeters / 2, 0) }
       },
       vertexShader: GROUND_POLYLINE_VERTEX_SHADER,
@@ -116,6 +116,10 @@ export class GroundPolylineGraphic implements PolylinePickable {
     return this.widthMeters
   }
 
+  get opacity(): number {
+    return this.material.uniforms.uOpacity.value as number
+  }
+
   setColor(color: ColorInput) {
     this.currentColor.set(color)
     ;(this.material.uniforms.uColor.value as THREE.Color).copy(
@@ -132,6 +136,10 @@ export class GroundPolylineGraphic implements PolylinePickable {
   setWidth(width: number) {
     this.widthMeters = width
     this.material.uniforms.uHalfWidthMeters.value = Math.max(width / 2, 0)
+  }
+
+  setOpacity(opacity: number) {
+    this.material.uniforms.uOpacity.value = Math.max(0, Math.min(1, opacity))
   }
 
   setPositions(positions: readonly LonLatHeightLike[]) {

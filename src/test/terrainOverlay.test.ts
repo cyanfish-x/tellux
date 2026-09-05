@@ -129,7 +129,7 @@ describe('terrain imagery overlays', () => {
 
     const { tileset } = terrainTilesetFactory.create({
       type: 'tianditu',
-      token: 'test-token'
+      apiToken: 'test-token'
     }, [], () => 0)
 
     expect(tileset.getPluginByName('TELLUX_TIANDITU_TERRAIN_PLUGIN')).not.toBeNull()

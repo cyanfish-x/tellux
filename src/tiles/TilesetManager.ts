@@ -222,6 +222,7 @@ export class TilesetManager {
     this.registerCommonTilesetPlugins(tileset, this.getSceneTilesetModelProcessingOptions(options))
     this.registerSceneTilesetMaterialPlugins(tileset, options)
     const pointCloudShading = this.registerPointCloudShadingController(id, tileset, options)
+    tileset.group.visible = options.show ?? true
     this.sceneTilesets.set(id, tileset)
     this.sceneTilesetOptions.set(id, { ...options, id })
     this.options.scene.add(tileset.group)
@@ -588,17 +589,17 @@ export class TilesetManager {
 
   private createSceneTileset(options: Load3DTilesetOptions) {
     let tileset: TilesRenderer
-    switch (options.type) {
+    switch (options.source.type) {
       case 'url':
-        tileset = new TilesRenderer(options.url)
+        tileset = new TilesRenderer(options.source.url)
         break
       case 'cesium-ion': {
         tileset = new TilesRenderer()
         tileset.registerPlugin(
           new CesiumIonAuthPlugin({
-            apiToken: options.apiToken,
-            assetId: String(options.assetId),
-            autoRefreshToken: options.autoRefreshToken ?? true,
+            apiToken: options.source.apiToken,
+            assetId: String(options.source.assetId),
+            autoRefreshToken: options.source.autoRefreshToken ?? true,
             assetTypeHandler: (type) => {
               throw new Error(`TilesetManager: Cesium Ion asset type "${type}" is not supported by load3DTileset.`)
             }

@@ -52,6 +52,8 @@ export class GroundPolygonGraphic {
   private readonly ellipsoid: EllipsoidLike
   private readonly resolveColor: ResolveColor
   private readonly currentColor: THREE.Color
+  private optionOpacity: number
+  private colorAlpha: number
   private positions: readonly LonLatHeightLike[]
 
   constructor({ positions, options, ellipsoid, uniforms, resolveColor }: GroundPolygonGraphicOptions) {
@@ -61,6 +63,8 @@ export class GroundPolygonGraphic {
 
     const { color, alpha } = extractColorAlpha(options.color)
     this.currentColor = new THREE.Color(color ?? 0xffffff)
+    this.optionOpacity = options.opacity ?? 1
+    this.colorAlpha = alpha
     this.material = new THREE.ShaderMaterial({
       name: 'TelluxGroundPolygon',
       uniforms: {
@@ -72,7 +76,7 @@ export class GroundPolygonGraphic {
         uResolution: uniforms.uResolution,
         uInverseProjection: uniforms.uInverseProjection,
         uColor: { value: this.resolveColor(this.currentColor) },
-        uOpacity: { value: alpha },
+        uOpacity: { value: this.optionOpacity * this.colorAlpha },
         uUp: { value: new THREE.Vector3(0, 0, 1) }
       },
       vertexShader: GROUND_POLYGON_VERTEX_SHADER,
@@ -93,13 +97,23 @@ export class GroundPolygonGraphic {
     return this.currentColor.getHex()
   }
 
+  get opacity(): number {
+    return this.optionOpacity
+  }
+
   setColor(color: ColorInput) {
     const { color: rgb, alpha } = extractColorAlpha(color)
     this.currentColor.set(rgb ?? 0xffffff)
+    this.colorAlpha = alpha
     ;(this.material.uniforms.uColor.value as THREE.Color).copy(
       this.resolveColor(this.currentColor)
     )
-    this.material.uniforms.uOpacity.value = alpha
+    this.material.uniforms.uOpacity.value = this.optionOpacity * this.colorAlpha
+  }
+
+  setOpacity(opacity: number) {
+    this.optionOpacity = Math.max(0, Math.min(1, opacity))
+    this.material.uniforms.uOpacity.value = this.optionOpacity * this.colorAlpha
   }
 
   refreshColors() {

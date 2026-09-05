@@ -203,7 +203,7 @@ export function mountDebugSettingsPanel(
     smooth.skyLightIntensity.target = Number(
       skyLightIntensityControl.input.value
     )
-    viewer.scene.atmosphere.fallbackAmbientLight.show =
+    viewer.scene.atmosphere.fallbackAmbientLight.enabled =
       fallbackAmbientLightToggle.input.checked
     smooth.fallbackAmbientLightIntensity.target = Number(
       fallbackAmbientLightIntensityControl.input.value
@@ -265,61 +265,76 @@ export function mountDebugSettingsPanel(
       ditheringToggle.input.checked
     fpsHud.setVisible(fpsToggle.input.checked)
     saveStoredDebugSettings({
-      skyAtmosphere: skyToggle.input.checked,
-      stars: starsToggle.input.checked,
-      starsIntensity: Number(starsIntensityControl.input.value),
-      starsPointSize: Number(starsPointSizeControl.input.value),
-      clouds: cloudToggle.input.checked,
-      cloudCoverage: Number(coverageControl.input.value),
-      cloudSpeed: Number(cloudSpeedControl.input.value),
-      cloudLayerAltitude: Number(cloudAltitudeControl.input.value),
-      cloudLayerHeight: Number(cloudHeightControl.input.value),
-      atmosphereInscatterIntensity: Number(
-        inscatterIntensityControl.input.value
-      ),
-      atmosphereInscatterHorizonBlend: inscatterHorizonToggle.input.checked,
-      atmosphereInscatterHorizonRange: [
-        Number(horizonStartControl.input.value),
-        Number(horizonEndControl.input.value),
-      ],
-      atmosphereCorrectAltitude: correctAltitudeToggle.input.checked,
-      atmosphereCorrectGeometricError: correctGeometricToggle.input.checked,
-      atmosphereTransmittance: transmittanceToggle.input.checked,
-      atmosphereInscatter: nativeInscatterToggle.input.checked,
-      atmosphereLightingMode:
-        lightingModeControl.input.value as AtmosphereLightingMode,
-      atmosphereSunLight: sunLightToggle.input.checked,
-      atmosphereSkyLight: skyLightToggle.input.checked,
-      atmosphereSunLightIntensity: Number(sunLightIntensityControl.input.value),
-      atmosphereSkyLightIntensity: Number(skyLightIntensityControl.input.value),
-      fallbackAmbientLight: fallbackAmbientLightToggle.input.checked,
-      fallbackAmbientLightIntensity: Number(
-        fallbackAmbientLightIntensityControl.input.value
-      ),
-      atmosphereSun: sunDiscToggle.input.checked,
-      atmosphereMoon: moonToggle.input.checked,
-      atmosphereAlbedoScale: Number(albedoScaleControl.input.value),
-      atmosphereSunAngularRadius: Number(sunAngularRadiusControl.input.value),
-      atmosphereMoonAngularRadius: Number(moonAngularRadiusControl.input.value),
-      atmosphereLunarRadianceScale: Number(
-        lunarRadianceScaleControl.input.value
-      ),
-      atmosphereShadowRadius: Number(shadowRadiusControl.input.value),
-      atmosphereShadowSampleCount: Number(shadowSampleCountControl.input.value),
-      atmosphereSolarIrradianceScale: Number(solarIrradianceControl.input.value),
-      atmosphereRayleighScatteringScale: Number(rayleighControl.input.value),
-      atmosphereMieScatteringScale: Number(mieScatteringControl.input.value),
-      atmosphereMieExtinctionScale: Number(mieExtinctionControl.input.value),
-      atmosphereMiePhaseFunctionG: Number(miePhaseControl.input.value),
-      atmosphereAbsorptionExtinctionScale: Number(absorptionControl.input.value),
-      atmosphereGroundAlbedo: Number(groundAlbedoControl.input.value),
-      toneMappingExposure: Number(exposureControl.input.value),
-      resolutionScale: Number(resolutionControl.input.value),
-      lensFlare: lensFlareToggle.input.checked,
-      smaa: smaaToggle.input.checked,
-      taa: taaToggle.input.checked,
-      dithering: ditheringToggle.input.checked,
-      showFps: fpsToggle.input.checked,
+      atmosphere: {
+        show: skyToggle.input.checked,
+        lighting: {
+          mode: lightingModeControl.input.value as AtmosphereLightingMode,
+          sunLight: sunLightToggle.input.checked,
+          skyLight: skyLightToggle.input.checked,
+          sunLightIntensity: Number(sunLightIntensityControl.input.value),
+          skyLightIntensity: Number(skyLightIntensityControl.input.value),
+          albedoScale: Number(albedoScaleControl.input.value)
+        },
+        scattering: {
+          intensity: Number(inscatterIntensityControl.input.value),
+          horizonBlend: inscatterHorizonToggle.input.checked,
+          horizonRange: [
+            Number(horizonStartControl.input.value),
+            Number(horizonEndControl.input.value)
+          ],
+          correctAltitude: correctAltitudeToggle.input.checked,
+          correctGeometricError: correctGeometricToggle.input.checked,
+          transmittance: transmittanceToggle.input.checked,
+          inscatter: nativeInscatterToggle.input.checked,
+          solarIrradianceScale: Number(solarIrradianceControl.input.value),
+          rayleighScatteringScale: Number(rayleighControl.input.value),
+          mieScatteringScale: Number(mieScatteringControl.input.value),
+          mieExtinctionScale: Number(mieExtinctionControl.input.value),
+          miePhaseFunctionG: Number(miePhaseControl.input.value),
+          absorptionExtinctionScale: Number(absorptionControl.input.value),
+          groundAlbedo: Number(groundAlbedoControl.input.value)
+        },
+        sky: {
+          stars: {
+            show: starsToggle.input.checked,
+            intensity: Number(starsIntensityControl.input.value),
+            pointSize: Number(starsPointSizeControl.input.value)
+          },
+          sun: sunDiscToggle.input.checked,
+          moon: moonToggle.input.checked,
+          sunAngularRadius: Number(sunAngularRadiusControl.input.value),
+          moonAngularRadius: Number(moonAngularRadiusControl.input.value),
+          lunarRadianceScale: Number(lunarRadianceScaleControl.input.value)
+        },
+        shadow: {
+          radius: Number(shadowRadiusControl.input.value),
+          sampleCount: Number(shadowSampleCountControl.input.value)
+        },
+        fallbackAmbientLight: {
+          enabled: fallbackAmbientLightToggle.input.checked,
+          intensity: Number(fallbackAmbientLightIntensityControl.input.value)
+        }
+      },
+      clouds: {
+        show: cloudToggle.input.checked,
+        coverage: Number(coverageControl.input.value),
+        speed: Number(cloudSpeedControl.input.value),
+        layer: {
+          altitude: Number(cloudAltitudeControl.input.value),
+          height: Number(cloudHeightControl.input.value)
+        }
+      },
+      postProcess: {
+        toneMappingExposure: Number(exposureControl.input.value),
+        lensFlare: lensFlareToggle.input.checked,
+        smaa: smaaToggle.input.checked,
+        taa: taaToggle.input.checked,
+        dithering: ditheringToggle.input.checked
+      },
+      renderer: {
+        resolutionScale: Number(resolutionControl.input.value)
+      },
+      showFps: fpsToggle.input.checked
     })
 
     updateStatus()

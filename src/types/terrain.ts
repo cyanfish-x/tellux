@@ -100,13 +100,8 @@ export interface TerrainRenderOptions {
  * {@link ViewerOptions.terrain}.
  */
 export interface UrlTerrainOptions extends TerrainRenderOptions {
-  /**
-   * 数据源类型。不传时按 URL 地形处理，用于兼容旧配置。
-   *
-   * Data source type. When omitted, the terrain is treated as URL-based terrain
-   * for backward compatibility.
-   */
-  type?: 'url'
+  /** 数据源类型。Data source type. */
+  type: 'url'
   /**
    * 地形根 URL 或 `layer.json` URL。
    *
@@ -142,7 +137,7 @@ export interface TiandituTerrainOptions extends TerrainRenderOptions {
   /** 数据源类型。Data source type. */
   type: 'tianditu'
   /**
-   * 天地图 tk 密钥。
+   * 天地图 API 令牌（`tk`）。
    *
    * 传单个 key 时行为与旧版一致；传数组时，Tellux 会按瓦片坐标确定性
    * 分片到不同 key 上做负载均衡，避免单 key 额度被快速耗尽。同一瓦片
@@ -155,7 +150,7 @@ export interface TiandituTerrainOptions extends TerrainRenderOptions {
    * balancing, so a single key's quota is not exhausted quickly. The same tile
    * always resolves to the same key, preserving browser caching.
    */
-  token: string | string[]
+  apiToken: string | string[]
   /**
    * swdx 服务 URL 列表（多子域负载均衡）。
    *
@@ -274,15 +269,9 @@ export interface ThreeDTilesRenderOptions {
   tileLoading?: Scene3DTileLoadingOptions
 }
 
-export interface Url3DTilesetOptions extends ThreeDTilesRenderOptions {
+export interface Url3DTilesetOptions {
   /** 数据源类型。Data source type. */
   type: 'url'
-  /**
-   * 图层 id。不传时 Tellux 会自动生成。
-   *
-   * Layer id. Tellux generates one when omitted.
-   */
-  id?: string
   /**
    * `tileset.json` 的 URL。
    *
@@ -292,19 +281,13 @@ export interface Url3DTilesetOptions extends ThreeDTilesRenderOptions {
 }
 
 /**
- * 通过 Cesium Ion 资源加载 3D Tiles 的配置。
+ * 通过 Cesium Ion 资源加载 3D Tiles 的数据源。
  *
- * Options for loading 3D Tiles from a Cesium Ion asset.
+ * Cesium Ion data source for loading 3D Tiles.
  */
-export interface CesiumIon3DTilesetOptions extends ThreeDTilesRenderOptions {
+export interface CesiumIon3DTilesetOptions {
   /** 数据源类型。Data source type. */
   type: 'cesium-ion'
-  /**
-   * 图层 id。不传时 Tellux 会自动生成。
-   *
-   * Layer id. Tellux generates one when omitted.
-   */
-  id?: string
   /** Cesium Ion 访问令牌。Cesium Ion access token. */
   apiToken: string
   /** Cesium Ion 3D Tiles 资源 id。Cesium Ion 3D Tiles asset id. */
@@ -316,11 +299,33 @@ export interface CesiumIon3DTilesetOptions extends ThreeDTilesRenderOptions {
 /**
  * Viewer 支持的 3D Tiles 加载配置。
  *
+ * 带图层级属性（id / show）的资源使用 `{ source }` 两层结构，与影像 overlay 对齐。
  * 3D Tiles 会作为独立场景数据加载，不参与影像 overlay 管线。
  *
  * 3D Tiles loading options supported by Viewer.
  *
+ * Layer-level resources use a `{ source }` envelope, matching imagery overlays.
  * 3D Tiles are loaded as independent scene data and do not participate in the
  * imagery overlay pipeline.
  */
-export type Load3DTilesetOptions = Url3DTilesetOptions | CesiumIon3DTilesetOptions
+export interface Load3DTilesetOptions extends ThreeDTilesRenderOptions {
+  /**
+   * 图层 id。不传时 Tellux 会自动生成。
+   *
+   * Layer id. Tellux generates one when omitted.
+   */
+  id?: string
+  /**
+   * 图层是否显示，默认 `true`。与句柄 {@link TilesetLayer.show} 同构。
+   *
+   * Whether the layer is shown. Defaults to `true`. Isomorphic with
+   * {@link TilesetLayer.show}.
+   */
+  show?: boolean
+  /**
+   * 图层数据源。
+   *
+   * Layer data source.
+   */
+  source: Url3DTilesetOptions | CesiumIon3DTilesetOptions
+}

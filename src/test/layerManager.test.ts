@@ -81,7 +81,7 @@ describe('LayerManager imagery layer handle lifecycle', () => {
     expect(manager.remove(stale.id)).toBe(true)
     const replacement = manager.add({
       id: 'shared',
-      visible: false,
+      show: false,
       style: {
         opacity: 0.75
       },

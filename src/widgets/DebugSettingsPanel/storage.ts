@@ -1,6 +1,6 @@
-import type { DebugSettingsPanelOptions } from "./types"
+import type { DebugSettingsPanelOptions } from './types'
 
-const DEBUG_SETTINGS_STORAGE_VERSION = "v1"
+const DEBUG_SETTINGS_STORAGE_VERSION = 'v2'
 
 export function loadStoredDebugSettings(): DebugSettingsPanelOptions {
   try {
@@ -16,9 +16,7 @@ export function loadStoredDebugSettings(): DebugSettingsPanelOptions {
   }
 }
 
-export function saveStoredDebugSettings(
-  settings: DebugSettingsPanelOptions
-) {
+export function saveStoredDebugSettings(settings: DebugSettingsPanelOptions) {
   try {
     window.localStorage.setItem(
       getDebugSettingsStorageKey(),
@@ -29,110 +27,56 @@ export function saveStoredDebugSettings(
   }
 }
 
+export function mergeDebugSettings(
+  base: DebugSettingsPanelOptions,
+  overlay: DebugSettingsPanelOptions
+): DebugSettingsPanelOptions {
+  return {
+    atmosphere: deepMerge(base.atmosphere, overlay.atmosphere),
+    clouds: deepMerge(base.clouds, overlay.clouds),
+    postProcess: deepMerge(base.postProcess, overlay.postProcess),
+    renderer: deepMerge(base.renderer, overlay.renderer),
+    showFps: overlay.showFps ?? base.showFps
+  }
+}
+
 function getDebugSettingsStorageKey() {
-  const page = window.location.pathname.replace(/\/$/, "/index.html")
+  const page = window.location.pathname.replace(/\/$/, '/index.html')
   return `tellux:debug-settings:${page}:${DEBUG_SETTINGS_STORAGE_VERSION}`
 }
 
 function sanitizeStoredDebugSettings(
   value: Record<string, unknown>
 ): DebugSettingsPanelOptions {
-  const settings: Record<string, unknown> = {}
+  const settings: DebugSettingsPanelOptions = {}
+  if (isRecord(value.atmosphere)) settings.atmosphere = value.atmosphere
+  if (isRecord(value.clouds)) settings.clouds = value.clouds
+  if (isRecord(value.postProcess)) settings.postProcess = value.postProcess
+  if (isRecord(value.renderer)) {
+    const resolutionScale = value.renderer.resolutionScale
+    if (typeof resolutionScale === 'number' && Number.isFinite(resolutionScale)) {
+      settings.renderer = { resolutionScale }
+    }
+  }
+  if (typeof value.showFps === 'boolean') settings.showFps = value.showFps
+  return settings
+}
 
-  copyBooleanSetting(value, settings, "skyAtmosphere")
-  copyBooleanSetting(value, settings, "stars")
-  copyNumberSetting(value, settings, "starsIntensity")
-  copyNumberSetting(value, settings, "starsPointSize")
-  copyBooleanSetting(value, settings, "clouds")
-  copyNumberSetting(value, settings, "cloudCoverage")
-  copyNumberSetting(value, settings, "cloudSpeed")
-  copyNumberSetting(value, settings, "cloudLayerAltitude")
-  copyNumberSetting(value, settings, "cloudLayerHeight")
-  copyNumberSetting(value, settings, "atmosphereInscatterIntensity")
-  copyBooleanSetting(value, settings, "atmosphereInscatterHorizonBlend")
-  copyBooleanSetting(value, settings, "atmosphereCorrectAltitude")
-  copyBooleanSetting(value, settings, "atmosphereCorrectGeometricError")
-  copyBooleanSetting(value, settings, "atmosphereTransmittance")
-  copyBooleanSetting(value, settings, "atmosphereInscatter")
-  copyAtmosphereLightingModeSetting(value, settings)
-  copyBooleanSetting(value, settings, "atmosphereSunLight")
-  copyBooleanSetting(value, settings, "atmosphereSkyLight")
-  copyNumberSetting(value, settings, "atmosphereSunLightIntensity")
-  copyNumberSetting(value, settings, "atmosphereSkyLightIntensity")
-  copyBooleanSetting(value, settings, "fallbackAmbientLight")
-  copyNumberSetting(value, settings, "fallbackAmbientLightIntensity")
-  copyBooleanSetting(value, settings, "atmosphereSun")
-  copyBooleanSetting(value, settings, "atmosphereMoon")
-  copyBooleanSetting(value, settings, "atmosphereGround")
-  copyNumberSetting(value, settings, "atmosphereAlbedoScale")
-  copyNumberSetting(value, settings, "atmosphereSunAngularRadius")
-  copyNumberSetting(value, settings, "atmosphereMoonAngularRadius")
-  copyNumberSetting(value, settings, "atmosphereLunarRadianceScale")
-  copyNumberSetting(value, settings, "atmosphereShadowRadius")
-  copyNumberSetting(value, settings, "atmosphereShadowSampleCount")
-  copyNumberSetting(value, settings, "atmosphereSolarIrradianceScale")
-  copyNumberSetting(value, settings, "atmosphereRayleighScatteringScale")
-  copyNumberSetting(value, settings, "atmosphereMieScatteringScale")
-  copyNumberSetting(value, settings, "atmosphereMieExtinctionScale")
-  copyNumberSetting(value, settings, "atmosphereMiePhaseFunctionG")
-  copyNumberSetting(value, settings, "atmosphereAbsorptionExtinctionScale")
-  copyNumberSetting(value, settings, "atmosphereGroundAlbedo")
-  copyNumberSetting(value, settings, "toneMappingExposure")
-  copyNumberSetting(value, settings, "resolutionScale")
-  copyBooleanSetting(value, settings, "lensFlare")
-  copyBooleanSetting(value, settings, "smaa")
-  copyBooleanSetting(value, settings, "taa")
-  copyBooleanSetting(value, settings, "dithering")
-  copyBooleanSetting(value, settings, "showFps")
+function deepMerge<T>(base?: T, overlay?: T): T | undefined {
+  if (overlay === undefined) return base
+  if (base === undefined) return overlay
+  if (!isRecord(base) || !isRecord(overlay)) return overlay
 
-  const horizonRange = value.atmosphereInscatterHorizonRange
-  if (
-    Array.isArray(horizonRange) &&
-    horizonRange.length === 2 &&
-    horizonRange.every(
-      (entry) => typeof entry === "number" && Number.isFinite(entry)
+  const result: Record<string, unknown> = { ...base }
+  for (const [key, value] of Object.entries(overlay)) {
+    result[key] = deepMerge(
+      (base as Record<string, unknown>)[key],
+      value
     )
-  ) {
-    settings.atmosphereInscatterHorizonRange = horizonRange
   }
-
-  return settings as DebugSettingsPanelOptions
-}
-
-function copyBooleanSetting(
-  source: Record<string, unknown>,
-  target: Record<string, unknown>,
-  key: keyof DebugSettingsPanelOptions
-) {
-  const value = source[key]
-  if (typeof value === "boolean") {
-    target[key] = value
-  }
-}
-
-function copyNumberSetting(
-  source: Record<string, unknown>,
-  target: Record<string, unknown>,
-  key: keyof DebugSettingsPanelOptions
-) {
-  const value = source[key]
-  if (typeof value === "number" && Number.isFinite(value)) {
-    target[key] = value
-  }
-}
-
-function copyAtmosphereLightingModeSetting(
-  source: Record<string, unknown>,
-  target: Record<string, unknown>
-) {
-  if (
-    source.atmosphereLightingMode === "post-process" ||
-    source.atmosphereLightingMode === "light-source"
-  ) {
-    target.atmosphereLightingMode = source.atmosphereLightingMode
-  }
+  return result as T
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

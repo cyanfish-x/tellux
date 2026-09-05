@@ -10,6 +10,41 @@ import type { Entity } from '../entities/Entity'
 export type ColorInput = number | string | Color
 
 /**
+ * 点 / 文字描边。对象存在即开启；`width` 默认 `1`。
+ *
+ * Point / text outline. Presence enables the outline; `width` defaults to `1`.
+ */
+export interface GraphicOutlineOptions {
+  /**
+   * 描边颜色，点默认白色，文字默认黑色。
+   *
+   * Outline color. Defaults to white for points and black for text.
+   */
+  color?: ColorInput
+  /**
+   * 描边像素宽度，默认 `1`。
+   *
+   * Outline pixel width. Defaults to `1`.
+   */
+  width?: number
+}
+
+/**
+ * 多边形描边。对象存在即开启。WebGL 下线宽恒为 1，不提供 `width`。
+ *
+ * Polygon outline. Presence enables the outline. WebGL line width is always 1,
+ * so `width` is not provided.
+ */
+export interface PolygonOutlineOptions {
+  /**
+   * 描边颜色，默认白色。
+   *
+   * Outline color. Defaults to white.
+   */
+  color?: ColorInput
+}
+
+/**
  * 点图形配置。
  *
  * Point graphics options.
@@ -28,17 +63,18 @@ export interface PointOptions {
    */
   color?: ColorInput
   /**
-   * 描边颜色；仅在 {@link outlineWidth} 大于 0 时生效。
+   * 描边。缺省则无描边；传入对象即开启，{@link GraphicOutlineOptions.width} 默认 `1`。
    *
-   * Outline color; only used when {@link outlineWidth} is greater than 0.
+   * Outline. Omitted means no outline; passing an object enables it, and
+   * {@link GraphicOutlineOptions.width} defaults to `1`.
    */
-  outlineColor?: ColorInput
+  outline?: GraphicOutlineOptions
   /**
-   * 描边像素宽度，默认 `0`（无描边）。
+   * 透明度 `[0,1]`，默认 `1`。
    *
-   * Outline pixel width. Defaults to `0` (no outline).
+   * Opacity in `[0,1]`. Defaults to `1`.
    */
-  outlineWidth?: number
+  opacity?: number
 }
 
 /**
@@ -66,6 +102,12 @@ export interface PolylineOptions {
    * Color. Defaults to white.
    */
   color?: ColorInput
+  /**
+   * 透明度 `[0,1]`，默认 `1`。
+   *
+   * Opacity in `[0,1]`. Defaults to `1`.
+   */
+  opacity?: number
   /**
    * 是否通过 GPU 深度分类贴合 terrain / 3D Tiles。贴地时 {@link width} 以米为
    * 单位，并忽略顶点高度；当前仅 WebGL 支持。
@@ -116,17 +158,18 @@ export interface PolygonOptions {
    */
   color?: ColorInput
   /**
-   * 是否显示描边，默认 `false`。
+   * 透明度 `[0,1]`，默认 `1`。
    *
-   * Whether to show the outline. Defaults to `false`.
+   * Opacity in `[0,1]`. Defaults to `1`.
    */
-  outline?: boolean
+  opacity?: number
   /**
-   * 描边颜色；仅在 {@link outline} 为 `true` 时生效。
+   * 描边。缺省则无描边；传入对象即开启。WebGL 下线宽恒为 1。
    *
-   * Outline color; only used when {@link outline} is `true`.
+   * Outline. Omitted means no outline; passing an object enables it. WebGL line
+   * width is always 1.
    */
-  outlineColor?: ColorInput
+  outline?: PolygonOutlineOptions
   /**
    * 是否通过 GPU 深度分类贴合 terrain / 3D Tiles。贴地时忽略 {@link height}
    * 与顶点高度；{@link extrudeHeight} / {@link outline} 暂不支持。当前仅 WebGL 支持。
@@ -242,21 +285,14 @@ export interface TextOptions {
    * Fill color. Defaults to white. Resolved as a target display color in the
    * Symbol post-composite path.
    */
-  fillColor?: ColorInput
+  color?: ColorInput
   /**
-   * 描边色；仅 {@link outlineWidth} 大于 0 时生效。Symbol 后合成路径按目标显示色解析。
+   * 描边。缺省则无描边；传入对象即开启，{@link GraphicOutlineOptions.width} 默认 `1`。
    *
-   * Outline color; only used when {@link outlineWidth} is greater than 0.
-   * Resolved as a target display color in the Symbol post-composite path.
+   * Outline. Omitted means no outline; passing an object enables it, and
+   * {@link GraphicOutlineOptions.width} defaults to `1`.
    */
-  outlineColor?: ColorInput
-  /**
-   * 描边像素宽，默认 `0`（无描边）。描边在字形外圈，距离化抗锯齿。
-   *
-   * Outline width in px. Defaults to `0` (no outline). The outline sits outside
-   * the glyphs and is anti-aliased via the distance field.
-   */
-  outlineWidth?: number
+  outline?: GraphicOutlineOptions
   /**
    * 背景色；缺省透明。背景为圆角矩形（见 {@link backgroundCornerRadius}）。
    *

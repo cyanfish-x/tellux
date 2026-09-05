@@ -34,7 +34,7 @@ export type TiandituTerrainPluginOptions = {
    * Tianditu API token (`tk`), single or multiple. When multiple are provided,
    * tiles are sharded deterministically by coordinates for load balancing.
    */
-  token: string | string[]
+  apiToken: string | string[]
   urls?: string[]
   subdomains?: string[]
   topLevel?: number
@@ -127,9 +127,9 @@ export class TiandituTerrainPlugin {
   private readonly projection = new ProjectionScheme('EPSG:4326')
 
   constructor(options: TiandituTerrainPluginOptions) {
-    const tokens = resolveTiandituTokens(options.token)
+    const tokens = resolveTiandituTokens(options.apiToken)
     if (tokens.length === 0) {
-      throw new Error('TiandituTerrainPlugin: token is required.')
+      throw new Error('TiandituTerrainPlugin: apiToken is required.')
     }
 
     const subdomains = options.subdomains ?? DEFAULT_SUBDOMAINS

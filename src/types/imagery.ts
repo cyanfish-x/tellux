@@ -24,11 +24,12 @@ export interface ImageryLayerOptions {
    */
   source: ImageryLayerSourceOptions
   /**
-   * 图层是否可见，默认 `true`。
+   * 图层是否显示，默认 `true`。与句柄 {@link ImageryLayer.show} 同构。
    *
-   * Whether the layer is visible. Defaults to `true`.
+   * Whether the layer is shown. Defaults to `true`. Isomorphic with
+   * {@link ImageryLayer.show}.
    */
-  visible?: boolean
+  show?: boolean
   /**
    * 图层显示样式。
    *

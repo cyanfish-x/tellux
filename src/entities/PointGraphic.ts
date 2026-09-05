@@ -29,14 +29,17 @@ export class PointGraphic {
   private readonly currentColor: THREE.Color
   private readonly currentOutlineColor: THREE.Color
   private currentOutlineWidth: number
+  private currentOpacity: number
 
   constructor({ position, options, resolveColor }: PointGraphicOptions) {
     const pixelSize = options.pixelSize ?? 8
-    const outlineWidth = options.outlineWidth ?? 0
+    const outline = options.outline
+    const outlineWidth = outline ? (outline.width ?? 1) : 0
     this.resolveColor = resolveColor
     this.currentColor = new THREE.Color(options.color ?? 0xffffff)
-    this.currentOutlineColor = new THREE.Color(options.outlineColor ?? 0xffffff)
+    this.currentOutlineColor = new THREE.Color(outline?.color ?? 0xffffff)
     this.currentOutlineWidth = outlineWidth
+    this.currentOpacity = options.opacity ?? 1
 
     this.fillGeometry = createPointGeometry(position)
     this.fillMaterial = createPointMaterial(this.resolveColor(this.currentColor), pixelSize, 0, 'opaque')
@@ -63,6 +66,7 @@ export class PointGraphic {
 
     this.object3D.matrixAutoUpdate = false
     this.object3D.updateMatrix()
+    this.applyOpacity()
   }
 
   setPosition(position: THREE.Vector3) {
@@ -85,6 +89,18 @@ export class PointGraphic {
 
   get pixelSize(): number {
     return this.fillMaterial.size
+  }
+
+  get outlineColor(): number {
+    return this.currentOutlineColor.getHex()
+  }
+
+  get outlineWidth(): number {
+    return this.currentOutlineWidth
+  }
+
+  get opacity(): number {
+    return this.currentOpacity
   }
 
   setColor(color: ColorInput) {
@@ -113,6 +129,40 @@ export class PointGraphic {
     }
     if (this.outlineEdgeMaterial) {
       this.outlineEdgeMaterial.size = pixelSize + this.currentOutlineWidth * 2
+    }
+  }
+
+  setOutlineColor(color: ColorInput) {
+    this.currentOutlineColor.set(color)
+    if (this.outlineMaterial && this.outlineEdgeMaterial) {
+      const outline = this.resolveColor(this.currentOutlineColor)
+      this.outlineMaterial.color.copy(outline)
+      this.outlineEdgeMaterial.color.copy(outline)
+    }
+  }
+
+  setOutlineWidth(width: number) {
+    this.currentOutlineWidth = Math.max(0, width)
+    this.setPixelSize(this.fillMaterial.size)
+  }
+
+  setOpacity(opacity: number) {
+    this.currentOpacity = Math.max(0, Math.min(1, opacity))
+    this.applyOpacity()
+  }
+
+  private applyOpacity() {
+    const opacity = this.currentOpacity
+    const fillTransparent = opacity < 1
+    this.fillMaterial.opacity = opacity
+    this.fillMaterial.transparent = fillTransparent
+    this.fillEdgeMaterial.opacity = opacity
+    if (this.outlineMaterial) {
+      this.outlineMaterial.opacity = opacity
+      this.outlineMaterial.transparent = fillTransparent
+    }
+    if (this.outlineEdgeMaterial) {
+      this.outlineEdgeMaterial.opacity = opacity
     }
   }
 

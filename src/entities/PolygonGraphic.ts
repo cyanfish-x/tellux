@@ -25,12 +25,14 @@ export class PolygonGraphic {
   private readonly resolveColor: ResolveColor
   private readonly currentColor: THREE.Color
   private readonly currentOutlineColor: THREE.Color
+  private currentOpacity: number
 
   constructor({ worldPositions, options, resolveColor }: PolygonGraphicOptions) {
     const showFill = options.fill ?? true
     this.resolveColor = resolveColor
     this.currentColor = new THREE.Color(options.color ?? 0xffffff)
-    this.currentOutlineColor = new THREE.Color(options.outlineColor ?? 0xffffff)
+    this.currentOutlineColor = new THREE.Color(options.outline?.color ?? 0xffffff)
+    this.currentOpacity = options.opacity ?? 1
     // 几何始终构建：填充和描边都依赖它。Frame 把局部几何对齐到第一顶点切平面。
     // Geometry is always built: both fill and outline depend on it. The frame
     // aligns local geometry to the tangent plane at the first vertex.
@@ -41,6 +43,7 @@ export class PolygonGraphic {
     this.material = showFill
       ? new THREE.MeshBasicMaterial({
           color: this.resolveColor(this.currentColor),
+          opacity: this.currentOpacity,
           transparent: true,
           depthWrite: false,
           side: THREE.DoubleSide
@@ -57,6 +60,7 @@ export class PolygonGraphic {
       const outlineGeometry = new THREE.EdgesGeometry(geometry, 1)
       this.outlineMaterial = new THREE.LineBasicMaterial({
         color: this.resolveColor(this.currentOutlineColor),
+        opacity: this.currentOpacity,
         transparent: true,
         depthWrite: false
       })
@@ -82,6 +86,10 @@ export class PolygonGraphic {
     return this.outlineMaterial ? this.currentOutlineColor.getHex() : this.color
   }
 
+  get opacity(): number {
+    return this.currentOpacity
+  }
+
   setColor(color: ColorInput) {
     this.currentColor.set(color)
     this.material?.color.copy(this.resolveColor(this.currentColor))
@@ -90,6 +98,12 @@ export class PolygonGraphic {
   setOutlineColor(color: ColorInput) {
     this.currentOutlineColor.set(color)
     this.outlineMaterial?.color.copy(this.resolveColor(this.currentOutlineColor))
+  }
+
+  setOpacity(opacity: number) {
+    this.currentOpacity = Math.max(0, Math.min(1, opacity))
+    if (this.material) this.material.opacity = this.currentOpacity
+    if (this.outlineMaterial) this.outlineMaterial.opacity = this.currentOpacity
   }
 
   refreshColors() {

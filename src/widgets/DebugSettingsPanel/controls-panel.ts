@@ -7,36 +7,47 @@ import {
 } from "./controls"
 import { formatRadians } from "./time"
 import type { DebugSettingsPanelOptions } from "./types"
+import { stageEnabled, starsOptions } from "./apply-initial-settings"
 
 export function buildDebugSettingsControls(
   content: HTMLElement,
   viewer: Viewer,
   settings: DebugSettingsPanelOptions
-) {  const skyToggle = createSwitchControl(
+) {
+  const atmosphere = settings.atmosphere
+  const lighting = atmosphere?.lighting
+  const scattering = atmosphere?.scattering
+  const sky = atmosphere?.sky
+  const stars = starsOptions(sky?.stars)
+  const fallback = atmosphere?.fallbackAmbientLight
+  const clouds = settings.clouds
+  const postProcess = settings.postProcess
+  const renderer = settings.renderer
+  const skyToggle = createSwitchControl(
     "sky-atmosphere",
     "大气",
-    settings.skyAtmosphere ?? viewer.scene.atmosphere.show
+    atmosphere?.show ?? viewer.scene.atmosphere.show
   )
   const starsToggle = createSwitchControl(
     "stars",
     "星空",
-    settings.stars ?? viewer.scene.atmosphere.sky.stars.show
+    stars?.show ?? viewer.scene.atmosphere.sky.stars.show
   )
   const transmittanceToggle = createSwitchControl(
     "atmosphere-transmittance",
     "透射衰减",
-    settings.atmosphereTransmittance ?? viewer.scene.atmosphere.scattering.transmittance
+    scattering?.transmittance ?? viewer.scene.atmosphere.scattering.transmittance
   )
   const nativeInscatterToggle = createSwitchControl(
     "atmosphere-inscatter",
     "原生散射",
-    settings.atmosphereInscatter ?? viewer.scene.atmosphere.scattering.inscatter
+    scattering?.inscatter ?? viewer.scene.atmosphere.scattering.inscatter
   )
   const lightingModeControl = createSelectControl({
     id: "atmosphere-lighting-mode",
     label: "光照模式",
     value:
-      settings.atmosphereLightingMode ?? viewer.scene.atmosphere.lighting.mode,
+      lighting?.mode ?? viewer.scene.atmosphere.lighting.mode,
     options: ["post-process", "light-source"] as const,
   })
   const inscatterHorizonToggle = createSwitchControl(
@@ -47,12 +58,12 @@ export function buildDebugSettingsControls(
   const sunLightToggle = createSwitchControl(
     "atmosphere-sun-light",
     "太阳光照",
-    settings.atmosphereSunLight ?? viewer.scene.atmosphere.lighting.sunLight
+    lighting?.sunLight ?? viewer.scene.atmosphere.lighting.sunLight
   )
   const skyLightToggle = createSwitchControl(
     "atmosphere-sky-light",
     "天空光照",
-    settings.atmosphereSkyLight ?? viewer.scene.atmosphere.lighting.skyLight
+    lighting?.skyLight ?? viewer.scene.atmosphere.lighting.skyLight
   )
   const sunLightIntensityControl = createRangeControl({
     id: "atmosphere-sun-light-intensity",
@@ -61,7 +72,7 @@ export function buildDebugSettingsControls(
     max: 8,
     step: 0.05,
     value:
-      settings.atmosphereSunLightIntensity ??
+      lighting?.sunLightIntensity ??
       viewer.scene.atmosphere.lighting.sunLightIntensity,
     format: (value) => value.toFixed(2),
   })
@@ -72,14 +83,14 @@ export function buildDebugSettingsControls(
     max: 8,
     step: 0.05,
     value:
-      settings.atmosphereSkyLightIntensity ??
+      lighting?.skyLightIntensity ??
       viewer.scene.atmosphere.lighting.skyLightIntensity,
     format: (value) => value.toFixed(2),
   })
   const fallbackAmbientLightToggle = createSwitchControl(
     "fallback-ambient-light",
     "环境光",
-    settings.fallbackAmbientLight ?? viewer.scene.atmosphere.fallbackAmbientLight.show
+    fallback?.enabled ?? viewer.scene.atmosphere.fallbackAmbientLight.enabled
   )
   const fallbackAmbientLightIntensityControl = createRangeControl({
     id: "fallback-ambient-light-intensity",
@@ -88,55 +99,55 @@ export function buildDebugSettingsControls(
     max: 4,
     step: 0.01,
     value:
-      settings.fallbackAmbientLightIntensity ??
+      fallback?.intensity ??
       viewer.scene.atmosphere.fallbackAmbientLight.intensity,
     format: (value) => value.toFixed(2),
   })
   const sunDiscToggle = createSwitchControl(
     "atmosphere-sun-disc",
     "太阳盘",
-    settings.atmosphereSun ?? viewer.scene.atmosphere.sky.sun
+    sky?.sun ?? viewer.scene.atmosphere.sky.sun
   )
   const moonToggle = createSwitchControl(
     "atmosphere-moon",
     "月亮",
-    settings.atmosphereMoon ?? viewer.scene.atmosphere.sky.moon
+    sky?.moon ?? viewer.scene.atmosphere.sky.moon
   )
   const correctAltitudeToggle = createSwitchControl(
     "atmosphere-correct-altitude",
     "高度修正",
-    settings.atmosphereCorrectAltitude ?? viewer.scene.atmosphere.scattering.correctAltitude
+    scattering?.correctAltitude ?? viewer.scene.atmosphere.scattering.correctAltitude
   )
   const correctGeometricToggle = createSwitchControl(
     "atmosphere-correct-geometric",
     "瓦片法线修正",
-    settings.atmosphereCorrectGeometricError ??
+    scattering?.correctGeometricError ??
       viewer.scene.atmosphere.scattering.correctGeometricError
   )
   const cloudToggle = createSwitchControl(
     "clouds",
     "体积云",
-    settings.clouds ?? viewer.scene.clouds.show
+    clouds?.show ?? viewer.scene.clouds.show
   )
   const lensFlareToggle = createSwitchControl(
     "lens-flare",
     "镜头光晕",
-    settings.lensFlare ?? viewer.postProcess.lensFlare.enabled
+    stageEnabled(postProcess?.lensFlare) ?? viewer.postProcess.lensFlare.enabled
   )
   const smaaToggle = createSwitchControl(
     "smaa",
     "SMAA",
-    settings.smaa ?? viewer.postProcess.smaa.enabled
+    stageEnabled(postProcess?.smaa) ?? viewer.postProcess.smaa.enabled
   )
   const taaToggle = createSwitchControl(
     "taa",
     "TAA（WebGPU）",
-    settings.taa ?? viewer.postProcess.taa.enabled
+    stageEnabled(postProcess?.taa) ?? viewer.postProcess.taa.enabled
   )
   const ditheringToggle = createSwitchControl(
     "dithering",
     "抖动",
-    settings.dithering ?? viewer.postProcess.dithering.enabled
+    stageEnabled(postProcess?.dithering) ?? viewer.postProcess.dithering.enabled
   )
   const fpsToggle = createSwitchControl(
     "fps",
@@ -150,7 +161,7 @@ export function buildDebugSettingsControls(
     min: 0,
     max: 1,
     step: 0.01,
-    value: settings.cloudCoverage ?? viewer.scene.clouds.coverage,
+    value: clouds?.coverage ?? viewer.scene.clouds.coverage,
     format: (value) => value.toFixed(2),
   })
   const cloudSpeedControl = createRangeControl({
@@ -159,7 +170,7 @@ export function buildDebugSettingsControls(
     min: 0,
     max: 0.05,
     step: 0.0001,
-    value: settings.cloudSpeed ?? viewer.scene.clouds.speed,
+    value: clouds?.speed ?? viewer.scene.clouds.speed,
     format: (value) => value.toFixed(4),
   })
   const cloudAltitudeControl = createRangeControl({
@@ -168,7 +179,7 @@ export function buildDebugSettingsControls(
     min: 200,
     max: 4000,
     step: 50,
-    value: settings.cloudLayerAltitude ?? viewer.scene.clouds.layer.altitude,
+    value: clouds?.layer?.altitude ?? viewer.scene.clouds.layer.altitude,
     format: (value) => `${Math.round(value)}m`,
   })
   const cloudHeightControl = createRangeControl({
@@ -177,7 +188,7 @@ export function buildDebugSettingsControls(
     min: 100,
     max: 3000,
     step: 50,
-    value: settings.cloudLayerHeight ?? viewer.scene.clouds.layer.height,
+    value: clouds?.layer?.height ?? viewer.scene.clouds.layer.height,
     format: (value) => `${Math.round(value)}m`,
   })
   const inscatterIntensityControl = createRangeControl({
@@ -187,12 +198,12 @@ export function buildDebugSettingsControls(
     max: 1,
     step: 0.01,
     value:
-      settings.atmosphereInscatterIntensity ??
+      scattering?.intensity ??
       viewer.scene.atmosphere.scattering.intensity,
     format: (value) => value.toFixed(2),
   })
   const horizonRange =
-    settings.atmosphereInscatterHorizonRange ??
+    scattering?.horizonRange ??
     viewer.scene.atmosphere.scattering.horizonRange
   const horizonStartControl = createRangeControl({
     id: "atmosphere-horizon-start",
@@ -218,7 +229,7 @@ export function buildDebugSettingsControls(
     min: 0,
     max: 4,
     step: 0.01,
-    value: settings.atmosphereAlbedoScale ?? viewer.scene.atmosphere.lighting.albedoScale,
+    value: lighting?.albedoScale ?? viewer.scene.atmosphere.lighting.albedoScale,
     format: (value) => value.toFixed(2),
   })
   const sunAngularRadiusControl = createRangeControl({
@@ -228,7 +239,7 @@ export function buildDebugSettingsControls(
     max: 0.1,
     step: 0.0005,
     value:
-      settings.atmosphereSunAngularRadius ??
+      sky?.sunAngularRadius ??
       viewer.scene.atmosphere.sky.sunAngularRadius,
     format: formatRadians,
   })
@@ -239,7 +250,7 @@ export function buildDebugSettingsControls(
     max: 0.1,
     step: 0.0005,
     value:
-      settings.atmosphereMoonAngularRadius ??
+      sky?.moonAngularRadius ??
       viewer.scene.atmosphere.sky.moonAngularRadius,
     format: formatRadians,
   })
@@ -250,7 +261,7 @@ export function buildDebugSettingsControls(
     max: 8,
     step: 0.05,
     value:
-      settings.atmosphereLunarRadianceScale ??
+      sky?.lunarRadianceScale ??
       viewer.scene.atmosphere.sky.lunarRadianceScale,
     format: (value) => value.toFixed(2),
   })
@@ -261,7 +272,7 @@ export function buildDebugSettingsControls(
     max: 16,
     step: 0.25,
     value:
-      settings.atmosphereShadowRadius ?? viewer.scene.atmosphere.shadow.radius,
+      atmosphere?.shadow?.radius ?? viewer.scene.atmosphere.shadow.radius,
     format: (value) => value.toFixed(2),
   })
   const shadowSampleCountControl = createRangeControl({
@@ -271,7 +282,7 @@ export function buildDebugSettingsControls(
     max: 16,
     step: 1,
     value:
-      settings.atmosphereShadowSampleCount ??
+      atmosphere?.shadow?.sampleCount ??
       viewer.scene.atmosphere.shadow.sampleCount,
     format: (value) => String(Math.round(value)),
   })
@@ -281,7 +292,7 @@ export function buildDebugSettingsControls(
     min: 0,
     max: 8,
     step: 0.05,
-    value: settings.starsIntensity ?? viewer.scene.atmosphere.sky.stars.intensity,
+    value: stars?.intensity ?? viewer.scene.atmosphere.sky.stars.intensity,
     format: (value) => value.toFixed(2),
   })
   const starsPointSizeControl = createRangeControl({
@@ -290,7 +301,7 @@ export function buildDebugSettingsControls(
     min: 0.1,
     max: 4,
     step: 0.05,
-    value: settings.starsPointSize ?? viewer.scene.atmosphere.sky.stars.pointSize,
+    value: stars?.pointSize ?? viewer.scene.atmosphere.sky.stars.pointSize,
     format: (value) => value.toFixed(2),
   })
   const solarIrradianceControl = createRangeControl({
@@ -300,7 +311,7 @@ export function buildDebugSettingsControls(
     max: 4,
     step: 0.01,
     value:
-      settings.atmosphereSolarIrradianceScale ??
+      scattering?.solarIrradianceScale ??
       viewer.scene.atmosphere.scattering.solarIrradianceScale,
     format: (value) => value.toFixed(2),
   })
@@ -311,7 +322,7 @@ export function buildDebugSettingsControls(
     max: 4,
     step: 0.01,
     value:
-      settings.atmosphereRayleighScatteringScale ??
+      scattering?.rayleighScatteringScale ??
       viewer.scene.atmosphere.scattering.rayleighScatteringScale,
     format: (value) => value.toFixed(2),
   })
@@ -322,7 +333,7 @@ export function buildDebugSettingsControls(
     max: 4,
     step: 0.01,
     value:
-      settings.atmosphereMieScatteringScale ??
+      scattering?.mieScatteringScale ??
       viewer.scene.atmosphere.scattering.mieScatteringScale,
     format: (value) => value.toFixed(2),
   })
@@ -333,7 +344,7 @@ export function buildDebugSettingsControls(
     max: 4,
     step: 0.01,
     value:
-      settings.atmosphereMieExtinctionScale ??
+      scattering?.mieExtinctionScale ??
       viewer.scene.atmosphere.scattering.mieExtinctionScale,
     format: (value) => value.toFixed(2),
   })
@@ -344,7 +355,7 @@ export function buildDebugSettingsControls(
     max: 0.99,
     step: 0.01,
     value:
-      settings.atmosphereMiePhaseFunctionG ??
+      scattering?.miePhaseFunctionG ??
       viewer.scene.atmosphere.scattering.miePhaseFunctionG,
     format: (value) => value.toFixed(2),
   })
@@ -355,7 +366,7 @@ export function buildDebugSettingsControls(
     max: 4,
     step: 0.01,
     value:
-      settings.atmosphereAbsorptionExtinctionScale ??
+      scattering?.absorptionExtinctionScale ??
       viewer.scene.atmosphere.scattering.absorptionExtinctionScale,
     format: (value) => value.toFixed(2),
   })
@@ -366,7 +377,7 @@ export function buildDebugSettingsControls(
     max: 1,
     step: 0.01,
     value:
-      settings.atmosphereGroundAlbedo ?? viewer.scene.atmosphere.scattering.groundAlbedo,
+      scattering?.groundAlbedo ?? viewer.scene.atmosphere.scattering.groundAlbedo,
     format: (value) => value.toFixed(2),
   })
 
@@ -468,7 +479,7 @@ export function buildDebugSettingsControls(
     min: 2,
     max: 14,
     step: 0.1,
-    value: settings.toneMappingExposure ?? viewer.postProcess.toneMappingExposure,
+    value: postProcess?.toneMappingExposure ?? viewer.postProcess.toneMappingExposure,
     format: (value) => value.toFixed(1),
   })
   const resolutionControl = createRangeControl({
@@ -477,7 +488,7 @@ export function buildDebugSettingsControls(
     min: 0.5,
     max: 2,
     step: 0.05,
-    value: settings.resolutionScale ?? viewer.renderer.resolutionScale,
+    value: renderer?.resolutionScale ?? viewer.renderer.resolutionScale,
     format: (value) => `${value.toFixed(2)}x`,
   })
 

@@ -345,7 +345,7 @@ export interface ViewerAtmosphereShadowOptions {
  */
 export interface ViewerFallbackAmbientLightOptions {
   /** 是否启用夜间兜底环境光，默认 `true`。Enables the nighttime fallback ambient light. Defaults to `true`. */
-  show?: boolean
+  enabled?: boolean
   /** 夜间兜底环境光最大强度，默认 `0.5`。Nighttime fallback ambient light maximum intensity. Defaults to `0.5`. */
   intensity?: number
 }

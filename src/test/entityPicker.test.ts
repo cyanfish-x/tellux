@@ -70,7 +70,7 @@ describe('EntityPicker', () => {
     fixture.entities.add({
       id: 'outlined-point',
       position: [pointWorld.x, pointWorld.y, pointWorld.z],
-      point: { pixelSize: 10, outlineWidth: 2 }
+      point: { pixelSize: 10, outline: { width: 2 } }
     })
 
     expect(fixture.picker.pick({ x: 100, y: 100 })?.entity.id).toBe('outlined-point')

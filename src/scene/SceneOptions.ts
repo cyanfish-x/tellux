@@ -69,7 +69,7 @@ export interface ResolvedSceneOptions {
       sampleCount: number
     }
     fallbackAmbientLight: {
-      show: boolean
+      enabled: boolean
       intensity: number
     }
   }

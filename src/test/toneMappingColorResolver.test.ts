@@ -163,8 +163,7 @@ describe('ToneMappingColorResolver Viewer isolation', () => {
       position: [0, 0, 0],
       point: {
         color: '#38bdf8',
-        outlineColor: '#ff0000',
-        outlineWidth: 2
+        outline: { color: '#ff0000', width: 2 }
       },
       polyline: {
         positions: [[1, 0, 0], [1, 1, 0]],
@@ -173,16 +172,14 @@ describe('ToneMappingColorResolver Viewer isolation', () => {
       polygon: {
         positions: [[2, 0, 0], [2, 1, 0], [2, 1, 1]],
         color: '#ffd166',
-        outline: true,
-        outlineColor: '#f472b6'
+        outline: { color: '#f472b6' }
       }
     })
     const secondEntity = secondManager.add({
       position: [0, 0, 0],
       point: {
         color: '#38bdf8',
-        outlineColor: '#ff0000',
-        outlineWidth: 2
+        outline: { color: '#ff0000', width: 2 }
       },
       polyline: {
         positions: [[1, 0, 0], [1, 1, 0]],
@@ -191,8 +188,7 @@ describe('ToneMappingColorResolver Viewer isolation', () => {
       polygon: {
         positions: [[2, 0, 0], [2, 1, 0], [2, 1, 1]],
         color: '#ffd166',
-        outline: true,
-        outlineColor: '#f472b6'
+        outline: { color: '#f472b6' }
       }
     })
     const firstBefore = collectMaterialColors(firstEntity.object3D)

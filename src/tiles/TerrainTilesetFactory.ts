@@ -108,7 +108,7 @@ export class TerrainTilesetFactory {
     if (this.isTiandituTerrainOptions(terrain)) {
       tileset.registerPlugin(
         new TiandituTerrainPlugin({
-          token: terrain.token,
+          apiToken: terrain.apiToken,
           urls: terrain.urls,
           subdomains: terrain.subdomains,
           topLevel: terrain.topLevel,
@@ -206,6 +206,6 @@ export class TerrainTilesetFactory {
   }
 
   private isUrlTerrainOptions(terrain: TerrainOptions): terrain is UrlTerrainOptions {
-    return terrain.type === undefined || terrain.type === 'url'
+    return terrain.type === 'url'
   }
 }

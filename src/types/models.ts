@@ -83,8 +83,8 @@ export interface GltfModelOptions {
    * Animation channel index to play. Defaults to `0`.
    */
   animationChannel?: number
-  /** 是否显示模型，默认 `true`。Whether the model is visible. Defaults to `true`. */
-  visible?: boolean
+  /** 是否显示模型，默认 `true`。与句柄 {@link ModelLayer.show} 同构。Whether the model is shown. Defaults to `true`. Isomorphic with {@link ModelLayer.show}. */
+  show?: boolean
 }
 
 /**

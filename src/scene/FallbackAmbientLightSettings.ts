@@ -12,16 +12,16 @@ export class FallbackAmbientLightSettings {
     options: ResolvedSceneOptions['atmosphere']['fallbackAmbientLight'],
     private readonly source: THREE.AmbientLight
   ) {
-    this.source.visible = options.show
+    this.source.visible = options.enabled
     this.currentIntensity = sceneValueNormalizers.fallbackAmbientLightIntensity(options.intensity)
   }
 
   /** 是否启用夜间兜底环境光。Enables the nighttime fallback ambient light. */
-  get show() {
+  get enabled() {
     return this.source.visible
   }
 
-  set show(value: boolean) {
+  set enabled(value: boolean) {
     this.source.visible = value
   }
 

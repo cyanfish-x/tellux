@@ -30,7 +30,7 @@ export class GltfModelLayer implements ModelLayer {
     private readonly removeLayer: (layer: GltfModelLayer) => void
   ) {
     this.root.name = id
-    this.root.visible = options.visible ?? true
+    this.root.visible = options.show ?? true
     this.root.matrixAutoUpdate = false
     this.lighting = resolveGltfModelLighting(options)
     setObjectLocalLighting(this.root, this.lighting === 'local')

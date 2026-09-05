@@ -1,58 +1,34 @@
 import type { SpringControlOptions } from '../SpringControl'
-import type { AtmosphereLightingMode, SurfaceMaterialMode } from './scene'
+import type {
+  ViewerAtmosphereOptions,
+  ViewerCloudOptions,
+  ViewerPostProcessOptions
+} from './scene'
 
 /**
- * Viewer 调试设置面板的初始值。
+ * Viewer 调试设置面板的初始值。形状与 {@link ViewerSceneOptions} /
+ * {@link ViewerPostProcessOptions} 对应领域同构。
  *
- * Initial values for the Viewer debug settings panel.
+ * Initial values for the Viewer debug settings panel. Nested the same way as
+ * the corresponding {@link ViewerSceneOptions} / {@link ViewerPostProcessOptions}
+ * domains.
  */
 export interface DebugSettingsPanelOptions {
-  skyAtmosphere?: boolean
-  stars?: boolean
-  starsIntensity?: number
-  starsPointSize?: number
-  clouds?: boolean
-  cloudCoverage?: number
-  cloudSpeed?: number
-  cloudLayerAltitude?: number
-  cloudLayerHeight?: number
-  atmosphereInscatterIntensity?: number
-  atmosphereInscatterHorizonBlend?: boolean
-  atmosphereInscatterHorizonRange?: [number, number]
-  atmosphereCorrectAltitude?: boolean
-  atmosphereCorrectGeometricError?: boolean
-  atmosphereTransmittance?: boolean
-  atmosphereInscatter?: boolean
-  atmosphereLightingMode?: AtmosphereLightingMode
-  surfaceMaterialMode?: SurfaceMaterialMode
-  atmosphereSunLight?: boolean
-  atmosphereSkyLight?: boolean
-  atmosphereSunLightIntensity?: number
-  atmosphereSkyLightIntensity?: number
-  fallbackAmbientLight?: boolean
-  fallbackAmbientLightIntensity?: number
-  atmosphereSun?: boolean
-  atmosphereMoon?: boolean
-  atmosphereGround?: boolean
-  atmosphereAlbedoScale?: number
-  atmosphereSunAngularRadius?: number
-  atmosphereMoonAngularRadius?: number
-  atmosphereLunarRadianceScale?: number
-  atmosphereShadowRadius?: number
-  atmosphereShadowSampleCount?: number
-  atmosphereSolarIrradianceScale?: number
-  atmosphereRayleighScatteringScale?: number
-  atmosphereMieScatteringScale?: number
-  atmosphereMieExtinctionScale?: number
-  atmosphereMiePhaseFunctionG?: number
-  atmosphereAbsorptionExtinctionScale?: number
-  atmosphereGroundAlbedo?: number
-  toneMappingExposure?: number
-  resolutionScale?: number
-  lensFlare?: boolean
-  smaa?: boolean
-  taa?: boolean
-  dithering?: boolean
+  /** 大气初始值。Atmosphere initial values. */
+  atmosphere?: ViewerAtmosphereOptions
+  /** 体积云初始值。Volumetric cloud initial values. */
+  clouds?: ViewerCloudOptions
+  /** 后处理初始值。Post-process initial values. */
+  postProcess?: Pick<
+    ViewerPostProcessOptions,
+    'toneMappingExposure' | 'lensFlare' | 'smaa' | 'taa' | 'dithering'
+  >
+  /** 渲染器初始值。Renderer initial values. */
+  renderer?: {
+    /** 像素比。Pixel ratio. */
+    resolutionScale?: number
+  }
+  /** 是否显示 FPS，默认 `true`。Whether to show FPS. Defaults to `true`. */
   showFps?: boolean
 }
 
@@ -116,7 +92,7 @@ export interface ViewerWidgetOptions {
    * Pass an object to provide initial panel values. They are merged with cached
    * values for the current page.
    */
-  settingPanel?: boolean | DebugSettingsPanelOptions
+  settingsPanel?: boolean | DebugSettingsPanelOptions
   /**
    * 是否挂载内置时间条，默认 `false`。
    *
