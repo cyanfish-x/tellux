@@ -1,5 +1,7 @@
 # sampleHeightMostDetailed 实现链路
 
+> 1.0 施工中：本文描述施工前的内部链路。公开签名的目标形状以 `notes/架构/API稳定版破坏式变更方案.md` 批次 D4 为准（返回 `number | undefined`，不再返回坐标元组），不要按本文「命中时返回 `[longitude, latitude, height]`」继续实现公开 API。
+
 本文档记录 `Viewer.sampleHeightMostDetailed` 的当前实现逻辑，重点说明 `terrain` 模式如何直接按 quantized-mesh terrain 的最高可用层级采样，以及 `tileset` / `all` 模式如何通过主场景局部加载区域把观察点附近的瓦片预热到最高细节后再采样。
 
 相关源码：

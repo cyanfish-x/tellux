@@ -95,10 +95,6 @@ export class AtmosphereLightingSettings {
     this.options.albedoScale = sceneValueNormalizers.albedoScale(value)
     this.onStateChange()
   }
-
-  apply() {
-    this.onStateChange()
-  }
 }
 
 class AtmospherePhotometricSettings {

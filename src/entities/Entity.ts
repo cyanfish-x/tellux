@@ -18,6 +18,18 @@ import {
   type ResolveColor
 } from './invertToneMapping'
 
+export interface EntityPickGraphics {
+  readonly point: PointGraphic | null
+  readonly polyline: PolylinePickable | null
+  readonly symbol: SymbolGraphic | null
+}
+
+const entityPickGraphics = new WeakMap<Entity, EntityPickGraphics>()
+
+export function getEntityPickGraphics(entity: Entity): EntityPickGraphics | undefined {
+  return entityPickGraphics.get(entity)
+}
+
 export interface EntityContext {
   toVector3: (input: CartographicInput, target: THREE.Vector3) => THREE.Vector3
   removeEntity: (entity: Entity) => void
@@ -108,6 +120,19 @@ export class Entity {
       })
       this.root.add(this.symbolGraphic.object3D)
     }
+
+    const self = this
+    entityPickGraphics.set(this, {
+      get point() {
+        return self.pointGraphic
+      },
+      get polyline() {
+        return self.polylineGraphic ?? self.groundPolylineGraphic
+      },
+      get symbol() {
+        return self.symbolGraphic
+      }
+    })
   }
 
   /**
@@ -245,11 +270,6 @@ export class Entity {
     return this.pointGraphic ? new PointGraphics(this.pointGraphic) : null
   }
 
-  /** 点图形底层对象；供 EntityPicker 做屏幕空间拾取。Underlying point graphic for screen-space picking. */
-  get pointGraphicImpl() {
-    return this.pointGraphic
-  }
-
   /** 折线图形句柄；未挂载时为 `null`。Polyline graphics handle, or `null`. */
   get polyline() {
     return this.polylineGraphic ? new PolylineGraphics(this.polylineGraphic) : null
@@ -263,19 +283,6 @@ export class Entity {
   /** Symbol 图形句柄；未挂载时为 `null`。Symbol graphics handle, or `null`. */
   get symbol() {
     return this.symbolGraphic ? new SymbolGraphics(this.symbolGraphic) : null
-  }
-
-  /** Symbol 图形底层对象；供 EntityManager 同步 resolution。Underlying symbol graphic. */
-  get symbolGraphicImpl() {
-    return this.symbolGraphic
-  }
-
-  /**
-   * 折线图形底层对象（普通或贴地）；供 EntityManager 同步 resolution、EntityPicker
-   * 屏幕空间拾取。Underlying polyline graphic (plain or ground-clamped).
-   */
-  get polylineGraphicImpl(): PolylinePickable | null {
-    return this.polylineGraphic ?? this.groundPolylineGraphic
   }
 
   /** 自定义属性。Custom properties. */

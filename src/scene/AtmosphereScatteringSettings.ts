@@ -146,8 +146,4 @@ export class AtmosphereScatteringSettings {
     this.options.groundAlbedo = sceneValueNormalizers.groundAlbedo(value)
     this.onStateChange()
   }
-
-  apply() {
-    this.onStateChange()
-  }
 }

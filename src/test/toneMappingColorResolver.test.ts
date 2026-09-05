@@ -290,7 +290,6 @@ describe('ToneMappingColorResolver Viewer isolation', () => {
   it('refreshes existing Viewer colors when exposure changes', () => {
     const setState = vi.fn()
     const refreshColors = vi.fn()
-    const syncStyleFromSettings = vi.fn()
     const viewer = Object.create(Viewer.prototype) as Viewer
     Object.assign(viewer as unknown as Record<string, unknown>, {
       currentToneMappingExposure: 2,
@@ -300,7 +299,7 @@ describe('ToneMappingColorResolver Viewer isolation', () => {
       },
       colorResolver: { setState },
       entitiesManager: { refreshColors },
-      highlightManager: { syncStyleFromSettings }
+      highlightManager: {}
     })
 
     viewer.toneMappingExposure = 4
@@ -311,6 +310,5 @@ describe('ToneMappingColorResolver Viewer isolation', () => {
       exposure: 4
     })
     expect(refreshColors).toHaveBeenCalledOnce()
-    expect(syncStyleFromSettings).toHaveBeenCalledOnce()
   })
 })

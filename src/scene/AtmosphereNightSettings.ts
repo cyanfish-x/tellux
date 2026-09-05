@@ -95,8 +95,4 @@ export class AtmosphereNightSettings {
     this.options.transitionRange = sceneValueNormalizers.nightTransitionRange(value)
     this.onStateChange()
   }
-
-  apply() {
-    this.onStateChange()
-  }
 }

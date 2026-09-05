@@ -1,8 +1,16 @@
 # Highlight 统一高亮方案
 
-> 状态：设计方案（待实现）  
-> 门面：`viewer.highlight`  
-> 样式：`viewer.scene.highlight`
+> 状态：**已被取代（历史背景）**
+> 取代文档：`notes/架构/API稳定版破坏式变更方案.md` 批次 B9
+> 目标门面：`viewer.highlighter`（操作 + 样式都在该对象上；不再使用 `viewer.highlight` / `scene.highlight`）
+
+本文记录 2026-07 落地时的原始设计，解释当时为什么把样式挂在 `scene.highlight`。实现或扩展高亮时 **不要** 按本文的公开路径写代码，以 1.0 方案 B9 为准。
+
+---
+
+> 原文状态：设计方案（已实现于 0.2）
+> 原文门面：`viewer.highlight`
+> 原文样式：`viewer.scene.highlight`
 
 以 `viewer.highlight` 为统一门面，按目标类型自动选择后处理描边（整 Object3D）或叠加几何（3D Tiles feature）；样式挂在 `scene.highlight`，与现有 Scene 设置同构。
 

@@ -1,4 +1,5 @@
 import type * as THREE from 'three'
+import type { OutlineEffect } from 'postprocessing'
 import type {
   HighlightTarget,
   HismPickResult,
@@ -114,6 +115,27 @@ export interface HighlightManagerOptions {
   hideHismPickMarker?: () => void
 }
 
+const highlightHost = new WeakMap<
+  HighlightManager,
+  {
+    syncStyleFromSettings: () => void
+    update: () => void
+    readonly outlineEffect: OutlineEffect | null
+  }
+>()
+
+export function syncHighlightStyleFromSettings(manager: HighlightManager) {
+  highlightHost.get(manager)?.syncStyleFromSettings()
+}
+
+export function updateHighlightManager(manager: HighlightManager) {
+  highlightHost.get(manager)?.update()
+}
+
+export function getHighlightOutlineEffect(manager: HighlightManager) {
+  return highlightHost.get(manager)?.outlineEffect ?? null
+}
+
 /**
  * 统一高亮门面：按目标类型路由到描边或叠加几何。
  *
@@ -169,12 +191,15 @@ export class HighlightManager {
       this.selectHism = null
       this.hoverHism = null
     }
+    const self = this
+    highlightHost.set(this, {
+      syncStyleFromSettings: () => self.syncStyleFromSettings(),
+      update: () => self.update(),
+      get outlineEffect() {
+        return self.outline.effect
+      }
+    })
     this.syncStyleFromSettings()
-  }
-
-  /** 供 PostProcessingManager 挂接的 OutlineEffect；WebGPU 下为 `null`。 */
-  get outlineEffect() {
-    return this.outline.effect
   }
 
   /**
@@ -301,7 +326,7 @@ export class HighlightManager {
    *
    * Syncs styles from `scene.highlight` into both highlighters.
    */
-  syncStyleFromSettings() {
+  private syncStyleFromSettings() {
     const { settings } = this.options
     this.outline.setStyle({
       enabled: settings.outline.enabled,
@@ -331,7 +356,7 @@ export class HighlightManager {
    *
    * Per-frame HISM proxy sync (LOD / matrices); call after hismManager.update.
    */
-  update() {
+  private update() {
     const selectChanged = this.selectHism?.update() ?? false
     const hoverChanged = this.hoverHism?.update() ?? false
     if (selectChanged || hoverChanged) {

@@ -115,8 +115,4 @@ export class AtmosphereSkySettings {
     this.options.lunarRadianceScale = sceneValueNormalizers.lunarRadianceScale(value)
     this.onStateChange()
   }
-
-  apply() {
-    this.onStateChange()
-  }
 }

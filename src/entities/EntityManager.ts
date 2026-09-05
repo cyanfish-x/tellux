@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { CartographicInput, EntityOptions } from '../types'
-import { Entity } from './Entity'
+import { Entity, getEntityPickGraphics } from './Entity'
 import type { EllipsoidLike, GroundClampContext } from './groundClamp'
 import { resolveColor, type ResolveColor } from './invertToneMapping'
 
@@ -21,6 +21,20 @@ export interface EntityManagerOptions {
   resolveColor?: ResolveColor
 }
 
+export function syncEntityManagerResolution(
+  manager: EntityManager,
+  width: number,
+  height: number,
+  pixelRatio: number
+) {
+  entityManagerResolution.get(manager)?.(width, height, pixelRatio)
+}
+
+const entityManagerResolution = new WeakMap<
+  EntityManager,
+  (width: number, height: number, pixelRatio: number) => void
+>()
+
 /**
  * 实体集合管理器。提供 `viewer.entities` 上的增删查改接口，并维护一个
  * 挂在场景根节点下的 `THREE.Group` 容器。
@@ -40,6 +54,16 @@ export class EntityManager {
   constructor(private readonly options: EntityManagerOptions) {
     this.entitiesRoot.name = 'tellux-entities'
     this.options.scene.add(this.entitiesRoot)
+    entityManagerResolution.set(this, (width, height, pixelRatio) => {
+      this.lastWidth = width
+      this.lastHeight = height
+      this.lastPixelRatio = pixelRatio
+      this.entities.forEach((entity) => {
+        const graphics = getEntityPickGraphics(entity)
+        graphics?.polyline?.syncResolution(width, height)
+        graphics?.symbol?.syncResolution(width, height, pixelRatio)
+      })
+    })
   }
 
   /** 实体根节点；供 EntityPicker 拾取。Entities root node, used by EntityPicker. */
@@ -67,8 +91,9 @@ export class EntityManager {
     // Push current resolution / pixel ratio so the new entity renders correctly
     // without waiting for a resize.
     if (this.lastWidth > 0) {
-      entity.polylineGraphicImpl?.syncResolution(this.lastWidth, this.lastHeight)
-      entity.symbolGraphicImpl?.syncResolution(this.lastWidth, this.lastHeight, this.lastPixelRatio)
+      const graphics = getEntityPickGraphics(entity)
+      graphics?.polyline?.syncResolution(this.lastWidth, this.lastHeight)
+      graphics?.symbol?.syncResolution(this.lastWidth, this.lastHeight, this.lastPixelRatio)
     }
     return entity
   }
@@ -103,22 +128,6 @@ export class EntityManager {
   /** 重新解析已有实体颜色。Re-resolves colors for existing entities. */
   refreshColors() {
     this.entities.forEach((entity) => entity.refreshColors())
-  }
-
-  /**
-   * 同步折线 LineMaterial 的 resolution 与 symbol 的绘制缓冲尺寸 / 像素比。
-   *
-   * Syncs polyline LineMaterial resolution and the symbol drawing-buffer size /
-   * pixel ratio.
-   */
-  syncResolution(width: number, height: number, pixelRatio: number) {
-    this.lastWidth = width
-    this.lastHeight = height
-    this.lastPixelRatio = pixelRatio
-    this.entities.forEach((entity) => {
-      entity.polylineGraphicImpl?.syncResolution(width, height)
-      entity.symbolGraphicImpl?.syncResolution(width, height, pixelRatio)
-    })
   }
 
   dispose() {

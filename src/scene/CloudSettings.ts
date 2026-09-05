@@ -5,6 +5,12 @@ import type { ResolvedSceneOptions } from './SceneOptions'
 import { sceneValueNormalizers } from './SceneValueNormalization'
 import { SceneToggle } from './SceneToggle'
 
+const cloudApply = new WeakMap<CloudSettings, () => void>()
+
+export function applyCloudSettings(settings: CloudSettings) {
+  cloudApply.get(settings)?.()
+}
+
 class CloudLayerSettings {
   constructor(
     private readonly options: ResolvedSceneOptions['clouds']['layer'],
@@ -151,6 +157,7 @@ export class CloudSettings {
     this.layer = new CloudLayerSettings(options.layer, onLayerChange)
     this.look = new CloudLookSettings(options.look, onLookOrShadowChange)
     this.shadow = new CloudShadowSettings(options.shadow, onLookOrShadowChange)
+    cloudApply.set(this, () => this.apply())
   }
 
   /**
@@ -235,7 +242,7 @@ export class CloudSettings {
     this.apply()
   }
 
-  apply() {
+  private apply() {
     this.applyCloudsState(this.getRuntimeState())
   }
 

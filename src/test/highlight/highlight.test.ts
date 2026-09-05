@@ -5,8 +5,11 @@ import {
   createFeatureGeometry,
   OverlayHighlighter
 } from '../../highlight/OverlayHighlighter'
-import { resolveHighlightTarget } from '../../highlight/HighlightManager'
-import { HighlightManager } from '../../highlight/HighlightManager'
+import {
+  HighlightManager,
+  getHighlightOutlineEffect,
+  resolveHighlightTarget
+} from '../../highlight/HighlightManager'
 import { HighlightSettings } from '../../scene/HighlightSettings'
 import type { ResolvedSceneOptions } from '../../scene/SceneOptions'
 
@@ -181,7 +184,7 @@ describe('HighlightManager routing', () => {
       new THREE.MeshBasicMaterial()
     )
     manager.set(mesh)
-    expect(manager.outlineEffect?.selection.has(mesh)).toBe(true)
+    expect(getHighlightOutlineEffect(manager)?.selection.has(mesh)).toBe(true)
     expect(scene.children.length).toBe(0)
 
     const group = new THREE.Group()
@@ -191,15 +194,15 @@ describe('HighlightManager routing', () => {
     )
     group.add(childMesh)
     manager.set(group)
-    expect(manager.outlineEffect?.selection.has(group)).toBe(false)
-    expect(manager.outlineEffect?.selection.has(childMesh)).toBe(true)
-    expect(childMesh.layers.isEnabled(manager.outlineEffect!.selection.layer)).toBe(
+    expect(getHighlightOutlineEffect(manager)?.selection.has(group)).toBe(false)
+    expect(getHighlightOutlineEffect(manager)?.selection.has(childMesh)).toBe(true)
+    expect(childMesh.layers.isEnabled(getHighlightOutlineEffect(manager)!.selection.layer)).toBe(
       true
     )
 
     const batchMesh = createBatchMesh(1)
     manager.set(createFeature(batchMesh, 1))
-    expect(manager.outlineEffect?.selection.size).toBe(0)
+    expect(getHighlightOutlineEffect(manager)?.selection.size).toBe(0)
     expect(scene.children.length).toBe(1)
 
     manager.clear()
@@ -261,10 +264,10 @@ describe('HighlightManager routing', () => {
 
     manager.set(pick)
     expect(hideCount).toBe(1)
-    expect(manager.outlineEffect?.selection.size).toBe(2)
+    expect(getHighlightOutlineEffect(manager)?.selection.size).toBe(2)
     expect(manager.get()).toEqual(pick)
 
-    const proxies = [...(manager.outlineEffect?.selection ?? [])]
+    const proxies = [...(getHighlightOutlineEffect(manager)?.selection ?? [])]
     expect(proxies).toHaveLength(2)
     for (const proxy of proxies) {
       expect((proxy as THREE.Mesh).isMesh).toBe(true)
@@ -272,7 +275,7 @@ describe('HighlightManager routing', () => {
     }
 
     manager.clear()
-    expect(manager.outlineEffect?.selection.size).toBe(0)
+    expect(getHighlightOutlineEffect(manager)?.selection.size).toBe(0)
     expect(manager.get()).toBeNull()
     manager.dispose()
   })

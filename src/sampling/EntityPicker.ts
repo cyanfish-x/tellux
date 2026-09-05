@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { PickedEntity, PickEntityOptions, ScreenPosition } from '../types'
 import type { EntityManager } from '../entities/EntityManager'
-import type { Entity } from '../entities/Entity'
+import { getEntityPickGraphics, type Entity } from '../entities/Entity'
 
 const ENTITY_KEY = 'telluxEntity'
 
@@ -105,7 +105,7 @@ export class EntityPicker {
     width: number,
     height: number
   ): EntityPickCandidate | null {
-    const graphic = entity.pointGraphicImpl
+    const graphic = getEntityPickGraphics(entity)?.point
     if (!graphic) return null
 
     const worldPoint = graphic.copyPosition(this.point)
@@ -129,7 +129,7 @@ export class EntityPicker {
     width: number,
     height: number
   ): EntityPickCandidate | null {
-    const graphic = entity.polylineGraphicImpl
+    const graphic = getEntityPickGraphics(entity)?.polyline
     if (!graphic) return null
 
     let picked: EntityPickCandidate | null = null
@@ -167,7 +167,7 @@ export class EntityPicker {
     width: number,
     height: number
   ): EntityPickCandidate | null {
-    const graphic = entity.symbolGraphicImpl
+    const graphic = getEntityPickGraphics(entity)?.symbol
     if (!graphic) return null
     const hit = graphic.pickScreenSpace(mouse, this.camera, width, height)
     if (!hit) return null

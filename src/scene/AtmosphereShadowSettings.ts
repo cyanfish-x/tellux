@@ -26,8 +26,4 @@ export class AtmosphereShadowSettings {
     this.options.sampleCount = sceneValueNormalizers.shadowSampleCount(value)
     this.onStateChange()
   }
-
-  apply() {
-    this.onStateChange()
-  }
 }

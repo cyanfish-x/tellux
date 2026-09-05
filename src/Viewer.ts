@@ -3,7 +3,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { Camera } from './Camera'
 import { Clock, type ClockChangeEvent } from './Clock'
-import { EntityManager } from './entities/EntityManager'
+import { EntityManager, syncEntityManagerResolution } from './entities/EntityManager'
 import { EntityRenderManager } from './entities/EntityRenderManager'
 import { SymbolOcclusionPass } from './entities/SymbolOcclusionPass'
 import { ToneMappingColorResolver } from './entities/invertToneMapping'
@@ -15,6 +15,11 @@ import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
 import { LayerManager } from './LayerManager'
 import { HismManager } from './hism'
 import { HighlightManager } from './highlight'
+import {
+  getHighlightOutlineEffect,
+  syncHighlightStyleFromSettings,
+  updateHighlightManager
+} from './highlight/HighlightManager'
 import { ResourceScope, awaitReadyOrDestroy } from './lifecycle/ResourceLifecycle'
 import { ModelManager } from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
@@ -40,7 +45,7 @@ import { HeightSampler } from './sampling/HeightSampler'
 import { TilesetFeaturePicker } from './sampling/TilesetFeaturePicker'
 import { ObjectPicker } from './sampling/ObjectPicker'
 import { ScenePicker } from './sampling/ScenePicker'
-import { Scene } from './Scene'
+import { Scene, syncSceneRuntimeEffects, updateSceneFallbackAmbientLight } from './Scene'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
   resolveModelMaterialMode,
@@ -92,7 +97,7 @@ export {
   type ClockTickEvent,
   type DateTimeInput
 } from './Clock'
-export { Entity, type EntityContext } from './entities/Entity'
+export { Entity } from './entities/Entity'
 export {
   PointGraphics,
   PolylineGraphics,
@@ -110,7 +115,7 @@ export {
 } from './entities/GlyphAtlas'
 export type { MsdfAtlas, MsdfAtlasData, MsdfGlyphMetrics } from './entities/MsdfAtlasLoader'
 export { loadMsdfAtlas, disposeMsdfAtlas } from './entities/MsdfAtlasLoader'
-export { EntityManager, type EntityManagerOptions } from './entities/EntityManager'
+export { EntityManager } from './entities/EntityManager'
 export { HighlightManager } from './highlight'
 export { HismManager, type HismManagerOptions } from './hism'
 export {
@@ -529,7 +534,7 @@ export class Viewer {
           if (tilesets) this.syncSurfaceMaterialMode()
         },
         () => {
-          highlightManager?.syncStyleFromSettings()
+          if (highlightManager) syncHighlightStyleFromSettings(highlightManager)
           postProcessing?.applyEffects()
         }
       )
@@ -561,7 +566,7 @@ export class Viewer {
       constructionScope.defer(() => this.atmosphere?.dispose())
       atmosphere = this.atmosphere
       this.atmosphere?.addLightSourcesTo(this.scene.threeScene)
-      this.scene.syncRuntimeEffects()
+      syncSceneRuntimeEffects(this.scene)
       this.webgpuBloom?.sync(this.scene.postProcess.bloom)
       this.webgpuLensFlare?.sync(this.scene.postProcess.lensFlare)
       this.webgpuTemporalAntialias?.setEnabled(this.scene.postProcess.taa.enabled)
@@ -737,7 +742,7 @@ export class Viewer {
             this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
             this.groundClampPass ?? undefined,
             this.symbolOcclusionPass ?? undefined,
-            this.highlightManager.outlineEffect,
+            getHighlightOutlineEffect(this.highlightManager),
             () => this.tilesets.getPointCloudEdlState()
           )
         : null
@@ -834,7 +839,7 @@ export class Viewer {
       exposure: value
     })
     this.entitiesManager.refreshColors()
-    this.highlightManager.syncStyleFromSettings()
+    syncHighlightStyleFromSettings(this.highlightManager)
   }
 
   private updateAutoExposure(deltaTime: number) {
@@ -1178,7 +1183,8 @@ export class Viewer {
    */
   resize() {
     this.viewport.resize()
-    this.entitiesManager.syncResolution(
+    syncEntityManagerResolution(
+      this.entitiesManager,
       this.renderer.domElement.width,
       this.renderer.domElement.height,
       this.currentResolutionScale
@@ -1244,7 +1250,7 @@ export class Viewer {
     this.updateAutoExposure(deltaTime)
     this.models.update(deltaTime)
     this.hismManager.update(deltaTime)
-    this.highlightManager.update()
+    updateHighlightManager(this.highlightManager)
     this.entitiesManager.update(deltaTime)
     this.entityRenderManager.beginFrame()
     this.symbolOcclusionPass?.beginFrame()
@@ -1311,7 +1317,7 @@ export class Viewer {
       this.cameraCartographicScratch,
       CAMERA_FRAME
     )
-    this.scene.updateFallbackAmbientLight(cartographic.height)
+    updateSceneFallbackAmbientLight(this.scene, cartographic.height)
     return cartographic.height
   }
 

@@ -171,9 +171,9 @@ export interface ViewerAtmosphereOptions {
  */
 export interface ViewerAtmosphereLightingOptions {
   /**
-   * 大气光照模式，默认 `light-source`。
+   * 大气光照模式，默认 `post-process`。
    *
-   * Atmosphere lighting mode. Defaults to `light-source`.
+   * Atmosphere lighting mode. Defaults to `post-process`.
    */
   mode?: AtmosphereLightingMode
   /** 是否应用太阳直射光照，默认 `true`。Applies direct sun irradiance. Defaults to `true`. */
@@ -228,7 +228,7 @@ export interface ViewerAtmospherePhotometricOptions {
  * Viewer nighttime lighting options.
  */
 export interface ViewerAtmosphereNightOptions {
-  /** 是否启用自动夜间光照，默认 `true`。Enables automatic nighttime lighting. Defaults to `true`. */
+  /** 是否启用自动夜间光照，默认 `false`。Enables automatic nighttime lighting. Defaults to `false`. */
   enabled?: boolean
   /** 是否启用月光照明，默认 `true`。Enables moonlight illumination. Defaults to `true`. */
   moonLight?: boolean
@@ -460,7 +460,6 @@ export interface ViewerBloomOptions {
    * AgX / exposure, not against the final displayed brightness.
    */
   luminanceThreshold?: number
-  luminanceThreshold?: number
   /** 亮度阈值过渡宽度，范围 `0` 到 `1`，默认 `0.03`。Luminance threshold smoothing from `0` to `1`. Defaults to `0.03`. */
   luminanceSmoothing?: number
   /** Bloom 扩散半径，范围 `0` 到 `1`，默认 `0.85`。Bloom radius from `0` to `1`. Defaults to `0.85`. */
@@ -539,7 +538,7 @@ export interface ViewerPostProcessOptions {
    * altitude / night factor. Disabled by default.
    */
   autoExposure?: boolean | ViewerAutoExposureOptions
-  /** 渲染器色调映射曝光值，默认 `10`。Renderer tone mapping exposure. Defaults to `10`. */
+  /** 渲染器色调映射曝光值，默认 `5`。Renderer tone mapping exposure. Defaults to `5`. */
   toneMappingExposure?: number
 }
 

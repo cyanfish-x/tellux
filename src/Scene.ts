@@ -9,6 +9,24 @@ import {
   type CloudStateApplier,
   type ResolvedSceneOptions
 } from './scene/SceneSettings'
+import { applyAtmosphereSettings } from './scene/AtmosphereSettings'
+import { applyCloudSettings } from './scene/CloudSettings'
+
+const sceneRuntime = new WeakMap<
+  Scene,
+  {
+    syncRuntimeEffects: () => void
+    updateFallbackAmbientLight: (currentHeight: number) => void
+  }
+>()
+
+export function syncSceneRuntimeEffects(scene: Scene) {
+  sceneRuntime.get(scene)?.syncRuntimeEffects()
+}
+
+export function updateSceneFallbackAmbientLight(scene: Scene, currentHeight: number) {
+  sceneRuntime.get(scene)?.updateFallbackAmbientLight(currentHeight)
+}
 
 /**
  * 场景级运行时设置和底层 Three.js 场景。
@@ -80,27 +98,15 @@ export class Scene {
     this.postProcess = new PostProcessSettings(options.postProcess, onEffectsChange)
     this.highlight = new HighlightSettings(options.highlight, onHighlightChange)
     this.threeScene.add(this.fallbackAmbientLightSource)
-  }
-
-  /**
-   * 将已缓存的场景运行时设置同步到底层大气和云效果。
-   *
-   * Synchronizes cached scene runtime settings to the underlying atmosphere
-   * and cloud effects.
-   */
-  syncRuntimeEffects() {
-    this.atmosphere.apply()
-    this.clouds.apply()
-  }
-
-  /**
-   * 根据当前相机高度更新夜间兜底环境光的实际强度。
-   *
-   * Updates the actual nighttime fallback ambient light intensity from the
-   * current camera height.
-   */
-  updateFallbackAmbientLight(currentHeight: number) {
-    this.atmosphere.fallbackAmbientLight.update(currentHeight)
+    sceneRuntime.set(this, {
+      syncRuntimeEffects: () => {
+        applyAtmosphereSettings(this.atmosphere)
+        applyCloudSettings(this.clouds)
+      },
+      updateFallbackAmbientLight: (currentHeight) => {
+        this.atmosphere.fallbackAmbientLight.update(currentHeight)
+      }
+    })
   }
 }
 

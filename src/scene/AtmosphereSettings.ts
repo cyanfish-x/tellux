@@ -10,6 +10,12 @@ import { AtmosphereSkySettings } from './AtmosphereSkySettings'
 import { FallbackAmbientLightSettings } from './FallbackAmbientLightSettings'
 import { SceneToggle } from './SceneToggle'
 
+const atmosphereApply = new WeakMap<AtmosphereSettings, () => void>()
+
+export function applyAtmosphereSettings(settings: AtmosphereSettings) {
+  atmosphereApply.get(settings)?.()
+}
+
 export class AtmosphereSettings {
   readonly lighting: AtmosphereLightingSettings
   readonly night: AtmosphereNightSettings
@@ -41,6 +47,7 @@ export class AtmosphereSettings {
     this.sky = new AtmosphereSkySettings(options.sky, onStateChange)
     this.shadow = new AtmosphereShadowSettings(options.shadow, onStateChange)
     this.fallbackAmbientLight = new FallbackAmbientLightSettings(options.fallbackAmbientLight, fallbackAmbientLightSource)
+    atmosphereApply.set(this, () => this.apply())
   }
 
   /**
@@ -56,7 +63,7 @@ export class AtmosphereSettings {
     this.visibility.show = value
   }
 
-  apply() {
+  private apply() {
     this.applyAtmosphereState(this.getRuntimeState())
   }
 
