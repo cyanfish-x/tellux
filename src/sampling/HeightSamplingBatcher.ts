@@ -1,7 +1,7 @@
-import type { CartographicCoordinateTuple } from '../types'
+import type { LonLat } from '../types'
 
 export type HeightSamplingBatchableTask = {
-  position: CartographicCoordinateTuple
+  position: LonLat
 }
 
 export type HeightSamplingBatcherOptions = {
@@ -16,8 +16,10 @@ export class HeightSamplingBatcher {
   ) {
     const batches: T[][] = []
     const sortedTasks = tasks.slice().sort((a, b) => {
-      const latitudeDelta = a.position[1] - b.position[1]
-      return latitudeDelta === 0 ? a.position[0] - b.position[0] : latitudeDelta
+      const latitudeDelta = a.position.latitude - b.position.latitude
+      return latitudeDelta === 0
+        ? a.position.longitude - b.position.longitude
+        : latitudeDelta
     })
     let batch: T[] = []
     let minLongitude = Infinity
@@ -37,10 +39,10 @@ export class HeightSamplingBatcher {
     }
 
     sortedTasks.forEach((task) => {
-      const nextMinLongitude = Math.min(minLongitude, task.position[0])
-      const nextMaxLongitude = Math.max(maxLongitude, task.position[0])
-      const nextMinLatitude = Math.min(minLatitude, task.position[1])
-      const nextMaxLatitude = Math.max(maxLatitude, task.position[1])
+      const nextMinLongitude = Math.min(minLongitude, task.position.longitude)
+      const nextMaxLongitude = Math.max(maxLongitude, task.position.longitude)
+      const nextMinLatitude = Math.min(minLatitude, task.position.latitude)
+      const nextMaxLatitude = Math.max(maxLatitude, task.position.latitude)
       const exceedsSpan =
         batch.length > 0 &&
         (
@@ -55,10 +57,10 @@ export class HeightSamplingBatcher {
       }
 
       batch.push(task)
-      minLongitude = Math.min(minLongitude, task.position[0])
-      maxLongitude = Math.max(maxLongitude, task.position[0])
-      minLatitude = Math.min(minLatitude, task.position[1])
-      maxLatitude = Math.max(maxLatitude, task.position[1])
+      minLongitude = Math.min(minLongitude, task.position.longitude)
+      maxLongitude = Math.max(maxLongitude, task.position.longitude)
+      minLatitude = Math.min(minLatitude, task.position.latitude)
+      maxLatitude = Math.max(maxLatitude, task.position.latitude)
     })
     flushBatch()
 

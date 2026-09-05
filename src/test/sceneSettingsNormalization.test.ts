@@ -7,6 +7,7 @@ import {
 } from '../ViewerOptionsResolver'
 import { AtmosphereSettings } from '../scene/AtmosphereSettings'
 import { CloudSettings } from '../scene/CloudSettings'
+import { EntitySettings } from '../scene/EntitySettings'
 import { PostProcessSettings } from '../scene/PostProcessSettings'
 
 describe('scene setting normalization', () => {
@@ -333,5 +334,20 @@ describe('scene setting normalization', () => {
     expect(settings.autoExposure.min).toBe(12)
     expect(settings.autoExposure.max).toBe(3)
     expect(settings.autoExposure.speed).toBe(0)
+  })
+
+  it('exposes entity transparency mode as a runtime setting', () => {
+    const onChange = vi.fn()
+    const settings = new EntitySettings(
+      resolveViewerSceneOptions(undefined).entities,
+      onChange
+    )
+
+    expect(settings.transparency.mode).toBe('auto')
+    settings.transparency.mode = 'sorted'
+    expect(settings.transparency.mode).toBe('sorted')
+    expect(onChange).toHaveBeenCalledWith('sorted')
+    settings.transparency.mode = 'sorted'
+    expect(onChange).toHaveBeenCalledTimes(1)
   })
 })

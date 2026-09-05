@@ -1,5 +1,5 @@
 import type { BufferGeometry, Group, Material, Vector3 } from 'three'
-import type { CartographicFrameOptions, CartographicInput } from './spatial'
+import type { CartographicFrameOptions, LonLatHeightLike } from './spatial'
 
 /**
  * HISM 网格部件：同一原型下与其他部件同步实例化的几何与材质。
@@ -69,11 +69,12 @@ export interface HismArchetype {
  */
 export interface HismInstancePlacement {
   /**
-   * 放置坐标。数组顺序为 `[经度, 纬度, 高度]`。
+   * 放置坐标。必须包含椭球高；数组顺序为 `[经度, 纬度, 高度]`。
    *
-   * Placement coordinates. Tuple order is `[longitude, latitude, height]`.
+   * Placement coordinates. Ellipsoid height is required. Tuple order is
+   * `[longitude, latitude, height]`.
    */
-  coordinates: CartographicInput
+  coordinates: LonLatHeightLike
   /** 朝向角（度）。Heading in degrees. */
   heading?: number
   /** 俯仰角（度）。Pitch in degrees. */
@@ -235,7 +236,7 @@ export interface HismLayer {
  * placement logic.
  */
 export type HismApplyInstanceMatrix = (
-  coordinates: CartographicInput,
+  coordinates: LonLatHeightLike,
   frame: CartographicFrameOptions,
   scale: number | [x: number, y: number, z: number] | undefined,
   target: import('three').Matrix4

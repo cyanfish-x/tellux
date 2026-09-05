@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { CartographicInput, EntityOptions } from '../types'
+import type { EntityOptions, LonLatHeightLike } from '../types'
 import { PointGraphic } from './PointGraphic'
 import { PolylineGraphic } from './PolylineGraphic'
 import { PolygonGraphic } from './PolygonGraphic'
@@ -31,7 +31,7 @@ export function getEntityPickGraphics(entity: Entity): EntityPickGraphics | unde
 }
 
 export interface EntityContext {
-  toVector3: (input: CartographicInput, target: THREE.Vector3) => THREE.Vector3
+  toVector3: (input: LonLatHeightLike, target: THREE.Vector3) => THREE.Vector3
   removeEntity: (entity: Entity) => void
   /** 当地椭球（贴地几何构建用）；getter 形式以跟随 terrain 切换。 */
   ellipsoid: () => EllipsoidLike
@@ -65,7 +65,7 @@ export class Entity {
   private symbolGraphic: SymbolGraphic | null = null
   private groundGroup: THREE.Group | null = null
   private groundClampRoot: THREE.Group | null = null
-  private currentPosition: CartographicInput | undefined
+  private currentPosition: LonLatHeightLike | undefined
   private currentShow: boolean
   private isRemoved = false
   private readonly resolveColor: ResolveColor
@@ -255,7 +255,7 @@ export class Entity {
     return this.currentPosition
   }
 
-  set position(value: CartographicInput | undefined) {
+  set position(value: LonLatHeightLike | undefined) {
     this.currentPosition = value
     if (value && (this.pointGraphic || this.symbolGraphic)) {
       const target = new THREE.Vector3()

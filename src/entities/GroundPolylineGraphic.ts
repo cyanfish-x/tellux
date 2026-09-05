@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import type { CartographicInput, ColorInput, PolylineOptions } from '../types'
+import type { ColorInput, LonLatHeightLike, PolylineOptions } from '../types'
+import { readLonLat } from '../lonlat'
 import { DEG2RAD } from '../constants'
 import { createEncodedCartesian3, encodeCartesian3 } from '../utils/EncodedCartesian3'
 import type { ResolveColor } from './invertToneMapping'
@@ -11,7 +12,7 @@ import type {
 
 interface GroundPolylineGraphicOptions {
   /** 折线顶点的经纬高序列（高度忽略——贴地）。 */
-  positions: CartographicInput[]
+  positions: readonly LonLatHeightLike[]
   options: PolylineOptions
   ellipsoid: EllipsoidLike
   /** 由 GroundClampPass 提供、每帧刷新的共享 uniform。 */
@@ -60,7 +61,7 @@ export class GroundPolylineGraphic implements PolylinePickable {
   private readonly material: THREE.ShaderMaterial
   private readonly ellipsoid: EllipsoidLike
   private readonly uniforms: GroundClampSharedUniforms
-  private positions: CartographicInput[]
+  private positions: readonly LonLatHeightLike[]
   private surfaceVertices: THREE.Vector3[] = []
   private readonly resolveColor: ResolveColor
   private readonly currentColor: THREE.Color
@@ -133,7 +134,7 @@ export class GroundPolylineGraphic implements PolylinePickable {
     this.material.uniforms.uHalfWidthMeters.value = Math.max(width / 2, 0)
   }
 
-  setPositions(positions: CartographicInput[]) {
+  setPositions(positions: readonly LonLatHeightLike[]) {
     this.positions = positions
     const next = this.buildGeometry()
     this.object3D.geometry = next
@@ -299,9 +300,9 @@ export class GroundPolylineGraphic implements PolylinePickable {
   }
 }
 
-function toLonLat(input: CartographicInput): { lon: number; lat: number } {
-  if (Array.isArray(input)) return { lon: input[0], lat: input[1] }
-  return { lon: input.longitude, lat: input.latitude }
+function toLonLat(input: LonLatHeightLike): { lon: number; lat: number } {
+  const point = readLonLat(input)
+  return { lon: point.longitude, lat: point.latitude }
 }
 
 function writeVec3(array: Float32Array, offset: number, v: THREE.Vector3) {

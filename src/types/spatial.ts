@@ -44,18 +44,45 @@ export interface PickedObject {
 }
 
 /**
- * 经纬高坐标，单位分别为度和米。
+ * 地表平面位置，只有经纬度（度）。
  *
- * Cartographic coordinates in degrees and meters.
+ * Horizontal geographic position in degrees; longitude and latitude only.
  */
-export interface CartographicCoordinates {
-  /** 纬度（度）。Latitude in degrees. */
-  latitude: number
+export interface LonLat {
   /** 经度（度）。Longitude in degrees. */
-  longitude: number
-  /** 高度（米）。Height in meters. */
-  height: number
+  readonly longitude: number
+  /** 纬度（度）。Latitude in degrees. */
+  readonly latitude: number
 }
+
+/**
+ * 完整三维位置：经纬度加椭球高（米）。
+ *
+ * Full geographic position: longitude, latitude, and ellipsoid height in meters.
+ */
+export interface LonLatHeight extends LonLat {
+  /** 椭球高（米）。Ellipsoid height in meters. */
+  readonly height: number
+}
+
+/**
+ * 经纬度入参宽化形式：对象或 `[经度, 纬度]` 元组。
+ *
+ * Widened longitude/latitude input: an object or a `[longitude, latitude]` tuple.
+ */
+export type LonLatLike =
+  | LonLat
+  | readonly [longitude: number, latitude: number]
+
+/**
+ * 经纬高入参宽化形式：对象或 `[经度, 纬度, 高度]` 元组。高度必填。
+ *
+ * Widened longitude/latitude/height input: an object or a
+ * `[longitude, latitude, height]` tuple. Height is required.
+ */
+export type LonLatHeightLike =
+  | LonLatHeight
+  | readonly [longitude: number, latitude: number, height: number]
 
 /**
  * 3D Tiles feature 属性键值表。
@@ -86,37 +113,9 @@ export interface Picked3DTilesFeature {
   readonly featureId: number | null
   /** 命中 feature 的属性。Properties of the picked feature. */
   readonly properties: TilesetFeatureProperties
-  /** 命中点经纬高。Cartographic coordinates of the picked point. */
-  readonly cartographic: CartographicCoordinates
+  /** 命中点经纬高。Geographic position of the picked point. */
+  readonly cartographic: LonLatHeight
 }
-
-/**
- * 经纬高输入，顺序为 `[经度, 纬度, 高度]`。
- *
- * Cartographic input as `[longitude, latitude, height]`.
- */
-export type CartographicCoordinateTuple = [longitude: number, latitude: number, height?: number]
-
-/**
- * 经纬高输出，顺序为 `[经度, 纬度, 高度]`。
- *
- * Cartographic output as `[longitude, latitude, height]`.
- */
-export type CartographicHeightTuple = [longitude: number, latitude: number, height: number]
-
-/**
- * 高精度高度采样结果；未命中时为 `undefined`。
- *
- * Most-detailed height sampling result; `undefined` when no surface is hit.
- */
-export type SampleHeightMostDetailedResult = CartographicHeightTuple | undefined
-
-/**
- * 经纬高点位输入。
- *
- * Cartographic point input.
- */
-export type CartographicInput = CartographicCoordinateTuple | CartographicCoordinates
 
 /**
  * 高度采样的数据源范围。

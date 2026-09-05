@@ -43,7 +43,8 @@ export class EntityRenderManager implements ThreeEffectPass {
   enabled = true
   needsSwap = false
 
-  private readonly resolvedMode: EntityRenderModeResult
+  private requestedMode: EntityTransparencyMode
+  private resolvedMode: EntityRenderModeResult
   private readonly mainSceneHiddenObjects: Array<{ object: THREE.Object3D, visible: boolean }> = []
   private readonly accumulationMaterials = new WeakMap<THREE.Material, THREE.Material>()
   private readonly revealageMaterials = new WeakMap<THREE.Material, THREE.Material>()
@@ -58,6 +59,7 @@ export class EntityRenderManager implements ThreeEffectPass {
   private height = 1
 
   constructor(private readonly options: EntityRenderManagerOptions) {
+    this.requestedMode = options.requestedMode
     this.resolvedMode = resolveEntityTransparencyMode(options.requestedMode, options.supportsWeightedOit)
     if (this.resolvedMode.fallbackReason) {
       console.warn(`[tellux] ${this.resolvedMode.fallbackReason} Falling back to sorted entity transparency.`)
@@ -122,6 +124,21 @@ export class EntityRenderManager implements ThreeEffectPass {
 
   get mode() {
     return this.resolvedMode.mode
+  }
+
+  setRequestedMode(requestedMode: EntityTransparencyMode) {
+    if (this.requestedMode === requestedMode) return
+
+    const previousResolved = this.resolvedMode.mode
+    this.requestedMode = requestedMode
+    this.resolvedMode = resolveEntityTransparencyMode(requestedMode, this.options.supportsWeightedOit)
+    if (previousResolved === 'weighted-oit' && this.resolvedMode.mode !== 'weighted-oit') {
+      this.restoreMainSceneVisibility()
+      this.options.root.visible = true
+    }
+    if (this.resolvedMode.fallbackReason) {
+      console.warn(`[tellux] ${this.resolvedMode.fallbackReason} Falling back to sorted entity transparency.`)
+    }
   }
 
   beginFrame() {

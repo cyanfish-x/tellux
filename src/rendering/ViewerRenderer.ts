@@ -4,7 +4,12 @@ import type { TelluxRenderer, TelluxRendererAdapter } from './RendererAdapter'
 /**
  * Viewer 渲染器门面。原生 Three.js renderer 走 {@link ViewerRenderer.raw}。
  *
+ * canvas 透明背景（`alpha`）只能在 {@link ViewerRendererOptions.transparent} 构造时指定。
+ *
  * Viewer renderer facade. The native Three.js renderer is {@link ViewerRenderer.raw}.
+ *
+ * Canvas transparency (`alpha`) can only be set at construction via
+ * {@link ViewerRendererOptions.transparent}.
  */
 export class ViewerRenderer {
   constructor(

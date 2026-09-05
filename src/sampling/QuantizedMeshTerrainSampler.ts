@@ -1,7 +1,7 @@
 import type {
-  CartographicCoordinateTuple,
   CesiumIonTerrainOptions,
-  SampleHeightMostDetailedResult,
+  LonLat,
+  LonLatLike,
   TerrainOptions,
   UrlTerrainOptions
 } from '../types'
@@ -15,6 +15,7 @@ import type {
   TerrainTileCoordinate,
   TerrainTileData
 } from './QuantizedMeshTerrainTypes'
+import { readLonLat } from '../lonlat'
 import { AsyncLruCache } from './AsyncLruCache'
 import {
   throwIfHeightSamplingAborted,
@@ -33,7 +34,7 @@ const DEFAULT_TILE_CACHE_ENTRIES = 64
 
 type TerrainSampleRequest = {
   index: number
-  position: CartographicCoordinateTuple
+  position: LonLat
   coordinate: TerrainTileCoordinate
 }
 
@@ -73,18 +74,19 @@ export class QuantizedMeshTerrainSampler {
 
   async sampleMostDetailed(
     terrain: TerrainOptions,
-    positions: CartographicCoordinateTuple[],
+    positions: readonly LonLatLike[],
     options: QuantizedMeshTerrainSampleOptions = {}
-  ): Promise<SampleHeightMostDetailedResult[]> {
+  ): Promise<(number | undefined)[]> {
     const { signal } = options
     throwIfHeightSamplingAborted(signal)
-    const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
+    const results: (number | undefined)[] = new Array(positions.length).fill(undefined)
     if (positions.length === 0) return results
+    const points = positions.map(readLonLat)
 
     const state = await this.getLayerState(terrain, signal)
     throwIfHeightSamplingAborted(signal)
     const requests = await Promise.all(
-      positions.map(async (position, index): Promise<TerrainSampleRequest | null> => {
+      points.map(async (position, index): Promise<TerrainSampleRequest | null> => {
         const coordinate = await this.findMostDetailedTileForPosition(state, position, signal)
         return coordinate ? { index, position, coordinate } : null
       })
@@ -111,7 +113,7 @@ export class QuantizedMeshTerrainSampler {
         group.forEach((request) => {
           const height = this.interpolateHeight(tile, request.position)
           if (height !== undefined) {
-            results[request.index] = [request.position[0], request.position[1], height]
+            results[request.index] = height
           }
         })
       })
@@ -324,7 +326,7 @@ export class QuantizedMeshTerrainSampler {
 
   private async findMostDetailedTileForPosition(
     state: TerrainLayerState,
-    position: CartographicCoordinateTuple,
+    position: LonLat,
     signal?: AbortSignal
   ): Promise<TerrainTileCoordinate | null> {
     throwIfHeightSamplingAborted(signal)
@@ -368,7 +370,7 @@ export class QuantizedMeshTerrainSampler {
 
   private findDeepestKnownAvailableTile(
     state: TerrainLayerState,
-    position: CartographicCoordinateTuple,
+    position: LonLat,
     minLevel = 0
   ): TerrainTileCoordinate | null {
     for (let level = state.maxLevel; level >= minLevel; level -= 1) {
@@ -634,8 +636,9 @@ export class QuantizedMeshTerrainSampler {
     return metadata
   }
 
-  private interpolateHeight(tile: TerrainTileData, position: CartographicCoordinateTuple) {
-    const [longitude, latitude] = position
+  private interpolateHeight(tile: TerrainTileData, position: LonLat) {
+    const longitude = position.longitude
+    const latitude = position.latitude
     const [west, south, east, north] = tile.bounds
     const u = (longitude * Math.PI / 180 - west) / (east - west)
     const v = (latitude * Math.PI / 180 - south) / (north - south)
@@ -735,11 +738,11 @@ export class QuantizedMeshTerrainSampler {
 
   private getTileAtPosition(
     projection: TerrainProjection,
-    position: CartographicCoordinateTuple,
+    position: LonLat,
     level: number
   ): TerrainTileCoordinate {
-    const normalizedX = this.longitudeToNormalized(position[0] * Math.PI / 180)
-    const normalizedY = this.latitudeToNormalized(position[1] * Math.PI / 180, projection.scheme)
+    const normalizedX = this.longitudeToNormalized(position.longitude * Math.PI / 180)
+    const normalizedY = this.latitudeToNormalized(position.latitude * Math.PI / 180, projection.scheme)
     const tileCountX = projection.rootTileX * 2 ** level
     const tileCountY = projection.rootTileY * 2 ** level
     const x = this.clamp(Math.floor(normalizedX * tileCountX), 0, tileCountX - 1)

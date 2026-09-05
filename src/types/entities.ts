@@ -1,5 +1,5 @@
 import type { Color, Texture, Vector3 } from 'three'
-import type { CartographicInput } from './spatial'
+import type { LonLatHeightLike } from './spatial'
 import type { Entity } from '../entities/Entity'
 
 /**
@@ -48,11 +48,12 @@ export interface PointOptions {
  */
 export interface PolylineOptions {
   /**
-   * 折线顶点的经纬高序列。
+   * 折线顶点的经纬高序列。贴地（{@link clamp}）时忽略顶点高度。
    *
-   * Polyline vertices as cartographic coordinates.
+   * Polyline vertices as longitude/latitude/height. Vertex height is ignored
+   * while {@link clamp} is enabled.
    */
-  positions: CartographicInput[]
+  positions: readonly LonLatHeightLike[]
   /**
    * 像素宽度，默认 `2`。
    *
@@ -67,10 +68,11 @@ export interface PolylineOptions {
   color?: ColorInput
   /**
    * 是否通过 GPU 深度分类贴合 terrain / 3D Tiles。贴地时 {@link width} 以米为
-   * 单位；当前仅 WebGL 支持。
+   * 单位，并忽略顶点高度；当前仅 WebGL 支持。
    *
    * Whether to drape the polyline onto terrain / 3D Tiles using GPU depth
-   * classification. When clamped, {@link width} is measured in meters. WebGL only.
+   * classification. When clamped, {@link width} is measured in meters and vertex
+   * height is ignored. WebGL only.
    */
   clamp?: boolean
 }
@@ -82,11 +84,12 @@ export interface PolylineOptions {
  */
 export interface PolygonOptions {
   /**
-   * 外环顶点的经纬高序列。
+   * 外环顶点的经纬高序列。贴地（{@link clamp}）时忽略顶点高度。
    *
-   * Outer ring vertices as cartographic coordinates.
+   * Outer ring vertices as longitude/latitude/height. Vertex height is ignored
+   * while {@link clamp} is enabled.
    */
-  positions: CartographicInput[]
+  positions: readonly LonLatHeightLike[]
   /**
    * 底面高度（米），默认 `0`。
    *
@@ -125,12 +128,12 @@ export interface PolygonOptions {
    */
   outlineColor?: ColorInput
   /**
-   * 是否通过 GPU 深度分类贴合 terrain / 3D Tiles。贴地时忽略 {@link height}；
-   * {@link extrudeHeight} / {@link outline} 暂不支持。当前仅 WebGL 支持。
+   * 是否通过 GPU 深度分类贴合 terrain / 3D Tiles。贴地时忽略 {@link height}
+   * 与顶点高度；{@link extrudeHeight} / {@link outline} 暂不支持。当前仅 WebGL 支持。
    *
    * Whether to drape the polygon onto terrain / 3D Tiles using GPU depth
-   * classification. {@link height} is ignored while clamped; {@link extrudeHeight}
-   * and {@link outline} are not yet supported. WebGL only.
+   * classification. {@link height} and vertex height are ignored while clamped;
+   * {@link extrudeHeight} and {@link outline} are not yet supported. WebGL only.
    */
   clamp?: boolean
 }
@@ -365,10 +368,10 @@ export interface EntityOptions {
   /**
    * 实体经纬高位置；点图形（`point`）与 symbol 图形（`symbol`）会跟随此位置。
    *
-   * Entity cartographic position; the point graphics (`point`) and symbol
+   * Entity longitude/latitude/height; the point graphics (`point`) and symbol
    * graphics (`symbol`) follow it.
    */
-  position?: CartographicInput
+  position?: LonLatHeightLike
   /**
    * 点图形配置。
    *

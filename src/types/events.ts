@@ -1,5 +1,5 @@
 import type { Viewer } from '../Viewer'
-import type { CartographicCoordinates, ScreenPosition } from './spatial'
+import type { LonLatHeight, ScreenPosition } from './spatial'
 import type { ViewerPickResult } from './pick'
 
 /**
@@ -32,7 +32,7 @@ export interface ViewerMouseEvent extends ViewerEvent {
    * Cartographic coordinates for the clicked position, or `null` when neither
    * 3D Tiles nor the ellipsoid is hit.
    */
-  cartographic: CartographicCoordinates | null
+  cartographic: LonLatHeight | null
   /**
    * 最近的可选中对象命中；未命中时为 `null`。
    *

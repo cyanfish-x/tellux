@@ -1,12 +1,12 @@
 import * as THREE from 'three'
-import type { CartographicInput, EntityOptions } from '../types'
+import type { EntityOptions, LonLatHeightLike } from '../types'
 import { Entity, getEntityPickGraphics } from './Entity'
 import type { EllipsoidLike, GroundClampContext } from './groundClamp'
 import { resolveColor, type ResolveColor } from './invertToneMapping'
 
 export interface EntityManagerOptions {
   scene: THREE.Scene
-  toVector3: (input: CartographicInput, target: THREE.Vector3) => THREE.Vector3
+  toVector3: (input: LonLatHeightLike, target: THREE.Vector3) => THREE.Vector3
   /** 当地椭球 getter（贴地几何构建用）。 */
   ellipsoid: () => EllipsoidLike
   /** 贴地渲染依赖；无贴地 pass（如 WebGPU）时为 `null`。 */

@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { TilesRenderer } from '3d-tiles-renderer'
 import { RAD2DEG } from '../constants'
 import type { TilesetManager } from '../tiles/TilesetManager'
-import type { CartographicCoordinates, ScreenPosition } from '../types'
+import type { LonLatHeight, ScreenPosition } from '../types'
 
 export class CartographicPicker {
   private readonly coords = new THREE.Vector2()
@@ -18,7 +18,7 @@ export class CartographicPicker {
     private readonly tilesets: TilesetManager
   ) {}
 
-  pick(position: ScreenPosition): CartographicCoordinates | null {
+  pick(position: ScreenPosition): LonLatHeight | null {
     const width = this.canvas.clientWidth
     const height = this.canvas.clientHeight
     if (!width || !height) return null
@@ -42,7 +42,7 @@ export class CartographicPicker {
     return this.pickTilesetCartographic(this.tilesets.surfaceTileset) ?? this.pickEllipsoidCartographic()
   }
 
-  private pickTilesetCartographic(tileset: TilesRenderer): CartographicCoordinates | null {
+  private pickTilesetCartographic(tileset: TilesRenderer): LonLatHeight | null {
     tileset.group.updateMatrixWorld(true)
     this.matrix.copy(tileset.group.matrixWorld).invert()
 
@@ -64,7 +64,7 @@ export class CartographicPicker {
     return this.toCartographicCoordinates(point, this.tilesets.surfaceTileset)
   }
 
-  private toCartographicCoordinates(point: THREE.Vector3, tileset: TilesRenderer): CartographicCoordinates {
+  private toCartographicCoordinates(point: THREE.Vector3, tileset: TilesRenderer): LonLatHeight {
     const cartographic = tileset.ellipsoid.getPositionToCartographic(point, this.cartographicScratch)
     return {
       latitude: cartographic.lat * RAD2DEG,

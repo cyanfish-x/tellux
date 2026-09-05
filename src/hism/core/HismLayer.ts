@@ -11,6 +11,7 @@ import {
   HismCluster,
   type HismClusterPickCandidate
 } from './HismCluster'
+import { readLonLat } from '../../lonlat'
 import {
   clusterCellKeyFromCartographic,
   resolveClusterReference
@@ -57,14 +58,8 @@ export class HismLayerImpl implements HismLayer {
 
     const cellSizeMeters =
       options.clusterCellSizeMeters ?? DEFAULT_CLUSTER_CELL_SIZE_METERS
-    const longitudes = options.instances.map((instance) => {
-      const coordinates = instance.coordinates
-      return Array.isArray(coordinates) ? coordinates[0] : coordinates.longitude
-    })
-    const latitudes = options.instances.map((instance) => {
-      const coordinates = instance.coordinates
-      return Array.isArray(coordinates) ? coordinates[1] : coordinates.latitude
-    })
+    const longitudes = options.instances.map((instance) => readLonLat(instance.coordinates).longitude)
+    const latitudes = options.instances.map((instance) => readLonLat(instance.coordinates).latitude)
     const reference =
       options.referenceLatitude !== undefined &&
       options.referenceLongitude !== undefined
@@ -76,13 +71,7 @@ export class HismLayerImpl implements HismLayer {
 
     const clusterBuckets = new Map<string, HismClusterBuildBucket>()
     for (const placement of options.instances) {
-      const coordinates = placement.coordinates
-      const longitude = Array.isArray(coordinates)
-        ? coordinates[0]
-        : coordinates.longitude
-      const latitude = Array.isArray(coordinates)
-        ? coordinates[1]
-        : coordinates.latitude
+      const { longitude, latitude } = readLonLat(placement.coordinates)
       const cellKey = clusterCellKeyFromCartographic(
         reference,
         longitude,

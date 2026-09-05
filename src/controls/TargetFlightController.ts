@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { TilesRenderer } from '3d-tiles-renderer'
 import { Camera } from '../Camera'
 import { CAMERA_FRAME, DEG2RAD, RAD2DEG } from '../constants'
+import { readLonLatHeight } from '../lonlat'
 import type { TilesetManager } from '../tiles/TilesetManager'
 import type { FlyToTargetOptions, FlyToTargetTarget } from '../types'
 
@@ -80,10 +81,11 @@ export class TargetFlightController {
       resolvedTarget.center,
       this.targetCartographicScratch
     )
-    const distance = options.distance ?? Math.max(resolvedTarget.radius * 2.8, 500)
-    const heading = options.heading ?? 0
-    const pitch = options.pitch ?? -30
-    const roll = options.roll ?? 0
+    const offset = options.offset ?? {}
+    const distance = offset.distance ?? Math.max(resolvedTarget.radius * 2.8, 500)
+    const heading = offset.heading ?? 0
+    const pitch = offset.pitch ?? -30
+    const roll = offset.roll ?? 0
 
     ellipsoid.getEastNorthUpAxes(
       targetCartographic.lat,
@@ -162,10 +164,11 @@ export class TargetFlightController {
       }
     }
 
+    const point = readLonLatHeight(target)
     this.options.tilesets.tileset.ellipsoid.getCartographicToPosition(
-      target.latitude * DEG2RAD,
-      target.longitude * DEG2RAD,
-      target.height,
+      point.latitude * DEG2RAD,
+      point.longitude * DEG2RAD,
+      point.height,
       this.targetCenter
     )
     return {

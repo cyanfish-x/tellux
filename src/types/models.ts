@@ -1,5 +1,5 @@
 import type { AnimationClip, Object3D } from 'three'
-import type { CartographicInput } from './spatial'
+import type { LonLatHeightLike } from './spatial'
 
 /**
  * 加载 glTF / GLB 模型的配置。
@@ -54,7 +54,7 @@ export interface GltfModelOptions {
    * `[longitude, latitude, height]`; object input uses
    * `{ longitude, latitude, height }`.
    */
-  coordinates: CartographicInput
+  coordinates: LonLatHeightLike
   /**
    * 模型缩放。传入数字时使用等比缩放；传入数组时分别缩放 x/y/z。
    *

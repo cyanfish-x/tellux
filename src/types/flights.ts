@@ -1,7 +1,7 @@
 import type { Object3D } from 'three'
 import type { TilesRenderer } from '3d-tiles-renderer'
 import type { CameraFlightEasingFunction } from '../Camera'
-import type { CartographicCoordinates } from './spatial'
+import type { LonLatHeightLike } from './spatial'
 
 /**
  * Viewer 目标飞行支持的目标类型。
@@ -10,10 +10,10 @@ import type { CartographicCoordinates } from './spatial'
  *
  * Target types supported by Viewer target flights.
  *
- * Cartographic points are used directly; Three.js models and 3D Tiles use their
+ * Geographic points are used directly; Three.js models and 3D Tiles use their
  * bounding-volume center as the target point.
  */
-export type FlyToTargetTarget = CartographicCoordinates | Object3D | TilesRenderer
+export type FlyToTargetTarget = LonLatHeightLike | Object3D | TilesRenderer
 
 /**
  * 相机相对目标点的偏移。
@@ -46,7 +46,14 @@ export interface FlyToTargetOffset {
  * Viewer computes the final camera position from the target and offset, and the
  * camera ends the flight looking at the target point.
  */
-export interface FlyToTargetOptions extends FlyToTargetOffset {
+export interface FlyToTargetOptions {
+  /**
+   * 相机相对目标的偏移。与初始化路径分开，避免和动画参数拍平在同一层。
+   *
+   * Camera offset relative to the target. Kept separate from animation options
+   * so the two concerns are not flattened together.
+   */
+  offset?: FlyToTargetOffset
   /** 飞行持续时间（秒）。Flight duration in seconds. */
   duration?: number
   /** 飞行最高高度（米），用于形成弧线飞行路径。Maximum flight height in meters, used to form an arced path. */

@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 import { CAMERA_FRAME, DEFAULT_CAMERA, DEG2RAD } from './constants'
+import { hasExplicitHeight, readLonLat, readLonLatHeight } from './lonlat'
+import type { LonLatHeightLike, LonLatLike } from './types/spatial'
 
 /**
  * 相机飞行动画的缓动函数。
@@ -9,17 +11,30 @@ import { CAMERA_FRAME, DEFAULT_CAMERA, DEG2RAD } from './constants'
 export type CameraFlightEasingFunction = (time: number) => number
 
 /**
- * 相机飞行目标位置。
+ * 相机飞行或立即定位的目标位置。
  *
- * Camera flight destination.
+ * 传 {@link LonLatLike}（无高度）时保持当前相机高度；传 {@link LonLatHeightLike}
+ * 时使用给定高度。
+ *
+ * Camera destination for flight or an immediate view change.
+ *
+ * A {@link LonLatLike} value (no height) keeps the current camera height; a
+ * {@link LonLatHeightLike} value uses the given height.
  */
-export interface CameraFlyToDestination {
-  /** 目标纬度（度）。Destination latitude in degrees. */
-  latitude: number
-  /** 目标经度（度）。Destination longitude in degrees. */
-  longitude: number
-  /** 目标高度（米），默认使用当前相机高度。Destination height in meters. Defaults to the current camera height. */
-  height?: number
+export type CameraDestination = LonLatLike | LonLatHeightLike
+
+/**
+ * 透视投影参数。仅初始化可配置。
+ *
+ * Perspective projection parameters. Init-only.
+ */
+export interface CameraProjectionOptions {
+  /** 透视相机垂直视场角（度）。Perspective camera vertical field of view in degrees. */
+  fov?: number
+  /** 透视相机近裁剪面（米）。Perspective camera near clipping plane in meters. */
+  near?: number
+  /** 透视相机远裁剪面（米）。Perspective camera far clipping plane in meters. */
+  far?: number
 }
 
 /**
@@ -42,8 +57,13 @@ export interface CameraOrientation {
  * Camera flight options.
  */
 export interface CameraFlyToOptions {
-  /** 相机最终位置。Final camera position. */
-  destination: CameraFlyToDestination
+  /**
+   * 相机最终位置。传无高度的 {@link LonLatLike} 时保持当前相机高度。
+   *
+   * Final camera position. A {@link LonLatLike} value without height keeps the
+   * current camera height.
+   */
+  destination: CameraDestination
   /** 相机最终姿态。Final camera orientation. */
   orientation?: CameraOrientation
   /** 飞行持续时间（秒）。Flight duration in seconds. */
@@ -64,18 +84,15 @@ export interface CameraFlyToOptions {
  * Options for setting the camera view immediately.
  */
 export interface CameraSetViewOptions {
-  /** 纬度（度）。Latitude in degrees. */
-  latitude: number
-  /** 经度（度）。Longitude in degrees. */
-  longitude: number
-  /** 高度（米），默认使用当前相机高度。Height in meters. Defaults to the current camera height. */
-  height?: number
-  /** 航向角（度）。Heading in degrees. */
-  heading?: number
-  /** 俯仰角（度）。Pitch in degrees. */
-  pitch?: number
-  /** 翻滚角（度）。Roll in degrees. */
-  roll?: number
+  /**
+   * 相机位置。传无高度的 {@link LonLatLike} 时保持当前相机高度。
+   *
+   * Camera position. A {@link LonLatLike} value without height keeps the current
+   * camera height.
+   */
+  destination: CameraDestination
+  /** 相机姿态。Camera orientation. */
+  orientation?: CameraOrientation
 }
 
 /**
@@ -285,13 +302,14 @@ export class Camera {
    */
   setView(options: CameraSetViewOptions) {
     this.cancelFlight()
+    const destination = this.resolveDestination(options.destination)
     this.applyView({
-      latitude: options.latitude,
-      longitude: options.longitude,
-      height: options.height ?? this.getCurrentHeight() ?? DEFAULT_CAMERA.height,
-      heading: options.heading ?? DEFAULT_CAMERA.heading,
-      pitch: options.pitch ?? DEFAULT_CAMERA.pitch,
-      roll: options.roll ?? DEFAULT_CAMERA.roll
+      latitude: destination.latitude,
+      longitude: destination.longitude,
+      height: destination.height,
+      heading: options.orientation?.heading ?? DEFAULT_CAMERA.orientation.heading,
+      pitch: options.orientation?.pitch ?? DEFAULT_CAMERA.orientation.pitch,
+      roll: options.orientation?.roll ?? DEFAULT_CAMERA.orientation.roll
     })
   }
 
@@ -315,29 +333,37 @@ export class Camera {
   /**
    * 获取当前相机视角参数。
    *
-   * 返回值可直接传给 {@link Camera.setView}，便于在控制台读取当前视角后，
-   * 用作 Viewer 初始化时的 `camera` 配置。
+   * 返回值可直接传给 {@link Camera.setView}。`destination` 始终带高度，也可作为
+   * Viewer 初始化 `camera.destination` / `camera.orientation` 使用。
    *
    * Gets the current camera view parameters.
    *
-   * The returned value can be passed directly to {@link Camera.setView}, making
-   * it convenient to read the current view from the console and reuse it as the
-   * initial `camera` option for Viewer creation.
+   * The returned value can be passed directly to {@link Camera.setView}.
+   * `destination` always includes height, so it can also be reused as Viewer
+   * `camera.destination` / `camera.orientation`.
    */
   getState(): CameraSetViewOptions {
     const ellipsoid = this.getEllipsoid()
     if (!ellipsoid) {
       return {
-        latitude: DEFAULT_CAMERA.latitude,
-        longitude: DEFAULT_CAMERA.longitude,
-        height: DEFAULT_CAMERA.height,
-        heading: DEFAULT_CAMERA.heading,
-        pitch: DEFAULT_CAMERA.pitch,
-        roll: DEFAULT_CAMERA.roll
+        destination: { ...DEFAULT_CAMERA.destination },
+        orientation: { ...DEFAULT_CAMERA.orientation }
       }
     }
 
-    return this.getCurrentView(ellipsoid)
+    const view = this.getCurrentView(ellipsoid)
+    return {
+      destination: {
+        longitude: view.longitude,
+        latitude: view.latitude,
+        height: view.height
+      },
+      orientation: {
+        heading: view.heading,
+        pitch: view.pitch,
+        roll: view.roll
+      }
+    }
   }
 
   private applyView(options: CameraViewState) {
@@ -381,7 +407,7 @@ export class Camera {
    */
   getPitch(): number {
     const ellipsoid = this.getEllipsoid()
-    if (!ellipsoid) return DEFAULT_CAMERA.pitch
+    if (!ellipsoid) return DEFAULT_CAMERA.orientation.pitch
     this.raw.updateMatrix()
     const cartographic = ellipsoid.getCartographicFromObjectFrame(
       this.raw.matrix,
@@ -405,15 +431,24 @@ export class Camera {
     }
   }
   private resolveFlyToTarget(options: CameraFlyToOptions, start: CameraViewState): CameraViewState {
-    const { destination, orientation } = options
+    const destination = this.resolveDestination(options.destination, start.height)
+    const { orientation } = options
     return {
       latitude: destination.latitude,
       longitude: start.longitude + shortestAngleDelta(start.longitude, destination.longitude),
-      height: destination.height ?? start.height,
-      heading: orientation?.heading ?? DEFAULT_CAMERA.heading,
-      pitch: orientation?.pitch ?? DEFAULT_CAMERA.pitch,
-      roll: orientation?.roll ?? DEFAULT_CAMERA.roll
+      height: destination.height,
+      heading: orientation?.heading ?? DEFAULT_CAMERA.orientation.heading,
+      pitch: orientation?.pitch ?? DEFAULT_CAMERA.orientation.pitch,
+      roll: orientation?.roll ?? DEFAULT_CAMERA.orientation.roll
     }
+  }
+
+  private resolveDestination(destination: CameraDestination, currentHeight?: number) {
+    const { longitude, latitude } = readLonLat(destination)
+    const height = hasExplicitHeight(destination)
+      ? readLonLatHeight(destination).height
+      : currentHeight ?? this.getCurrentHeight() ?? DEFAULT_CAMERA.destination.height
+    return { longitude, latitude, height }
   }
 
   private computeFlightDuration(start: CameraViewState, target: CameraViewState, ellipsoid: CameraEllipsoid) {

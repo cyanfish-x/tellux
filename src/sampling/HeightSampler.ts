@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { LoadRegionPlugin, RayRegion } from '3d-tiles-renderer/plugins'
 import type { TilesRenderer } from '3d-tiles-renderer'
 import { DEG2RAD } from '../constants'
+import { isLonLatPointList, readLonLat } from '../lonlat'
 import type { HeightSamplingTilesetEntry, TilesetManager } from '../tiles/TilesetManager'
 import {
   TilesetSamplingAdapter,
@@ -9,12 +10,10 @@ import {
   type TilesetSamplingSnapshot
 } from '../tiles/TilesetSamplingAdapter'
 import type {
-  CartographicCoordinateTuple,
-  CartographicCoordinates,
-  CartographicInput,
+  LonLat,
+  LonLatLike,
   SampleHeightMostDetailedDebugOptions,
   SampleHeightMostDetailedOptions,
-  SampleHeightMostDetailedResult,
   SampleHeightOptions
 } from '../types'
 import { HeightSamplingBatcher } from './HeightSamplingBatcher'
@@ -46,7 +45,7 @@ type HeightSamplingLoadRegion = {
 
 type HeightSamplingTask = {
   index: number
-  position: CartographicCoordinateTuple
+  position: LonLat
   ray: THREE.Ray
   raycaster: THREE.Raycaster
   origin: THREE.Vector3
@@ -80,14 +79,14 @@ type HeightSamplingDebugState = {
 type HeightSamplingJob = {
   session: HeightSamplingSession
   options: SampleHeightMostDetailedOptions
-  results: SampleHeightMostDetailedResult[]
+  results: (number | undefined)[]
   batches: HeightSamplingTask[][]
   currentBatchIndex: number
   maxFrames: number
   entries: HeightSamplingTilesetEntry[]
   activeBatch: HeightSamplingBatchState | null
   debug: HeightSamplingDebugState | null
-  resolve: (results: SampleHeightMostDetailedResult[]) => void
+  resolve: (results: (number | undefined)[]) => void
   reject: (reason: unknown) => void
 }
 
@@ -119,18 +118,43 @@ export class HeightSampler {
   }
 
   constructor(
-    private readonly tilesets: TilesetManager,
-    private readonly resolveCartographicInput: (input: CartographicInput) => CartographicCoordinates
+    private readonly tilesets: TilesetManager
   ) {}
 
-  sampleHeight(position: CartographicInput, options: SampleHeightOptions = {}) {
-    return this.sampleHeightFromLoadedTiles(position, options)
+  sampleHeight(point: LonLatLike, options?: SampleHeightOptions): number | undefined
+  sampleHeight(points: readonly LonLatLike[], options?: SampleHeightOptions): (number | undefined)[]
+  sampleHeight(
+    pointOrPoints: LonLatLike | readonly LonLatLike[],
+    options: SampleHeightOptions = {}
+  ) {
+    if (isLonLatPointList(pointOrPoints)) {
+      return this.sampleHeightFromLoadedTilesBatch(pointOrPoints, options)
+    }
+    return this.sampleHeightFromLoadedTiles(pointOrPoints, options)
   }
 
+  sampleHeightMostDetailed(
+    point: LonLatLike,
+    options?: SampleHeightMostDetailedOptions
+  ): Promise<number | undefined>
+  sampleHeightMostDetailed(
+    points: readonly LonLatLike[],
+    options?: SampleHeightMostDetailedOptions
+  ): Promise<(number | undefined)[]>
   async sampleHeightMostDetailed(
-    positions: CartographicCoordinateTuple[],
+    pointOrPoints: LonLatLike | readonly LonLatLike[],
     options: SampleHeightMostDetailedOptions = {}
-  ): Promise<SampleHeightMostDetailedResult[]> {
+  ) {
+    const isList = isLonLatPointList(pointOrPoints)
+    const positions = (isList ? pointOrPoints : [pointOrPoints]).map(readLonLat)
+    const results = await this.sampleHeightMostDetailedList(positions, options)
+    return isList ? results : results[0]
+  }
+
+  private async sampleHeightMostDetailedList(
+    positions: LonLat[],
+    options: SampleHeightMostDetailedOptions
+  ): Promise<(number | undefined)[]> {
     if (positions.length === 0) return []
 
     const session = this.createHeightSamplingSession()
@@ -170,17 +194,17 @@ export class HeightSampler {
   }
 
   private sampleHeightMostDetailedFromEntries(
-    positions: CartographicCoordinateTuple[],
+    positions: LonLat[],
     options: SampleHeightMostDetailedOptions,
     entries: HeightSamplingTilesetEntry[],
     session: HeightSamplingSession
-  ): Promise<SampleHeightMostDetailedResult[]> | SampleHeightMostDetailedResult[] {
+  ): Promise<(number | undefined)[]> | (number | undefined)[] {
     session.throwIfAborted()
-    const results: SampleHeightMostDetailedResult[] = new Array(positions.length).fill(undefined)
+    const results: (number | undefined)[] = new Array(positions.length).fill(undefined)
     if (entries.length === 0) {
       positions.forEach((position, index) => {
         const height = this.sampleHeightFromLoadedTiles(position, options)
-        results[index] = height === undefined ? undefined : [position[0], position[1], height]
+        results[index] = height
       })
       return results
     }
@@ -190,7 +214,7 @@ export class HeightSampler {
     const maxFrames = Math.max(0, options.maxFrames ?? DEFAULT_SAMPLE_HEIGHT_MOST_DETAILED_MAX_FRAMES)
     const debug = this.createHeightSamplingDebugState(options.debug, positions.length, batches.length, entries)
 
-    return new Promise<SampleHeightMostDetailedResult[]>((resolve, reject) => {
+    return new Promise<(number | undefined)[]>((resolve, reject) => {
       this.heightSamplingJobs.push({
         session,
         options,
@@ -208,7 +232,7 @@ export class HeightSampler {
   }
 
   private async sampleAllMostDetailedHybrid(
-    positions: CartographicCoordinateTuple[],
+    positions: LonLat[],
     options: SampleHeightMostDetailedOptions,
     session: HeightSamplingSession
   ) {
@@ -239,17 +263,17 @@ export class HeightSampler {
   }
 
   private mergeMostDetailedTerrainAndTilesetResults(
-    positions: CartographicCoordinateTuple[],
-    terrainResults: SampleHeightMostDetailedResult[],
-    tilesetResults: SampleHeightMostDetailedResult[]
+    positions: LonLat[],
+    terrainResults: (number | undefined)[],
+    tilesetResults: (number | undefined)[]
   ) {
-    return positions.map((position, index) => {
+    return positions.map((_position, index) => {
       const tilesetResult = tilesetResults[index]
       const terrainResult = terrainResults[index]
-      if (!terrainResult) return tilesetResult
-      if (!tilesetResult) return terrainResult
+      if (terrainResult === undefined) return tilesetResult
+      if (tilesetResult === undefined) return terrainResult
 
-      return tilesetResult[2] >= terrainResult[2] ? tilesetResult : terrainResult
+      return tilesetResult >= terrainResult ? tilesetResult : terrainResult
     })
   }
 
@@ -294,7 +318,7 @@ export class HeightSampler {
   }
 
   private async sampleTerrainMostDetailedDirect(
-    positions: CartographicCoordinateTuple[],
+    positions: LonLat[],
     session: HeightSamplingSession
   ) {
     const terrain = this.tilesets.terrainOptions
@@ -385,7 +409,7 @@ export class HeightSampler {
     }
   }
 
-  private sampleHeightFromLoadedTiles(input: CartographicInput, options: SampleHeightOptions) {
+  private sampleHeightFromLoadedTiles(input: LonLatLike, options: SampleHeightOptions) {
     this.configureSampleRay(input, options)
     const tilesets = this.getHeightSamplingTilesets(options.source)
     let closestHit: { height: number; distance: number } | null = null
@@ -400,6 +424,30 @@ export class HeightSampler {
     }
 
     return closestHit?.height
+  }
+
+  private sampleHeightFromLoadedTilesBatch(points: readonly LonLatLike[], options: SampleHeightOptions) {
+    if (points.length === 0) return []
+
+    const tilesets = this.getHeightSamplingTilesets(options.source)
+    const prepared: TilesRenderer[] = []
+    for (const tileset of tilesets) {
+      if (!tileset.group.visible) continue
+      tileset.group.updateMatrixWorld(true)
+      prepared.push(tileset)
+    }
+
+    return points.map((point) => {
+      this.configureSampleRay(point, options)
+      let closestHit: { height: number; distance: number } | null = null
+      for (const tileset of prepared) {
+        const hit = this.sampleHeightFromTileset(tileset, this.sampleRaycaster, false)
+        if (hit && (!closestHit || hit.distance < closestHit.distance)) {
+          closestHit = hit
+        }
+      }
+      return closestHit?.height
+    })
   }
 
   private sampleHeightFromLoadedTilesForTask(task: HeightSamplingTask, options: SampleHeightOptions) {
@@ -419,7 +467,7 @@ export class HeightSampler {
   }
 
   private createHeightSamplingTask(
-    position: CartographicCoordinateTuple,
+    position: LonLat,
     index: number,
     options: SampleHeightOptions
   ): HeightSamplingTask {
@@ -430,14 +478,14 @@ export class HeightSampler {
     const direction = new THREE.Vector3()
 
     ellipsoid.getCartographicToPosition(
-      position[1] * DEG2RAD,
-      position[0] * DEG2RAD,
+      position.latitude * DEG2RAD,
+      position.longitude * DEG2RAD,
       0,
       surfacePoint
     )
     ellipsoid.getCartographicToNormal(
-      position[1] * DEG2RAD,
-      position[0] * DEG2RAD,
+      position.latitude * DEG2RAD,
+      position.longitude * DEG2RAD,
       direction
     )
 
@@ -457,8 +505,8 @@ export class HeightSampler {
     }
   }
 
-  private configureSampleRay(input: CartographicInput, options: SampleHeightOptions) {
-    const cartographic = this.resolveCartographicInput(input)
+  private configureSampleRay(input: LonLatLike, options: SampleHeightOptions) {
+    const cartographic = readLonLat(input)
     const minimumHeight = options.minimumHeight ?? DEFAULT_SAMPLE_HEIGHT_MINIMUM_HEIGHT
     const maximumHeight = options.maximumHeight ?? DEFAULT_SAMPLE_HEIGHT_MAXIMUM_HEIGHT
     const ellipsoid = this.tilesets.tileset.ellipsoid
@@ -557,8 +605,14 @@ export class HeightSampler {
     ]
   }
 
-  private sampleHeightFromTileset(tileset: TilesRenderer, raycaster: THREE.Raycaster) {
-    tileset.group.updateMatrixWorld(true)
+  private sampleHeightFromTileset(
+    tileset: TilesRenderer,
+    raycaster: THREE.Raycaster,
+    updateWorldMatrix = true
+  ) {
+    if (updateWorldMatrix) {
+      tileset.group.updateMatrixWorld(true)
+    }
     this.sampleMatrix.copy(tileset.group.matrixWorld).invert()
     this.sampleLocalRay.copy(raycaster.ray).applyMatrix4(this.sampleMatrix)
 
@@ -754,7 +808,7 @@ export class HeightSampler {
       const height = this.sampleHeightFromSamplingTilesetsForTask(task, job.entries)
         ?? this.sampleHeightFromLoadedTilesForTask(task, job.options)
 
-      job.results[task.index] = height === undefined ? undefined : [task.position[0], task.position[1], height]
+      job.results[task.index] = height
       batch.sampleCursor += 1
 
       if (this.shouldYieldRaycastSlice(sliceStartedAt, sliceBudget)) {
@@ -995,7 +1049,10 @@ export class HeightSampler {
     if (!debug) return
 
     const elapsed = performance.now() - debug.startedAt
-    const hits = job.results.reduce((count, result) => result === undefined ? count : count + 1, 0)
+    const hits = job.results.reduce<number>(
+      (count, result) => (result === undefined ? count : count + 1),
+      0
+    )
     console.info(`${debug.options.label}: finished`, {
       route: debug.route,
       positions: debug.positions,

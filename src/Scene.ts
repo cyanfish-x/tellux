@@ -2,6 +2,7 @@
 import {
   AtmosphereSettings,
   CloudSettings,
+  EntitySettings,
   SurfaceSettings,
   type AtmosphereStateApplier,
   type CloudStateApplier,
@@ -60,6 +61,13 @@ export class Scene {
    * Surface rendering runtime settings.
    */
   readonly surface: SurfaceSettings
+  /**
+   * 实体渲染运行时设置。与初始化 {@link ViewerSceneOptions.entities} 同构。
+   *
+   * Entity rendering runtime settings. Isomorphic with
+   * {@link ViewerSceneOptions.entities}.
+   */
+  readonly entities: EntitySettings
 
   private readonly fallbackAmbientLightSource: THREE.AmbientLight
 
@@ -68,7 +76,8 @@ export class Scene {
     applyAtmosphereState: AtmosphereStateApplier,
     applyCloudsState: CloudStateApplier,
     onEffectsChange: () => void,
-    onSurfaceMaterialModeChange: () => void
+    onSurfaceMaterialModeChange: () => void,
+    onEntityTransparencyModeChange: (mode: ResolvedSceneOptions['entities']['transparency']['mode']) => void
   ) {
     this.fallbackAmbientLightSource = new THREE.AmbientLight(0xffffff, 0)
     this.atmosphere = new AtmosphereSettings(
@@ -80,6 +89,7 @@ export class Scene {
     )
     this.clouds = new CloudSettings(options.clouds, applyCloudsState, onEffectsChange)
     this.surface = new SurfaceSettings(options.surface, onSurfaceMaterialModeChange)
+    this.entities = new EntitySettings(options.entities, onEntityTransparencyModeChange)
     this.raw.add(this.fallbackAmbientLightSource)
     sceneRuntime.set(this, {
       syncRuntimeEffects: () => {

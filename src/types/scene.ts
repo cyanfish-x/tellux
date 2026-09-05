@@ -122,7 +122,12 @@ export type EntityTransparencyMode = 'auto' | 'weighted-oit' | 'sorted'
  * Entity transparency rendering options.
  */
 export interface ViewerEntityTransparencyOptions {
-  /** 透明渲染模式，默认 `auto`。Transparency rendering mode. Defaults to `auto`. */
+  /**
+   * 透明渲染模式，默认 `auto`。与运行时 `viewer.scene.entities.transparency.mode` 同构。
+   *
+   * Transparency rendering mode. Defaults to `auto`. Isomorphic with runtime
+   * `viewer.scene.entities.transparency.mode`.
+   */
   mode?: EntityTransparencyMode
 }
 

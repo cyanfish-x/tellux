@@ -185,6 +185,7 @@ export class PostProcessingManager {
       this.shouldRenderCloudsAtHeight(currentHeight)
     const outlineEnabled =
       Boolean(this.outlineAdapter) && this.highlight.outline.enabled
+    const entityOitEnabled = this.isEntityWeightedOitEnabled()
     const effectsKey = [
       shouldRenderAtmosphere,
       shouldRenderClouds,
@@ -195,7 +196,8 @@ export class PostProcessingManager {
       edl.enabled,
       edl.strength,
       edl.radius,
-      this.postProcess.bloom.enabled
+      this.postProcess.bloom.enabled,
+      entityOitEnabled
     ].join(':')
 
     this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
@@ -221,7 +223,7 @@ export class PostProcessingManager {
       // EDL 在大气成图之后：自定义 pass 两侧取深度，needsSwap=false，避免 Effect 绑不到深度。
       nextEffects.push(this.pointCloudEdlPass)
     }
-    if (this.entityRenderer) {
+    if (entityOitEnabled && this.entityRenderer) {
       // 透明实体在大气之后合成：实体不写深度，若排在大气前，大气的天空分支会把背景
       // 为天空（深度=远平面 1.0）的实体像素当作天空重画，导致实体在地平线处被"裁
       // 剪"。移到大气后，实体直接叠加在成图上始终清晰（与 symbol 标注同理）。pass
@@ -255,6 +257,11 @@ export class PostProcessingManager {
     this.currentEffectsKey = effectsKey
     this.activeEffects = nextEffects
     this.renderer.setEffects(nextEffects)
+  }
+
+  private isEntityWeightedOitEnabled() {
+    const pass = this.entityRenderer as { mode?: string } | undefined
+    return pass?.mode === 'weighted-oit'
   }
 
   private syncLensFlareSettings() {

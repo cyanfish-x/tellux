@@ -1,9 +1,11 @@
+import type { CameraOrientation, CameraProjectionOptions } from '../Camera'
 import type { ImageryLayerOptions } from './imagery'
 import type { ViewerHighlightOptions } from './highlight'
 import type { ViewerPostProcessOptions, ViewerSceneOptions } from './scene'
 import type { TerrainOptions } from './terrain'
 import type { ViewerWidgetOptions } from './widgets'
 import type { ClockOptions } from '../Clock'
+import type { LonLatHeightLike } from './spatial'
 
 /**
  * Viewer 使用的 Three.js renderer 类型。
@@ -30,13 +32,15 @@ export interface ViewerRendererOptions {
    */
   type?: ViewerRendererType
   /**
-   * 是否启用透明渲染背景。
+   * 是否启用透明渲染背景，默认 `false`。
    *
-   * 优先级高于 {@link ViewerOptions.transparent}。
+   * 仅初始化可配置：canvas 的 alpha 在 renderer 构造时确定，运行时没有
+   * `viewer.renderer.transparent`。
    *
-   * Enables a transparent rendering background.
+   * Enables a transparent rendering background. Defaults to `false`.
    *
-   * Takes precedence over {@link ViewerOptions.transparent}.
+   * Init-only: canvas alpha is fixed when the renderer is constructed; there is
+   * no runtime `viewer.renderer.transparent`.
    */
   transparent?: boolean
   /**
@@ -106,34 +110,28 @@ export interface ViewerOptions {
    */
   terrain?: TerrainOptions
   /**
-   * 初始相机视角。
+   * 初始相机视角。与运行时 {@link Camera.setView} 同构，并另含投影参数。
    *
-   * 经纬度和姿态角使用度作为单位；高度、near 和 far 使用米作为单位。
+   * 一旦提供 `destination`，高度必填。省略 `destination` 时使用默认初始视角。
    *
-   * Initial camera view.
+   * Initial camera view. Isomorphic with runtime {@link Camera.setView}, plus
+   * projection parameters.
    *
-   * Geographic coordinates and orientation angles are expressed in degrees.
-   * Height, near, and far are expressed in meters.
+   * When `destination` is provided, height is required. Omitting `destination`
+   * uses the default initial view.
    */
   camera?: {
-    /** 初始纬度（度），默认 `35.6812`。Initial latitude in degrees. Defaults to `35.6812`. */
-    latitude?: number
-    /** 初始经度（度），默认 `139.8`。Initial longitude in degrees. Defaults to `139.8`. */
-    longitude?: number
-    /** 初始相机高度（米），默认 `500`。Initial camera height in meters. Defaults to `500`. */
-    height?: number
-    /** 初始航向角（度），默认 `-90`。Initial heading in degrees. Defaults to `-90`. */
-    heading?: number
-    /** 初始俯仰角（度），默认 `-10`。Initial pitch in degrees. Defaults to `-10`. */
-    pitch?: number
-    /** 初始翻滚角（度），默认 `0`。Initial roll in degrees. Defaults to `0`. */
-    roll?: number
-    /** 透视相机垂直视场角（度），默认 `75`。Perspective camera vertical field of view in degrees. Defaults to `75`. */
-    fov?: number
-    /** 透视相机近裁剪面（米），默认 `10`。Perspective camera near clipping plane in meters. Defaults to `10`. */
-    near?: number
-    /** 透视相机远裁剪面（米），默认 `1000000`。Perspective camera far clipping plane in meters. Defaults to `1000000`. */
-    far?: number
+    /**
+     * 初始相机位置。高度必填；初始化不存在「保持当前高度」。
+     *
+     * Initial camera position. Height is required; there is no current height
+     * to keep at initialization.
+     */
+    destination?: LonLatHeightLike
+    /** 初始相机姿态。Initial camera orientation. */
+    orientation?: CameraOrientation
+    /** 透视投影参数，仅初始化可配置。Perspective projection; init-only. */
+    projection?: CameraProjectionOptions
   }
   /**
    * 初始场景时钟配置。
@@ -195,19 +193,6 @@ export interface ViewerOptions {
    */
   renderer?: ViewerRendererOptions
   /**
-   * 是否启用透明渲染背景，默认 `false`。
-   *
-   * 开启后 WebGL canvas 会透出页面背景，适合嵌入门户页或自定义背景。
-   *
-   * Enables a transparent rendering background. Defaults to `false`.
-   *
-   * When enabled, the WebGL canvas shows the page background, which is useful
-   * for embedded portal heroes or custom backdrops.
-   *
-   * Prefer `renderer.transparent` for new code.
-   */
-  transparent?: boolean
-  /**
    * Draco 解码器文件的公开 URL 路径。
    *
    * 默认 `/draco/`，对应 three.js 完整 Draco decoder（同时支持 glTF mesh 与点云）。
@@ -226,9 +211,10 @@ export interface ViewerOptions {
    */
   hism?: {
     /**
-     * 拾取时是否显示黄色命中点标记，默认 `true`。
+     * 拾取时是否显示黄色命中点标记，默认 `true`。与运行时 {@link HismManager.showPickMarker} 同构。
      *
      * Whether to show the yellow pick-point marker. Defaults to `true`.
+     * Isomorphic with runtime {@link HismManager.showPickMarker}.
      */
     showPickMarker?: boolean
   }

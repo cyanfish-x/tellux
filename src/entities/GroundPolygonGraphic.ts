@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import type { CartographicInput, ColorInput, PolygonOptions } from '../types'
+import type { ColorInput, LonLatHeightLike, PolygonOptions } from '../types'
+import { readLonLat } from '../lonlat'
 import { DEG2RAD } from '../constants'
 import { createEncodedCartesian3, encodeCartesian3 } from '../utils/EncodedCartesian3'
 import type { ResolveColor } from './invertToneMapping'
@@ -7,7 +8,7 @@ import type { EllipsoidLike, GroundClampSharedUniforms } from './groundClamp'
 
 interface GroundPolygonGraphicOptions {
   /** 外环顶点的经纬高序列（高度忽略——贴地）。 */
-  positions: CartographicInput[]
+  positions: readonly LonLatHeightLike[]
   options: PolygonOptions
   ellipsoid: EllipsoidLike
   /** 由 GroundClampPass 提供、每帧刷新的共享 uniform。 */
@@ -51,7 +52,7 @@ export class GroundPolygonGraphic {
   private readonly ellipsoid: EllipsoidLike
   private readonly resolveColor: ResolveColor
   private readonly currentColor: THREE.Color
-  private positions: CartographicInput[]
+  private positions: readonly LonLatHeightLike[]
 
   constructor({ positions, options, ellipsoid, uniforms, resolveColor }: GroundPolygonGraphicOptions) {
     this.ellipsoid = ellipsoid
@@ -107,7 +108,7 @@ export class GroundPolygonGraphic {
     )
   }
 
-  setPositions(positions: CartographicInput[]) {
+  setPositions(positions: readonly LonLatHeightLike[]) {
     this.positions = positions
     const next = this.buildGeometry()
     this.object3D.geometry = next
@@ -226,9 +227,9 @@ export class GroundPolygonGraphic {
   }
 }
 
-function toLonLat(input: CartographicInput): { lon: number; lat: number } {
-  if (Array.isArray(input)) return { lon: input[0], lat: input[1] }
-  return { lon: input.longitude, lat: input.latitude }
+function toLonLat(input: LonLatHeightLike): { lon: number; lat: number } {
+  const point = readLonLat(input)
+  return { lon: point.longitude, lat: point.latitude }
 }
 
 function dedupeClosingVertex(ring: Array<{ lon: number; lat: number }>) {

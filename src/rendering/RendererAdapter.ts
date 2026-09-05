@@ -41,7 +41,7 @@ class WebGLRendererAdapter implements TelluxRendererAdapter {
 
   constructor(options: ViewerOptions) {
     this.renderer = new THREE.WebGLRenderer({
-      alpha: options.renderer?.transparent ?? options.transparent ?? false,
+      alpha: options.renderer?.transparent ?? false,
       antialias: options.renderer?.antialias,
       outputBufferType: THREE.HalfFloatType
     }) as TelluxWebGLRenderer
@@ -103,7 +103,7 @@ class WebGPURendererAdapter implements TelluxRendererAdapter {
   constructor(options: ViewerOptions = {}) {
     const rendererOptions: ViewerRendererOptions = options.renderer ?? {}
     this.renderer = new WebGPURenderer({
-      alpha: rendererOptions.transparent ?? options.transparent ?? false,
+      alpha: rendererOptions.transparent ?? false,
       antialias: rendererOptions.antialias,
       samples: rendererOptions.samples,
       forceWebGL: rendererOptions.forceWebGL

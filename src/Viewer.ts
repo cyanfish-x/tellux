@@ -9,6 +9,7 @@ import { SymbolOcclusionPass } from './entities/SymbolOcclusionPass'
 import { ToneMappingColorResolver } from './entities/invertToneMapping'
 import { CAMERA_FRAME, DEG2RAD } from './constants'
 import { telluxConfig } from './config'
+import { isLonLatPointList, readLonLatHeight } from './lonlat'
 import { TargetFlightController } from './controls/TargetFlightController'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import type { ViewerControls } from './controls/ViewerControls'
@@ -67,15 +68,13 @@ import {
 import { WidgetManager } from './widgets/WidgetManager'
 import type {
   CartographicFrameOptions,
-  CartographicCoordinates,
-  CartographicCoordinateTuple,
-  CartographicHeightTuple,
-  CartographicInput,
   FlyToTargetOptions,
   FlyToTargetTarget,
+  LonLatHeight,
+  LonLatHeightLike,
+  LonLatLike,
   Picked3DTilesFeature,
   SampleHeightMostDetailedOptions,
-  SampleHeightMostDetailedResult,
   SampleHeightOptions,
   ScreenPosition,
   ViewerEventListener,
@@ -161,12 +160,13 @@ export {
 export { DebugSettingsPanel, Timeline, type DebugSettingsPanelOptions, type TimelineOptions } from './widgets'
 export type { TelluxRenderer, TelluxWebGLRenderer, TelluxWebGPURenderer } from './rendering/RendererAdapter'
 export type {
+  CameraDestination,
   CameraEllipsoid,
   CameraEllipsoidProvider,
-  CameraFlyToDestination,
   CameraFlyToOptions,
   CameraFlightEasingFunction,
   CameraOrientation,
+  CameraProjectionOptions,
   CameraSetViewOptions
 } from './Camera'
 export type {
@@ -174,11 +174,7 @@ export type {
   CloudQualityPreset,
   CloudShadowQuality,
   LensFlareQuality,
-  CartographicCoordinateTuple,
   CartographicFrameOptions,
-  CartographicCoordinates,
-  CartographicHeightTuple,
-  CartographicInput,
   CesiumIonTerrainOptions,
   TiandituTerrainOptions,
   CesiumIon3DTilesetOptions,
@@ -223,6 +219,10 @@ export type {
   HismLodLevel,
   HismMeshPart,
   Load3DTilesetOptions,
+  LonLat,
+  LonLatHeight,
+  LonLatHeightLike,
+  LonLatLike,
   ModelLayer,
   MVTImagerySourceOptions,
   MVTFeatureProperties,
@@ -237,7 +237,6 @@ export type {
   PickedEntity,
   ScreenPosition,
   SampleHeightMostDetailedOptions,
-  SampleHeightMostDetailedResult,
   SampleHeightOptions,
   TerrainRenderOptions,
   TerrainOptions,
@@ -505,7 +504,12 @@ export class Viewer {
       let postProcessing: PostProcessingManager | null = null
       let tilesets: TilesetManager | null = null
 
-      this.threeCamera = new THREE.PerspectiveCamera(cameraOptions.fov, width / height, cameraOptions.near, cameraOptions.far)
+      this.threeCamera = new THREE.PerspectiveCamera(
+        cameraOptions.projection.fov,
+        width / height,
+        cameraOptions.projection.near,
+        cameraOptions.projection.far
+      )
       this.camera = new Camera(this.threeCamera, () => tilesets?.tileset.ellipsoid ?? null)
       this.rendererAdapter = createRendererAdapter(options)
       constructionScope.defer(() => this.rendererAdapter.dispose())
@@ -535,6 +539,7 @@ export class Viewer {
       constructionScope.defer(() => this.transparentOverlayTexture.dispose())
 
       let highlightManager: HighlightManager | null = null
+      let entityRenderManager: EntityRenderManager | null = null
       let webgpuBloom: WebGPUBloomManager | null = null
       let webgpuLensFlare: WebGPULensFlareManager | null = null
       let webgpuTemporalAntialias: WebGPUTemporalAntialiasManager | null = null
@@ -567,6 +572,10 @@ export class Viewer {
         },
         () => {
           if (tilesets) this.syncSurfaceMaterialMode()
+        },
+        (mode) => {
+          entityRenderManager?.setRequestedMode(mode)
+          postProcessing?.applyEffects()
         }
       )
       this.webgpuPostProcessing = this.renderer.type === 'webgpu'
@@ -631,7 +640,7 @@ export class Viewer {
       tilesets = this.tilesetManager
       this.cartographicPicker = new CartographicPicker(this.renderer.raw.domElement, this.threeCamera, this.tilesetManager)
       this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.raw.domElement, this.threeCamera, this.tilesetManager)
-      this.heightSampler = new HeightSampler(this.tilesetManager, (input) => this.resolveCartographicInput(input))
+      this.heightSampler = new HeightSampler(this.tilesetManager)
       constructionScope.defer(() => this.heightSampler.dispose())
       this.tilesets = new SceneTilesetCollection(
         this.tilesetManager,
@@ -667,6 +676,7 @@ export class Viewer {
         requestedMode: sceneOptions.entities.transparency.mode,
         supportsWeightedOit: this.rendererAdapter.supportsWebGLEffects
       })
+      entityRenderManager = this.entityRenderManager
       constructionScope.defer(() => this.entityRenderManager.dispose())
       this.symbolOcclusionPass = this.rendererAdapter.supportsWebGLEffects
         ? new SymbolOcclusionPass(this.entitiesManager.root, this.threeCamera)
@@ -687,7 +697,10 @@ export class Viewer {
         onResize: (width, height) => this.webgpuPostProcessing?.setSize(width, height)
       })
       constructionScope.defer(() => this.viewport.dispose())
-      this.camera.setView(cameraOptions)
+      this.camera.setView({
+        destination: cameraOptions.destination,
+        orientation: cameraOptions.orientation
+      })
 
       const controls = new TelluxGlobeControls(this.scene.raw, this.threeCamera, this.renderer.raw.domElement)
       this.controls = controls
@@ -778,7 +791,7 @@ export class Viewer {
             this.threeCamera,
             this.atmosphere as AtmosphereManager,
             () => this.camera.getCurrentHeight(),
-            this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
+            this.entityRenderManager,
             this.groundClampPass ?? undefined,
             this.symbolOcclusionPass ?? undefined,
             getHighlightOutlineEffect(this.highlighter),
@@ -903,8 +916,8 @@ export class Viewer {
    * Tuple input order is `[longitude, latitude, height]`; object input uses
    * `{ longitude, latitude, height }`.
    */
-  cartographicToVector3(input: CartographicInput, target = new THREE.Vector3()) {
-    const cartographic = this.resolveCartographicInput(input)
+  cartographicToVector3(input: LonLatHeightLike, target = new THREE.Vector3()) {
+    const cartographic = readLonLatHeight(input)
     return this.tilesetManager.tileset.ellipsoid.getCartographicToPosition(
       cartographic.latitude * DEG2RAD,
       cartographic.longitude * DEG2RAD,
@@ -927,8 +940,8 @@ export class Viewer {
    * points forward. It is suitable for placing glTF models, markers, label
    * anchors, and other Three.js objects that should follow the globe surface.
    */
-  cartographicToMatrix4(input: CartographicInput, options: CartographicFrameOptions = {}, target = new THREE.Matrix4()) {
-    const cartographic = this.resolveCartographicInput(input)
+  cartographicToMatrix4(input: LonLatHeightLike, options: CartographicFrameOptions = {}, target = new THREE.Matrix4()) {
+    const cartographic = readLonLatHeight(input)
     return this.tilesetManager.tileset.ellipsoid.getObjectFrame(
       cartographic.latitude * DEG2RAD,
       cartographic.longitude * DEG2RAD,
@@ -985,7 +998,7 @@ export class Viewer {
    * method hits loaded 3D Tiles first, then falls back to the WGS84 ellipsoid.
    * It returns `null` when neither target is hit.
    */
-  pickCartographic(position: ScreenPosition): CartographicCoordinates | null {
+  pickCartographic(position: ScreenPosition): LonLatHeight | null {
     return this.cartographicPicker.pick(position)
   }
 
@@ -1013,25 +1026,43 @@ export class Viewer {
    * 3D Tiles。视角外或尚未加载的瓦片不会被额外请求；未命中时返回
    * `undefined`。
    *
-   * Samples the surface height at cartographic coordinates from currently
-   * loaded content.
+   * 批量重载把 tileset 列表和世界矩阵准备提到循环外，比逐点调用更省固定开销；
+   * 采样精度仍完全取决于当前已加载瓦片，不会为这批点请求任何数据。
+   *
+   * Samples the surface height at longitude/latitude from currently loaded
+   * content.
    *
    * The method casts a ray downward along the local surface normal and only
    * uses terrain and 3D Tiles already loaded in the scene. Tiles outside the
    * current view or not yet loaded are not requested; returns `undefined` when
    * no surface is hit.
+   *
+   * The batch overload prepares the tileset list and world matrices once.
+   * Precision still depends entirely on already-loaded tiles; no data is
+   * requested for the batch.
    */
-  sampleHeight(position: CartographicInput, options: SampleHeightOptions = {}) {
-    return this.heightSampler.sampleHeight(position, options)
+  sampleHeight(point: LonLatLike, options?: SampleHeightOptions): number | undefined
+  sampleHeight(points: readonly LonLatLike[], options?: SampleHeightOptions): (number | undefined)[]
+  sampleHeight(
+    pointOrPoints: LonLatLike | readonly LonLatLike[],
+    options: SampleHeightOptions = {}
+  ) {
+    if (isLonLatPointList(pointOrPoints)) {
+      return this.heightSampler.sampleHeight(pointOrPoints, options)
+    }
+    return this.heightSampler.sampleHeight(pointOrPoints, options)
   }
 
   /**
-   * 以更高精度异步采样经纬度数组的表面高度。
+   * 以更高精度异步采样经纬度的表面高度。
    *
    * 地形模式会直接按 quantized-mesh availability 加载最高可用层级并插值高度。
    * 3D Tiles 或混合模式会优先在主场景 tileset 上临时添加局部加载区域，
    * 让采样区域的瓦片细化后再 raycast；这样采样完成后，该区域也会保留在
    * 主场景缓存中。必要时会退回到采样专用 tileset。
+   *
+   * 批量重载整批共享 LoadRegion 与离屏相机，跨帧等待加载稳定。逐点 `await`
+   * 会退化成 N 轮串行加载，慢一到两个数量级——异步批量不是可选项，不用就是错的。
    *
    * terrain 或参与采样的图层变化、以及 Viewer 销毁会取消未完成任务；
    * 取消时返回的 Promise 以 `AbortError` 拒绝。
@@ -1039,8 +1070,8 @@ export class Viewer {
    * 当 {@link Viewer.useDefaultRenderLoop} 为 `false` 时，需要继续调用
    * {@link Viewer.render} 推进采样任务。
    *
-   * Asynchronously samples surface heights for an array of cartographic
-   * coordinate tuples with higher detail.
+   * Asynchronously samples surface height at longitude/latitude with higher
+   * detail.
    *
    * Terrain mode loads the most detailed available quantized-mesh tiles directly
    * from terrain availability and interpolates height. 3D Tiles and mixed modes
@@ -1048,17 +1079,33 @@ export class Viewer {
    * sampling area, and then raycast; the loaded region remains warm in the scene
    * cache. A sampling-only tileset path is kept as a fallback.
    *
+   * The batch overload shares LoadRegions and the offscreen camera across the
+   * whole set and waits across frames for loading to settle. Awaiting point by
+   * point degrades into N serial load rounds and is one to two orders of
+   * magnitude slower — the async batch is not optional.
+   *
    * Terrain or sampled-layer changes and Viewer destruction cancel unfinished
    * work. Cancellation rejects the returned promise with an `AbortError`.
    *
    * When {@link Viewer.useDefaultRenderLoop} is `false`, continue calling
    * {@link Viewer.render} to advance pending sampling tasks.
    */
-  async sampleHeightMostDetailed(
-    positions: CartographicCoordinateTuple[],
+  sampleHeightMostDetailed(
+    point: LonLatLike,
+    options?: SampleHeightMostDetailedOptions
+  ): Promise<number | undefined>
+  sampleHeightMostDetailed(
+    points: readonly LonLatLike[],
+    options?: SampleHeightMostDetailedOptions
+  ): Promise<(number | undefined)[]>
+  sampleHeightMostDetailed(
+    pointOrPoints: LonLatLike | readonly LonLatLike[],
     options: SampleHeightMostDetailedOptions = {}
-  ): Promise<SampleHeightMostDetailedResult[]> {
-    return this.heightSampler.sampleHeightMostDetailed(positions, options)
+  ) {
+    if (isLonLatPointList(pointOrPoints)) {
+      return this.heightSampler.sampleHeightMostDetailed(pointOrPoints, options)
+    }
+    return this.heightSampler.sampleHeightMostDetailed(pointOrPoints, options)
   }
 
   /**
@@ -1218,22 +1265,6 @@ export class Viewer {
     )
     updateSceneFallbackAmbientLight(this.scene, cartographic.height)
     return cartographic.height
-  }
-
-  private resolveCartographicInput(input: CartographicInput): CartographicCoordinates {
-    if (Array.isArray(input)) {
-      return {
-        longitude: input[0],
-        latitude: input[1],
-        height: input[2] ?? 0
-      }
-    }
-
-    return {
-      longitude: input.longitude,
-      latitude: input.latitude,
-      height: input.height
-    }
   }
 
   private syncSurfaceMaterialMode() {

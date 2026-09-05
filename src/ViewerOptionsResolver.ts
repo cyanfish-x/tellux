@@ -1,10 +1,12 @@
 import { DEFAULT_CAMERA } from './constants'
+import { readLonLatHeight } from './lonlat'
 import type { ClockOptions } from './Clock'
 import type { SurfaceMaterialOptions } from './materials/materialMode'
 import type { ModelMaterialMode } from './models/GltfModelLayer'
 import type { ResolvedSceneOptions } from './Scene'
 import type { ResolvedHighlightOptions, ResolvedPostProcessOptions } from './scene/SceneOptions'
 import { sceneValueNormalizers } from './scene/SceneValueNormalization'
+import type { LonLatHeight } from './types/spatial'
 import type {
   AtmosphereLightingMode,
   SurfaceMaterialMode,
@@ -32,8 +34,19 @@ export function resolveViewerClockOptions(options: ViewerOptions): ClockOptions 
 
 export function resolveViewerCameraOptions(options: ViewerOptions['camera']) {
   return {
-    ...DEFAULT_CAMERA,
-    ...options
+    destination: options?.destination
+      ? readLonLatHeight(options.destination)
+      : { ...DEFAULT_CAMERA.destination } satisfies LonLatHeight,
+    orientation: {
+      heading: options?.orientation?.heading ?? DEFAULT_CAMERA.orientation.heading,
+      pitch: options?.orientation?.pitch ?? DEFAULT_CAMERA.orientation.pitch,
+      roll: options?.orientation?.roll ?? DEFAULT_CAMERA.orientation.roll
+    },
+    projection: {
+      fov: options?.projection?.fov ?? DEFAULT_CAMERA.projection.fov,
+      near: options?.projection?.near ?? DEFAULT_CAMERA.projection.near,
+      far: options?.projection?.far ?? DEFAULT_CAMERA.projection.far
+    }
   }
 }
 

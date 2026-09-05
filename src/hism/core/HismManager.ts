@@ -17,7 +17,12 @@ export interface HismManagerOptions {
   camera: THREE.Camera
   domElement: HTMLElement
   applyInstanceMatrix: HismApplyInstanceMatrix
-  /** 是否启用拾取标记，默认 `true`。Whether to show a pick marker. Defaults to `true`. */
+  /**
+   * 拾取时是否显示黄色命中点标记，默认 `true`。运行时可改 {@link HismManager.showPickMarker}。
+   *
+   * Whether to show the yellow pick-point marker. Defaults to `true`.
+   * Toggle at runtime via {@link HismManager.showPickMarker}.
+   */
   showPickMarker?: boolean
 }
 
@@ -26,19 +31,40 @@ export class HismManager {
   readonly rtcUniforms: RTCAutoUniforms
   private readonly raycaster = new THREE.Raycaster()
   private readonly pointer = new THREE.Vector2()
-  private readonly pickMarker: HismPickMarker | null
+  private pickMarker: HismPickMarker | null
+  private pickMarkerEnabled: boolean
   private nextLayerId = 0
 
   constructor(private readonly options: HismManagerOptions) {
     this.rtcUniforms = new RTCAutoUniforms(
       options.camera as THREE.PerspectiveCamera
     )
-    if (options.showPickMarker !== false) {
-      this.pickMarker = new HismPickMarker()
-      options.scene.add(this.pickMarker.object)
-    } else {
-      this.pickMarker = null
+    this.pickMarkerEnabled = options.showPickMarker !== false
+    this.pickMarker = null
+    if (this.pickMarkerEnabled) {
+      this.ensurePickMarker()
     }
+  }
+
+  /**
+   * 拾取时是否显示黄色命中点标记。与初始化 {@link ViewerOptions.hism}`.showPickMarker` 同构。
+   *
+   * Whether to show the yellow pick-point marker. Isomorphic with
+   * {@link ViewerOptions.hism}`.showPickMarker`.
+   */
+  get showPickMarker() {
+    return this.pickMarkerEnabled
+  }
+
+  set showPickMarker(value: boolean) {
+    if (this.pickMarkerEnabled === value) return
+    this.pickMarkerEnabled = value
+    if (value) {
+      this.ensurePickMarker()
+      return
+    }
+    this.pickMarker?.dispose()
+    this.pickMarker = null
   }
 
   /**
@@ -157,6 +183,12 @@ export class HismManager {
       layer.remove()
     })
     this.layers.clear()
+  }
+
+  private ensurePickMarker() {
+    if (this.pickMarker) return
+    this.pickMarker = new HismPickMarker()
+    this.options.scene.add(this.pickMarker.object)
   }
 
   private setPickRay(screenPosition: { x: number; y: number }) {

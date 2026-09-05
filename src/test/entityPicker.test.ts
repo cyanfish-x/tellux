@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { ViewerInteractionManager } from '../controls/ViewerInteractionManager'
 import { EntityManager } from '../entities/EntityManager'
 import { EntityPicker } from '../sampling/EntityPicker'
-import type { CartographicInput } from '../types'
+import type { LonLatHeightLike } from '../types'
+import { readLonLatHeight } from '../lonlat'
 
 const CANVAS_SIZE = 200
 
@@ -169,11 +170,9 @@ function createEntityPickerFixture() {
   } as HTMLCanvasElement
   const entities = new EntityManager({
     scene,
-    toVector3: (input: CartographicInput, target: THREE.Vector3) => {
-      if (!Array.isArray(input)) {
-        return target.set(input.longitude, input.latitude, input.height)
-      }
-      return target.set(input[0], input[1], input[2] ?? 0)
+    toVector3: (input: LonLatHeightLike, target: THREE.Vector3) => {
+      const point = readLonLatHeight(input)
+      return target.set(point.longitude, point.latitude, point.height)
     },
     ellipsoid: () => ({
       getCartographicToPosition: (_lat, _lon, _height, target) => target.set(0, 0, 0),

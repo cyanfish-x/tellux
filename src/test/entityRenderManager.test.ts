@@ -159,6 +159,53 @@ describe('EntityRenderManager', () => {
     expect(root.visible).toBe(true)
     manager.dispose()
   })
+
+  it('hides transparent entities after switching from sorted to weighted OIT', () => {
+    const root = new THREE.Group()
+    const transparentPoint = new THREE.Points(
+      new THREE.BufferGeometry(),
+      new THREE.PointsMaterial({ transparent: true })
+    )
+    root.add(transparentPoint)
+    const manager = new EntityRenderManager({
+      root,
+      camera: new THREE.PerspectiveCamera(),
+      requestedMode: 'sorted',
+      supportsWeightedOit: true
+    })
+
+    manager.beginFrame()
+    expect(transparentPoint.visible).toBe(true)
+
+    manager.setRequestedMode('weighted-oit')
+    manager.beginFrame()
+    expect(manager.mode).toBe('weighted-oit')
+    expect(transparentPoint.visible).toBe(false)
+    manager.dispose()
+  })
+
+  it('restores transparent entity visibility after switching from weighted OIT to sorted', () => {
+    const root = new THREE.Group()
+    const transparentPoint = new THREE.Points(
+      new THREE.BufferGeometry(),
+      new THREE.PointsMaterial({ transparent: true })
+    )
+    root.add(transparentPoint)
+    const manager = new EntityRenderManager({
+      root,
+      camera: new THREE.PerspectiveCamera(),
+      requestedMode: 'weighted-oit',
+      supportsWeightedOit: true
+    })
+
+    manager.beginFrame()
+    expect(transparentPoint.visible).toBe(false)
+
+    manager.setRequestedMode('sorted')
+    expect(manager.mode).toBe('sorted')
+    expect(transparentPoint.visible).toBe(true)
+    manager.dispose()
+  })
 })
 
 function createOitRenderer() {

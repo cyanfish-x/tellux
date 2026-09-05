@@ -156,10 +156,10 @@ describe('QuantizedMeshTerrainSampler cache lifecycle', () => {
       [[longitude, -45]]
     )
 
-    await expect(sample(-135)).resolves.toEqual([[-135, -45, 25]])
-    await expect(sample(-45)).resolves.toEqual([[-45, -45, 25]])
+    await expect(sample(-135)).resolves.toEqual([25])
+    await expect(sample(-45)).resolves.toEqual([25])
     await sample(-135)
-    await expect(sample(45)).resolves.toEqual([[45, -45, 25]])
+    await expect(sample(45)).resolves.toEqual([25])
     await sample(-45)
 
     expect(terrainRequests).toEqual([

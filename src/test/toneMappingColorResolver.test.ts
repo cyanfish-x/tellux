@@ -6,6 +6,7 @@ import type { GroundClampContext } from '../entities/groundClamp'
 import { ToneMappingColorResolver } from '../entities/invertToneMapping'
 import { OverlayHighlighter } from '../highlight/OverlayHighlighter'
 import type { Picked3DTilesFeature } from '../types'
+import { readLonLatHeight } from '../lonlat'
 import { PostProcessSettings } from '../scene/PostProcessSettings'
 import { resolveViewerPostProcessOptions } from '../ViewerOptionsResolver'
 
@@ -36,11 +37,10 @@ function createEntityManager(
 ) {
   return new EntityManager({
     scene,
-    toVector3: (input, target) => (
-      Array.isArray(input)
-        ? target.set(input[0], input[1], input[2] ?? 0)
-        : target.set(input.longitude, input.latitude, input.height)
-    ),
+    toVector3: (input, target) => {
+      const point = readLonLatHeight(input)
+      return target.set(point.longitude, point.latitude, point.height)
+    },
     ellipsoid: () => ({
       getCartographicToPosition: (latitude, longitude, height, target) => {
         const radius = 1 + height
