@@ -1,8 +1,8 @@
 /**
- * 影像图层配置，用于 {@link ViewerOptions.layers} 和 `viewer.layers.add(...)`。
+ * 影像图层配置，用于 {@link ViewerOptions.overlays} 和 `viewer.overlays.add(...)`。
  *
- * Imagery layer options used by {@link ViewerOptions.layers} and
- * `viewer.layers.add(...)`.
+ * Imagery layer options used by {@link ViewerOptions.overlays} and
+ * `viewer.overlays.add(...)`.
  */
 export interface ImageryLayerOptions {
   /**

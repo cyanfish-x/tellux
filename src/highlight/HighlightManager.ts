@@ -137,12 +137,13 @@ export function getHighlightOutlineEffect(manager: HighlightManager) {
 }
 
 /**
- * 统一高亮门面：按目标类型路由到描边或叠加几何。
+ * 统一高亮门面：按目标类型路由到描边或叠加几何，并承载 `outline` / `overlay` 样式。
  *
- * Unified highlight facade that routes targets to outline or overlay highlighters.
+ * Unified highlight facade that routes targets to outline or overlay
+ * highlighters and owns `outline` / `overlay` style.
  */
 export class HighlightManager {
-  private readonly outline: OutlineHighlighter
+  private readonly outlineHighlighter: OutlineHighlighter
   private readonly selectOverlay: OverlayHighlighter
   private readonly hoverOverlay: OverlayHighlighter
   private readonly selectHism: HismInstanceHighlighter | null
@@ -153,7 +154,7 @@ export class HighlightManager {
   constructor(private readonly options: HighlightManagerOptions) {
     const { settings } = options
     const resolveColor = options.resolveColor ?? defaultResolveColor
-    this.outline = new OutlineHighlighter(
+    this.outlineHighlighter = new OutlineHighlighter(
       options.scene,
       options.camera,
       {
@@ -196,7 +197,7 @@ export class HighlightManager {
       syncStyleFromSettings: () => self.syncStyleFromSettings(),
       update: () => self.update(),
       get outlineEffect() {
-        return self.outline.effect
+        return self.outlineHighlighter.effect
       }
     })
     this.syncStyleFromSettings()
@@ -274,7 +275,7 @@ export class HighlightManager {
       this.hovered = resolved
       this.hoverOverlay.clear()
       this.hoverHism?.clear()
-      this.outline.clearHover()
+      this.outlineHighlighter.clearHover()
       return
     }
     if (
@@ -285,7 +286,7 @@ export class HighlightManager {
       this.hovered = resolved
       this.hoverOverlay.clear()
       this.hoverHism?.clear()
-      this.outline.clearHover()
+      this.outlineHighlighter.clearHover()
       return
     }
     if (
@@ -296,7 +297,7 @@ export class HighlightManager {
       this.hovered = resolved
       this.hoverOverlay.clear()
       this.hoverHism?.clear()
-      this.outline.clearHover()
+      this.outlineHighlighter.clearHover()
       return
     }
     this.hovered = resolved
@@ -322,13 +323,31 @@ export class HighlightManager {
   }
 
   /**
-   * 从 `scene.highlight` 同步样式到两个 highlighter。
+   * 描边高亮样式。
    *
-   * Syncs styles from `scene.highlight` into both highlighters.
+   * Outline highlight style.
+   */
+  get outline() {
+    return this.options.settings.outline
+  }
+
+  /**
+   * 叠加高亮样式。
+   *
+   * Overlay highlight style.
+   */
+  get overlay() {
+    return this.options.settings.overlay
+  }
+
+  /**
+   * 从 highlighter 样式同步到内部描边 / 叠加实现。
+   *
+   * Syncs highlighter styles into the outline and overlay implementations.
    */
   private syncStyleFromSettings() {
     const { settings } = this.options
-    this.outline.setStyle({
+    this.outlineHighlighter.setStyle({
       enabled: settings.outline.enabled,
       color: settings.outline.color,
       hiddenColor: settings.outline.hiddenColor,
@@ -368,7 +387,7 @@ export class HighlightManager {
     this.clear()
     this.hovered = null
     this.applyHover()
-    this.outline.dispose()
+    this.outlineHighlighter.dispose()
     this.selectOverlay.dispose()
     this.hoverOverlay.dispose()
     this.selectHism?.dispose()
@@ -376,13 +395,13 @@ export class HighlightManager {
   }
 
   private applySelect() {
-    this.outline.clearSelect()
+    this.outlineHighlighter.clearSelect()
     this.selectOverlay.clear()
     this.selectHism?.clear()
     if (!this.selected) return
 
     if (this.selected.kind === 'object') {
-      this.outline.setSelect(this.selected.object)
+      this.outlineHighlighter.setSelect(this.selected.object)
       return
     }
     if (this.selected.kind === 'hismInstance') {
@@ -391,7 +410,7 @@ export class HighlightManager {
         this.selected = null
         return
       }
-      this.outline.setSelect(this.selectHism.getOutlineRoot())
+      this.outlineHighlighter.setSelect(this.selectHism.getOutlineRoot())
       return
     }
     if (this.options.settings.overlay.enabled) {
@@ -400,7 +419,7 @@ export class HighlightManager {
   }
 
   private applyHover() {
-    this.outline.clearHover()
+    this.outlineHighlighter.clearHover()
     this.hoverOverlay.clear()
     this.hoverHism?.clear()
     if (!this.hovered) return
@@ -428,7 +447,7 @@ export class HighlightManager {
     }
 
     if (this.hovered.kind === 'object') {
-      this.outline.setHover(this.hovered.object)
+      this.outlineHighlighter.setHover(this.hovered.object)
       return
     }
     if (this.hovered.kind === 'hismInstance') {
@@ -436,7 +455,7 @@ export class HighlightManager {
         this.hovered = null
         return
       }
-      this.outline.setHover(this.hoverHism.getOutlineRoot())
+      this.outlineHighlighter.setHover(this.hoverHism.getOutlineRoot())
       return
     }
     if (this.options.settings.overlay.enabled) {
@@ -447,18 +466,18 @@ export class HighlightManager {
   private syncOutlineFromHismProxies() {
     if (this.selected?.kind === 'hismInstance' && this.selectHism) {
       if (this.selectHism.currentPick) {
-        this.outline.setSelect(this.selectHism.getOutlineRoot())
+        this.outlineHighlighter.setSelect(this.selectHism.getOutlineRoot())
       } else {
         this.selected = null
-        this.outline.clearSelect()
+        this.outlineHighlighter.clearSelect()
       }
     }
     if (this.hovered?.kind === 'hismInstance' && this.hoverHism) {
       if (this.hoverHism.currentPick) {
-        this.outline.setHover(this.hoverHism.getOutlineRoot())
+        this.outlineHighlighter.setHover(this.hoverHism.getOutlineRoot())
       } else {
         this.hovered = null
-        this.outline.clearHover()
+        this.outlineHighlighter.clearHover()
       }
     }
   }

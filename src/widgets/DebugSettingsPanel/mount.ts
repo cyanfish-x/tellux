@@ -169,14 +169,14 @@ export function mountDebugSettingsPanel(
     viewer.scene.clouds.speed = smooth.cloudSpeed.tick(deltaTime)
     viewer.scene.clouds.layer.altitude = smooth.cloudLayerAltitude.tick(deltaTime)
     viewer.scene.clouds.layer.height = smooth.cloudLayerHeight.tick(deltaTime)
-    viewer.toneMappingExposure = smooth.toneMappingExposure.tick(deltaTime)
+    viewer.postProcess.toneMappingExposure = smooth.toneMappingExposure.tick(deltaTime)
   }
 
   function updateStatus() {
     status.textContent =
       `云量 ${viewer.scene.clouds.coverage.toFixed(2)} / ` +
       `散射 ${viewer.scene.atmosphere.scattering.intensity.toFixed(2)} / ` +
-      `曝光 ${viewer.toneMappingExposure.toFixed(1)}`
+      `曝光 ${viewer.postProcess.toneMappingExposure.toFixed(1)}`
   }
 
   function applyControls() {
@@ -256,12 +256,12 @@ export function mountDebugSettingsPanel(
     smooth.cloudLayerAltitude.target = Number(cloudAltitudeControl.input.value)
     smooth.cloudLayerHeight.target = Number(cloudHeightControl.input.value)
     smooth.toneMappingExposure.target = Number(exposureControl.input.value)
-    viewer.resolutionScale = Number(resolutionControl.input.value)
-    viewer.scene.postProcess.lensFlare.enabled =
+    viewer.renderer.resolutionScale = Number(resolutionControl.input.value)
+    viewer.postProcess.lensFlare.enabled =
       lensFlareToggle.input.checked
-    viewer.scene.postProcess.smaa.enabled = smaaToggle.input.checked
-    viewer.scene.postProcess.taa.enabled = taaToggle.input.checked
-    viewer.scene.postProcess.dithering.enabled =
+    viewer.postProcess.smaa.enabled = smaaToggle.input.checked
+    viewer.postProcess.taa.enabled = taaToggle.input.checked
+    viewer.postProcess.dithering.enabled =
       ditheringToggle.input.checked
     fpsHud.setVisible(fpsToggle.input.checked)
     saveStoredDebugSettings({

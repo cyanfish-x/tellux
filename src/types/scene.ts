@@ -1,5 +1,3 @@
-import type { ViewerHighlightOptions } from './highlight'
-
 /**
  * 大气光照模式。
  *
@@ -37,13 +35,13 @@ export type SurfaceMaterialMode = 'auto' | 'basic' | 'standard'
  * 基础地球表面 PBR 材质参数。
  *
  * 这些参数只作用于 Viewer 管理的基础地球表面和 terrain，不影响
- * `load3DTileset` 或 `addModel` 加载的普通场景内容。
+ * `tilesets.add` 或 `models.add` 加载的普通场景内容。
  *
  * Base globe surface PBR material options.
  *
  * These options only affect the base globe surface and terrain managed by the
- * Viewer. They do not affect regular scene content loaded with `load3DTileset`
- * or `addModel`.
+ * Viewer. They do not affect regular scene content loaded with `tilesets.add`
+ * or `models.add`.
  */
 export interface ViewerSurfaceMaterialOptions {
   /** 表面粗糙度，范围 `0` 到 `1`，默认 `1`。Surface roughness from `0` to `1`. Defaults to `1`. */
@@ -100,10 +98,6 @@ export interface ViewerSceneOptions {
   entities?: ViewerEntityOptions
   /** 地表渲染配置。Surface rendering options. */
   surface?: ViewerSurfaceOptions
-  /** 后处理配置。Post-processing options. */
-  postProcess?: ViewerPostProcessOptions
-  /** 高亮（描边 / 叠加）配置。Highlight (outline / overlay) options. */
-  highlight?: ViewerHighlightOptions
 }
 
 /**
@@ -495,9 +489,9 @@ export interface ViewerLensFlareOptions {
 }
 
 /**
- * Viewer 后处理配置。
+ * Viewer 后处理配置，用于 {@link ViewerOptions.postProcess}。
  *
- * Viewer post-processing options.
+ * Viewer post-processing options used by {@link ViewerOptions.postProcess}.
  */
 export interface ViewerPostProcessOptions {
   /**
@@ -513,16 +507,21 @@ export interface ViewerPostProcessOptions {
    */
   lensFlare?: boolean | ViewerLensFlareOptions
   /**
-   * SMAA 抗锯齿配置。传入 `boolean` 时等价于 `{ enabled }`。
+   * SMAA 抗锯齿配置。传入 `boolean` 时等价于 `{ enabled }`。图像空间、运行时可切。
+   * 硬件 MSAA 见 {@link ViewerRendererOptions.antialias} / {@link ViewerRendererOptions.samples}。
    *
-   * SMAA options. A `boolean` is treated as `{ enabled }`.
+   * SMAA options. A `boolean` is treated as `{ enabled }`. Image-space and
+   * runtime-togglable. Hardware MSAA is {@link ViewerRendererOptions.antialias} /
+   * {@link ViewerRendererOptions.samples}.
    */
   smaa?: boolean | ViewerPostProcessStageOptions
   /**
    * WebGPU TAA 时间抗锯齿配置，默认 `false`。传入 `boolean` 时等价于 `{ enabled }`。
+   * 图像空间、运行时可切。硬件 MSAA 见 {@link ViewerRendererOptions.antialias}。
    *
    * WebGPU TAA options. Defaults to `false`. A `boolean` is treated as
-   * `{ enabled }`.
+   * `{ enabled }`. Image-space and runtime-togglable. Hardware MSAA is
+   * {@link ViewerRendererOptions.antialias}.
    */
   taa?: boolean | ViewerPostProcessStageOptions
   /**

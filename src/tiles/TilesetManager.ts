@@ -83,6 +83,7 @@ export class TilesetManager {
   private readonly rendererSize = new THREE.Vector2()
   private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
+  private globeShow = true
   private sceneTilesetId = 0
 
   constructor(private readonly options: TilesetManagerOptions) {
@@ -121,7 +122,7 @@ export class TilesetManager {
       this.activeTerrainTileset = this.createTerrainTileset(this.currentTerrain, this.currentImageryLayers)
       this.options.scene.add(this.activeTerrainTileset.group)
     }
-    this.syncSurfaceVisibility()
+    this.syncGlobeVisibility()
   }
 
   get tileset() {
@@ -204,6 +205,11 @@ export class TilesetManager {
         ? this.createTerrainTileset(this.currentTerrain, this.currentImageryLayers)
         : null
     )
+  }
+
+  applyGlobeShow(show: boolean) {
+    this.globeShow = show
+    this.syncGlobeVisibility()
   }
 
   load3DTileset(options: Load3DTilesetOptions): TilesetLayer {
@@ -474,7 +480,7 @@ export class TilesetManager {
       this.options.scene.remove(this.activeTerrainTileset.group)
       this.options.scene.add(this.activeTerrainTileset.group)
     }
-    this.syncSurfaceVisibility()
+    this.syncGlobeVisibility()
     this.resize()
   }
 
@@ -489,12 +495,16 @@ export class TilesetManager {
     if (nextTileset) {
       this.options.scene.add(nextTileset.group)
     }
-    this.syncSurfaceVisibility()
+    this.syncGlobeVisibility()
     this.resize()
   }
 
-  private syncSurfaceVisibility() {
-    this.activeSurfaceTileset.group.visible = this.activeTerrainTileset === null
+  private syncGlobeVisibility() {
+    const show = this.globeShow
+    this.activeSurfaceTileset.group.visible = show && this.activeTerrainTileset === null
+    if (this.activeTerrainTileset) {
+      this.activeTerrainTileset.group.visible = show
+    }
   }
 
   private createHeightSamplingTerrainTileset(terrain: TerrainOptions) {

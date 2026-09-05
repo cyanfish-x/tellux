@@ -1,5 +1,5 @@
 import type { ColorInput } from '../types'
-import type { ResolvedSceneOptions } from './SceneOptions'
+import type { ResolvedHighlightOptions } from './SceneOptions'
 
 function colorsEqual(a: ColorInput, b: ColorInput) {
   return a === b
@@ -7,7 +7,7 @@ function colorsEqual(a: ColorInput, b: ColorInput) {
 
 class HighlightOutlineSettings {
   constructor(
-    private readonly options: ResolvedSceneOptions['highlight']['outline'],
+    private readonly options: ResolvedHighlightOptions['outline'],
     private readonly onChange: () => void
   ) {}
 
@@ -69,7 +69,7 @@ class HighlightOutlineSettings {
 
 class HighlightOverlaySettings {
   constructor(
-    private readonly options: ResolvedSceneOptions['highlight']['overlay'],
+    private readonly options: ResolvedHighlightOptions['overlay'],
     private readonly onChange: () => void
   ) {}
 
@@ -132,16 +132,16 @@ class HighlightOverlaySettings {
 }
 
 /**
- * 场景级高亮运行时设置。
+ * 高亮（描边 / 叠加）运行时设置。
  *
- * Scene-level highlight runtime settings.
+ * Highlight (outline / overlay) runtime settings.
  */
 export class HighlightSettings {
   readonly outline: HighlightOutlineSettings
   readonly overlay: HighlightOverlaySettings
 
   constructor(
-    options: ResolvedSceneOptions['highlight'],
+    options: ResolvedHighlightOptions,
     onChange: () => void
   ) {
     this.outline = new HighlightOutlineSettings(options.outline, onChange)

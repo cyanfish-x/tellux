@@ -121,22 +121,22 @@ export function buildDebugSettingsControls(
   const lensFlareToggle = createSwitchControl(
     "lens-flare",
     "镜头光晕",
-    settings.lensFlare ?? viewer.scene.postProcess.lensFlare.enabled
+    settings.lensFlare ?? viewer.postProcess.lensFlare.enabled
   )
   const smaaToggle = createSwitchControl(
     "smaa",
     "SMAA",
-    settings.smaa ?? viewer.scene.postProcess.smaa.enabled
+    settings.smaa ?? viewer.postProcess.smaa.enabled
   )
   const taaToggle = createSwitchControl(
     "taa",
     "TAA（WebGPU）",
-    settings.taa ?? viewer.scene.postProcess.taa.enabled
+    settings.taa ?? viewer.postProcess.taa.enabled
   )
   const ditheringToggle = createSwitchControl(
     "dithering",
     "抖动",
-    settings.dithering ?? viewer.scene.postProcess.dithering.enabled
+    settings.dithering ?? viewer.postProcess.dithering.enabled
   )
   const fpsToggle = createSwitchControl(
     "fps",
@@ -468,7 +468,7 @@ export function buildDebugSettingsControls(
     min: 2,
     max: 14,
     step: 0.1,
-    value: settings.toneMappingExposure ?? viewer.toneMappingExposure,
+    value: settings.toneMappingExposure ?? viewer.postProcess.toneMappingExposure,
     format: (value) => value.toFixed(1),
   })
   const resolutionControl = createRangeControl({
@@ -477,7 +477,7 @@ export function buildDebugSettingsControls(
     min: 0.5,
     max: 2,
     step: 0.05,
-    value: settings.resolutionScale ?? viewer.resolutionScale,
+    value: settings.resolutionScale ?? viewer.renderer.resolutionScale,
     format: (value) => `${value.toFixed(2)}x`,
   })
 

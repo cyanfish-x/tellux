@@ -6,7 +6,8 @@ import type { GroundClampContext } from '../entities/groundClamp'
 import { ToneMappingColorResolver } from '../entities/invertToneMapping'
 import { OverlayHighlighter } from '../highlight/OverlayHighlighter'
 import type { Picked3DTilesFeature } from '../types'
-import { Viewer } from '../Viewer'
+import { PostProcessSettings } from '../scene/PostProcessSettings'
+import { resolveViewerPostProcessOptions } from '../ViewerOptionsResolver'
 
 beforeAll(() => {
   vi.stubGlobal('document', {
@@ -290,21 +291,27 @@ describe('ToneMappingColorResolver Viewer isolation', () => {
   it('refreshes existing Viewer colors when exposure changes', () => {
     const setState = vi.fn()
     const refreshColors = vi.fn()
-    const viewer = Object.create(Viewer.prototype) as Viewer
-    Object.assign(viewer as unknown as Record<string, unknown>, {
-      currentToneMappingExposure: 2,
-      renderer: {
-        toneMapping: THREE.AgXToneMapping,
-        toneMappingExposure: 2
-      },
-      colorResolver: { setState },
-      entitiesManager: { refreshColors },
-      highlightManager: {}
-    })
+    const renderer = {
+      toneMapping: THREE.AgXToneMapping,
+      toneMappingExposure: 2
+    }
+    const postProcess = new PostProcessSettings(
+      resolveViewerPostProcessOptions({ toneMappingExposure: 2 }),
+      () => {},
+      (exposure) => {
+        renderer.toneMappingExposure = exposure
+        setState({
+          toneMapping: renderer.toneMapping,
+          exposure
+        })
+        refreshColors()
+      }
+    )
 
-    viewer.toneMappingExposure = 4
+    postProcess.toneMappingExposure = 4
 
-    expect(viewer.toneMappingExposure).toBe(4)
+    expect(postProcess.toneMappingExposure).toBe(4)
+    expect(renderer.toneMappingExposure).toBe(4)
     expect(setState).toHaveBeenCalledWith({
       toneMapping: THREE.AgXToneMapping,
       exposure: 4

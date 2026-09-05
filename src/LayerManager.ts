@@ -122,9 +122,9 @@ export class ImageryLayer {
 }
 
 /**
- * 影像图层管理器。
+ * 表面叠加图层管理器（栅格与矢量 overlay）。
  *
- * Imagery layer manager.
+ * Surface overlay layer manager (raster and vector overlays).
  */
 export class LayerManager {
   private readonly layers: ImageryLayer[] = []
@@ -193,8 +193,8 @@ export class LayerManager {
     return this.layers.find((layer) => layer.id === id) ?? null
   }
 
-  /** 获取全部影像图层。Gets all imagery layers. */
-  getAll() {
+  /** 列出全部影像图层。Lists all imagery layers. */
+  list() {
     return [...this.layers]
   }
 
@@ -233,7 +233,7 @@ export class LayerManager {
   }
 
   private notifyLayersChanged(change: ImageryLayerChange) {
-    this.onLayersChanged(this.getAll(), change)
+    this.onLayersChanged(this.list(), change)
   }
 
   private createLayerId() {

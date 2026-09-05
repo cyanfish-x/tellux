@@ -149,11 +149,12 @@ const SCRATCH_CARTOGRAPHIC = {
  */
 export class Camera {
   /**
-   * 底层 Three.js 透视相机。
+   * 底层 Three.js 透视相机。越过这条线后的修改由调用方自负。
    *
-   * Underlying Three.js perspective camera.
+   * Underlying Three.js perspective camera. Changes past this line are the
+   * caller's responsibility.
    */
-  readonly threeCamera: THREE.PerspectiveCamera
+  readonly raw: THREE.PerspectiveCamera
 
   private currentFlight: CameraFlight | null = null
 
@@ -171,7 +172,7 @@ export class Camera {
     camera: THREE.PerspectiveCamera,
     private readonly getActiveEllipsoid: CameraEllipsoidProvider = () => null
   ) {
-    this.threeCamera = camera
+    this.raw = camera
   }
 
   /**
@@ -350,11 +351,11 @@ export class Camera {
       options.heading * DEG2RAD,
       options.pitch * DEG2RAD,
       options.roll * DEG2RAD,
-      this.threeCamera.matrix,
+      this.raw.matrix,
       CAMERA_FRAME
     )
-    this.threeCamera.matrix.decompose(this.threeCamera.position, this.threeCamera.quaternion, this.threeCamera.scale)
-    this.threeCamera.updateMatrixWorld(true)
+    this.raw.matrix.decompose(this.raw.position, this.raw.quaternion, this.raw.scale)
+    this.raw.updateMatrixWorld(true)
   }
 
   private getEllipsoid() {
@@ -381,9 +382,9 @@ export class Camera {
   getPitch(): number {
     const ellipsoid = this.getEllipsoid()
     if (!ellipsoid) return DEFAULT_CAMERA.pitch
-    this.threeCamera.updateMatrix()
+    this.raw.updateMatrix()
     const cartographic = ellipsoid.getCartographicFromObjectFrame(
-      this.threeCamera.matrix,
+      this.raw.matrix,
       SCRATCH_CARTOGRAPHIC,
       CAMERA_FRAME
     )
@@ -391,8 +392,8 @@ export class Camera {
   }
 
   private getCurrentView(ellipsoid: CameraEllipsoid): CameraViewState {
-    this.threeCamera.updateMatrix()
-    const cartographic = ellipsoid.getCartographicFromObjectFrame(this.threeCamera.matrix, SCRATCH_CARTOGRAPHIC, CAMERA_FRAME)
+    this.raw.updateMatrix()
+    const cartographic = ellipsoid.getCartographicFromObjectFrame(this.raw.matrix, SCRATCH_CARTOGRAPHIC, CAMERA_FRAME)
 
     return {
       latitude: cartographic.lat / DEG2RAD,

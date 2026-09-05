@@ -1,7 +1,10 @@
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
 
-import { resolveViewerSceneOptions } from '../ViewerOptionsResolver'
+import {
+  resolveViewerPostProcessOptions,
+  resolveViewerSceneOptions
+} from '../ViewerOptionsResolver'
 import { AtmosphereSettings } from '../scene/AtmosphereSettings'
 import { CloudSettings } from '../scene/CloudSettings'
 import { PostProcessSettings } from '../scene/PostProcessSettings'
@@ -54,26 +57,26 @@ describe('scene setting normalization', () => {
           altitude: Number.NaN,
           height: -1
         }
+      }
+    })
+    const postProcess = resolveViewerPostProcessOptions({
+      bloom: {
+        intensity: -1,
+        luminanceThreshold: Number.NaN,
+        luminanceSmoothing: 2,
+        radius: -1
       },
-      postProcess: {
-        bloom: {
-          intensity: -1,
-          luminanceThreshold: Number.NaN,
-          luminanceSmoothing: 2,
-          radius: -1
-        },
-        lensFlare: {
-          intensity: -1,
-          threshold: {
-            level: -2,
-            range: Number.NaN
-          }
-        },
-        autoExposure: {
-          min: -1,
-          max: Number.NaN,
-          speed: -2
+      lensFlare: {
+        intensity: -1,
+        threshold: {
+          level: -2,
+          range: Number.NaN
         }
+      },
+      autoExposure: {
+        min: -1,
+        max: Number.NaN,
+        speed: -2
       }
     })
 
@@ -129,7 +132,7 @@ describe('scene setting normalization', () => {
         quality: 'medium'
       }
     })
-    expect(options.postProcess.lensFlare).toMatchObject({
+    expect(postProcess.lensFlare).toMatchObject({
       enabled: true,
       intensity: 0,
       threshold: {
@@ -138,17 +141,17 @@ describe('scene setting normalization', () => {
       },
       quality: 'medium'
     })
-    expect(options.postProcess.bloom).toEqual({
+    expect(postProcess.bloom).toEqual({
       enabled: false,
       intensity: 0,
       luminanceThreshold: 1,
       luminanceSmoothing: 1,
       radius: 0
     })
-    expect(options.postProcess.smaa).toEqual({ enabled: true })
-    expect(options.postProcess.taa).toEqual({ enabled: false })
-    expect(options.postProcess.dithering).toEqual({ enabled: false })
-    expect(options.postProcess.autoExposure).toEqual({
+    expect(postProcess.smaa).toEqual({ enabled: true })
+    expect(postProcess.taa).toEqual({ enabled: false })
+    expect(postProcess.dithering).toEqual({ enabled: false })
+    expect(postProcess.autoExposure).toEqual({
       enabled: false,
       min: 0,
       max: 10,
@@ -162,22 +165,22 @@ describe('scene setting normalization', () => {
         sky: {
           stars: false
         }
-      },
-      postProcess: {
-        bloom: true,
-        lensFlare: false,
-        smaa: false,
-        taa: true,
-        dithering: true
       }
+    })
+    const postProcess = resolveViewerPostProcessOptions({
+      bloom: true,
+      lensFlare: false,
+      smaa: false,
+      taa: true,
+      dithering: true
     })
 
     expect(options.atmosphere.sky.stars.show).toBe(false)
-    expect(options.postProcess.lensFlare.enabled).toBe(false)
-    expect(options.postProcess.bloom.enabled).toBe(true)
-    expect(options.postProcess.smaa.enabled).toBe(false)
-    expect(options.postProcess.taa.enabled).toBe(true)
-    expect(options.postProcess.dithering.enabled).toBe(true)
+    expect(postProcess.lensFlare.enabled).toBe(false)
+    expect(postProcess.bloom.enabled).toBe(true)
+    expect(postProcess.smaa.enabled).toBe(false)
+    expect(postProcess.taa.enabled).toBe(true)
+    expect(postProcess.dithering.enabled).toBe(true)
   })
 
   it('keeps atmosphere getters and adapter state identical after runtime updates', () => {
@@ -278,7 +281,7 @@ describe('scene setting normalization', () => {
   it('keeps lens flare getters normalized after runtime updates', () => {
     const onChange = vi.fn()
     const settings = new PostProcessSettings(
-      resolveViewerSceneOptions(undefined).postProcess,
+      resolveViewerPostProcessOptions(undefined),
       onChange
     )
 
@@ -297,7 +300,7 @@ describe('scene setting normalization', () => {
   it('keeps bloom getters normalized after runtime updates', () => {
     const onChange = vi.fn()
     const settings = new PostProcessSettings(
-      resolveViewerSceneOptions(undefined).postProcess,
+      resolveViewerPostProcessOptions(undefined),
       onChange
     )
 
@@ -317,7 +320,7 @@ describe('scene setting normalization', () => {
 
   it('keeps auto-exposure getters normalized after runtime updates', () => {
     const settings = new PostProcessSettings(
-      resolveViewerSceneOptions(undefined).postProcess,
+      resolveViewerPostProcessOptions(undefined),
       vi.fn()
     )
 

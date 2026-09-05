@@ -11,8 +11,11 @@ import { CAMERA_FRAME, DEG2RAD } from './constants'
 import { telluxConfig } from './config'
 import { TargetFlightController } from './controls/TargetFlightController'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
+import type { ViewerControls } from './controls/ViewerControls'
 import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
+import { Globe } from './Globe'
 import { LayerManager } from './LayerManager'
+import { Terrain } from './Terrain'
 import { HismManager } from './hism'
 import { HighlightManager } from './highlight'
 import {
@@ -27,11 +30,11 @@ import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { GroundClampPass } from './rendering/GroundClampPass'
 import {
   createRendererAdapter,
-  type TelluxRenderer,
   type TelluxRendererAdapter,
   type TelluxWebGLRenderer,
   type TelluxWebGPURenderer
 } from './rendering/RendererAdapter'
+import { ViewerRenderer } from './rendering/ViewerRenderer'
 import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { WebGPUAtmosphereManager } from './rendering/WebGPUAtmosphereManager'
@@ -46,6 +49,9 @@ import { TilesetFeaturePicker } from './sampling/TilesetFeaturePicker'
 import { ObjectPicker } from './sampling/ObjectPicker'
 import { ScenePicker } from './sampling/ScenePicker'
 import { Scene, syncSceneRuntimeEffects, updateSceneFallbackAmbientLight } from './Scene'
+import { HighlightSettings } from './scene/HighlightSettings'
+import { PostProcessSettings } from './scene/PostProcessSettings'
+import { SceneTilesetCollection } from './tiles/SceneTilesetCollection'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
   resolveModelMaterialMode,
@@ -53,13 +59,13 @@ import {
   resolveSurfaceMaterialMode,
   resolveViewerClockOptions,
   resolveViewerCameraOptions,
+  resolveViewerHighlightOptions,
+  resolveViewerPostProcessOptions,
   resolveViewerResolutionScale,
   resolveViewerSceneOptions
 } from './ViewerOptionsResolver'
 import { WidgetManager } from './widgets/WidgetManager'
 import type {
-  AddHismLayerOptions,
-  AddModelOptions,
   CartographicFrameOptions,
   CartographicCoordinates,
   CartographicCoordinateTuple,
@@ -67,24 +73,17 @@ import type {
   CartographicInput,
   FlyToTargetOptions,
   FlyToTargetTarget,
-  Load3DTilesetOptions,
-  HismLayer,
-  HismRuntimeStats,
-  ModelLayer,
   Picked3DTilesFeature,
   SampleHeightMostDetailedOptions,
   SampleHeightMostDetailedResult,
   SampleHeightOptions,
   ScreenPosition,
-  TilesetLayer,
   ViewerEventListener,
   ViewerEventMap,
   ViewerOptions,
   ViewerPickOptions,
-  ViewerPickResult,
-  ViewerRendererType
+  ViewerPickResult
 } from './types'
-import type { GlobeControls } from '3d-tiles-renderer'
 
 export { Camera } from './Camera'
 export {
@@ -144,7 +143,14 @@ export {
   type WindSwayUniformValues
 } from './hism'
 export { ImageryLayer, LayerManager } from './LayerManager'
+export { Globe } from './Globe'
+export { Terrain } from './Terrain'
 export { Scene } from './Scene'
+export { SceneTilesetCollection } from './tiles/SceneTilesetCollection'
+export { ModelManager } from './models/ModelManager'
+export { ViewerRenderer } from './rendering/ViewerRenderer'
+export { TelluxGlobeControls } from './controls/TelluxGlobeControls'
+export type { ViewerControls } from './controls/ViewerControls'
 export { SpringControl, type SpringControlOptions } from './SpringControl'
 export { telluxConfig, type TelluxConfig } from './config'
 export { AtmosphereLightingMode } from './types'
@@ -311,9 +317,9 @@ export class Viewer {
    */
   readonly container: HTMLElement
   /**
-   * 场景控制项和底层 Three.js 场景。
+   * 场景控制项和底层 Three.js 场景（`scene.raw`）。
    *
-   * Scene controls and the underlying Three.js scene.
+   * Scene controls and the underlying Three.js scene (`scene.raw`).
    */
   readonly scene: Scene
   /**
@@ -323,17 +329,11 @@ export class Viewer {
    */
   readonly camera: Camera
   /**
-   * 底层 Three.js 渲染器。
+   * 渲染器门面：类型、像素比与原生 renderer 逃生舱。
    *
-   * Underlying Three.js renderer.
+   * Renderer facade: type, pixel ratio, and the native renderer escape hatch.
    */
-  readonly renderer: TelluxRenderer
-  /**
-   * Viewer 使用的 renderer 类型。
-   *
-   * Renderer type used by Viewer.
-   */
-  readonly rendererType: ViewerRendererType
+  readonly renderer: ViewerRenderer
   /**
    * Renderer 初始化完成 Promise。
    *
@@ -357,30 +357,48 @@ export class Viewer {
    */
   readonly clock: Clock
   /**
-   * 影像图层管理器。
+   * 表面叠加图层管理器。
    *
-   * Imagery layer manager.
+   * Surface overlay layer manager.
    */
-  readonly layers: LayerManager
+  readonly overlays: LayerManager
   /**
-   * 底层 3D Tiles 渲染器。
+   * 场景 3D Tiles 集合。
    *
-   * 启用地形时返回地形渲染器，否则返回基础裸球渲染器。
-   *
-   * Underlying 3D Tiles renderer.
-   *
-   * Returns the terrain renderer when terrain is enabled, otherwise returns the
-   * base globe surface renderer.
+   * Scene 3D Tiles collection.
    */
-  get tileset() {
-    return this.tilesets.tileset
-  }
+  readonly tilesets: SceneTilesetCollection
   /**
-   * 地球交互控制器。
+   * glTF 模型集合。
    *
-   * Globe interaction controls.
+   * glTF model collection.
    */
-  readonly controls: TelluxGlobeControls
+  readonly models: ModelManager
+  /**
+   * 地形门面。
+   *
+   * Terrain facade.
+   */
+  readonly terrain: Terrain
+  /**
+   * 地球表面门面（裸球或当前地形）。
+   *
+   * Globe surface facade (base ellipsoid or current terrain).
+   */
+  readonly globe: Globe
+  /**
+   * 后处理运行时设置。
+   *
+   * Post-processing runtime settings.
+   */
+  readonly postProcess: PostProcessSettings
+  /**
+   * 地球交互控制器。公开类型为 {@link ViewerControls}；完整上游 API 见 `.raw`。
+   *
+   * Globe interaction controls. The public type is {@link ViewerControls};
+   * the full upstream API is on `.raw`.
+   */
+  readonly controls: ViewerControls
 
   /**
    * 实体集合管理器，用于运行时添加、查询和移除点、线、面实体。
@@ -402,13 +420,12 @@ export class Viewer {
   }
 
   /**
-   * 统一高亮门面：整对象描边或 3D Tiles feature 叠加。
+   * 统一高亮门面：整对象描边或 3D Tiles feature 叠加，并承载描边 / 叠加样式。
    *
-   * Unified highlight facade for object outlines or 3D Tiles feature overlays.
+   * Unified highlight facade for object outlines or 3D Tiles feature overlays,
+   * including outline / overlay style.
    */
-  get highlight() {
-    return this.highlightManager
-  }
+  readonly highlighter: HighlightManager
 
   private readonly threeCamera: THREE.PerspectiveCamera
   private readonly rendererAdapter: TelluxRendererAdapter
@@ -416,9 +433,8 @@ export class Viewer {
   private readonly transparentOverlayTexture: THREE.CanvasTexture
   private readonly cameraCartographicScratch = { lat: 0, lon: 0, height: 0, azimuth: 0, elevation: 0, roll: 0 }
   private readonly gltfLoader: GLTFLoader
-  private readonly models: ModelManager
   private readonly hismManager: HismManager
-  private readonly highlightManager: HighlightManager
+  private readonly highlightSettings: HighlightSettings
   private readonly entitiesManager: EntityManager
   private readonly colorResolver: ToneMappingColorResolver
   private readonly entityRenderManager: EntityRenderManager
@@ -431,7 +447,7 @@ export class Viewer {
   private readonly webgpuBloom: WebGPUBloomManager | null
   private readonly webgpuLensFlare: WebGPULensFlareManager | null
   private readonly webgpuTemporalAntialias: WebGPUTemporalAntialiasManager | null
-  private readonly tilesets: TilesetManager
+  private readonly tilesetManager: TilesetManager
   private readonly cartographicPicker: CartographicPicker
   private readonly tilesetFeaturePicker: TilesetFeaturePicker
   private readonly entityPicker: EntityPicker
@@ -444,7 +460,6 @@ export class Viewer {
   private readonly renderLoop: ViewerRenderLoop
   private isDestroyed = false
   private currentResolutionScale: number
-  private currentToneMappingExposure: number
   private readonly handleClockChange = (event: ClockChangeEvent) => {
     if (event.reason === 'currentTime' || event.reason === 'tick') {
       this.atmosphere?.updateSunDirection(event.currentTime)
@@ -481,7 +496,7 @@ export class Viewer {
       this.container = resolvedContainer
       this.currentResolutionScale = resolveViewerResolutionScale(options)
       const sceneOptions = resolveViewerSceneOptions(options.scene)
-      this.currentToneMappingExposure = sceneOptions.postProcess.toneMappingExposure
+      const postProcessOptions = resolveViewerPostProcessOptions(options.postProcess)
 
       const width = resolvedContainer.clientWidth || 1
       const height = resolvedContainer.clientHeight || 1
@@ -494,21 +509,27 @@ export class Viewer {
       this.camera = new Camera(this.threeCamera, () => tilesets?.tileset.ellipsoid ?? null)
       this.rendererAdapter = createRendererAdapter(options)
       constructionScope.defer(() => this.rendererAdapter.dispose())
-      this.renderer = this.rendererAdapter.renderer
-      this.rendererType = this.rendererAdapter.type
+      this.renderer = new ViewerRenderer(this.rendererAdapter, {
+        getResolutionScale: () => this.currentResolutionScale,
+        setResolutionScale: (value) => {
+          this.currentResolutionScale = value
+          this.rendererAdapter.setPixelRatio(value)
+          this.resize()
+        }
+      })
       this.ready = this.rendererAdapter.ready
       void this.ready.catch(() => undefined)
       this.rendererAdapter.setPixelRatio(this.currentResolutionScale)
       this.rendererAdapter.setSize(width, height)
-      this.renderer.toneMapping = THREE.AgXToneMapping
-      this.renderer.toneMappingExposure = this.currentToneMappingExposure
+      this.renderer.raw.toneMapping = THREE.AgXToneMapping
+      this.renderer.raw.toneMappingExposure = postProcessOptions.toneMappingExposure
       this.colorResolver = new ToneMappingColorResolver({
-        toneMapping: this.renderer.toneMapping,
-        exposure: this.renderer.toneMappingExposure
+        toneMapping: this.renderer.raw.toneMapping,
+        exposure: this.renderer.raw.toneMappingExposure
       })
-      resolvedContainer.appendChild(this.renderer.domElement)
+      resolvedContainer.appendChild(this.renderer.raw.domElement)
       constructionScope.defer(() => {
-        this.renderer.domElement.parentElement?.removeChild(this.renderer.domElement)
+        this.renderer.raw.domElement.parentElement?.removeChild(this.renderer.raw.domElement)
       })
       this.transparentOverlayTexture = this.createTransparentOverlayTexture()
       constructionScope.defer(() => this.transparentOverlayTexture.dispose())
@@ -517,32 +538,42 @@ export class Viewer {
       let webgpuBloom: WebGPUBloomManager | null = null
       let webgpuLensFlare: WebGPULensFlareManager | null = null
       let webgpuTemporalAntialias: WebGPUTemporalAntialiasManager | null = null
+      this.postProcess = new PostProcessSettings(
+        postProcessOptions,
+        () => {
+          postProcessing?.applyEffects()
+          webgpuBloom?.sync(this.postProcess.bloom)
+          webgpuLensFlare?.sync(this.postProcess.lensFlare)
+          webgpuTemporalAntialias?.setEnabled(this.postProcess.taa.enabled)
+        },
+        (exposure) => this.applyToneMappingExposure(exposure)
+      )
+      this.highlightSettings = new HighlightSettings(
+        resolveViewerHighlightOptions(options.highlighter),
+        () => {
+          if (highlightManager) syncHighlightStyleFromSettings(highlightManager)
+          postProcessing?.applyEffects()
+        }
+      )
       this.scene = new Scene(
         sceneOptions,
         (state) => atmosphere?.applyAtmosphereState(state),
         (state) => atmosphere?.applyCloudsState(state),
         () => {
           postProcessing?.applyEffects()
-          webgpuBloom?.sync(this.scene.postProcess.bloom)
-          webgpuLensFlare?.sync(this.scene.postProcess.lensFlare)
-          webgpuTemporalAntialias?.setEnabled(this.scene.postProcess.taa.enabled)
           if (atmosphere instanceof WebGPUAtmosphereManager) {
             atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
           }
         },
         () => {
           if (tilesets) this.syncSurfaceMaterialMode()
-        },
-        () => {
-          if (highlightManager) syncHighlightStyleFromSettings(highlightManager)
-          postProcessing?.applyEffects()
         }
       )
-      this.webgpuPostProcessing = this.rendererType === 'webgpu'
+      this.webgpuPostProcessing = this.renderer.type === 'webgpu'
         ? new WebGPUPostProcessingManager(
             this.rendererAdapter,
-            this.renderer as TelluxWebGPURenderer,
-            this.scene.threeScene,
+            this.renderer.raw as TelluxWebGPURenderer,
+            this.scene.raw,
             this.threeCamera
           )
         : null
@@ -565,11 +596,11 @@ export class Viewer {
       this.atmosphere = this.createAtmosphereManager(() => postProcessing?.applyEffects())
       constructionScope.defer(() => this.atmosphere?.dispose())
       atmosphere = this.atmosphere
-      this.atmosphere?.addLightSourcesTo(this.scene.threeScene)
+      this.atmosphere?.addLightSourcesTo(this.scene.raw)
       syncSceneRuntimeEffects(this.scene)
-      this.webgpuBloom?.sync(this.scene.postProcess.bloom)
-      this.webgpuLensFlare?.sync(this.scene.postProcess.lensFlare)
-      this.webgpuTemporalAntialias?.setEnabled(this.scene.postProcess.taa.enabled)
+      this.webgpuBloom?.sync(this.postProcess.bloom)
+      this.webgpuLensFlare?.sync(this.postProcess.lensFlare)
+      this.webgpuTemporalAntialias?.setEnabled(this.postProcess.taa.enabled)
       this.clock = new Clock(resolveViewerClockOptions(options))
       this.clock.on('change', this.handleClockChange)
       constructionScope.defer(() => this.clock.off('change', this.handleClockChange))
@@ -580,11 +611,11 @@ export class Viewer {
       this.gltfLoader = new GLTFLoader()
       this.gltfLoader.setDRACOLoader(this.dracoLoader)
 
-      this.tilesets = new TilesetManager({
-        scene: this.scene.threeScene,
+      this.tilesetManager = new TilesetManager({
+        scene: this.scene.raw,
         camera: this.threeCamera,
-        renderer: this.renderer,
-        useWebGPUCompatibleSurfaceOverlay: this.rendererType === 'webgpu',
+        renderer: this.renderer.raw,
+        useWebGPUCompatibleSurfaceOverlay: this.renderer.type === 'webgpu',
         dracoLoader: this.dracoLoader,
         transparentOverlayTexture: this.transparentOverlayTexture,
         terrain: options.terrain,
@@ -596,21 +627,33 @@ export class Viewer {
         sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode),
         onPointCloudEdlChange: () => this.postProcessing?.applyEffects()
       })
-      constructionScope.defer(() => this.tilesets.dispose())
-      tilesets = this.tilesets
-      this.cartographicPicker = new CartographicPicker(this.renderer.domElement, this.threeCamera, this.tilesets)
-      this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.domElement, this.threeCamera, this.tilesets)
-      this.heightSampler = new HeightSampler(this.tilesets, (input) => this.resolveCartographicInput(input))
+      constructionScope.defer(() => this.tilesetManager.dispose())
+      tilesets = this.tilesetManager
+      this.cartographicPicker = new CartographicPicker(this.renderer.raw.domElement, this.threeCamera, this.tilesetManager)
+      this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.raw.domElement, this.threeCamera, this.tilesetManager)
+      this.heightSampler = new HeightSampler(this.tilesetManager, (input) => this.resolveCartographicInput(input))
       constructionScope.defer(() => this.heightSampler.dispose())
+      this.tilesets = new SceneTilesetCollection(
+        this.tilesetManager,
+        () => this.cancelMostDetailedHeightSampling()
+      )
+      this.globe = new Globe(this.tilesetManager)
+      this.terrain = new Terrain(
+        () => this.tilesetManager.terrainOptions,
+        (terrain) => {
+          this.heightSampler.resetForTerrainChange()
+          this.tilesetManager.setTerrain(terrain)
+        }
+      )
       // 贴地分类 pass 仅 WebGL（依赖 setEffects 深度纹理链）；WebGPU 下为 null。
       this.groundClampPass = this.rendererAdapter.supportsWebGLEffects
         ? new GroundClampPass(this.threeCamera)
         : null
       constructionScope.defer(() => this.groundClampPass?.dispose())
       this.entitiesManager = new EntityManager({
-        scene: this.scene.threeScene,
+        scene: this.scene.raw,
         toVector3: (input, target) => this.cartographicToVector3(input, target),
-        ellipsoid: () => this.tilesets.tileset.ellipsoid,
+        ellipsoid: () => this.tilesetManager.tileset.ellipsoid,
         groundClamp: this.groundClampPass
           ? { root: this.groundClampPass.root, uniforms: this.groundClampPass.sharedUniforms }
           : null,
@@ -629,51 +672,45 @@ export class Viewer {
         ? new SymbolOcclusionPass(this.entitiesManager.root, this.threeCamera)
         : null
       constructionScope.defer(() => this.symbolOcclusionPass?.dispose())
-      this.entityPicker = new EntityPicker(this.renderer.domElement, this.threeCamera, this.entitiesManager)
-      this.objectPicker = new ObjectPicker(this.renderer.domElement, this.threeCamera, this.scene.threeScene)
+      this.entityPicker = new EntityPicker(this.renderer.raw.domElement, this.threeCamera, this.entitiesManager)
+      this.objectPicker = new ObjectPicker(this.renderer.raw.domElement, this.threeCamera, this.scene.raw)
       this.targetFlights = new TargetFlightController({
         camera: this.camera,
-        tilesets: this.tilesets
+        tilesets: this.tilesetManager
       })
       constructionScope.defer(() => this.targetFlights.dispose())
       this.viewport = new ViewportResizeManager({
         container: this.container,
         camera: this.threeCamera,
         renderer: this.rendererAdapter,
-        tilesets: this.tilesets,
+        tilesets: this.tilesetManager,
         onResize: (width, height) => this.webgpuPostProcessing?.setSize(width, height)
       })
       constructionScope.defer(() => this.viewport.dispose())
       this.camera.setView(cameraOptions)
 
-      const controls = new TelluxGlobeControls(this.scene.threeScene, this.threeCamera, this.renderer.domElement)
+      const controls = new TelluxGlobeControls(this.scene.raw, this.threeCamera, this.renderer.raw.domElement)
       this.controls = controls
       constructionScope.defer(() => this.controls.dispose())
-      if (this.rendererType === 'webgpu') {
+      if (this.renderer.type === 'webgpu') {
         controls.useWebGPUCompatiblePivotMaterial()
       }
       this.syncControlsEllipsoid()
-      this.layers = new LayerManager(options.layers, (layers, change) => {
+      this.overlays = new LayerManager(options.overlays, (layers, change) => {
         if (change.type === 'structure') {
           this.cancelMostDetailedHeightSampling()
-          this.tilesets.setImageryLayers(layers)
+          this.tilesetManager.setImageryLayers(layers)
           this.syncControlsEllipsoid()
         } else if (change.type === 'order') {
-          this.tilesets.syncImageryLayerOrder(layers)
+          this.tilesetManager.syncImageryLayerOrder(layers)
         } else if (change.type === 'visibility' || change.type === 'style') {
-          this.tilesets.syncImageryLayer(change.layer)
+          this.tilesetManager.syncImageryLayer(change.layer)
         }
       })
       this.controls.enableDamping = true
       this.controls.adjustHeight = false
-      // 注入相机 pitch 读取：低角度禁拖判定用应用自身的俯仰源（Cesium 约定）。
-      // Inject the camera-pitch reader so the low-angle no-drag test uses the app's own pitch
-      // source (Cesium convention).
-      this.controls.pitchProvider = () => this.camera.getPitch()
-      // 注入飞行状态：相机 flyTo 期间禁止闲置 pitch 回弹，避免与飞行动画争抢相机控制。
-      // Inject flight state so the idle pitch spring-back stays out of the way during flyTo
-      // animations and doesn't fight them for camera control.
-      this.controls.isFlyingProvider = () => this.camera.isFlying
+      controls.pitchProvider = () => this.camera.getPitch()
+      controls.isFlyingProvider = () => this.camera.isFlying
       // viewer.camera.allowUnderground 变化时实时同步控件的离地约束（防穿地开关）。
       // Sync the controls' ground-clamp constraint live when viewer.camera.allowUnderground changes.
       this.camera.onAllowUndergroundChange = (value) => {
@@ -682,9 +719,9 @@ export class Viewer {
 
       const hismScaleMatrix = new THREE.Matrix4()
       this.hismManager = new HismManager({
-        scene: this.scene.threeScene,
+        scene: this.scene.raw,
         camera: this.threeCamera,
-        domElement: this.renderer.domElement,
+        domElement: this.renderer.raw.domElement,
         showPickMarker: options.hism?.showPickMarker,
         applyInstanceMatrix: (coordinates, frame, scale, target) => {
           this.cartographicToMatrix4(coordinates, frame, target)
@@ -704,52 +741,54 @@ export class Viewer {
         tilesetFeaturePicker: this.tilesetFeaturePicker,
         objectPicker: this.objectPicker,
         hismManager: this.hismManager,
-        getObjectRoot: () => this.scene.threeScene
+        getObjectRoot: () => this.scene.raw
       })
 
       this.interactions = new ViewerInteractionManager({
         viewer: this,
         camera: this.camera,
-        controls: this.controls,
-        domElement: this.renderer.domElement,
+        controls,
+        domElement: this.renderer.raw.domElement,
         pickCartographic: (position) => this.pickCartographic(position),
         pickNearest: (position, pickOptions) => this.pick(position, pickOptions),
         pickAll: (position, pickOptions) => this.pickAll(position, pickOptions)
       })
       constructionScope.defer(() => this.interactions.dispose())
 
-      this.highlightManager = new HighlightManager({
-        scene: this.scene.threeScene,
+      this.highlighter = new HighlightManager({
+        scene: this.scene.raw,
         camera: this.threeCamera,
-        settings: this.scene.highlight,
+        settings: this.highlightSettings,
         webglOutlineAvailable: this.rendererAdapter.supportsWebGLEffects,
         resolveColor: this.colorResolver.resolveColor,
         resolveHismInstanceParts: (pick) =>
           this.hismManager.resolveInstanceParts(pick),
         hideHismPickMarker: () => this.hismManager.hidePickMarker()
       })
-      constructionScope.defer(() => this.highlightManager.dispose())
-      highlightManager = this.highlightManager
+      constructionScope.defer(() => this.highlighter.dispose())
+      highlightManager = this.highlighter
 
       this.postProcessing = this.rendererAdapter.supportsWebGLEffects && this.atmosphere
         ? new PostProcessingManager(
-            this.renderer as TelluxWebGLRenderer,
+            this.renderer.raw as TelluxWebGLRenderer,
             this.scene,
-            this.scene.threeScene,
+            this.postProcess,
+            this.highlightSettings,
+            this.scene.raw,
             this.threeCamera,
             this.atmosphere as AtmosphereManager,
             () => this.camera.getCurrentHeight(),
             this.entityRenderManager.mode === 'weighted-oit' ? this.entityRenderManager : undefined,
             this.groundClampPass ?? undefined,
             this.symbolOcclusionPass ?? undefined,
-            getHighlightOutlineEffect(this.highlightManager),
-            () => this.tilesets.getPointCloudEdlState()
+            getHighlightOutlineEffect(this.highlighter),
+            () => this.tilesetManager.getPointCloudEdlState()
           )
         : null
       constructionScope.defer(() => this.postProcessing?.dispose())
       postProcessing = this.postProcessing
       this.models = new ModelManager({
-        scene: this.scene.threeScene,
+        scene: this.scene.raw,
         loader: this.gltfLoader,
         getMaterialMode: () => resolveModelMaterialMode(this.scene.atmosphere.lighting.mode),
         applyModelMatrix: (modelOptions, target) => {
@@ -807,55 +846,31 @@ export class Viewer {
     this.renderLoop.useDefaultRenderLoop = value
   }
 
-  /**
-   * 渲染器像素比。
-   *
-   * Renderer pixel ratio.
-   */
-  get resolutionScale() {
-    return this.currentResolutionScale
-  }
-
-  set resolutionScale(value: number) {
-    this.currentResolutionScale = value
-    this.rendererAdapter.setPixelRatio(value)
-    this.resize()
-  }
-
-  /**
-   * 渲染器色调映射曝光值。
-   *
-   * Renderer tone mapping exposure.
-   */
-  get toneMappingExposure() {
-    return this.currentToneMappingExposure
-  }
-
-  set toneMappingExposure(value: number) {
-    this.currentToneMappingExposure = value
-    this.renderer.toneMappingExposure = value
+  private applyToneMappingExposure(value: number) {
+    this.renderer.raw.toneMappingExposure = value
     this.colorResolver.setState({
-      toneMapping: this.renderer.toneMapping,
+      toneMapping: this.renderer.raw.toneMapping,
       exposure: value
     })
     this.entitiesManager.refreshColors()
-    syncHighlightStyleFromSettings(this.highlightManager)
+    syncHighlightStyleFromSettings(this.highlighter)
   }
 
   private updateAutoExposure(deltaTime: number) {
-    const autoExposure = this.scene.postProcess.autoExposure
+    const autoExposure = this.postProcess.autoExposure
     if (!autoExposure.enabled) return
 
     const nightFactor = this.atmosphere?.getNightFactor() ?? 0
     const min = Math.min(autoExposure.min, autoExposure.max)
     const max = Math.max(autoExposure.min, autoExposure.max)
     const target = THREE.MathUtils.lerp(min, max, nightFactor)
+    const current = this.postProcess.toneMappingExposure
     const next =
       autoExposure.speed <= 0
         ? target
-        : THREE.MathUtils.damp(this.currentToneMappingExposure, target, autoExposure.speed, deltaTime)
-    if (Math.abs(next - this.currentToneMappingExposure) < 1e-4) return
-    this.toneMappingExposure = next
+        : THREE.MathUtils.damp(current, target, autoExposure.speed, deltaTime)
+    if (Math.abs(next - current) < 1e-4) return
+    this.postProcess.toneMappingExposure = next
   }
 
   /**
@@ -890,7 +905,7 @@ export class Viewer {
    */
   cartographicToVector3(input: CartographicInput, target = new THREE.Vector3()) {
     const cartographic = this.resolveCartographicInput(input)
-    return this.tilesets.tileset.ellipsoid.getCartographicToPosition(
+    return this.tilesetManager.tileset.ellipsoid.getCartographicToPosition(
       cartographic.latitude * DEG2RAD,
       cartographic.longitude * DEG2RAD,
       cartographic.height,
@@ -914,7 +929,7 @@ export class Viewer {
    */
   cartographicToMatrix4(input: CartographicInput, options: CartographicFrameOptions = {}, target = new THREE.Matrix4()) {
     const cartographic = this.resolveCartographicInput(input)
-    return this.tilesets.tileset.ellipsoid.getObjectFrame(
+    return this.tilesetManager.tileset.ellipsoid.getObjectFrame(
       cartographic.latitude * DEG2RAD,
       cartographic.longitude * DEG2RAD,
       cartographic.height,
@@ -923,43 +938,6 @@ export class Viewer {
       (options.roll ?? 0) * DEG2RAD,
       target
     )
-  }
-
-  /**
-   * 加载 glTF / GLB 模型并按经纬高加入场景。
-   *
-   * `type` 固定为 `gltf`，`url` 可以指向 `.gltf` 或 `.glb` 文件。
-   * 当 `animate` 为 `true` 时，默认播放第一个动画通道；可通过
-   * `animationChannel` 指定其他动画通道。`lighting: 'local'` 保留点光和自发光，
-   * 不被大气日夜因子当作地表反照率处理；省略时 `preserve` 默认为 `local`。
-   *
-   * Loads a glTF / GLB model and adds it to the scene at cartographic
-   * coordinates.
-   *
-   * `type` is `gltf`; `url` can point to either a `.gltf` or `.glb` file. When
-   * `animate` is `true`, the first animation channel plays by default; use
-   * `animationChannel` to choose another channel. `lighting: 'local'` keeps
-   * point lights and emissive radiance out of atmosphere day/night albedo
-   * scaling; omitted `preserve` defaults to `local`.
-   */
-  addModel(options: AddModelOptions): ModelLayer {
-    return this.models.add(options)
-  }
-
-  /**
-   * 添加 HISM 实例化图层，用于大规模静态 mesh 渲染。
-   *
-   * 图层内部按空间簇划分实例，并在每帧做簇级视锥剔除；globe-scale 精度
-   * 由 RTC 实例化管线保证。
-   *
-   * Adds a HISM instanced layer for large-scale static mesh rendering.
-   *
-   * Instances are grouped into spatial clusters with per-frame cluster-level
-   * frustum culling; globe-scale precision is handled by the RTC instancing
-   * pipeline.
-   */
-  addHismLayer(options: AddHismLayerOptions): HismLayer {
-    return this.hismManager.add(options)
   }
 
   /**
@@ -1012,33 +990,6 @@ export class Viewer {
   }
 
   /**
-   * 获取 HISM 图层。
-   *
-   * Gets a HISM layer by id.
-   */
-  getHismLayer(id: string): HismLayer | null {
-    return this.hismManager.get(id)
-  }
-
-  /**
-   * 移除 HISM 图层。
-   *
-   * Removes a HISM layer by id.
-   */
-  removeHismLayer(id: string): boolean {
-    return this.hismManager.remove(id)
-  }
-
-  /**
-   * 获取 HISM 运行时统计。
-   *
-   * Gets HISM runtime statistics.
-   */
-  getHismRuntimeStats(): HismRuntimeStats {
-    return this.hismManager.getRuntimeStats()
-  }
-
-  /**
    * 平滑飞行到目标，并让相机最终看向目标点。
    *
    * 经纬高点位会直接作为目标点；Three.js 模型和 3D Tiles 会自动使用包围体中心。
@@ -1053,58 +1004,6 @@ export class Viewer {
   flyToTarget(target: FlyToTargetTarget, options: FlyToTargetOptions = {}) {
     this.targetFlights.flyToTarget(target, options)
     return this
-  }
-
-  /**
-   * 运行时切换 Cesium quantized-mesh 地形或 Cesium Ion 地形，并保留当前影像、相机、控制器和渲染器状态。
-   *
-   * 传入 `null` 可移除当前地形并回到无地形模式。
-   *
-   * Switches Cesium quantized-mesh terrain or Cesium Ion terrain at runtime while
-   * preserving the current imagery, camera, controls, and renderer state.
-   *
-   * Pass `null` to remove the current terrain and return to the non-terrain mode.
-   */
-  setTerrain(terrain: ViewerOptions['terrain'] | null) {
-    this.heightSampler.resetForTerrainChange()
-    this.tilesets.setTerrain(terrain)
-    return this
-  }
-
-  /**
-   * 加载独立的 3D Tiles 场景数据。
-   *
-   * 支持直接传入 `tileset.json` URL，或传入 Cesium Ion 3D Tiles 资源。
-   * 该方法加载的是场景 3D Tiles，不参与影像 overlay 管线。
-   *
-   * Loads an independent 3D Tiles scene dataset.
-   *
-   * Supports either a direct `tileset.json` URL or a Cesium Ion 3D Tiles asset.
-   * The loaded dataset is scene 3D Tiles data and does not participate in the
-   * imagery overlay pipeline.
-   */
-  load3DTileset(options: Load3DTilesetOptions): TilesetLayer {
-    this.cancelMostDetailedHeightSampling()
-    return this.wrapTilesetLayer(this.tilesets.load3DTileset(options))
-  }
-
-  /**
-   * 根据 id 获取已加载的 3D Tiles renderer。
-   *
-   * Gets a loaded 3D Tiles renderer by id.
-   */
-  get3DTileset(id: string) {
-    return this.tilesets.get3DTileset(id)
-  }
-
-  /**
-   * 根据 id 移除已加载的 3D Tiles 图层。
-   *
-   * Removes a loaded 3D Tiles layer by id.
-   */
-  remove3DTileset(id: string) {
-    this.cancelMostDetailedHeightSampling()
-    return this.tilesets.remove3DTileset(id)
   }
 
   /**
@@ -1185,8 +1084,8 @@ export class Viewer {
     this.viewport.resize()
     syncEntityManagerResolution(
       this.entitiesManager,
-      this.renderer.domElement.width,
-      this.renderer.domElement.height,
+      this.renderer.raw.domElement.width,
+      this.renderer.raw.domElement.height,
       this.currentResolutionScale
     )
   }
@@ -1207,7 +1106,7 @@ export class Viewer {
     this.interactions.dispose()
     this.models.dispose()
     this.hismManager.dispose()
-    this.highlightManager.dispose()
+    this.highlighter.dispose()
     this.entityRenderManager.dispose()
     this.symbolOcclusionPass?.dispose()
     this.entitiesManager.dispose()
@@ -1223,13 +1122,13 @@ export class Viewer {
     this.atmosphere?.dispose()
     this.webgpuPostProcessing?.dispose()
     this.transparentOverlayTexture.dispose()
-    this.tilesets.dispose()
+    this.tilesetManager.dispose()
     this.controls.dispose()
     this.dracoLoader.dispose()
     this.rendererAdapter.dispose()
 
-    if (this.renderer.domElement.parentElement) {
-      this.renderer.domElement.parentElement.removeChild(this.renderer.domElement)
+    if (this.renderer.raw.domElement.parentElement) {
+      this.renderer.raw.domElement.parentElement.removeChild(this.renderer.raw.domElement)
     }
   }
 
@@ -1242,7 +1141,7 @@ export class Viewer {
     this.widgets.update(deltaTime, time)
     const currentHeight = this.syncFallbackAmbientLight()
     this.postProcessing?.updateForCameraHeight(currentHeight)
-    this.tilesets.update()
+    this.tilesetManager.update()
     if (this.atmosphere instanceof WebGPUAtmosphereManager) {
       this.atmosphere.setAtmosphereVisible(this.scene.atmosphere.show)
     }
@@ -1250,11 +1149,11 @@ export class Viewer {
     this.updateAutoExposure(deltaTime)
     this.models.update(deltaTime)
     this.hismManager.update(deltaTime)
-    updateHighlightManager(this.highlightManager)
+    updateHighlightManager(this.highlighter)
     this.entitiesManager.update(deltaTime)
     this.entityRenderManager.beginFrame()
     this.symbolOcclusionPass?.beginFrame()
-    this.rendererAdapter.render(this.scene.threeScene, this.threeCamera)
+    this.rendererAdapter.render(this.scene.raw, this.threeCamera)
     this.renderSymbolsAfterComposite()
   }
 
@@ -1271,7 +1170,7 @@ export class Viewer {
   private renderSymbolsAfterComposite() {
     const pass = this.symbolOcclusionPass
     if (!pass) return
-    const renderer = this.renderer as TelluxWebGLRenderer
+    const renderer = this.renderer.raw as TelluxWebGLRenderer
     const draw = () => pass.renderAfterComposite(renderer)
     if (this.postProcessing) {
       this.postProcessing.renderWithEffectsBypassed(draw)
@@ -1307,12 +1206,12 @@ export class Viewer {
   }
 
   private syncControlsEllipsoid() {
-    this.controls.setEllipsoid(this.tilesets.surfaceTileset.ellipsoid, this.tilesets.surfaceTileset.group)
+    this.controls.setEllipsoid(this.tilesetManager.surfaceTileset.ellipsoid, this.tilesetManager.surfaceTileset.group)
   }
 
   private syncFallbackAmbientLight() {
     this.threeCamera.updateMatrix()
-    const cartographic = this.tilesets.tileset.ellipsoid.getCartographicFromObjectFrame(
+    const cartographic = this.tilesetManager.tileset.ellipsoid.getCartographicFromObjectFrame(
       this.threeCamera.matrix,
       this.cameraCartographicScratch,
       CAMERA_FRAME
@@ -1338,7 +1237,7 @@ export class Viewer {
   }
 
   private syncSurfaceMaterialMode() {
-    this.tilesets.setSurfaceMaterial(
+    this.tilesetManager.setSurfaceMaterial(
       resolveSurfaceMaterialMode(this.scene.surface.materialMode, this.scene.atmosphere.lighting.mode),
       {
         roughness: this.scene.surface.material.roughness,
@@ -1347,7 +1246,7 @@ export class Viewer {
       }
     )
     const contentMaterialMode = resolveSceneContentMaterialMode(this.scene.atmosphere.lighting.mode)
-    this.tilesets.setSceneTilesetMaterialMode(contentMaterialMode)
+    this.tilesetManager.setSceneTilesetMaterialMode(contentMaterialMode)
     this.models.setMaterialMode(resolveModelMaterialMode(this.scene.atmosphere.lighting.mode))
   }
 
@@ -1355,40 +1254,19 @@ export class Viewer {
     this.heightSampler.cancelMostDetailedSampling()
   }
 
-  private wrapTilesetLayer(layer: TilesetLayer): TilesetLayer {
-    const cancelSampling = () => this.cancelMostDetailedHeightSampling()
-    return {
-      id: layer.id,
-      tileset: layer.tileset,
-      pointCloudShading: layer.pointCloudShading,
-      get show() {
-        return layer.show
-      },
-      set show(value: boolean) {
-        if (layer.show === value) return
-        cancelSampling()
-        layer.show = value
-      },
-      remove: () => {
-        cancelSampling()
-        layer.remove()
-      }
-    }
-  }
-
   private createAtmosphereManager(onWebGLCompositionChange: () => void): ViewerAtmosphereManager | null {
     if (this.rendererAdapter.supportsWebGLEffects) {
-      return new AtmosphereManager(this.renderer as TelluxWebGLRenderer, this.threeCamera, onWebGLCompositionChange)
+      return new AtmosphereManager(this.renderer.raw as TelluxWebGLRenderer, this.threeCamera, onWebGLCompositionChange)
     }
 
-    if (this.rendererType === 'webgpu') {
+    if (this.renderer.type === 'webgpu') {
       if (!this.webgpuPostProcessing) {
         throw new Error('WebGPU post-processing graph must be created before the atmosphere manager.')
       }
       return new WebGPUAtmosphereManager(
         this.webgpuPostProcessing,
-        this.renderer as TelluxWebGPURenderer,
-        this.scene.threeScene,
+        this.renderer.raw as TelluxWebGPURenderer,
+        this.scene.raw,
         this.threeCamera
       )
     }

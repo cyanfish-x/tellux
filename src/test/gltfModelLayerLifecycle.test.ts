@@ -3,6 +3,7 @@ import type { GLTF, GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { describe, expect, it, vi } from 'vitest'
 
 import { GltfModelLayer } from '../models/GltfModelLayer'
+import { ModelManager } from '../models/ModelManager'
 
 function createDeferredGltf() {
   let resolve!: (value: GLTF) => void
@@ -85,5 +86,34 @@ describe('GltfModelLayer lifecycle', () => {
     await layer.load()
 
     expect(await readyFailure).toBe(failure)
+  })
+})
+
+describe('ModelManager collection API', () => {
+  it('registers models for get, list, and remove', () => {
+    const scene = new THREE.Scene()
+    const manager = new ModelManager({
+      scene,
+      loader: {
+        loadAsync: vi.fn(() => Promise.resolve(createGltf()))
+      } as Pick<GLTFLoader, 'loadAsync'> as GLTFLoader,
+      getMaterialMode: () => 'basic',
+      applyModelMatrix: (_options, target) => target.identity(),
+      setPostProcessMaterialLights: vi.fn(),
+      setHasLocalLighting: vi.fn()
+    })
+    const layer = manager.add({
+      type: 'gltf',
+      id: 'house',
+      url: '/house.glb',
+      coordinates: [0, 0, 0]
+    })
+
+    expect(manager.get('house')).toBe(layer)
+    expect(manager.list()).toEqual([layer])
+    expect(manager.remove('house')).toBe(true)
+    expect(manager.get('house')).toBeNull()
+    expect(manager.list()).toEqual([])
+    expect(manager.remove('house')).toBe(false)
   })
 })

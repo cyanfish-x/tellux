@@ -63,6 +63,15 @@ const _springAxis = new THREE.Vector3()
 const _springQuat = new THREE.Quaternion()
 
 export class TelluxGlobeControls extends BaseGlobeControls {
+  /**
+   * 完整控制器对象。与 `viewer.controls` 是同一个实例。
+   *
+   * Full controls object. Same instance as `viewer.controls`.
+   */
+  get raw(): TelluxGlobeControls {
+    return this
+  }
+
   // 解除默认视角上限：基类 maxAltitude = 0.45π（≈81°），右键向上拖动到接近地平线就被卡住，
   // 无法看向天空。此处放宽到接近天顶（留 1e-2 余量避开正上方叉积退化导致的抖动）。
   //

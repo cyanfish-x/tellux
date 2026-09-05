@@ -101,54 +101,56 @@ export interface ResolvedSceneOptions {
     materialMode: SurfaceMaterialMode
     material: SurfaceMaterialOptions
   }
-  postProcess: {
-    bloom: {
-      enabled: boolean
-      intensity: number
-      luminanceThreshold: number
-      luminanceSmoothing: number
-      radius: number
-    }
-    lensFlare: {
-      enabled: boolean
-      intensity: number
-      threshold: {
-        level: number
-        range: number
-      }
-      quality: LensFlareQuality
-    }
-    smaa: {
-      enabled: boolean
-    }
-    taa: {
-      enabled: boolean
-    }
-    dithering: {
-      enabled: boolean
-    }
-    autoExposure: {
-      enabled: boolean
-      min: number
-      max: number
-      speed: number
-    }
-    toneMappingExposure: number
+}
+
+export interface ResolvedPostProcessOptions {
+  bloom: {
+    enabled: boolean
+    intensity: number
+    luminanceThreshold: number
+    luminanceSmoothing: number
+    radius: number
   }
-  highlight: {
-    outline: {
-      enabled: boolean
-      color: ColorInput
-      hiddenColor: ColorInput
-      edgeStrength: number
-      xray: boolean
+  lensFlare: {
+    enabled: boolean
+    intensity: number
+    threshold: {
+      level: number
+      range: number
     }
-    overlay: {
-      enabled: boolean
-      color: ColorInput
-      opacity: number
-      hoverColor: ColorInput
-      hoverOpacity: number
-    }
+    quality: LensFlareQuality
+  }
+  smaa: {
+    enabled: boolean
+  }
+  taa: {
+    enabled: boolean
+  }
+  dithering: {
+    enabled: boolean
+  }
+  autoExposure: {
+    enabled: boolean
+    min: number
+    max: number
+    speed: number
+  }
+  toneMappingExposure: number
+}
+
+export interface ResolvedHighlightOptions {
+  outline: {
+    enabled: boolean
+    color: ColorInput
+    hiddenColor: ColorInput
+    edgeStrength: number
+    xray: boolean
+  }
+  overlay: {
+    enabled: boolean
+    color: ColorInput
+    opacity: number
+    hoverColor: ColorInput
+    hoverOpacity: number
   }
 }

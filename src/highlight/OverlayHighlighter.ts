@@ -80,7 +80,7 @@ export class OverlayHighlighter {
     this.object = null
   }
 
-  /** 是否启用；由 HighlightManager 根据 scene.highlight.overlay.enabled 控制。 */
+  /** 是否启用；由 HighlightManager 根据 highlighter.overlay.enabled 控制。 */
   enabled = true
 
   dispose() {

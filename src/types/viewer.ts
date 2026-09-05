@@ -1,5 +1,6 @@
 import type { ImageryLayerOptions } from './imagery'
-import type { ViewerSceneOptions } from './scene'
+import type { ViewerHighlightOptions } from './highlight'
+import type { ViewerPostProcessOptions, ViewerSceneOptions } from './scene'
 import type { TerrainOptions } from './terrain'
 import type { ViewerWidgetOptions } from './widgets'
 import type { ClockOptions } from '../Clock'
@@ -39,27 +40,42 @@ export interface ViewerRendererOptions {
    */
   transparent?: boolean
   /**
-   * 是否启用 renderer 级抗锯齿。
+   * 是否启用 renderer 级抗锯齿（硬件 MSAA），必须在创建时决定。
+   * 图像空间抗锯齿见 {@link ViewerPostProcessOptions.smaa} / {@link ViewerPostProcessOptions.taa}，运行时可切。
    *
-   * Whether to enable renderer-level antialiasing.
+   * Whether to enable renderer-level antialiasing (hardware MSAA). Must be
+   * decided at creation. Image-space AA is {@link ViewerPostProcessOptions.smaa}
+   * / {@link ViewerPostProcessOptions.taa} and can be toggled at runtime.
    */
   antialias?: boolean
   /**
-   * 多重采样数量。
+   * 多重采样数量。与 {@link ViewerRendererOptions.antialias} 同属硬件 MSAA，init-only。
    *
-   * Number of multisampling samples.
+   * Number of multisampling samples. Same hardware-MSAA family as
+   * {@link ViewerRendererOptions.antialias}; init-only.
    */
   samples?: number
   /**
    * WebGPU renderer 是否强制使用 Three.js WebGL2 fallback backend。
    *
-   * 仅当 `type` 为 `webgpu` 时生效。
+   * 仅当 `type` 为 `webgpu` 时生效。这不是第二套后端选择：
+   * `type:'webgpu' + forceWebGL:true` 仍走 TSL 管线，WebGL-only 的大气、云和后处理
+   * **依然不可用**。它不等于 `type:'webgl'`。
    *
    * Whether the WebGPU renderer should force Three.js' WebGL2 fallback backend.
    *
-   * Only applies when `type` is `webgpu`.
+   * Only applies when `type` is `webgpu`. This is not a second backend selector:
+   * `type:'webgpu' + forceWebGL:true` still uses the TSL pipeline, so WebGL-only
+   * atmosphere, clouds, and post-processing remain unavailable. It is not
+   * equivalent to `type:'webgl'`.
    */
   forceWebGL?: boolean
+  /**
+   * 渲染器像素比，默认 `Math.min(window.devicePixelRatio, 2)`。
+   *
+   * Renderer pixel ratio. Defaults to `Math.min(window.devicePixelRatio, 2)`.
+   */
+  resolutionScale?: number
 }
 
 /**
@@ -69,15 +85,15 @@ export interface ViewerRendererOptions {
  */
 export interface ViewerOptions {
   /**
-   * 初始影像图层列表。
+   * 初始表面叠加图层列表。
    *
    * 图层会按数组顺序从下到上贴到裸球或地形表面。
    *
-   * Initial imagery layer list.
+   * Initial surface overlay layer list.
    *
    * Layers are drawn from bottom to top on the globe or terrain surface.
    */
-  layers?: ImageryLayerOptions[]
+  overlays?: ImageryLayerOptions[]
   /**
    * 地形瓦片资源配置。
    *
@@ -137,11 +153,24 @@ export interface ViewerOptions {
    */
   clock?: ClockOptions
   /**
-   * 初始场景和后处理配置。
+   * 初始场景配置。
    *
-   * Initial scene and post-processing options.
+   * Initial scene options.
    */
   scene?: ViewerSceneOptions
+  /**
+   * 初始后处理配置。与运行时 {@link Viewer.postProcess} 同构。
+   *
+   * Initial post-process options. Isomorphic with runtime {@link Viewer.postProcess}.
+   */
+  postProcess?: ViewerPostProcessOptions
+  /**
+   * 初始高亮样式。与运行时 {@link Viewer.highlighter} 的 `outline` / `overlay` 同构。
+   *
+   * Initial highlight style. Isomorphic with runtime {@link Viewer.highlighter}
+   * `outline` / `overlay`.
+   */
+  highlighter?: ViewerHighlightOptions
   /**
    * 为 `true` 时自动启动渲染循环。
    *
@@ -165,12 +194,6 @@ export interface ViewerOptions {
    * Three.js renderer options.
    */
   renderer?: ViewerRendererOptions
-  /**
-   * 渲染器像素比，默认 `Math.min(window.devicePixelRatio, 2)`。
-   *
-   * Renderer pixel ratio. Defaults to `Math.min(window.devicePixelRatio, 2)`.
-   */
-  resolutionScale?: number
   /**
    * 是否启用透明渲染背景，默认 `false`。
    *

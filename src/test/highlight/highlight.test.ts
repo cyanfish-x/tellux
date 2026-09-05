@@ -11,9 +11,9 @@ import {
   resolveHighlightTarget
 } from '../../highlight/HighlightManager'
 import { HighlightSettings } from '../../scene/HighlightSettings'
-import type { ResolvedSceneOptions } from '../../scene/SceneOptions'
+import type { ResolvedHighlightOptions } from '../../scene/SceneOptions'
 
-function createResolvedHighlight(): ResolvedSceneOptions['highlight'] {
+function createResolvedHighlight(): ResolvedHighlightOptions {
   return {
     outline: {
       enabled: true,

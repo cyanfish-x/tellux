@@ -41,9 +41,9 @@ export interface ViewerHighlightOverlayOptions {
 }
 
 /**
- * Viewer 高亮配置。
+ * Viewer 高亮配置，用于 {@link ViewerOptions.highlighter}。
  *
- * Viewer highlight options.
+ * Viewer highlight options used by {@link ViewerOptions.highlighter}.
  */
 export interface ViewerHighlightOptions {
   /** 后处理描边配置。Post-process outline options. */

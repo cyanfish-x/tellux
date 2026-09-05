@@ -10,4 +10,8 @@ export { PostProcessSettings } from './PostProcessSettings'
 export { HighlightSettings } from './HighlightSettings'
 export { SurfaceSettings } from './SurfaceSettings'
 export type { AtmosphereStateApplier, CloudStateApplier } from './SceneStateAppliers'
-export type { ResolvedSceneOptions } from './SceneOptions'
+export type {
+  ResolvedSceneOptions,
+  ResolvedPostProcessOptions,
+  ResolvedHighlightOptions
+} from './SceneOptions'

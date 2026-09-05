@@ -98,7 +98,7 @@ describe('LayerManager imagery layer handle lifecycle', () => {
 
     expect(stale.remove()).toBe(false)
     expect(manager.get('shared')).toBe(replacement)
-    expect(manager.getAll()).toEqual([replacement])
+    expect(manager.list()).toEqual([replacement])
     expect(replacement.isVisible()).toBe(false)
     expect(replacement.getStyle()).toEqual({ opacity: 0.75 })
     expect(changes).toHaveLength(changeCountAfterReplacement)

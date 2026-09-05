@@ -41,6 +41,11 @@ export class HismManager {
     }
   }
 
+  /**
+   * 添加 HISM 实例化图层。
+   *
+   * Adds a HISM instanced layer.
+   */
   add(options: AddHismLayerOptions): HismLayer {
     const id = options.id ?? this.createLayerId()
     if (this.layers.has(id)) {
@@ -62,14 +67,29 @@ export class HismManager {
     return layer
   }
 
+  /**
+   * 根据 id 获取 HISM 图层。
+   *
+   * Gets a HISM layer by id.
+   */
   get(id: string) {
     return this.layers.get(id) ?? null
   }
 
+  /**
+   * 列出全部 HISM 图层。
+   *
+   * Lists all HISM layers.
+   */
   list(): HismLayer[] {
     return Array.from(this.layers.values())
   }
 
+  /**
+   * 根据 id 移除 HISM 图层。
+   *
+   * Removes a HISM layer by id.
+   */
   remove(id: string): boolean {
     const layer = this.layers.get(id)
     if (!layer) return false
@@ -115,6 +135,11 @@ export class HismManager {
     this.pickMarker?.hide()
   }
 
+  /**
+   * 获取 HISM 运行时统计。
+   *
+   * Gets HISM runtime statistics.
+   */
   getRuntimeStats(): HismRuntimeStats {
     return collectHismRuntimeStats(this.layers.values())
   }

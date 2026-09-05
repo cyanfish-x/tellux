@@ -29,9 +29,9 @@ export interface ViewerPickOptions {
    */
   layers?: ViewerPickLayer[]
   /**
-   * Object 图层的拾取根节点；缺省为整棵 `threeScene`。
+   * Object 图层的拾取根节点；缺省为整棵 `scene.raw`。
    *
-   * Root for the object layer; defaults to the whole `threeScene`.
+   * Root for the object layer; defaults to the whole `scene.raw`.
    */
   root?: Object3D
   /**

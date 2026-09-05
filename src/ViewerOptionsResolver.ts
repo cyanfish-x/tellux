@@ -3,6 +3,7 @@ import type { ClockOptions } from './Clock'
 import type { SurfaceMaterialOptions } from './materials/materialMode'
 import type { ModelMaterialMode } from './models/GltfModelLayer'
 import type { ResolvedSceneOptions } from './Scene'
+import type { ResolvedHighlightOptions, ResolvedPostProcessOptions } from './scene/SceneOptions'
 import { sceneValueNormalizers } from './scene/SceneValueNormalization'
 import type {
   AtmosphereLightingMode,
@@ -13,6 +14,7 @@ import type {
   ViewerBloomOptions,
   ViewerLensFlareOptions,
   ViewerOptions,
+  ViewerPostProcessOptions,
   ViewerPostProcessStageOptions,
   ViewerSurfaceMaterialOptions
 } from './types'
@@ -36,7 +38,7 @@ export function resolveViewerCameraOptions(options: ViewerOptions['camera']) {
 }
 
 export function resolveViewerResolutionScale(options: ViewerOptions) {
-  return options.resolutionScale ?? Math.min(window.devicePixelRatio, 2)
+  return options.renderer?.resolutionScale ?? Math.min(window.devicePixelRatio, 2)
 }
 
 export function resolveViewerSceneOptions(options: ViewerOptions['scene']): ResolvedSceneOptions {
@@ -165,34 +167,44 @@ export function resolveViewerSceneOptions(options: ViewerOptions['scene']): Reso
     surface: {
       materialMode: options?.surface?.materialMode ?? 'auto',
       material: resolveSurfaceMaterialOptions(options?.surface?.material)
+    }
+  }
+}
+
+export function resolveViewerPostProcessOptions(
+  options: ViewerPostProcessOptions | undefined
+): ResolvedPostProcessOptions {
+  return {
+    bloom: resolveBloomOptions(options?.bloom),
+    lensFlare: resolveLensFlareOptions(options?.lensFlare),
+    smaa: resolvePostProcessStageOptions(options?.smaa, true),
+    taa: resolvePostProcessStageOptions(options?.taa, false),
+    dithering: resolvePostProcessStageOptions(options?.dithering, false),
+    autoExposure: resolveAutoExposureOptions(options?.autoExposure),
+    toneMappingExposure: options?.toneMappingExposure ?? 5
+  }
+}
+
+export function resolveViewerHighlightOptions(
+  options: ViewerOptions['highlighter']
+): ResolvedHighlightOptions {
+  return {
+    outline: {
+      enabled: options?.outline?.enabled ?? true,
+      color: options?.outline?.color ?? '#7cff5b',
+      hiddenColor:
+        options?.outline?.hiddenColor ??
+        options?.outline?.color ??
+        '#7cff5b',
+      edgeStrength: options?.outline?.edgeStrength ?? 1.5,
+      xray: options?.outline?.xray ?? true
     },
-    postProcess: {
-      bloom: resolveBloomOptions(options?.postProcess?.bloom),
-      lensFlare: resolveLensFlareOptions(options?.postProcess?.lensFlare),
-      smaa: resolvePostProcessStageOptions(options?.postProcess?.smaa, true),
-      taa: resolvePostProcessStageOptions(options?.postProcess?.taa, false),
-      dithering: resolvePostProcessStageOptions(options?.postProcess?.dithering, false),
-      autoExposure: resolveAutoExposureOptions(options?.postProcess?.autoExposure),
-      toneMappingExposure: options?.postProcess?.toneMappingExposure ?? 5
-    },
-    highlight: {
-      outline: {
-        enabled: options?.highlight?.outline?.enabled ?? true,
-        color: options?.highlight?.outline?.color ?? '#7cff5b',
-        hiddenColor:
-          options?.highlight?.outline?.hiddenColor ??
-          options?.highlight?.outline?.color ??
-          '#7cff5b',
-        edgeStrength: options?.highlight?.outline?.edgeStrength ?? 1.5,
-        xray: options?.highlight?.outline?.xray ?? true
-      },
-      overlay: {
-        enabled: options?.highlight?.overlay?.enabled ?? true,
-        color: options?.highlight?.overlay?.color ?? '#7cff5b',
-        opacity: options?.highlight?.overlay?.opacity ?? 0.55,
-        hoverColor: options?.highlight?.overlay?.hoverColor ?? '#38bdf8',
-        hoverOpacity: options?.highlight?.overlay?.hoverOpacity ?? 0.42
-      }
+    overlay: {
+      enabled: options?.overlay?.enabled ?? true,
+      color: options?.overlay?.color ?? '#7cff5b',
+      opacity: options?.overlay?.opacity ?? 0.55,
+      hoverColor: options?.overlay?.hoverColor ?? '#38bdf8',
+      hoverOpacity: options?.overlay?.hoverOpacity ?? 0.42
     }
   }
 }
@@ -254,7 +266,7 @@ function resolvePostProcessStageOptions(
 
 function resolveBloomOptions(
   options: boolean | ViewerBloomOptions | undefined
-): ResolvedSceneOptions['postProcess']['bloom'] {
+): ResolvedPostProcessOptions['bloom'] {
   const values = typeof options === 'boolean' || options === undefined ? {} : options
   return {
     enabled: typeof options === 'boolean' ? options : options?.enabled ?? false,
@@ -271,7 +283,7 @@ function resolveBloomOptions(
 
 function resolveLensFlareOptions(
   options: boolean | ViewerLensFlareOptions | undefined
-): ResolvedSceneOptions['postProcess']['lensFlare'] {
+): ResolvedPostProcessOptions['lensFlare'] {
   const normalize = sceneValueNormalizers
   if (typeof options === 'boolean' || options === undefined) {
     return {
@@ -309,7 +321,7 @@ function resolvePhotometricOptions(
 
 function resolveAutoExposureOptions(
   options: boolean | ViewerAutoExposureOptions | undefined
-): ResolvedSceneOptions['postProcess']['autoExposure'] {
+): ResolvedPostProcessOptions['autoExposure'] {
   const values = typeof options === 'boolean' || options === undefined ? {} : options
   const min = sceneValueNormalizers.autoExposureMin(values.min ?? 2)
   const max = sceneValueNormalizers.autoExposureMax(values.max ?? 10)

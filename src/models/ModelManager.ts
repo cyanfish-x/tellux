@@ -12,12 +12,22 @@ export interface ModelManagerOptions {
   setHasLocalLighting: (enabled: boolean) => void
 }
 
+/**
+ * glTF 模型集合。通过 {@link Viewer.models} 访问。
+ *
+ * glTF model collection. Access this through {@link Viewer.models}.
+ */
 export class ModelManager {
   private readonly models = new Map<string, GltfModelLayer>()
   private nextModelId = 0
 
   constructor(private readonly options: ModelManagerOptions) {}
 
+  /**
+   * 加载 glTF / GLB 模型并按经纬高加入场景。
+   *
+   * Loads a glTF / GLB model and adds it to the scene at cartographic coordinates.
+   */
   add(options: AddModelOptions): ModelLayer {
     if (options.type !== 'gltf') {
       throw new Error(`Viewer: unsupported model type "${String(options.type)}".`)
@@ -43,6 +53,36 @@ export class ModelManager {
     this.syncLocalLighting()
     void model.load()
     return model
+  }
+
+  /**
+   * 根据 id 获取已加载的模型。
+   *
+   * Gets a loaded model by id.
+   */
+  get(id: string): ModelLayer | null {
+    return this.models.get(id) ?? null
+  }
+
+  /**
+   * 列出全部已加载的模型。
+   *
+   * Lists all loaded models.
+   */
+  list(): ModelLayer[] {
+    return Array.from(this.models.values())
+  }
+
+  /**
+   * 根据 id 移除已加载的模型。
+   *
+   * Removes a loaded model by id.
+   */
+  remove(id: string): boolean {
+    const model = this.models.get(id)
+    if (!model) return false
+    model.remove()
+    return true
   }
 
   update(deltaTime: number) {

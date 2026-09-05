@@ -179,26 +179,26 @@ export function applyInitialDebugSettings(
   }
 
   if (settings.toneMappingExposure !== undefined) {
-    viewer.toneMappingExposure = settings.toneMappingExposure
+    viewer.postProcess.toneMappingExposure = settings.toneMappingExposure
   }
 
   if (settings.resolutionScale !== undefined) {
-    viewer.resolutionScale = settings.resolutionScale
+    viewer.renderer.resolutionScale = settings.resolutionScale
   }
 
   if (settings.lensFlare !== undefined) {
-    viewer.scene.postProcess.lensFlare.enabled = settings.lensFlare
+    viewer.postProcess.lensFlare.enabled = settings.lensFlare
   }
 
   if (settings.smaa !== undefined) {
-    viewer.scene.postProcess.smaa.enabled = settings.smaa
+    viewer.postProcess.smaa.enabled = settings.smaa
   }
 
   if (settings.taa !== undefined) {
-    viewer.scene.postProcess.taa.enabled = settings.taa
+    viewer.postProcess.taa.enabled = settings.taa
   }
 
   if (settings.dithering !== undefined) {
-    viewer.scene.postProcess.dithering.enabled = settings.dithering
+    viewer.postProcess.dithering.enabled = settings.dithering
   }
 }

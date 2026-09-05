@@ -1,5 +1,5 @@
 import type { LensFlareQuality } from '../types'
-import type { ResolvedSceneOptions } from './SceneOptions'
+import type { ResolvedPostProcessOptions } from './SceneOptions'
 import { sceneValueNormalizers } from './SceneValueNormalization'
 
 class PostProcessStage {
@@ -29,7 +29,7 @@ class PostProcessStage {
 
 class BloomSettings {
   constructor(
-    private readonly options: ResolvedSceneOptions['postProcess']['bloom'],
+    private readonly options: ResolvedPostProcessOptions['bloom'],
     private readonly onChange: () => void
   ) {}
 
@@ -98,7 +98,7 @@ class BloomSettings {
 
 class LensFlareThresholdSettings {
   constructor(
-    private readonly options: ResolvedSceneOptions['postProcess']['lensFlare']['threshold'],
+    private readonly options: ResolvedPostProcessOptions['lensFlare']['threshold'],
     private readonly onChange: () => void
   ) {}
 
@@ -135,7 +135,7 @@ class LensFlareSettings {
   private readonly onChange: () => void
 
   constructor(
-    options: ResolvedSceneOptions['postProcess']['lensFlare'],
+    options: ResolvedPostProcessOptions['lensFlare'],
     onChange: () => void
   ) {
     this.onChange = onChange
@@ -187,7 +187,7 @@ class LensFlareSettings {
 
 class AutoExposureSettings {
   constructor(
-    private readonly options: ResolvedSceneOptions['postProcess']['autoExposure']
+    private readonly options: ResolvedPostProcessOptions['autoExposure']
   ) {}
 
   /**
@@ -236,9 +236,23 @@ export class PostProcessSettings {
   readonly bloom: BloomSettings
   /** 镜头光晕后处理阶段。Lens flare post-processing stage. */
   readonly lensFlare: LensFlareSettings
-  /** SMAA 抗锯齿后处理阶段。SMAA anti-aliasing post-processing stage. */
+  /**
+   * SMAA 抗锯齿后处理阶段。图像空间、运行时可切。
+   * 硬件 MSAA 见 `viewer.renderer` 初始化配置的 `antialias` / `samples`，创建后不可改。
+   *
+   * SMAA anti-aliasing post-processing stage. Image-space and runtime-togglable.
+   * Hardware MSAA is `antialias` / `samples` on `viewer.renderer` init options and
+   * cannot change after creation.
+   */
   readonly smaa: PostProcessStage
-  /** TAA 时间抗锯齿后处理阶段。TAA temporal anti-aliasing post-processing stage. */
+  /**
+   * TAA 时间抗锯齿后处理阶段。图像空间、运行时可切；有拖影代价。
+   * 硬件 MSAA 见 `viewer.renderer` 初始化配置的 `antialias` / `samples`。
+   *
+   * TAA temporal anti-aliasing post-processing stage. Image-space and
+   * runtime-togglable; may cause ghosting. Hardware MSAA is `antialias` /
+   * `samples` on `viewer.renderer` init options.
+   */
   readonly taa: PostProcessStage
   /** 抖动后处理阶段。Dithering post-processing stage. */
   readonly dithering: PostProcessStage
@@ -250,12 +264,37 @@ export class PostProcessSettings {
    */
   readonly autoExposure: AutoExposureSettings
 
-  constructor(options: ResolvedSceneOptions['postProcess'], onChange: () => void) {
+  constructor(
+    private readonly options: ResolvedPostProcessOptions,
+    onChange: () => void,
+    private readonly onToneMappingExposureChange: (value: number) => void = () => {}
+  ) {
     this.bloom = new BloomSettings(options.bloom, onChange)
     this.lensFlare = new LensFlareSettings(options.lensFlare, onChange)
     this.smaa = new PostProcessStage(options.smaa.enabled, onChange)
     this.taa = new PostProcessStage(options.taa.enabled, onChange)
     this.dithering = new PostProcessStage(options.dithering.enabled, onChange)
     this.autoExposure = new AutoExposureSettings(options.autoExposure)
+  }
+
+  /**
+   * 渲染器色调映射曝光值。
+   *
+   * 不要直接写 `viewer.renderer.raw.toneMappingExposure`：实体与高亮颜色的 AgX
+   * 反求补偿会用旧曝光值。
+   *
+   * Renderer tone mapping exposure.
+   *
+   * Do not write `viewer.renderer.raw.toneMappingExposure` directly: entity and
+   * highlight AgX inverse compensation would keep using the previous exposure.
+   */
+  get toneMappingExposure() {
+    return this.options.toneMappingExposure
+  }
+
+  set toneMappingExposure(value: number) {
+    if (this.options.toneMappingExposure === value) return
+    this.options.toneMappingExposure = value
+    this.onToneMappingExposureChange(value)
   }
 }

@@ -3,6 +3,8 @@ import { BloomEffect, EffectPass, NormalPass, OutlineEffect, SMAAEffect } from '
 import { DitheringEffect, LensFlareEffect } from '@takram/three-geospatial-effects'
 import { EffectPassAdapter, type ThreeEffectPass, type ThreeRendererWithEffects } from '../effects'
 import type { Scene } from '../Scene'
+import type { HighlightSettings } from '../scene/HighlightSettings'
+import type { PostProcessSettings } from '../scene/PostProcessSettings'
 import type { PointCloudEdlAggregate } from '../tiles/PointCloudShadingController'
 import type { AtmosphereManager } from './AtmosphereManager'
 import { applyLensFlareAppearanceState } from './lensFlareAppearance'
@@ -79,6 +81,8 @@ export class PostProcessingManager {
   constructor(
     private readonly renderer: ThreeRendererWithEffects,
     private readonly scene: Scene,
+    private readonly postProcess: PostProcessSettings,
+    private readonly highlight: HighlightSettings,
     threeScene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera,
     private readonly atmosphere: AtmosphereManager,
@@ -180,18 +184,18 @@ export class PostProcessingManager {
       this.scene.clouds.show &&
       this.shouldRenderCloudsAtHeight(currentHeight)
     const outlineEnabled =
-      Boolean(this.outlineAdapter) && this.scene.highlight.outline.enabled
+      Boolean(this.outlineAdapter) && this.highlight.outline.enabled
     const effectsKey = [
       shouldRenderAtmosphere,
       shouldRenderClouds,
-      this.scene.postProcess.lensFlare.enabled,
-      this.scene.postProcess.smaa.enabled,
-      this.scene.postProcess.dithering.enabled,
+      this.postProcess.lensFlare.enabled,
+      this.postProcess.smaa.enabled,
+      this.postProcess.dithering.enabled,
       outlineEnabled,
       edl.enabled,
       edl.strength,
       edl.radius,
-      this.scene.postProcess.bloom.enabled
+      this.postProcess.bloom.enabled
     ].join(':')
 
     this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
@@ -225,7 +229,7 @@ export class PostProcessingManager {
       // 也能正确取到 targetA 的深度。
       nextEffects.push(this.entityRenderer)
     }
-    if (this.scene.postProcess.bloom.enabled) {
+    if (this.postProcess.bloom.enabled) {
       nextEffects.push(this.bloomAdapter)
     }
     if (this.symbolOcclusionPass) {
@@ -234,17 +238,17 @@ export class PostProcessingManager {
       // for anchor occlusion and then leaves SMAA/dithering to process the final image.
       nextEffects.push(this.symbolOcclusionPass)
     }
-    if (this.scene.postProcess.lensFlare.enabled) {
+    if (this.postProcess.lensFlare.enabled) {
       nextEffects.push(this.lensFlareAdapter)
     }
     if (outlineEnabled && this.outlineAdapter) {
       // 描边在成图之后、SMAA 之前：轮廓再交给抗锯齿。
       nextEffects.push(this.outlineAdapter)
     }
-    if (this.scene.postProcess.smaa.enabled) {
+    if (this.postProcess.smaa.enabled) {
       nextEffects.push(this.smaaAdapter)
     }
-    if (this.scene.postProcess.dithering.enabled) {
+    if (this.postProcess.dithering.enabled) {
       nextEffects.push(this.ditheringAdapter)
     }
 
@@ -254,11 +258,11 @@ export class PostProcessingManager {
   }
 
   private syncLensFlareSettings() {
-    applyLensFlareAppearanceState(this.lensFlareEffect, this.scene.postProcess.lensFlare)
+    applyLensFlareAppearanceState(this.lensFlareEffect, this.postProcess.lensFlare)
   }
 
   private syncBloomSettings() {
-    applyBloomAppearanceState(this.bloomEffect, this.scene.postProcess.bloom)
+    applyBloomAppearanceState(this.bloomEffect, this.postProcess.bloom)
   }
 
   /**
