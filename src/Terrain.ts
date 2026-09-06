@@ -1,5 +1,10 @@
 import type { TerrainOptions } from './types'
 
+export let createTerrain: (
+  getOptions: () => TerrainOptions | undefined,
+  apply: (terrain: TerrainOptions | null) => void
+) => Terrain
+
 /**
  * 地形门面。Viewer 中地形是单例，用 `set` / `clear` 而非集合动词。
  *
@@ -7,7 +12,11 @@ import type { TerrainOptions } from './types'
  * instead of collection verbs.
  */
 export class Terrain {
-  constructor(
+  static {
+    createTerrain = (getOptions, apply) => new Terrain(getOptions, apply)
+  }
+
+  private constructor(
     private readonly getOptions: () => TerrainOptions | undefined,
     private readonly apply: (terrain: TerrainOptions | null) => void
   ) {}

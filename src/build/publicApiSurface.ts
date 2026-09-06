@@ -76,6 +76,7 @@ export const PUBLIC_TYPE_EXPORTS = [
   'CameraOrientation',
   'CameraProjectionOptions',
   'CameraSetViewOptions',
+  'CameraState',
   'CartographicFrameOptions',
   'CesiumIon3DTilesetOptions',
   'CesiumIonImagerySourceOptions',

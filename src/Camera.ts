@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { CAMERA_FRAME, DEFAULT_CAMERA, DEG2RAD } from './constants'
 import { hasExplicitHeight, readLonLat, readLonLatHeight } from './lonlat'
-import type { LonLatHeightLike, LonLatLike } from './types/spatial'
+import type { LonLatHeight, LonLatHeightLike, LonLatLike } from './types/spatial'
 
 /**
  * 相机飞行动画的缓动函数。
@@ -79,10 +79,18 @@ export interface CameraFlyToOptions {
 }
 
 /**
- * 立即设置相机视角的选项。
+ * 完整相机视角快照，可用于初始化和恢复视角。
  *
- * Options for setting the camera view immediately.
+ * Complete camera view snapshot, reusable for initialization and view restoration.
  */
+export interface CameraState {
+  /** 相机经纬高对象。Camera longitude, latitude and height object. */
+  destination: LonLatHeight
+  /** 完整相机姿态。Complete camera orientation. */
+  orientation: Required<CameraOrientation>
+}
+
+/** 立即设置相机视角的选项。Options for setting the camera view immediately. */
 export interface CameraSetViewOptions {
   /**
    * 相机位置。传无高度的 {@link LonLatLike} 时保持当前相机高度。
@@ -342,7 +350,7 @@ export class Camera {
    * `destination` always includes height, so it can also be reused as Viewer
    * `camera.destination` / `camera.orientation`.
    */
-  getState(): CameraSetViewOptions {
+  getState(): CameraState {
     const ellipsoid = this.getEllipsoid()
     if (!ellipsoid) {
       return {

@@ -82,6 +82,8 @@ export class PolygonGraphic {
     return this.material ? this.currentColor.getHex() : 0xffffff
   }
 
+  get hasOutline(): boolean { return this.outlineMaterial !== null }
+
   get outlineColor(): number {
     return this.outlineMaterial ? this.currentOutlineColor.getHex() : this.color
   }

@@ -4,6 +4,8 @@
 
 ## 文档信息
 
+新区域加载时报 CORS 或水域缺失时，先读 [2026-09-06 MVT 503 排障记录](../engineering/WaterArea新区域MVT加载503与CORS排查.md)。该记录补充网络运行证据，不更新本文历史构建和视觉验收结论。
+
 - 调研日期：2026-08-22
 - 上游仓库：[`takram-design-engineering/three-geospatial`](https://github.com/takram-design-engineering/three-geospatial)
 - 调研基准提交：[`b012ad06d858fc035d88aacfd73f092f93c994e4`](https://github.com/takram-design-engineering/three-geospatial/tree/b012ad06d858fc035d88aacfd73f092f93c994e4)

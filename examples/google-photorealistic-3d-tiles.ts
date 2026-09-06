@@ -40,7 +40,10 @@ const viewer = new tellux.Viewer(container, {
       source: exampleMapServiceConfig.createImagerySource(),
     },
   ],
-  camera: TOKYO_VIEW,
+  camera: {
+    destination: { longitude: TOKYO_VIEW.longitude, latitude: TOKYO_VIEW.latitude, height: TOKYO_VIEW.height },
+    orientation: { heading: TOKYO_VIEW.heading, pitch: TOKYO_VIEW.pitch, roll: TOKYO_VIEW.roll }
+  },
   scene: {
     atmosphere: {
       lighting: {

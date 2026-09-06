@@ -1,6 +1,10 @@
 import type { Load3DTilesetOptions, TilesetLayer } from '../types'
 import type { TilesetManager } from './TilesetManager'
 
+export let createSceneTilesetCollection: (
+  manager: TilesetManager, cancelSampling: () => void
+) => SceneTilesetCollection
+
 /**
  * 场景 3D Tiles 集合。只转发独立场景 tileset 的增删查，不暴露地形 / 裸球。
  *
@@ -8,9 +12,13 @@ import type { TilesetManager } from './TilesetManager'
  * only; terrain and the base globe stay behind {@link Globe}.
  */
 export class SceneTilesetCollection {
+  static {
+    createSceneTilesetCollection = (manager, cancelSampling) => new SceneTilesetCollection(manager, cancelSampling)
+  }
+
   private readonly layers = new Map<string, TilesetLayer>()
 
-  constructor(
+  private constructor(
     private readonly tilesetManager: TilesetManager,
     private readonly cancelSampling: () => void
   ) {}

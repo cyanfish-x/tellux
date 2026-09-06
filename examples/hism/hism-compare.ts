@@ -245,14 +245,14 @@ async function sampleHeights(
   }
 
   const results = await viewer.sampleHeightMostDetailed(
-    placements.map((point) => [point.longitude, point.latitude]),
+    placements.map((point) => [point.longitude, point.latitude] as const),
     { source: "all", resolution: 160, maxFrames: 120 }
   )
   onProgress(1)
   return placements
     .map((placement, index) => {
       const sampled = results[index]
-      return sampled ? { placement, height: sampled[2] } : null
+      return sampled === undefined ? null : { placement, height: sampled }
     })
     .filter((item): item is SampledPlacement => item !== null)
 }
@@ -337,7 +337,7 @@ function buildHismScene(
   sampledPlacements: SampledPlacement[],
   clusterCellSizeMeters: number
 ) {
-  const layer = viewer.addHismLayer({
+  const layer = viewer.hism.add({
     id: `hism-compare-${Date.now()}`,
     archetypes: buildSimpleTreeArchetypes(presetTemplates),
     instances: sampledPlacements.map(({ placement, height }) => ({
@@ -401,7 +401,7 @@ function readLiveStats() {
     }
   }
 
-  const stats = viewer.getHismRuntimeStats()
+  const stats = viewer.hism.getRuntimeStats()
   return {
     drawCalls: stats.drawCalls,
     visibleInstances: stats.visibleInstances,

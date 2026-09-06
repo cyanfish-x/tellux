@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { EntityManager, syncEntityManagerResolution } from '../entities/EntityManager'
 import { getEntityPickGraphics } from '../entities/Entity'
-import { ViewerRenderer } from '../rendering/ViewerRenderer'
+import { createViewerRenderer } from '../rendering/ViewerRenderer'
 
 describe('ViewerRenderer.resolutionScale', () => {
   it('writes pixel ratio through the facade and triggers the resize path', () => {
     const setPixelRatio = vi.fn()
     const resize = vi.fn()
     let scale = 1
-    const renderer = new ViewerRenderer({} as never, {
+    const renderer = createViewerRenderer({} as never, {
       getResolutionScale: () => scale,
       setResolutionScale: (value) => {
         scale = value

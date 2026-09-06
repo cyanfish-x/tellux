@@ -129,7 +129,7 @@ text: { color: '#ffffff', outline: { color: '#0f172a', width: 2 } }
 polygon: { outline: { color: '#5eead4' } }
 ```
 
-文字运行时句柄是 `symbol.text.color`，不再使用 `fillColor`。
+文字运行时句柄是 `symbol.text.color`，不再使用 `fillColor`。点、多边形和文字的运行时描边统一为 `outline.color`，点与文字还支持 `outline.width`；旧 `outlineColor` / `outlineWidth` 已移除。初始化未提供描边时，运行时 `outline` 为 `undefined`，不可新增或替换；已配置的点和文字可用宽度 `0` 隐藏，改回正数恢复。
 
 ## 后处理与高亮
 

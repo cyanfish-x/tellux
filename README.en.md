@@ -122,3 +122,5 @@ pnpm build
 | `pnpm test:run`       | Run tests                                  |
 | `pnpm build`          | Build library output and declarations      |
 | `pnpm build:examples` | Build the documentation and examples site  |
+
+See the [0.3 migration guide](docs/guide/migration-0.3.md) for camera snapshots, domain facades, and entity outlines.

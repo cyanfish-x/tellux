@@ -146,9 +146,7 @@ async function main() {
   function flyToModel() {
     if (!model) return
     viewer.flyToTarget(model.root, {
-      heading: -30,
-      pitch: -10,
-      distance: 280,
+      offset: { heading: -30, pitch: -10, distance: 280 },
     })
   }
 
@@ -195,7 +193,7 @@ async function main() {
         }
       )
       const sampledPosition = sampledPositions[0]
-      if (!sampledPosition) {
+      if (sampledPosition === undefined) {
         setStatus(
           t({
             zh: "离屏采样地形高度未命中，已取消模型加载。",
@@ -205,7 +203,7 @@ async function main() {
         setReadyStatus(t({ zh: "地形高度未命中", en: "Terrain height missed" }))
         return
       }
-      modelHeight = sampledPosition[2]
+      modelHeight = sampledPosition
     } catch (error) {
       console.warn("Failed to sample terrain height before loading model.", error)
       setStatus(

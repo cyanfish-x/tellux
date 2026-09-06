@@ -143,7 +143,7 @@ viewer.camera.setView({
 })
 viewer.camera.cancelFlight()                       // 取消进行中的飞行
 const height = viewer.camera.getCurrentHeight()    // 当前海拔（米）
-const state = viewer.camera.getState()             // 完整视角，可回传给 setView
+const state = viewer.camera.getState()             // CameraState：带高度的 destination 对象和完整 orientation，可用于 Viewer 初始化或 setView
 const threeCam = viewer.camera.raw         // 底层 THREE.PerspectiveCamera
 ```
 
@@ -451,3 +451,5 @@ requestAnimationFrame(animate)
 viewer.renderer.resolutionScale = 1.5
 viewer.postProcess.toneMappingExposure = 8
 ```
+
+`viewer.models` 只提供 `add/get/list/remove`；不要自行推进动画、同步材质或销毁管理器。`ModelManager`、`Globe`、`Terrain`、`SceneTilesetCollection`、`ViewerRenderer` 由 Viewer 创建，不能直接构造。

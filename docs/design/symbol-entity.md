@@ -266,8 +266,8 @@ export class TextGraphics {
   set text(v: string)            // 触发 canvas 重建
   get color(): number
   set color(v: ColorInput)
-  get outlineColor(): number
-  set outlineColor(v: ColorInput)
+  // 初始化配置了描边时可用；未配置时为 undefined。
+  readonly outline: { color: ColorInput; width: number } | undefined
   get backgroundColor(): number
   set backgroundColor(v: ColorInput)
   get fontSize(): number

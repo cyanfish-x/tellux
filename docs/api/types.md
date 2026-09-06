@@ -417,3 +417,7 @@ viewer.on('mousemove', (event) => {
 ```
 
 `event.position` 是相对于 canvas 左上角的像素坐标，`event.cartographic` 是命中的经纬高（`LonLatHeight`），未命中时为 `null`。
+
+### CameraState
+
+`camera.getState()` 返回完整视角：`destination: LonLatHeight` 与 `orientation: Required<CameraOrientation>`。它既可用于 `ViewerOptions.camera`，也可传给 `camera.setView` / `camera.flyTo`。

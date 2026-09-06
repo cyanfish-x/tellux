@@ -15,6 +15,7 @@ import {
   exampleMapServiceConfig,
 } from "../shared"
 import { formatHeight, mountLocationReadout } from "../location-readout"
+import { CESIUM_ION_WORLD_TERRAIN_ASSET_ID } from "../map-sources.config"
 import { setupExamplePanels } from "../example-panel"
 import { createTelluxPanel } from "../example-panel-leva"
 import { ExampleMessage, showExampleMessage } from "../example-message"
@@ -186,6 +187,7 @@ async function executeExampleScript(source: string) {
     "ExampleMessage",
     "createWindSwayLeavesMaterial",
     "exampleMapServiceConfig",
+    "CESIUM_ION_WORLD_TERRAIN_ASSET_ID",
     "HISM_DEMO_CENTER",
     "HISM_DEMO_VIEW_POSE",
     "HISM_TREE_PRESETS",
@@ -228,6 +230,7 @@ async function executeExampleScript(source: string) {
     ExampleMessage,
     createWindSwayLeavesMaterial,
     exampleMapServiceConfig,
+    CESIUM_ION_WORLD_TERRAIN_ASSET_ID,
     ...HISM_RUNTIME_BINDING_NAMES.map(
       (name) => optionalBindings.hism[name]
     ),

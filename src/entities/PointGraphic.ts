@@ -34,7 +34,7 @@ export class PointGraphic {
   constructor({ position, options, resolveColor }: PointGraphicOptions) {
     const pixelSize = options.pixelSize ?? 8
     const outline = options.outline
-    const outlineWidth = outline ? (outline.width ?? 1) : 0
+    const outlineWidth = outline ? Math.max(0, outline.width ?? 1) : 0
     this.resolveColor = resolveColor
     this.currentColor = new THREE.Color(options.color ?? 0xffffff)
     this.currentOutlineColor = new THREE.Color(outline?.color ?? 0xffffff)
@@ -46,7 +46,7 @@ export class PointGraphic {
     this.fillEdgeMaterial = createPointMaterial(this.resolveColor(this.currentColor), pixelSize, 0, 'edge')
     const group = new THREE.Group()
 
-    if (outlineWidth > 0) {
+    if (outline) {
       this.outlineGeometry = createPointGeometry(position)
       this.outlineMaterial = createPointMaterial(this.resolveColor(this.currentOutlineColor), pixelSize + outlineWidth * 2, 0.5, 'opaque')
       this.outlineEdgeMaterial = createPointMaterial(this.resolveColor(this.currentOutlineColor), pixelSize + outlineWidth * 2, 0.5, 'edge')
@@ -67,6 +67,7 @@ export class PointGraphic {
     this.object3D.matrixAutoUpdate = false
     this.object3D.updateMatrix()
     this.applyOpacity()
+    this.setOutlineWidth(outlineWidth)
   }
 
   setPosition(position: THREE.Vector3) {
@@ -90,6 +91,8 @@ export class PointGraphic {
   get pixelSize(): number {
     return this.fillMaterial.size
   }
+
+  get hasOutline(): boolean { return this.outlineMaterial !== null }
 
   get outlineColor(): number {
     return this.currentOutlineColor.getHex()
@@ -142,7 +145,10 @@ export class PointGraphic {
   }
 
   setOutlineWidth(width: number) {
+    if (!this.outlineMaterial || !this.outlineEdgeMaterial) return
     this.currentOutlineWidth = Math.max(0, width)
+    this.outlineMaterial.visible = this.currentOutlineWidth > 0
+    this.outlineEdgeMaterial.visible = this.currentOutlineWidth > 0
     this.setPixelSize(this.fillMaterial.size)
   }
 

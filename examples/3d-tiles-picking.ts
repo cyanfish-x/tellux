@@ -60,8 +60,9 @@ const viewer = new tellux.Viewer(container, {
     },
     clouds: {
       show: false,
-    },
-    highlight: {
+    }
+  },
+  highlighter: {
       overlay: {
         color: "#7cff5b",
         opacity: 0.58,
@@ -69,7 +70,6 @@ const viewer = new tellux.Viewer(container, {
         hoverOpacity: 0.42,
       },
     },
-  },
 })
 
 ;(window as any).viewer = viewer

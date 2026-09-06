@@ -25,6 +25,7 @@
 | 修改时间、Timeline 或昼夜联动 | [Clock 决策](decisions/Clock统一场景时钟.md) | 光照问题继续读 [光照指南](../docs/guide/lighting.md) 与下方渲染决策 |
 | 排查高度结果、最高细节或卡顿 | [采样实现链路](architecture/sampleHeightMostDetailed实现链路.md) | 调度问题读 [采样抢占渲染](engineering/高度采样更新抢占渲染循环坑点.md) |
 | 排查颜色、深度、大气、影像或精度 | [坑点入口](engineering/项目坑点记录.md) | 按症状选择专题，再核对实际 renderer、材质与输出路径 |
+| Water Area 移动相机后缺水域或报 CORS | [新区域 MVT 加载排障](engineering/WaterArea新区域MVT加载503与CORS排查.md) | 先区分上游错误响应与跨域配置，再核对 Worker 请求、缓存及复现范围 |
 | 修改 WebGPU 后处理组合 | [单一后处理图 ADR](decisions/0003-webgpu-post-processing-graph.md) | 再读 [渲染管线](../docs/design/rendering-pipeline.md) 与涉及的 effect 实现 |
 | 修改点云颜色或局部灯光 | [点云显示色 ADR](decisions/0002-display-referred-point-cloud-colors.md)、[局部与地球光照 ADR](decisions/0004-local-vs-globe-lighting.md) | 结合对应坑点、当前材质与输出链核验 |
 | 修改高亮 | [高亮指南](../docs/guide/highlight.md) | 只有追查后端选择理由时读 [0.2 高亮背景](archive/highlight统一高亮方案.md) |

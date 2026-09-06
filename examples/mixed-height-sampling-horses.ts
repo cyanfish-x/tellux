@@ -171,7 +171,7 @@ async function createHorseHerd() {
   console.time(samplingTimerLabel)
   try {
     sampledPositions = await viewer.sampleHeightMostDetailed(
-      placements.map((point) => [point.longitude, point.latitude]),
+      placements.map((point) => [point.longitude, point.latitude] as const),
       {
         source: "all",
         resolution: 160,
@@ -197,7 +197,7 @@ async function createHorseHerd() {
   const sampledPlacements = placements
     .map((placement, index) => {
       const sampled = sampledPositions[index]
-      return sampled ? { placement, height: sampled[2] } : null
+      return sampled === undefined ? null : { placement, height: sampled }
     })
     .filter((item): item is { placement: PlacementPoint; height: number } =>
       Boolean(item)

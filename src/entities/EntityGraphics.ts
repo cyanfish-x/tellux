@@ -38,29 +38,20 @@ export class PointGraphics {
   }
 
   /**
-   * 描边颜色。未在初始化提供 `outline` 时写入无效。
-   *
-   * Outline color. Writes have no effect when `outline` was omitted at init.
+   * 描边句柄；初始化未提供 outline 时为 undefined。点和文字的宽度 0 隐藏描边，正数恢复。
+   * Outline handle, or undefined when omitted at init. For points and text, width 0 hides it; a positive width restores it.
    */
-  get outlineColor() {
-    return this.graphic.outlineColor
-  }
-
-  set outlineColor(value: ColorInput) {
-    this.graphic.setOutlineColor(value)
-  }
-
-  /**
-   * 描边像素宽度。未在初始化提供 `outline` 时写入无效。
-   *
-   * Outline pixel width. Writes have no effect when `outline` was omitted at init.
-   */
-  get outlineWidth() {
-    return this.graphic.outlineWidth
-  }
-
-  set outlineWidth(value: number) {
-    this.graphic.setOutlineWidth(value)
+  get outline() {
+    const graphic = this.graphic
+    if (!graphic.hasOutline) return undefined
+    return {
+      /** 描边颜色。Outline color. */
+      get color() { return graphic.outlineColor },
+      set color(value: ColorInput) { graphic.setOutlineColor(value) },
+      /** 描边像素宽度。Outline width in pixels. */
+      get width() { return graphic.outlineWidth },
+      set width(value: number) { graphic.setOutlineWidth(value) }
+    }
   }
 }
 
@@ -113,12 +104,18 @@ export class PolygonGraphics {
     this.graphic.setColor(value)
   }
 
-  get outlineColor() {
-    return this.graphic.outlineColor
-  }
-
-  set outlineColor(value: ColorInput) {
-    this.graphic.setOutlineColor(value)
+  /**
+   * 描边句柄；初始化未提供 outline 时为 undefined。点和文字的宽度 0 隐藏描边，正数恢复。
+   * Outline handle, or undefined when omitted at init. For points and text, width 0 hides it; a positive width restores it.
+   */
+  get outline() {
+    const graphic = this.graphic
+    if (!graphic.hasOutline) return undefined
+    return {
+      /** 描边颜色。Outline color. */
+      get color() { return graphic.outlineColor },
+      set color(value: ColorInput) { graphic.setOutlineColor(value) }
+    }
   }
 
   get opacity() {
@@ -223,12 +220,21 @@ export class TextGraphics {
     this.graphic.setFillColor(value)
   }
 
-  get outlineColor() {
-    return this.graphic.outlineColorHex
-  }
-
-  set outlineColor(value: ColorInput) {
-    this.graphic.setOutlineColor(value)
+  /**
+   * 描边句柄；初始化未提供 outline 时为 undefined。点和文字的宽度 0 隐藏描边，正数恢复。
+   * Outline handle, or undefined when omitted at init. For points and text, width 0 hides it; a positive width restores it.
+   */
+  get outline() {
+    const graphic = this.graphic
+    if (!graphic.hasTextOutline) return undefined
+    return {
+      /** 描边颜色。Outline color. */
+      get color() { return graphic.outlineColorHex },
+      set color(value: ColorInput) { graphic.setOutlineColor(value) },
+      /** 描边像素宽度。Outline width in pixels. */
+      get width() { return graphic.outlineWidthValue },
+      set width(value: number) { graphic.setOutlineWidth(value) }
+    }
   }
 
   get backgroundColor() {

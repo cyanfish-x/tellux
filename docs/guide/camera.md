@@ -152,7 +152,7 @@ const height = viewer.camera.getCurrentHeight()
 const state = viewer.camera.getState()
 ```
 
-`getState()` 返回的对象可以直接回传给 `setView` 或 `flyTo`，便于保存和恢复视角。
+`getState()` 返回 `CameraState`，其中 `destination` 始终是带高度的经纬高对象，`orientation` 含完整姿态；可直接用作 `ViewerOptions.camera`。返回的对象也可以直接回传给 `setView` 或 `flyTo`，便于保存和恢复视角。
 
 ## 底层 Three.js 相机
 

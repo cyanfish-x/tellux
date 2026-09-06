@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { Globe } from '../Globe'
+import { createGlobe } from '../Globe'
 
 describe('Globe.show facade', () => {
   it('keeps the user visibility intent when the surface tileset is replaced', () => {
@@ -11,7 +11,7 @@ describe('Globe.show facade', () => {
       surfaceGroup.visible = show && terrainTileset === null
       if (terrainTileset) terrainGroup.visible = show
     })
-    const globe = new Globe({
+    const globe = createGlobe({
       tileset: { ellipsoid: {}, group: surfaceGroup },
       applyGlobeShow
     } as never)

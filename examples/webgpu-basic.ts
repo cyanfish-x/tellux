@@ -30,7 +30,7 @@ async function main() {
       },
     },
     scene: {
-      atmosphere: {
+    atmosphere: {
         show: true,
         lighting: {
           mode: "light-source",
@@ -39,13 +39,13 @@ async function main() {
           stars: true,
         },
       },
-      clouds: {
+    clouds: {
         show: false,
-      },
-      postProcess: {
+      }
+  },
+  postProcess: {
         taa: true,
       },
-    },
   })
 
   ;(window as any).viewer = viewer

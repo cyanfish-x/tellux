@@ -99,6 +99,7 @@ export {
   type CameraFlightEasingFunction,
   type CameraOrientation,
   type CameraProjectionOptions,
+  type CameraState,
   type CameraSetViewOptions,
   type AddHismLayerOptions,
   type AddModelOptions,

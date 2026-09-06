@@ -1,15 +1,21 @@
 import type { TilesRenderer } from '3d-tiles-renderer'
 import type { TilesetManager } from './tiles/TilesetManager'
 
+export let createGlobe: (manager: TilesetManager) => Globe
+
 /**
  * 地球表面门面：裸球或当前地形，不含场景 3D Tiles。
  *
  * Globe surface facade: the base ellipsoid or current terrain, not scene 3D Tiles.
  */
 export class Globe {
+  static {
+    createGlobe = manager => new Globe(manager)
+  }
+
   private userShow = true
 
-  constructor(private readonly tilesetManager: TilesetManager) {
+  private constructor(private readonly tilesetManager: TilesetManager) {
     this.tilesetManager.applyGlobeShow(this.userShow)
   }
 

@@ -65,7 +65,7 @@ const locationReadout = mountLocationReadout(viewer, {
 viewer.entities.add({
   id: "clamp-route",
   polyline: {
-    positions: ROUTE,
+    positions: ROUTE.map(([longitude, latitude]) => [longitude, latitude, 0] as const),
     clamp: true,
     width: 60,
     color: "#22d3ee",

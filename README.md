@@ -115,3 +115,5 @@ Cesium Ion 是可选的数据服务；Tellux 的地形、影像和 3D Tiles API 
 | `pnpm test:run`       | 运行测试                       |
 | `pnpm build`          | 构建库产物和声明文件           |
 | `pnpm build:examples` | 构建文档和示例站点             |
+
+稳定公开 API 的迁移细节（相机状态、领域门面和实体描边）见 [0.3 迁移指南](docs/guide/migration-0.3.md)。

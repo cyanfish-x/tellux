@@ -139,3 +139,15 @@ viewer.highlighter.clear()
 ```
 
 WebGPU 下描边不可用；Tiles overlay 仍可用。建议 `hism: { showPickMarker: false }` 与描边并用。
+
+点、多边形和文字的运行时描边也使用 `outline` 子对象：
+
+```ts
+const outline = entity.point?.outline
+if (outline) {
+  outline.color = '#ff8800'
+  outline.width = 0 // 隐藏；改回正数即可恢复
+}
+```
+
+描边对象是否存在由初始化配置决定，未提供时运行时返回 `undefined`，不能通过赋值新增或替换。点和文字支持 `width`（默认 1）；多边形只支持 `color`。原运行时 `outlineColor` / `outlineWidth` 已移除。

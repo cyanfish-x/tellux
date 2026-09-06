@@ -149,7 +149,7 @@ async function createHorseHerd() {
   console.time(samplingTimerLabel)
   try {
     sampledPositions = await viewer.sampleHeightMostDetailed(
-      placements.map((point) => [point.longitude, point.latitude]),
+      placements.map((point) => [point.longitude, point.latitude] as const),
       {
         source: "all",
         resolution: 128,
@@ -173,7 +173,7 @@ async function createHorseHerd() {
   const sampledPlacements = placements
     .map((placement, index) => {
       const sampled = sampledPositions[index]
-      return sampled ? { placement, height: sampled[2] } : null
+      return sampled === undefined ? null : { placement, height: sampled }
     })
     .filter((item): item is { placement: PlacementPoint; height: number } =>
       Boolean(item)
@@ -212,10 +212,8 @@ async function createHorseHerd() {
     t({ zh: "已在若尔盖大草原附近放置 {n} 匹实例化奔马。", en: "Placed {n} instanced horses near Zoige." }, { n: sampledPlacements.length })
   )
   viewer.flyToTarget(herd.group, {
-    heading: -130,
-    pitch: -7,
-    distance: 1300,
-  })
+      offset: { heading: -130, pitch: -7, distance: 1300 },
+    })
 }
 
 async function buildHorseHerd(
@@ -486,10 +484,8 @@ const horseSchema = () =>
         onClick: () => {
           if (!herd) return
           viewer.flyToTarget(herd.group, {
-            heading: 180,
-            pitch: -10,
-            distance: 800,
-          })
+      offset: { heading: 180, pitch: -10, distance: 800 },
+    })
         },
         label: t({ zh: "飞到马群", en: "Fly to herd" }),
       },

@@ -148,7 +148,7 @@ viewer.entities.add({
 })
 ```
 
-与折线一样，平面 / 拉伸多边形支持运行时句柄 `entity.polygon`（修改 `color` / `outlineColor`）；**贴地多边形不暴露运行时句柄**。
+与折线一样，平面 / 拉伸多边形支持运行时句柄 `entity.polygon`（修改 `color` / `outline.color`）；**贴地多边形不暴露运行时句柄**。
 
 ::: warning 贴地多边形不支持 height / extrudeHeight / outline
 贴地时 `height` 被忽略，`extrudeHeight` 和 `outline` 暂未支持（会告警并忽略）。需要拉伸体或描边时请使用绝对高模式。
@@ -333,6 +333,20 @@ viewer.on('click', (event) => {
   }
 })
 ```
+
+## 运行时描边
+
+点、多边形和文字的运行时描边也使用 `outline` 子对象：
+
+```ts
+const outline = entity.point?.outline
+if (outline) {
+  outline.color = '#ff8800'
+  outline.width = 0 // 隐藏；改回正数即可恢复
+}
+```
+
+描边对象是否存在由初始化配置决定，未提供时运行时返回 `undefined`，不能通过赋值新增或替换。点和文字支持 `width`（默认 1）；多边形只支持 `color`。原运行时 `outlineColor` / `outlineWidth` 已移除。
 
 ## 限制与后续
 

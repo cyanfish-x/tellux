@@ -33,6 +33,7 @@ type OverlayPluginInternals = {
 
 export class WaterAreaOverlayPlugin extends ImageOverlayPlugin {
   private readonly waterAreaOverlays: WaterAreaTilesOverlay[]
+  private disposed = false
 
   constructor(options: WaterAreaOverlayPluginOptions) {
     super(
@@ -58,6 +59,16 @@ export class WaterAreaOverlayPlugin extends ImageOverlayPlugin {
     })
   }
 
+  _removeVirtualChildren(tile: unknown): void {
+    // With splitting disabled, virtual children belong to the terrain overlay.
+    // Removing them here also emits fade events after its tile records are gone.
+    const internals = this as unknown as { enableTileSplitting: boolean }
+    if (!internals.enableTileSplitting) return
+    ;(ImageOverlayPlugin.prototype as unknown as {
+      _removeVirtualChildren(this: ImageOverlayPlugin, tile: unknown): void
+    })._removeVirtualChildren.call(this, tile)
+  }
+
   async processTileModel(scene: Object3D, tile: unknown): Promise<void> {
     await (
       ImageOverlayPlugin.prototype as unknown as {
@@ -71,6 +82,8 @@ export class WaterAreaOverlayPlugin extends ImageOverlayPlugin {
   }
 
   dispose(): void {
+    if (this.disposed) return
+    this.disposed = true
     ;(
       ImageOverlayPlugin.prototype as unknown as {
         dispose(this: ImageOverlayPlugin): void

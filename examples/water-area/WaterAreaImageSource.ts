@@ -81,6 +81,14 @@ export class WaterAreaImageSource extends XYZImageSource {
     super.disposeItem(texture)
   }
 
+  override release(...tokens: number[]): void {
+    // dispose() force-releases every source entry. Pending region promises may
+    // finish later and release their old references; those locks no longer exist.
+    // Keep normal cache accounting strict while the source is alive.
+    if (this.disposed) return
+    super.release(...tokens)
+  }
+
   override dispose(): void {
     if (this.disposed) return
     this.disposed = true

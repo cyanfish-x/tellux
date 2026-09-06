@@ -3,7 +3,7 @@ import type { GLTF, GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { describe, expect, it, vi } from 'vitest'
 
 import { GltfModelLayer } from '../models/GltfModelLayer'
-import { ModelManager } from '../models/ModelManager'
+import { createModelManager } from '../models/ModelManager'
 
 function createDeferredGltf() {
   let resolve!: (value: GLTF) => void
@@ -92,7 +92,7 @@ describe('GltfModelLayer lifecycle', () => {
 describe('ModelManager collection API', () => {
   it('registers models for get, list, and remove', () => {
     const scene = new THREE.Scene()
-    const manager = new ModelManager({
+    const manager = createModelManager({
       scene,
       loader: {
         loadAsync: vi.fn(() => Promise.resolve(createGltf()))

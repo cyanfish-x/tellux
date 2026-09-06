@@ -61,15 +61,12 @@ const baseViewerOptions = createHismDemoViewerOptions()
 const viewer = new tellux.Viewer(container, {
   ...baseViewerOptions,
   hism: { showPickMarker: false },
-  scene: {
-    ...baseViewerOptions.scene,
-    highlight: {
-      outline: {
-        enabled: true,
-        color: "#7cff5b",
-        edgeStrength: 2,
-        xray: true,
-      },
+  highlighter: {
+    outline: {
+      enabled: true,
+      color: "#7cff5b",
+      edgeStrength: 2,
+      xray: true,
     },
   },
 })
@@ -143,11 +140,11 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
   setStatus(t({ zh: "正在采样地表高度...", en: "Sampling surface heights..." }))
   const [treeHeights, rockHeights] = await Promise.all([
     viewer.sampleHeightMostDetailed(
-      treePlacements.map((point) => [point.longitude, point.latitude]),
+      treePlacements.map((point) => [point.longitude, point.latitude] as const),
       { source: "all", resolution: 160, maxFrames: 120 }
     ),
     viewer.sampleHeightMostDetailed(
-      rockPlacements.map((point) => [point.longitude, point.latitude]),
+      rockPlacements.map((point) => [point.longitude, point.latitude] as const),
       { source: "all", resolution: 120, maxFrames: 80 }
     ),
   ])
@@ -157,9 +154,9 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
   const treeInstances = treePlacements
     .map((placement, index) => {
       const sampled = treeHeights[index]
-      if (!sampled) return null
+      if (sampled === undefined) return null
       return {
-        coordinates: [placement.longitude, placement.latitude, sampled[2]] as [
+        coordinates: [placement.longitude, placement.latitude, sampled] as [
           number,
           number,
           number,
@@ -174,9 +171,9 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
   const rockInstances = rockPlacements
     .map((placement, index) => {
       const sampled = rockHeights[index]
-      if (!sampled) return null
+      if (sampled === undefined) return null
       return {
-        coordinates: [placement.longitude, placement.latitude, sampled[2]] as [
+        coordinates: [placement.longitude, placement.latitude, sampled] as [
           number,
           number,
           number,
@@ -194,7 +191,7 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
     return
   }
 
-  const forestLayer = viewer.addHismLayer({
+  const forestLayer = viewer.hism.add({
     id: "hism-forest-trees",
     archetypes: buildLodTreeArchetypes(templates, {
       nearDistanceMeters: LOD_NEAR_METERS,
@@ -214,7 +211,7 @@ async function createScene(templates: HismDemoPresetTemplate[]) {
 
   const rockLayer =
     rockInstances.length > 0
-      ? viewer.addHismLayer({
+      ? viewer.hism.add({
           id: "hism-forest-rocks",
           archetypes: [
             {
@@ -278,7 +275,7 @@ function updateHud() {
     smoothedFps = smoothedFps === 0 ? instantFps : smoothedFps * 0.9 + instantFps * 0.1
   }
 
-  const stats = viewer.getHismRuntimeStats()
+  const stats = viewer.hism.getRuntimeStats()
   if (hudFps) hudFps.textContent = smoothedFps.toFixed(1)
   if (hudLayers) hudLayers.textContent = String(stats.layerCount)
   if (hudClusters) {

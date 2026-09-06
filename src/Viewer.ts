@@ -14,9 +14,9 @@ import { TargetFlightController } from './controls/TargetFlightController'
 import { TelluxGlobeControls } from './controls/TelluxGlobeControls'
 import type { ViewerControls } from './controls/ViewerControls'
 import { ViewerInteractionManager } from './controls/ViewerInteractionManager'
-import { Globe } from './Globe'
+import { Globe, createGlobe } from './Globe'
 import { LayerManager } from './LayerManager'
-import { Terrain } from './Terrain'
+import { Terrain, createTerrain } from './Terrain'
 import { HismManager } from './hism'
 import { HighlightManager } from './highlight'
 import {
@@ -25,7 +25,13 @@ import {
   updateHighlightManager
 } from './highlight/HighlightManager'
 import { ResourceScope, awaitReadyOrDestroy } from './lifecycle/ResourceLifecycle'
-import { ModelManager } from './models/ModelManager'
+import {
+  ModelManager,
+  createModelManager,
+  updateModelManager,
+  disposeModelManager,
+  setModelManagerMaterialMode
+} from './models/ModelManager'
 import { AtmosphereManager } from './rendering/AtmosphereManager'
 import { PostProcessingManager } from './rendering/PostProcessingManager'
 import { GroundClampPass } from './rendering/GroundClampPass'
@@ -35,7 +41,7 @@ import {
   type TelluxWebGLRenderer,
   type TelluxWebGPURenderer
 } from './rendering/RendererAdapter'
-import { ViewerRenderer } from './rendering/ViewerRenderer'
+import { ViewerRenderer, createViewerRenderer } from './rendering/ViewerRenderer'
 import { ViewportResizeManager } from './rendering/ViewportResizeManager'
 import { ViewerRenderLoop } from './rendering/ViewerRenderLoop'
 import { WebGPUAtmosphereManager } from './rendering/WebGPUAtmosphereManager'
@@ -52,7 +58,7 @@ import { ScenePicker } from './sampling/ScenePicker'
 import { Scene, syncSceneRuntimeEffects, updateSceneFallbackAmbientLight } from './Scene'
 import { HighlightSettings } from './scene/HighlightSettings'
 import { PostProcessSettings } from './scene/PostProcessSettings'
-import { SceneTilesetCollection } from './tiles/SceneTilesetCollection'
+import { SceneTilesetCollection, createSceneTilesetCollection } from './tiles/SceneTilesetCollection'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
   resolveModelMaterialMode,
@@ -167,6 +173,7 @@ export type {
   CameraFlightEasingFunction,
   CameraOrientation,
   CameraProjectionOptions,
+  CameraState,
   CameraSetViewOptions
 } from './Camera'
 export type {
@@ -515,7 +522,7 @@ export class Viewer {
       this.camera = new Camera(this.threeCamera, () => tilesets?.tileset.ellipsoid ?? null)
       this.rendererAdapter = createRendererAdapter(options)
       constructionScope.defer(() => this.rendererAdapter.dispose())
-      this.renderer = new ViewerRenderer(this.rendererAdapter, {
+      this.renderer = createViewerRenderer(this.rendererAdapter, {
         getResolutionScale: () => this.currentResolutionScale,
         setResolutionScale: (value) => {
           this.currentResolutionScale = value
@@ -644,12 +651,12 @@ export class Viewer {
       this.tilesetFeaturePicker = new TilesetFeaturePicker(this.renderer.raw.domElement, this.threeCamera, this.tilesetManager)
       this.heightSampler = new HeightSampler(this.tilesetManager)
       constructionScope.defer(() => this.heightSampler.dispose())
-      this.tilesets = new SceneTilesetCollection(
+      this.tilesets = createSceneTilesetCollection(
         this.tilesetManager,
         () => this.cancelMostDetailedHeightSampling()
       )
-      this.globe = new Globe(this.tilesetManager)
-      this.terrain = new Terrain(
+      this.globe = createGlobe(this.tilesetManager)
+      this.terrain = createTerrain(
         () => this.tilesetManager.terrainOptions,
         (terrain) => {
           this.heightSampler.resetForTerrainChange()
@@ -802,7 +809,7 @@ export class Viewer {
         : null
       constructionScope.defer(() => this.postProcessing?.dispose())
       postProcessing = this.postProcessing
-      this.models = new ModelManager({
+      this.models = createModelManager({
         scene: this.scene.raw,
         loader: this.gltfLoader,
         getMaterialMode: () => resolveModelMaterialMode(this.scene.atmosphere.lighting.mode),
@@ -820,7 +827,7 @@ export class Viewer {
           this.postProcessing?.setHasLocalLighting(enabled)
         }
       })
-      constructionScope.defer(() => this.models.dispose())
+      constructionScope.defer(() => disposeModelManager(this.models))
       this.widgets = new WidgetManager(this, options.widgets)
       constructionScope.defer(() => this.widgets.dispose())
       this.widgets.applyInitialSettings()
@@ -1153,7 +1160,7 @@ export class Viewer {
     this.renderLoop.dispose()
     this.viewport.dispose()
     this.interactions.dispose()
-    this.models.dispose()
+    disposeModelManager(this.models)
     this.hismManager.dispose()
     this.highlighter.dispose()
     this.entityRenderManager.dispose()
@@ -1196,7 +1203,7 @@ export class Viewer {
     }
     this.atmosphere?.updateLightSources()
     this.updateAutoExposure(deltaTime)
-    this.models.update(deltaTime)
+    updateModelManager(this.models, deltaTime)
     this.hismManager.update(deltaTime)
     updateHighlightManager(this.highlighter)
     this.entitiesManager.update(deltaTime)
@@ -1280,7 +1287,7 @@ export class Viewer {
     )
     const contentMaterialMode = resolveSceneContentMaterialMode(this.scene.atmosphere.lighting.mode)
     this.tilesetManager.setSceneTilesetMaterialMode(contentMaterialMode)
-    this.models.setMaterialMode(resolveModelMaterialMode(this.scene.atmosphere.lighting.mode))
+    setModelManagerMaterialMode(this.models, resolveModelMaterialMode(this.scene.atmosphere.lighting.mode))
   }
 
   private cancelMostDetailedHeightSampling() {

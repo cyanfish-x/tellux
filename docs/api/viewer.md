@@ -252,3 +252,5 @@ const results = await viewer.sampleHeightMostDetailed([
 ### `destroy()`
 
 释放 WebGL 资源、事件监听器、控制器和已加载纹理。
+
+`viewer.models` 只公开 `add` / `get` / `list` / `remove`。动画推进、材质模式同步和销毁由 Viewer 管理。`ModelManager`、`Globe`、`Terrain`、`SceneTilesetCollection`、`ViewerRenderer` 为 Viewer 创建的门面，构造器不公开；类导出用于类型与实例识别。

@@ -83,7 +83,7 @@ export function createWaterAreaDemo({
   const tileset = viewer.globe.raw
   const resolvedWaveOrigin = resolveWaterAreaWaveOrigin(
     waveOrigin,
-    viewer.camera.getState()
+    viewer.camera.getState().destination
   )
   const overlay = new WaterAreaTilesOverlay()
   const materialPlugin = new WaterAreaMaterialPlugin(
@@ -120,8 +120,8 @@ export function createWaterAreaDemo({
     async dispose(): Promise<void> {
       if (disposed) return
       disposed = true
-      overlayPlugin.dispose()
-      materialPlugin.dispose()
+      tileset.unregisterPlugin(overlayPlugin)
+      tileset.unregisterPlugin(materialPlugin)
       await disposeWaterAreaWorkerPool()
     }
   }

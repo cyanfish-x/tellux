@@ -165,8 +165,7 @@ function loadPointCloudTileset() {
     flyToMelbourne()
   } else {
     viewer.flyToTarget(activeLayer.tileset, {
-      heading: 30,
-      pitch: -30,
+      offset: { heading: 30, pitch: -30 },
     })
   }
 

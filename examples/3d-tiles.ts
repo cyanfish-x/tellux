@@ -170,11 +170,7 @@ function activateLayer(layer: TilesetLayer, description: string) {
   if (panel.controls.options.flyTo) {
 
     viewer.flyToTarget(layer.tileset, {
-
-      heading: 30,
-
-      pitch: -30,
-
+      offset: { heading: 30, pitch: -30 },
     })
 
   }

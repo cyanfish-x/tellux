@@ -97,10 +97,10 @@ viewer.entities.add({
   id: "zone-polygon",
   polygon: {
     positions: [
-      [FOCUS_LONGITUDE - 0.012, FOCUS_LATITUDE + 0.008],
-      [FOCUS_LONGITUDE + 0.014, FOCUS_LATITUDE + 0.008],
-      [FOCUS_LONGITUDE + 0.014, FOCUS_LATITUDE - 0.01],
-      [FOCUS_LONGITUDE - 0.012, FOCUS_LATITUDE - 0.01],
+      [FOCUS_LONGITUDE - 0.012, FOCUS_LATITUDE + 0.008, 0],
+      [FOCUS_LONGITUDE + 0.014, FOCUS_LATITUDE + 0.008, 0],
+      [FOCUS_LONGITUDE + 0.014, FOCUS_LATITUDE - 0.01, 0],
+      [FOCUS_LONGITUDE - 0.012, FOCUS_LATITUDE - 0.01, 0],
     ],
     height: SURFACE_OFFSET,
     fill: true,
@@ -114,10 +114,10 @@ viewer.entities.add({
   id: "block-extruded",
   polygon: {
     positions: [
-      [FOCUS_LONGITUDE - 0.002, FOCUS_LATITUDE - 0.0015],
-      [FOCUS_LONGITUDE + 0.002, FOCUS_LATITUDE - 0.0015],
-      [FOCUS_LONGITUDE + 0.002, FOCUS_LATITUDE + 0.0015],
-      [FOCUS_LONGITUDE - 0.002, FOCUS_LATITUDE + 0.0015],
+      [FOCUS_LONGITUDE - 0.002, FOCUS_LATITUDE - 0.0015, 0],
+      [FOCUS_LONGITUDE + 0.002, FOCUS_LATITUDE - 0.0015, 0],
+      [FOCUS_LONGITUDE + 0.002, FOCUS_LATITUDE + 0.0015, 0],
+      [FOCUS_LONGITUDE - 0.002, FOCUS_LATITUDE + 0.0015, 0],
     ],
     height: SURFACE_OFFSET,
     extrudeHeight: SURFACE_OFFSET + 300,

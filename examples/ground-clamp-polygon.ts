@@ -68,7 +68,7 @@ const locationReadout = mountLocationReadout(viewer, {
 viewer.entities.add({
   id: "clamp-zone",
   polygon: {
-    positions: CONCAVE_RING,
+    positions: CONCAVE_RING.map(([longitude, latitude]) => [longitude, latitude, 0] as const),
     clamp: true,
     color: "rgba(34, 211, 238, 0.5)",
   },
@@ -79,7 +79,7 @@ viewer.entities.add({
   id: "reference-zone",
   polygon: {
     positions: CONCAVE_RING.map(
-      ([lon, lat]) => [lon + REFERENCE_OFFSET_LON, lat] as [number, number]
+      ([lon, lat]) => [lon + REFERENCE_OFFSET_LON, lat, 0] as const
     ),
     height: REFERENCE_HEIGHT,
     color: "rgba(250, 204, 21, 0.5)",

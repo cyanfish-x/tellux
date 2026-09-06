@@ -12,16 +12,42 @@ export interface ModelManagerOptions {
   setHasLocalLighting: (enabled: boolean) => void
 }
 
+export let createModelManager: (options: ModelManagerOptions) => ModelManager
+const runtime = new WeakMap<ModelManager, {
+  update: (deltaTime: number) => void
+  setMaterialMode: (mode: ModelMaterialMode) => void
+  dispose: () => void
+}>()
+export function updateModelManager(manager: ModelManager, deltaTime: number) {
+  runtime.get(manager)?.update(deltaTime)
+}
+export function setModelManagerMaterialMode(manager: ModelManager, mode: ModelMaterialMode) {
+  runtime.get(manager)?.setMaterialMode(mode)
+}
+export function disposeModelManager(manager: ModelManager) {
+  runtime.get(manager)?.dispose()
+}
+
 /**
  * glTF 模型集合。通过 {@link Viewer.models} 访问。
  *
  * glTF model collection. Access this through {@link Viewer.models}.
  */
 export class ModelManager {
+  static {
+    createModelManager = options => new ModelManager(options)
+  }
+
   private readonly models = new Map<string, GltfModelLayer>()
   private nextModelId = 0
 
-  constructor(private readonly options: ModelManagerOptions) {}
+  private constructor(private readonly options: ModelManagerOptions) {
+    runtime.set(this, {
+      update: deltaTime => this.#update(deltaTime),
+      setMaterialMode: mode => this.#setMaterialMode(mode),
+      dispose: () => this.#dispose()
+    })
+  }
 
   /**
    * 加载 glTF / GLB 模型并按经纬高加入场景。
@@ -85,19 +111,19 @@ export class ModelManager {
     return true
   }
 
-  update(deltaTime: number) {
+  #update(deltaTime: number) {
     this.models.forEach((model) => {
       model.update(deltaTime)
     })
   }
 
-  setMaterialMode(mode: ModelMaterialMode) {
+  #setMaterialMode(mode: ModelMaterialMode) {
     this.models.forEach((model) => {
       model.setMaterialMode(mode)
     })
   }
 
-  dispose() {
+  #dispose() {
     Array.from(this.models.values()).forEach((model) => {
       model.remove()
     })

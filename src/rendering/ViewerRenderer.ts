@@ -1,6 +1,13 @@
 import type { ViewerRendererType } from '../types'
 import type { TelluxRenderer, TelluxRendererAdapter } from './RendererAdapter'
 
+interface RendererHost {
+  getResolutionScale: () => number
+  setResolutionScale: (value: number) => void
+}
+
+export let createViewerRenderer: (adapter: TelluxRendererAdapter, host: RendererHost) => ViewerRenderer
+
 /**
  * Viewer 渲染器门面。原生 Three.js renderer 走 {@link ViewerRenderer.raw}。
  *
@@ -12,12 +19,13 @@ import type { TelluxRenderer, TelluxRendererAdapter } from './RendererAdapter'
  * {@link ViewerRendererOptions.transparent}.
  */
 export class ViewerRenderer {
-  constructor(
+  static {
+    createViewerRenderer = (adapter, host) => new ViewerRenderer(adapter, host)
+  }
+
+  private constructor(
     private readonly adapter: TelluxRendererAdapter,
-    private readonly host: {
-      getResolutionScale: () => number
-      setResolutionScale: (value: number) => void
-    }
+    private readonly host: RendererHost
   ) {}
 
   /**

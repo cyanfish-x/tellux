@@ -110,6 +110,7 @@ export class SymbolGraphic {
   private iconOwnsTexture = false
 
   // text 状态 / text state
+  readonly hasTextOutline: boolean
   private textContent: Size2 | null = null
   private textGlyphRun: GlyphTextRun | null = null
   private textConfig: GlyphTextConfig & {
@@ -159,7 +160,8 @@ export class SymbolGraphic {
     const text = options.text
     this.textEnabled = Boolean(text)
     const textOutline = text?.outline
-    const outlineWidth = textOutline ? (textOutline.width ?? 1) : 0
+    this.hasTextOutline = textOutline !== undefined
+    const outlineWidth = textOutline ? Math.max(0, textOutline.width ?? 1) : 0
     this.textConfig = {
       text: text?.text ?? '',
       font: text?.font ?? 'sans-serif',
@@ -233,6 +235,7 @@ export class SymbolGraphic {
   get textValue(): string { return this.textConfig.text }
   // 颜色存 display sRGB 编码值，getHex 需跳过默认的二次编码。
   get fillColorHex(): number { return this.textConfig.fillColor.getHex(THREE.LinearSRGBColorSpace) }
+  get outlineWidthValue(): number { return this.textConfig.outlineWidth }
   get outlineColorHex(): number { return this.textConfig.outlineColor.getHex(THREE.LinearSRGBColorSpace) }
   get backgroundColorHex(): number | null {
     return this.textConfig.backgroundColor
