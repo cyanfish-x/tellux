@@ -77,7 +77,8 @@ export default ({ command }: ConfigEnv) => defineConfig({
           { text: '坐标系与自定义对象', link: '/guide/coordinate-system' },
           { text: 'HISM 大规模实例化', link: '/guide/hism' },
           { text: '光照模式与参数', link: '/guide/lighting' },
-          { text: '大气、云与后处理', link: '/guide/atmosphere-and-effects' },
+            { text: '大气、云与后处理', link: '/guide/atmosphere-and-effects' },
+            { text: '渲染管线边界实验', link: '/guide/rendering-prototypes' },
           { text: '数据源', link: '/guide/data-sources' },
           { text: '能力边界与已知限制', link: '/guide/limitations' }
         ]

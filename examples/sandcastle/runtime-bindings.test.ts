@@ -12,6 +12,7 @@ describe('Sandcastle optional runtime bindings', () => {
       expect(detectOptionalRuntimeBindings(`new ${name}()` ).gaussianSplat).toBe(true)
     }
     expect(detectOptionalRuntimeBindings('const SparkRendererOptions = {}').gaussianSplat).toBe(false)
+    expect(GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES).toContain('stabilizeSplatRaycast')
   })
   it('keeps ordinary examples on the base runner graph', () => {
     expect(detectOptionalRuntimeBindings(`

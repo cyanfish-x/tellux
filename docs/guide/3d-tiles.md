@@ -108,6 +108,10 @@ viewer.flyToTarget(layer.tileset, {
 
 面板提供定位、移除、高斯与地球显示开关；3D Tiles 模式还提供细节误差，数值越低，加载量通常越大。该案例在示例侧接入 GaussianSplatPlugin / Spark，使用 WebGL，不是 `viewer.tilesets` 的内置高斯 API。
 
+案例为高斯拾取添加了双精度求交与空间索引，处理滚轮缩放、右键旋转时错误高度交点导致的推远和抖动；仍保留模型拾取和地形防穿透。复制集成代码时需一并保留 `stabilizeSplatRaycast`，在高斯数据解码完成后、加入交互场景前调用。索引占用额外 CPU 内存，随高斯对象销毁释放；适用于案例中的静态解码数据，不适用于动态高斯变形或分页数据。
+
+本仓库还为 GaussianSplatPlugin 0.1.14 固定了缓存坐标系补丁，防止瓦片切换期间把上一帧的相机相对数据按 ECEF 世界坐标渲染。独立复制案例时也需保留对应 `pnpm` 补丁配置；它不由 Tellux 的 WebGPU `highPrecision` 开关替代。
+
 ## 移除图层
 
 ```ts

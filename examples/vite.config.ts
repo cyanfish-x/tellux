@@ -70,6 +70,10 @@ const projectRoot = resolve(__dirname, "..")
 const KiB = 1024
 const MiB = 1024 * KiB
 const htmlInputs = {
+  renderingMediumIntegration: resolve(__dirname, "rendering-medium-integration.html"),
+  renderingStages: resolve(__dirname, "rendering-stages.html"),
+  renderingSplatAtmosphere: resolve(__dirname, "rendering-splat-atmosphere.html"),
+  renderingCloudTransparency: resolve(__dirname, "rendering-cloud-transparency.html"),
   index: resolve(__dirname, "index.html"),
   gallery: resolve(__dirname, "gallery.html"),
   basic: resolve(__dirname, "basic.html"),

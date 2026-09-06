@@ -106,9 +106,14 @@ Cesium Ion 是可选的数据服务；Tellux 的地形、影像和 3D Tiles API 
 - 使用大气天空、空气透视、体积云、昼夜光照、SMAA、镜头光晕和抖动等效果构建地理场景；WebGPU 支持镜头光晕与可选 TAA。
 - 与 Three.js 场景、对象、坐标转换及自定义渲染循环互操作。
 - [高斯泼溅案例](https://tellux.cyanfish.site/gaussian-splat-3d-tiles.html)支持切换 SvirnasAlyt、Elevator、Cesium ion 和 Spark 单文件资源（WebGL；官方 ion 样例可留空使用公开评估 token）。
+  案例使用带空间索引的双精度高斯拾取，保留缩放、旋转与地形防穿透；集成说明见[高斯案例指南](docs/guide/3d-tiles.md#高斯泼溅案例)。
 - 默认使用 WebGL；实验性的 WebGPU renderer 支持基础地球、地形、影像、3D Tiles、模型、拾取、大气、镜头光晕与可选 TAA，具体限制见[能力边界](https://tellux.cyanfish.site/docs/guide/limitations)。
 
 ## 🛠️ 开发
+
+[渲染管线边界实验](docs/guide/rendering-prototypes.md)：三个 WebGL Sandcastle 原型，分别检查分阶段绘制、高斯空气透视、云与透明穿插；不属于稳定 API。
+
+后续 A1 联合介质积分实验提供 GPU 解析对照、真实云/空气积分与误差报告，仍处于算法验证阶段。
 
 | 命令                    | 说明                           |
 | ----------------------- | ------------------------------ |
