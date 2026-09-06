@@ -144,7 +144,7 @@ export const en: MessageTable = {
   'example.data-sources.registry.title': 'Layer Manager',
   'example.data-sources.registry.description': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',
   'example.fly-to.registry.title': 'Camera Fly-to',
-  'example.fly-to.registry.description': 'Pick a destination to start flying.',
+  'example.fly-to.registry.description': 'Fly to a destination and adjust FOV, pose, and flight parameters.',
   'example.entities.registry.title': 'Entity Drawing',
   'example.entities.registry.description': 'Sample entities loaded.',
   'example.symbol.registry.title': 'Icons & Text Labels',

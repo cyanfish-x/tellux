@@ -14,7 +14,7 @@ export const DEFAULT_CAMERA = {
     roll: 0
   },
   projection: {
-    fov: 75,
+    fov: 50,
     near: 10,
     far: 1e6
   }

@@ -29,7 +29,7 @@ void main().catch((error) => console.error(error))
 
 async function main() {
   const initialClockTime = new Date()
-  initialClockTime.setHours(22, 0, 0, 0)
+  initialClockTime.setHours(18, 32, 0, 0)
 
   const viewer = await tellux.Viewer.create(container, {
     renderer: {
@@ -56,6 +56,7 @@ async function main() {
       },
       projection: {
         far: 40000000,
+        fov: 60
       },
     },
     scene: {
@@ -115,7 +116,7 @@ async function main() {
     },
   })
 
-  ;(window as any).viewer = viewer
+    ; (window as any).viewer = viewer
 
   let isAnimationPlaying = true
   let model: ReturnType<typeof viewer.models.add> | null = null

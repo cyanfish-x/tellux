@@ -144,7 +144,7 @@ export const zh: MessageTable = {
   'example.data-sources.registry.title': '图层管理器',
   'example.data-sources.registry.description': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',
   'example.fly-to.registry.title': '相机飞行',
-  'example.fly-to.registry.description': '选择一个目的地开始飞行。',
+  'example.fly-to.registry.description': '选择目的地飞行，并在面板中调节 FOV、姿态和飞行参数。',
   'example.entities.registry.title': '实体绘制',
   'example.entities.registry.description': '已加载示例实体。',
   'example.symbol.registry.title': '图标与文字标签',
