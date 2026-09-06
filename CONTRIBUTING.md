@@ -79,7 +79,7 @@ Pull Request 描述应说明：
 - 如何验证改动，列出实际运行过的命令。
 - 是否涉及公开 API、文档、示例或构建产物。
 
-涉及公开 API 时，请同时更新对应的 TypeScript JSDoc、`docs/api/` 或 `docs/guide/`，并确保示例中的 API 形状保持清晰。涉及示例站点或 Sandcastle 时，请先阅读[示例、文档和 Sandcastle 架构说明](./notes/架构/examples文档与Sandcastle架构.md)。
+涉及公开 API 时，请同时更新对应的 TypeScript JSDoc、`docs/api/` 或 `docs/guide/`，并确保示例中的 API 形状保持清晰。涉及示例站点或 Sandcastle 时，请先阅读[示例、文档和 Sandcastle 架构说明](notes/architecture/examples文档与Sandcastle架构.md)。
 
 ## 📚 文档与示例
 

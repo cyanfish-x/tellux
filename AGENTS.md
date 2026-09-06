@@ -2,9 +2,9 @@
 
 Tellux 是基于 Three.js 的 ESM TypeScript 3D Earth Engine。公开包名 `tellux`，发布面是 `dist/`（`dist/index.js` / `dist/index.d.ts`）。公开 barrel 是 `src/index.ts`，组合根是 `src/Viewer.ts`。
 
-当前公开 API 以 1.0 稳定面为准：领域门面（`overlays` / `tilesets` / `models` / `terrain` / `globe` / `renderer` / `postProcess` / `highlighter` / `controls`）、`LonLat*` 坐标，以及初始化与运行时同构。从 0.2 升级见 `docs/guide/migration-1.0.md`。破坏式变更的设计记录在 `notes/架构/API稳定版破坏式变更方案.md`。
+当前公开 API 以 1.0 稳定面为准：领域门面（`overlays` / `tilesets` / `models` / `terrain` / `globe` / `renderer` / `postProcess` / `highlighter` / `controls`）、`LonLat*` 坐标，以及初始化与运行时同构。从 0.2 升级见 `docs/guide/migration-1.0.md`。破坏式变更的设计记录在 `notes/decisions/API稳定版设计决策.md`。
 
-`notes/架构/项目架构.md`、`notes/实现链路/sampleHeightMostDetailed实现链路.md` 若仍写旧公开路径，以源码与迁移指南为准。`notes/架构/highlight统一高亮方案.md` 是 0.2 设计背景；实现高亮时用 `viewer.highlighter`。
+维护者知识从 [notes/README.md](notes/README.md) 按任务检索。架构总览与采样入口已按 1.0 修订；旧评审和方案的状态、证据边界见各文档开头，不把历史待办当作当前任务。`notes/archive/highlight统一高亮方案.md` 是 0.2 设计背景；实现高亮时用 `viewer.highlighter`。
 
 ## 硬约束
 
@@ -19,9 +19,10 @@ Tellux 是基于 Three.js 的 ESM TypeScript 3D Earth Engine。公开包名 `tel
 
 `notes/` 是深处上下文，按主题打开，不要整目录预加载：
 
-- `架构/`：项目架构、子系统、公开 API 方案
-- `依赖能力备忘/`：3d-tiles-renderer、takram-*、打包策略
-- `实现链路/`：核心算法与流程
-- `坑点记录/`：易踩坑；总览是 `坑点记录/项目坑点记录.md`
+- `architecture/`：当前项目架构、子系统职责与实现链路
+- `decisions/`：已采纳决策、ADR、公开 API 与打包边界的理由
+- `engineering/`：根因与工程陷阱；总览是 `engineering/项目坑点记录.md`
+- `research/`：外部依赖能力与案例调研
+- `archive/`：历史评审与被取代方案，仅在追查背景时读取
 
-改项目主页、文档站、示例或 Sandcastle 时，先读 `notes/架构/examples文档与Sandcastle架构.md`（面向用户的说明放 `docs/`，维护者备忘放 `notes/`，不要手改 `examples/public/docs/`）。
+改项目主页、文档站、示例或 Sandcastle 时，先读 `notes/architecture/examples文档与Sandcastle架构.md`（面向用户的说明放 `docs/`，维护者备忘放 `notes/`，不要手改 `examples/public/docs/`）。

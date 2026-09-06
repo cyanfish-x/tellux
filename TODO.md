@@ -39,7 +39,7 @@
 
   - 独立 gallery 页 `examples/gallery.html`（复用 portal 壳 + 搜索 + 标签筛选），首页仅保留「最新 3 条 + 查看全部」精选条，空数据时隐藏。
   - 卡片新标签页跳转（`target="_blank"` + `rel="noopener"`）+ 响应式布局 + 封面加载失败兜底（`is-broken` 占位）。
-  - 决策背景见 [notes/架构/adr/0001-community-showcase-gallery-page.md](./notes/架构/adr/0001-community-showcase-gallery-page.md)。
+  - 决策背景见 [notes/decisions/0001-community-showcase-gallery-page.md](notes/decisions/0001-community-showcase-gallery-page.md)。
 - [X] C2 案例数据与维护流程
 
   - `examples/showcase-data.ts` 单一数据源（可版本管理）。
@@ -103,7 +103,7 @@
 
 目标：引擎级通用高性能实例化——层级空间结构驱动的逐实例视锥剔除 + 逐实例 LOD + 按 LOD 分桶的实例化批次。vegetation / 森林是第一个客户，后续覆盖草地、岩石、建筑等。
 
-架构见 [docs/design/engine-ownership-and-dependency-strategy.md](./docs/design/engine-ownership-and-dependency-strategy.md)；使用见 [docs/guide/hism.md](./docs/guide/hism.md)。
+架构见 [docs/design/engine-ownership-and-dependency-strategy.md](./notes/archive/engine-ownership-and-dependency-strategy.md)；使用见 [docs/guide/hism.md](./docs/guide/hism.md)。
 
 - 现状：`src/hism/` 已落地 PositionPipeline、RTC stage、风摆 stage、簇网格、视锥剔除、LOD bucketing、BVH 拾取、`viewer.addHismLayer` / `viewer.pick(..., { layers: ['hismInstance'] })` / `viewer.highlight.set(hismPick)`。
 - 演示：`examples/hism/hism-forest`（功能 + 描边高亮）、`examples/hism/hism-compare`（legacy InstancedMesh vs HISM 性能对照）；旧 `examples/vegetation.ts` 仍可作对照基线。
@@ -130,7 +130,7 @@
 
   - 背景：WebGPU 模式下地球瓦片层级切换时直接 pop，没有 WebGL 版的丝滑淡入淡出。
   - 根因：`TilesFadePlugin` 依赖 Three.js `onBeforeCompile` GLSL 注入，WebGPURenderer 不支持该机制。
-  - 详细分析与完善方向见 [notes/坑点记录/WebGPU下onBeforeCompile着色器机制失效坑点.md](./notes/坑点记录/WebGPU下onBeforeCompile着色器机制失效坑点.md)。
+  - 详细分析与完善方向见 [notes/engineering/WebGPU下onBeforeCompile着色器机制失效坑点.md](notes/engineering/WebGPU下onBeforeCompile着色器机制失效坑点.md)。
 
 ## 场景裁剪（Clipping）
 

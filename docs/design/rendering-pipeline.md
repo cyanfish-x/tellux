@@ -155,7 +155,7 @@ threeScene (THREE.Scene)
 
 ## 4. RendererAdapter 双层抽象
 
-[src/rendering/RendererAdapter.ts](../src/rendering/RendererAdapter.ts) 提供了 WebGL 和 WebGPU 的统一接口：
+[src/rendering/RendererAdapter.ts](../../src/rendering/RendererAdapter.ts) 提供了 WebGL 和 WebGPU 的统一接口：
 
 ```ts
 interface TelluxRendererAdapter {
@@ -187,7 +187,7 @@ interface TelluxRendererAdapter {
 
 ## 5. Tileset 管线
 
-[src/tiles/TilesetManager.ts](../src/tiles/TilesetManager.ts) 管理三类 3D Tiles：
+[src/tiles/TilesetManager.ts](../../src/tiles/TilesetManager.ts) 管理三类 3D Tiles：
 
 ### 5.1 地表（Surface Tileset）
 
@@ -258,7 +258,7 @@ LayerManager (影像图层)
 
 ### 6.1 WebGL 路径：AtmosphereManager
 
-[src/rendering/AtmosphereManager.ts](../src/rendering/AtmosphereManager.ts) 是核心编排器：
+[src/rendering/AtmosphereManager.ts](../../src/rendering/AtmosphereManager.ts) 是核心编排器：
 
 **初始化阶段：**
 
@@ -307,7 +307,7 @@ updateLightSources()
 
 ### 6.2 WebGPU 路径：WebGPUAtmosphereManager
 
-[src/rendering/WebGPUAtmosphereManager.ts](../src/rendering/WebGPUAtmosphereManager.ts) 使用 TSL (Three.js Shading Language)：
+[src/rendering/WebGPUAtmosphereManager.ts](../../src/rendering/WebGPUAtmosphereManager.ts) 使用 TSL (Three.js Shading Language)：
 
 ```
 WebGPUPostProcessingManager(rendererAdapter, renderer, scene, camera)
@@ -452,7 +452,7 @@ intensity = baseIntensity × (1 - smoothstep(0, 100000, cameraHeight))
 
 ## 9. 后处理管线
 
-[src/rendering/PostProcessingManager.ts](../src/rendering/PostProcessingManager.ts) 管理 effect pass 链。仅在 WebGL 模式下存在。
+[src/rendering/PostProcessingManager.ts](../../src/rendering/PostProcessingManager.ts) 管理 effect pass 链。仅在 WebGL 模式下存在。
 
 ### 9.1 Effect Pass 链
 
@@ -510,7 +510,7 @@ Three `Material.toneMapped` 的官方契约按渲染路径区分如下；它不�
 | 用户指定显示色 | entity、highlight | `ToneMappingColorResolver` 反求 AgX，保证目标显示色 |
 | 数据源显示色 | 无法线 `pnts` 顶点 RGB | `PointCloudColorTransform` 用 33³ AgX 逆向 LUT 预补偿，并随曝光同步 |
 
-后两类不是“关闭色调映射”，而是让它们能够穿过不可按材质豁免的全屏 output。不能靠全局调低曝光、`toneMapped=false`、弱环境光或伪法线解决。点云的具体排查和升级回归见 [点云 unlit 与 post-process 大气坑点](../../notes/坑点记录/点云unlit与post-process大气坑点.md)。
+后两类不是“关闭色调映射”，而是让它们能够穿过不可按材质豁免的全屏 output。不能靠全局调低曝光、`toneMapped=false`、弱环境光或伪法线解决。点云的具体排查和升级回归见 [点云 unlit 与 post-process 大气坑点](../../notes/engineering/点云unlit与post-process大气坑点.md)。
 
 ### 9.3 EffectPassAdapter
 
@@ -535,7 +535,7 @@ scenePass → atmosphere compositor (optional) → ordered WebGPU stages → Ren
 
 ## 10. 实体渲染管线
 
-[src/entities/EntityRenderManager.ts](../src/entities/EntityRenderManager.ts)
+[src/entities/EntityRenderManager.ts](../../src/entities/EntityRenderManager.ts)
 
 ### 10.1 实体场景组织
 
@@ -618,7 +618,7 @@ void telluxOitOutput() {
 
 ## 11. RTC（Relative to Center）管线
 
-[src/rendering/applyRTCInstancing.ts](../src/rendering/applyRTCInstancing.ts) + [src/rendering/RTCAutoUniforms.ts](../src/rendering/RTCAutoUniforms.ts)
+[src/rendering/applyRTCInstancing.ts](../../src/rendering/applyRTCInstancing.ts) + [src/rendering/RTCAutoUniforms.ts](../../src/rendering/RTCAutoUniforms.ts)
 
 ### 11.1 问题
 
@@ -699,7 +699,7 @@ RTC 清零了 `instanceMatrix` 平移，导致 `computeBoundingBox/Sphere` 把�
 
 ## 12. 材质系统
 
-[src/materials/materialMode.ts](../src/materials/materialMode.ts)
+[src/materials/materialMode.ts](../../src/materials/materialMode.ts)
 
 ### 12.1 材质模式策略
 
@@ -731,7 +731,7 @@ Tellux 不修改 Takram 等第三方库源码，而是在运行时通过 shader 
 
 ### 13.1 AerialPerspectiveEffect Patches
 
-[src/rendering/AtmosphereShaderPatches.ts:116-245](../src/rendering/AtmosphereShaderPatches.ts)
+[src/rendering/AtmosphereShaderPatches.ts:116-245](../../src/rendering/AtmosphereShaderPatches.ts)
 
 注入的 uniform/逻辑（全部带 `tellux` 前缀避免冲突）：
 
@@ -757,7 +757,7 @@ Tellux 不修改 Takram 等第三方库源码，而是在运行时通过 shader 
 
 ### 13.2 CloudsEffect Patches
 
-[src/rendering/AtmosphereShaderPatches.ts:247-348](../src/rendering/AtmosphereShaderPatches.ts)
+[src/rendering/AtmosphereShaderPatches.ts:247-348](../../src/rendering/AtmosphereShaderPatches.ts)
 
 | Uniform | 用途 |
 |---|---|
@@ -776,7 +776,7 @@ Tellux 不修改 Takram 等第三方库源码，而是在运行时通过 shader 
 
 ### 13.3 StarsMaterial Patches
 
-[src/rendering/AtmosphereShaderPatches.ts:49-114](../src/rendering/AtmosphereShaderPatches.ts)
+[src/rendering/AtmosphereShaderPatches.ts:49-114](../../src/rendering/AtmosphereShaderPatches.ts)
 
 | 注入 | 用途 |
 |---|---|
@@ -832,7 +832,7 @@ Tellux 不修改 Takram 等第三方库源码，而是在运行时通过 shader 
 
 ## 16. 关联文档
 
-- 引擎能力边界：`engine-ownership-and-dependency-strategy.md`（位于 `notes/架构/`）
+- 引擎能力边界：[历史设计背景](../../notes/archive/engine-ownership-and-dependency-strategy.md)
 - 贴地 Entity 实现：[ground-clamp.md](./ground-clamp.md)
 - 坑点记录：ez-tree 风摆与 RTC 争抢 project_vertex
 - 坑点记录：WebGPU 下 onBeforeCompile 机制失效

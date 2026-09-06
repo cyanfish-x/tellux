@@ -79,7 +79,7 @@ A pull request description should explain:
 - How the change was verified, including the commands that were actually run.
 - Whether the change affects the public API, documentation, examples, or build output.
 
-When changing a public API, update the relevant TypeScript JSDoc and `docs/api/` or `docs/guide/` content, and keep the API shape clear in examples. For changes involving the examples site or Sandcastle, read the [examples, docs, and Sandcastle architecture notes](./notes/架构/examples文档与Sandcastle架构.md) first.
+When changing a public API, update the relevant TypeScript JSDoc and `docs/api/` or `docs/guide/` content, and keep the API shape clear in examples. For changes involving the examples site or Sandcastle, read the [examples, docs, and Sandcastle architecture notes](notes/architecture/examples文档与Sandcastle架构.md) first.
 
 ## 📚 Documentation and examples
 

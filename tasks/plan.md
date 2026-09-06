@@ -8,7 +8,7 @@
 - 交付形态：`examples/water-area` 案例级增强
 - 公开 API：本阶段不进入 `src/`，不承诺稳定 API
 - 配套任务清单：[`tasks/todo.md`](todo.md)
-- 既有调研：[`notes/依赖能力备忘/three-geospatial WebGPU Water Area案例调研.md`](../notes/依赖能力备忘/three-geospatial%20WebGPU%20Water%20Area案例调研.md)
+- 既有调研：[`notes/research/three-geospatial WebGPU Water Area案例调研.md`](<../notes/research/three-geospatial WebGPU Water Area案例调研.md>)
 
 ## 目标
 
@@ -357,7 +357,7 @@ demo.appearance.waveStrength = 0.5
 
 - `examples/water-area/**`
 - `examples/sandcastle/runtime-bindings.test.ts`（仅在 binding 变化时）
-- `notes/依赖能力备忘/three-geospatial WebGPU Water Area案例调研.md`（补充最终实现与验收）
+- `notes/research/three-geospatial WebGPU Water Area案例调研.md`（补充最终实现与验收）
 
 **规模：** S–M，主要是验证和文档回填。
 
