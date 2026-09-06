@@ -40,6 +40,7 @@ function setup() {
   const fetch = vi.fn()
   const errors = vi.fn()
   const auth = vi.fn()
+  const stabilizeSplatRaycast = vi.fn()
   let panel: any
   const controlsFrom = (schema: any): any => Object.fromEntries(Object.entries(schema)
     .filter(([key]) => key !== '$')
@@ -50,6 +51,7 @@ function setup() {
     CESIUM_ION_EVALUATION_TOKEN: 'public-evaluation-test',
     SplatColorTransform: class { update() {} attach() {} dispose() {} },
     getSparkRendererForScene: () => null,
+    stabilizeSplatRaycast,
     CesiumIonAuthPlugin: class { constructor(options: unknown) { auth(options) } }, ImplicitTilingPlugin: class {},
     bootExampleI18n() {}, t: (value: any) => value.en,
     ExampleMessage: { error: errors },
@@ -65,14 +67,27 @@ function setup() {
   }
   const source = readFileSync(new URL('./gaussian-splat-3d-tiles.ts', import.meta.url), 'utf8')
     .replace(/^import .*$/gm, '')
-    .replace(/\/\/ #region probe[\s\S]*?\/\/ #endregion/g, '')
     .replaceAll('import.meta.env', '({})')
   const js = ts.transpile(source, { target: ts.ScriptTarget.ES2021, module: ts.ModuleKind.None })
   const api = new Function(...Object.keys(bindings), js + '\nreturn { loadSource, clearSource, flyToSource };')(...Object.values(bindings))
-  return { api, viewer, panel, fetch, errors, auth, Tiles, Mesh, decode: () => finishDecode() }
+  return { api, viewer, panel, fetch, errors, auth, stabilizeSplatRaycast, Tiles, Mesh, decode: () => finishDecode() }
 }
 
 describe('Gaussian source lifecycle', () => {
+  it('stabilizes each loaded Gaussian tile without adapting ordinary objects or stale loads', () => {
+    const h = setup()
+    const tile = h.Tiles.instances[0]
+    const scene = new THREE.Group()
+    const mesh = new THREE.Group()
+    mesh.userData.gaussianSplat = true
+    scene.add(mesh, new THREE.Mesh())
+    tile.events['load-model']({ scene })
+    expect(h.stabilizeSplatRaycast).toHaveBeenCalledOnce()
+    expect(h.stabilizeSplatRaycast).toHaveBeenCalledWith(mesh)
+    h.api.clearSource()
+    tile.events['load-model']({ scene })
+    expect(h.stabilizeSplatRaycast).toHaveBeenCalledTimes(1)
+  })
   it('uses the public evaluation token only for the official asset and honors explicit credentials', async () => {
     const h = setup()
     h.panel.controls.source.kind = 'ion'
@@ -131,6 +146,7 @@ describe('Gaussian source lifecycle', () => {
     await loading
     expect(h.Mesh.instances[0].dispose).toHaveBeenCalledOnce()
     expect(h.Mesh.instances[0].parent).toBeNull()
+    expect(h.stabilizeSplatRaycast).not.toHaveBeenCalled()
     expect(h.Tiles.instances[1].disposed).toBe(false)
   })
 
@@ -144,6 +160,8 @@ describe('Gaussian source lifecycle', () => {
     await loading
     const mesh = h.Mesh.instances[0]
     const root = mesh.parent!
+    expect(h.stabilizeSplatRaycast).toHaveBeenCalledOnce()
+    expect(h.stabilizeSplatRaycast).toHaveBeenCalledWith(mesh)
     expect(root.parent).toBe(h.viewer.scene.raw)
     expect(root.matrixAutoUpdate).toBe(false)
     expect(h.viewer.flyToTarget).toHaveBeenCalled()

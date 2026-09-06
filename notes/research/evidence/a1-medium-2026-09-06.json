@@ -1,0 +1,439 @@
+{
+  "phase": "A1",
+  "ready": true,
+  "shaderError": null,
+  "mode": "joint",
+  "steps": 64,
+  "air": true,
+  "clouds": true,
+  "output": 0,
+  "domainMeters": 12000,
+  "framebuffer": [
+    1100,
+    720
+  ],
+  "clock": "2026-03-20T12:00:00.000Z",
+  "weatherMotion": "frozen; local sampling jitter fixed to 0.5",
+  "dependencies": {
+    "three": "184",
+    "atmosphere": "0.19.1",
+    "clouds": "0.7.6"
+  },
+  "scope": "Joint view-ray integration with direct-single-scattering air and upstream cloud lighting; no full coupling claim",
+  "camera": [
+    0,
+    0.9999999999999999,
+    -6.9388939039072276e-18,
+    0,
+    0.9961946980917412,
+    0,
+    -0.08715574274770876,
+    0,
+    -0.08715574274770876,
+    -6.938893903907228e-18,
+    -0.9961946980917413,
+    0,
+    6380201.221286289,
+    0,
+    -4980.973490457754,
+    1
+  ],
+  "projection": [
+    1.403677257060802,
+    0,
+    0,
+    0,
+    0,
+    2.1445069205095586,
+    0,
+    0,
+    0,
+    0,
+    -1.0000254416305092,
+    -1,
+    0,
+    0,
+    -4.589026814377697,
+    0
+  ],
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Ti (0x000024C9) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "timerAvailable": true
+  },
+  "gpuSamples": [
+    {
+      "ms": 141.032448,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 18.091008,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 18.115584,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.69088,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.734912,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.765632,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.734912,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.73696,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.733888,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.705216,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.696,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.723648,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.699072,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.728768,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.735936,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.76256,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.737984,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.787136,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.733888,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.719552,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.786112,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.857792,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.833216,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.776896,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.758464,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.80352,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.81376,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.77792,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 13.766656,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    },
+    {
+      "ms": 18.286592,
+      "width": 1100,
+      "height": 720,
+      "steps": 64,
+      "mode": "joint"
+    }
+  ],
+  "validation": {
+    "analytic": {
+      "supported": true,
+      "passed": true,
+      "tolerance": 0.00002,
+      "results": [
+        {
+          "name": "vacuum",
+          "adjacent": false,
+          "maxError": 0,
+          "passed": true
+        },
+        {
+          "name": "vacuum",
+          "adjacent": true,
+          "maxError": 0,
+          "passed": true
+        },
+        {
+          "name": "zero-extinction-source",
+          "adjacent": false,
+          "maxError": 1.1622905732311395e-7,
+          "passed": true
+        },
+        {
+          "name": "zero-extinction-source",
+          "adjacent": true,
+          "maxError": 1.0132789612926629e-7,
+          "passed": true
+        },
+        {
+          "name": "air-only",
+          "adjacent": false,
+          "maxError": 9.656828561244168e-7,
+          "passed": true
+        },
+        {
+          "name": "air-only",
+          "adjacent": true,
+          "maxError": 6.073851565313593e-7,
+          "passed": true
+        },
+        {
+          "name": "cloud-only",
+          "adjacent": false,
+          "maxError": 4.7200457720109057e-7,
+          "passed": true
+        },
+        {
+          "name": "cloud-only",
+          "adjacent": true,
+          "maxError": 3.624604496543782e-7,
+          "passed": true
+        },
+        {
+          "name": "overlap",
+          "adjacent": false,
+          "maxError": 0.0000010657444144968053,
+          "passed": true
+        },
+        {
+          "name": "overlap",
+          "adjacent": true,
+          "maxError": 5.24596262430066e-7,
+          "passed": true
+        },
+        {
+          "name": "dense",
+          "adjacent": false,
+          "maxError": 0,
+          "passed": true
+        },
+        {
+          "name": "dense",
+          "adjacent": true,
+          "maxError": 0,
+          "passed": true
+        },
+        {
+          "name": "tiny-optical-depth",
+          "adjacent": false,
+          "maxError": 9.99999993922529e-9,
+          "passed": true
+        },
+        {
+          "name": "tiny-optical-depth",
+          "adjacent": true,
+          "maxError": 9.99999993922529e-9,
+          "passed": true
+        }
+      ]
+    },
+    "realMedium": {
+      "resolution": [
+        64,
+        36
+      ],
+      "reference": "512-step same closure, not physical ground truth",
+      "air": true,
+      "cloud": true,
+      "rows": [
+        {
+          "output": "T",
+          "steps64": {
+            "p95": 0.011067867279052734,
+            "max": 0.7808838933706284,
+            "nonFinite": 0
+          },
+          "steps128": {
+            "p95": 0.0044359564781188965,
+            "max": 0.8511902615427971,
+            "nonFinite": 0
+          },
+          "airFirst": {
+            "p95": 4.470348358154297e-8,
+            "max": 0.000001430511474609375,
+            "nonFinite": 0
+          },
+          "cloudFirst": {
+            "p95": 4.470348358154297e-8,
+            "max": 0.000001430511474609375,
+            "nonFinite": 0
+          }
+        },
+        {
+          "output": "S",
+          "steps64": {
+            "p95": 0.023340478539466858,
+            "max": 0.1593034048564732,
+            "nonFinite": 0
+          },
+          "steps128": {
+            "p95": 0.014019884169101715,
+            "max": 0.12805129867047071,
+            "nonFinite": 0
+          },
+          "airFirst": {
+            "p95": 0.0022554248571395874,
+            "max": 0.01446494460105896,
+            "nonFinite": 0
+          },
+          "cloudFirst": {
+            "p95": 0.0023484081029891968,
+            "max": 0.02580660581588745,
+            "nonFinite": 0
+          }
+        }
+      ],
+      "airAgainstLut": {
+        "transmittance": {
+          "p95": 0.0009014010429382324,
+          "max": 0.002523958683013916,
+          "nonFinite": 0
+        },
+        "scattering": {
+          "p95": 0.019503187388181686,
+          "max": 0.020694822072982788,
+          "nonFinite": 0
+        },
+        "scope": "Direct single scattering versus full upstream LUT; scattering mismatch is not an integration-only error"
+      }
+    }
+  }
+}

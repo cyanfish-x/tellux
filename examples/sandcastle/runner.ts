@@ -158,11 +158,17 @@ function bootExampleI18nInRunner(options: BootExampleI18nOptions = {}) {
 
 async function executeExampleScript(source: string) {
   const optionalBindings = await loadOptionalRuntimeBindings(source)
+  const prototypeModule = /\bstartRenderingPrototype\b/.test(source)
+    ? await import('../rendering-prototypes/startRenderingPrototype') : null
+  const mediumModule = /\bstartMediumIntegration\b/.test(source)
+    ? await import('../rendering-prototypes/startMediumIntegration') : null
   const sandcastleImportMeta = {
     env: { ...import.meta.env },
     url: window.location.href,
   }
   const execute = new Function(
+    "startMediumIntegration",
+    "startRenderingPrototype",
     "tellux",
     "THREE",
     "TilesRenderer",
@@ -206,6 +212,8 @@ async function executeExampleScript(source: string) {
     `"use strict";\n${transformExampleScript(source)}\n//# sourceURL=tellux-sandcastle-example.js`
   )
   execute(
+    mediumModule?.startMediumIntegration,
+    prototypeModule?.startRenderingPrototype,
     tellux,
     THREE,
     TilesRenderer,

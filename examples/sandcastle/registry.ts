@@ -29,6 +29,10 @@ const scriptModules = {
 } as Record<string, string>
 
 const categoryById: Record<string, string> = {
+  "rendering-medium-integration": "Rendering",
+  "rendering-stages": "Rendering",
+  "rendering-splat-atmosphere": "Rendering",
+  "rendering-cloud-transparency": "Rendering",
   "3d-tiles": "Tiles",
   atmosphere: "Rendering",
   basic: "Viewer",

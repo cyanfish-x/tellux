@@ -1,0 +1,15 @@
+diff --git a/dist/index.js b/dist/index.js
+index d381e8b7a936de20d58b5f3474adc1bdd7dc142e..c446cfbe52b7dbd2262ef0cf2ad28af937e0d62f 100644
+--- a/dist/index.js	
++++ b/dist/index.js
+@@ -521,7 +521,9 @@ var CameraRelativeSparkRenderer = class extends SparkRenderer {
+       if (shouldHandleFrameState) {
+         this.#hadRebasedLastFrame = hasRebased;
+       }
+-      const renderCamera = hasRebased ? this.#getRenderCamera(camera) : camera;
++      // Cached display data remains camera-relative while roots disappear during tile swaps.
++      // Always render in its recorded frame, including while the next sort is pending.
++      const renderCamera = this.#getRenderCamera(camera);
+       super.onBeforeRender(renderer, scene, renderCamera);
+     } finally {
+       this.#restoreCameraRelativeRoots();

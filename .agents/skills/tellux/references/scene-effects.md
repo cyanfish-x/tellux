@@ -174,3 +174,8 @@ const viewer = new tellux.Viewer(container, {
   }
 })
 ```
+# 渲染边界实验入口
+
+`examples/rendering-stages.ts`、`rendering-splat-atmosphere.ts`、`rendering-cloud-transparency.ts` 是 WebGL Sandcastle 实验。使用说明见 `docs/guide/rendering-prototypes.md`。实验 helper 访问内部管线并注入 shader，不能作为公开应用 API 范例；云穿插与跨渲染器透明排序尚未解决。
+
+`examples/rendering-medium-integration.ts` 是 A1 后续验证，包含共享积分核的 CPU/GPU 对照，以及上游真实云源项与空气直接单次散射实验。数值检查通过不代表完整照明、薄云采样或工业级性能通过；不得将其当成生产大气 API。

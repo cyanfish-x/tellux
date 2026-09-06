@@ -1,5 +1,6 @@
 export { GaussianSplatPlugin, getSparkRendererForScene } from '3d-tiles-rendererjs-3dgs-plugin'
 export { SplatColorTransform } from './SplatColorTransform'
+export { stabilizeSplatRaycast } from './stabilizeSplatRaycast'
 export { CESIUM_ION_EVALUATION_TOKEN } from './cesiumEvaluationToken'
 export { SparkRenderer, SplatMesh } from '@sparkjsdev/spark'
 export { CesiumIonAuthPlugin, ImplicitTilingPlugin } from '3d-tiles-renderer/core/plugins'
