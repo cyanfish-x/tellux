@@ -1,13 +1,11 @@
 ---
 name: tellux
-description: How to write application code with Tellux 1.0. Use for Viewer init, overlays, terrain, 3D Tiles, models, atmosphere, clouds, postProcess, highlighter, camera, picking, and HISM. Do not use as a source for implementing the tellux library itself.
+description: How to write application code with Tellux (0.3 API shape). Use for Viewer init, overlays, terrain, 3D Tiles, models, atmosphere, clouds, postProcess, highlighter, camera, picking, and HISM. Do not use as a source for implementing the tellux library itself.
 ---
 
 # Tellux 应用开发助手
 
-Tellux 是一个基于 Three.js 的 ESM TypeScript 库，用于在网页里构建数字地球、加载 Cesium 地形 / 影像 / 3D Tiles，并集成大气、体积云和后处理。本 skill 辅助你为**使用 Tellux 的应用**编写正确、可运行的代码。公开 API 以 1.0 为准；从 0.2 升级见仓库 `docs/guide/migration-1.0.md`。
-
-Tellux 是一个基于 Three.js 的 ESM TypeScript 库，用于在网页里构建数字地球、加载 Cesium 地形 / 影像 / 3D Tiles，并集成大气、体积云和后处理。本 skill 辅助你为**使用 Tellux 的应用**编写正确、可运行的代码。
+Tellux 是一个基于 Three.js 的 ESM TypeScript 库，用于在网页里构建数字地球、加载 Cesium 地形 / 影像 / 3D Tiles，并集成大气、体积云和后处理。本 skill 辅助你为**使用 Tellux 的应用**编写正确、可运行的代码。公开 API 已收敛为稳定形状，随 0.3 发布；从 0.2 升级见仓库 `docs/guide/migration-0.3.md`。
 
 ## 何时使用本 skill
 

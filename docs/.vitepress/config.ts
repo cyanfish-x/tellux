@@ -66,7 +66,7 @@ export default ({ command }: ConfigEnv) => defineConfig({
         text: '指南',
         items: [
           { text: '快速开始', link: '/guide/getting-started' },
-          { text: '从 0.2 迁移到 1.0', link: '/guide/migration-1.0' },
+          { text: '从 0.2 迁移到 0.3', link: '/guide/migration-0.3' },
           { text: 'Viewer 基础', link: '/guide/viewer' },
           { text: '相机控制', link: '/guide/camera' },
           { text: '交互与拾取', link: '/guide/interaction' },

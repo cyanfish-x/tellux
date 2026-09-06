@@ -16,7 +16,7 @@ const distIndex = resolve(root, 'dist/index.d.ts')
 const distAssets = resolve(root, 'dist/assets.d.ts')
 const distAvailable = existsSync(distIndex) && existsSync(distAssets)
 
-describe.skipIf(!distAvailable)('1.0 dist API surface', () => {
+describe.skipIf(!distAvailable)('stable dist API surface', () => {
   it('keeps package exports and types on the frozen mapping', () => {
     const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
       types?: string

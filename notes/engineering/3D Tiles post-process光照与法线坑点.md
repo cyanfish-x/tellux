@@ -1,6 +1,6 @@
 # 3D Tiles 后处理光照与法线坑点
 
-> 2026-09-06 复核范围：核对 TileCreasedNormalsPlugin 的几何身份检查与 PostProcessingManager 的 HalfFloat NormalPass，修正 1.0 示例；原 Takram 场景观察未重跑。
+> 2026-09-06 复核范围：核对 TileCreasedNormalsPlugin 的几何身份检查与 PostProcessingManager 的 HalfFloat NormalPass，修正当前示例；原 Takram 场景观察未重跑。
 
 
 本文记录 `google-photorealistic-3d-tiles` 示例在 `post-process` 光照模式下的排查结论。核心经验是：摄影测量 3D Tiles 要对齐 Takram 示例的 `NormalPass + creased normals + AerialPerspective` 路径，不要把深度重建法线当成首选修复。

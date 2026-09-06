@@ -1,8 +1,8 @@
 # Highlight 统一高亮方案
 
-> 状态：**历史背景（1.0 已落地）**
+> 状态：**历史背景（现行 `highlighter` 门面已落地）**
 > 现行公开门面：`viewer.highlighter`（操作 + `outline` / `overlay` 样式都在该对象上）
-> 取代说明：`notes/decisions/API稳定版设计决策.md` 批次 B9；用户迁移见 `docs/guide/migration-1.0.md`
+> 取代说明：`notes/decisions/API稳定版设计决策.md` 批次 B9；用户迁移见 `docs/guide/migration-0.3.md`
 
 本文记录 2026-07 落地时的原始设计，解释当时为什么把样式挂在 `scene.highlight`。实现或扩展高亮时 **不要** 按下文的 0.2 公开路径写代码，用 `viewer.highlighter`。
 
@@ -14,7 +14,7 @@
 
 以 `viewer.highlight` 为统一门面，按目标类型自动选择后处理描边（整 Object3D）或叠加几何（3D Tiles feature）；样式挂在 `scene.highlight`，与现有 Scene 设置同构。
 
-当前写法见 [高亮指南](../../docs/guide/highlight.md) 与 [1.0 决策](../decisions/API稳定版设计决策.md)。本次保留原 select/hover 互斥、目标类型路由、HISM proxy 和舍弃 technique 参数的理由；不复核原 P0/P1 施工顺序。
+当前写法见 [高亮指南](../../docs/guide/highlight.md) 与 [API 决策](../decisions/API稳定版设计决策.md)。本次保留原 select/hover 互斥、目标类型路由、HISM proxy 和舍弃 technique 参数的理由；不复核原 P0/P1 施工顺序。
 
 ## 锁定决策
 

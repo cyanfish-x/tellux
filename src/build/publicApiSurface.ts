@@ -325,7 +325,7 @@ export function assertPackageExportContract(pkg: {
     failures.push(`types: expected ${PACKAGE_TYPES}, got ${String(pkg.types)}`)
   }
   if (JSON.stringify(pkg.exports) !== JSON.stringify(PACKAGE_EXPORTS)) {
-    failures.push('exports mapping drifted from the 1.0 contract')
+    failures.push('exports mapping drifted from the stable public API contract')
   }
   return failures
 }

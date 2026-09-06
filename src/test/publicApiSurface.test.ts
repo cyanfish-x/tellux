@@ -14,7 +14,7 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const indexSource = readFileSync(resolve(root, 'src/index.ts'), 'utf8')
 
-describe('1.0 public export baseline', () => {
+describe('stable public export baseline', () => {
   it('freezes named value and type exports from src/index.ts', () => {
     const parsed = parseBarrelExports(indexSource)
     expect(parsed.values).toEqual([...PUBLIC_VALUE_EXPORTS])

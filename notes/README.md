@@ -9,7 +9,7 @@
 | 目录 | 收录内容 |
 | --- | --- |
 | `architecture/` | 当前职责、所有权、生命周期与实现链路 |
-| `decisions/` | 已采纳选择的理由、取舍与重新评估条件，包括 ADR、Clock、1.0 API 和打包边界 |
+| `decisions/` | 已采纳选择的理由、取舍与重新评估条件，包括 ADR、Clock、稳定公开面和打包边界 |
 | `engineering/` | 难以重建的根因、排障证据和工程陷阱 |
 | `research/` | 外部依赖能力、版本调查与案例研究；包含的推测不因此成为事实 |
 | `archive/` | 被取代的方案、旧评审和历史整改记录；保留独有理由与证据，不作为当前待办 |
@@ -21,7 +21,7 @@
 | 正在做什么 | 先读哪里 | 何时继续展开 |
 | --- | --- | --- |
 | 调整模块职责、装配或销毁 | [项目架构](architecture/项目架构.md) | 涉及具体渲染、采样或状态所有权时读对应专题 |
-| 使用或修改公开 API | [1.0 迁移指南](../docs/guide/migration-1.0.md)、[API 文档](../docs/api/viewer.md) | 要理解舍弃旧 API 的理由时读 [1.0 设计背景](decisions/API稳定版设计决策.md) |
+| 使用或修改公开 API | [0.3 迁移指南](../docs/guide/migration-0.3.md)、[API 文档](../docs/api/viewer.md) | 要理解舍弃旧 API 的理由时读 [稳定公开面设计背景](decisions/API稳定版设计决策.md) |
 | 修改时间、Timeline 或昼夜联动 | [Clock 决策](decisions/Clock统一场景时钟.md) | 光照问题继续读 [光照指南](../docs/guide/lighting.md) 与下方渲染决策 |
 | 排查高度结果、最高细节或卡顿 | [采样实现链路](architecture/sampleHeightMostDetailed实现链路.md) | 调度问题读 [采样抢占渲染](engineering/高度采样更新抢占渲染循环坑点.md) |
 | 排查颜色、深度、大气、影像或精度 | [坑点入口](engineering/项目坑点记录.md) | 按症状选择专题，再核对实际 renderer、材质与输出路径 |
@@ -43,12 +43,12 @@
 
 ## 历史记录：需要理由时再读
 
-旧评审和被取代方案移入 `archive/`，项目内引用同步到新位置；仍影响当前选择的 1.0 API 设计理由留在 `decisions/`。原问题、取舍和验证证据仍有价值；原待办及优先级不能直接驱动新任务。项目外的旧链接未核查。
+旧评审和被取代方案移入 `archive/`，项目内引用同步到新位置；仍影响当前选择的公开 API 设计理由留在 `decisions/`。原问题、取舍和验证证据仍有价值；原待办及优先级不能直接驱动新任务。项目外的旧链接未核查。
 
 - [第一次架构债务清理](archive/第一次架构债务清理.md)：早期拆分理由，部分“现状”已失效。
 - [2026-07-30 引擎健康诊断](archive/引擎健康诊断-2026-07-30.md)：`7a1695b` 基线及后续整改记录，不是当前健康证明。
 - [引擎能力边界与依赖策略](archive/engine-ownership-and-dependency-strategy.md)：PositionPipeline、HISM 和 vendor 的设计背景；原实施计划不代表当前进度。
-- [1.0 API 设计原稿](archive/API稳定版破坏式变更原稿.md)、[0.2 高亮方案](archive/highlight统一高亮方案.md)：历史方案与讨论证据；已采纳的 API 理由见 [设计决策](decisions/API稳定版设计决策.md)。
+- [稳定公开面设计原稿](archive/API稳定版破坏式变更原稿.md)、[0.2 高亮方案](archive/highlight统一高亮方案.md)：历史方案与讨论证据；已采纳的 API 理由见 [设计决策](decisions/API稳定版设计决策.md)。原稿曾以 1.0.0 为发版目标，该口径已取消，实际随 0.3 发布。
 - [本次知识重建记录](archive/2026-09-06-知识重建记录.md)：逐篇去向、删减依据和 Git 恢复位置。
 
 ## 维护方式

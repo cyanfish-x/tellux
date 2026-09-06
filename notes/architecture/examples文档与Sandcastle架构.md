@@ -181,7 +181,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 
 预算超过或目标产物缺失时构建直接失败。调整上限前必须先说明增长来自哪个领域能力，并在本节更新基线；不要只提高 Vite 的通用 chunk warning 阈值。
 
-核心 `index.js` 在 1.0 公开 API 稳定窗口从 600 / 160 KiB 调到 640 / 165 KiB：增长来自领域门面（`tilesets` / `models` / `terrain` / `globe` / `renderer` / `postProcess` / `highlighter` / `controls`）和调试面板嵌套 options，不是示例站入口。
+核心 `index.js` 在公开 API 稳定窗口从 600 / 160 KiB 调到 640 / 165 KiB：增长来自领域门面（`tilesets` / `models` / `terrain` / `globe` / `renderer` / `postProcess` / `highlighter` / `controls`）和调试面板嵌套 options，不是示例站入口。
 
 ### 示例控件面板
 

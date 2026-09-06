@@ -18,7 +18,7 @@
 
 公开入口是 `Viewer.sampleHeightMostDetailed(positions, options)`。
 
-`Viewer` 转发到 `HeightSampler.sampleHeightMostDetailed`。单点输入 `LonLatLike`，返回 `Promise<number | undefined>`；批量输入 `readonly LonLatLike[]`，返回 `Promise<(number | undefined)[]>` 并保持输入顺序。点可用 `{ longitude, latitude }` 或二元组表示；返回的是米制高度，不是坐标元组。高度 `0` 是命中，用 `=== undefined` 判断未命中。公开用法见 [Viewer API](../../docs/api/viewer.md) 与 [1.0 迁移指南](../../docs/guide/migration-1.0.md)。
+`Viewer` 转发到 `HeightSampler.sampleHeightMostDetailed`。单点输入 `LonLatLike`，返回 `Promise<number | undefined>`；批量输入 `readonly LonLatLike[]`，返回 `Promise<(number | undefined)[]>` 并保持输入顺序。点可用 `{ longitude, latitude }` 或二元组表示；返回的是米制高度，不是坐标元组。高度 `0` 是命中，用 `=== undefined` 判断未命中。公开用法见 [Viewer API](../../docs/api/viewer.md) 与 [0.3 迁移指南](../../docs/guide/migration-0.3.md)。
 
 关键选项：
 

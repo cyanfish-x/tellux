@@ -95,7 +95,7 @@ type _OmitsHighlighterInternals = Assert<
   OmitsKey<HighlightManager, 'syncStyleFromSettings' | 'outlineEffect'>
 >
 
-describe('1.0 public API contract', () => {
+describe('stable public API contract', () => {
   it('keeps domain facades on Viewer', () => {
     const keys: Array<keyof Viewer> = [
       'overlays',
