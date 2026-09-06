@@ -79,6 +79,8 @@ viewer.scene.raw.add(marker)   // 加到这里参与 Tellux 渲染
 
 ### 高斯泼溅示例侧集成
 
+Spark 默认输出 sRGB，而 Tellux WebGL 最终对整帧应用曝光与 AgX。案例通过 `SplatColorTransform` 复用点云 AgX 逆 LUT，保留高斯显示色，不以降低全局曝光修复高斯偏白；透明混合区域需视觉核验。纹理翻转错缝另见 `notes/engineering/Spark纹理上传状态缓存冲突.md`，不要混为颜色问题。
+
 `examples/gaussian-splat-3d-tiles.ts` 提供 SvirnasAlyt / Elevator 高斯 3D Tiles、Cesium ion 和 Spark 单文件切换。高斯 3D Tiles 走 `TilesRenderer` + `GaussianSplatPlugin`，ion 另注册鉴权插件；独立 SPZ/PLY 走 `SplatMesh` + `SparkRenderer`，用 `cartographicToMatrix4` 把父 Group 放到展示锚点。示例需要 WebGL，没有新增 Tellux 公开门面。无地理参考资源的锚点与缩放应明确标注，不能暗示为真实位置。
 
 接入专用依赖后，同步 `examples/gaussian-splat/sandcastleBindings.ts` 与 `GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES`，避免 Sandcastle 剥离 import 后缺失运行时值。数据源切换需隔离过期异步结果、释放对象，并在 tileset 根目录加载完成后定位；`flyToTarget` 不返回定位成功布尔值。

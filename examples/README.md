@@ -99,6 +99,8 @@ GitHub 样例固定到上游提交 e5abce2422ff72eae8576c814babbec20ed8fe34。�
 
 案例使用 WebGL。独立页与 Sandcastle 共用案例源码，Spark / 高斯插件仅在需要时加载。切源会取消单文件下载、隔离旧请求结果并释放场景资源。
 
+「保留数据颜色」默认开启：高斯 sRGB 颜色通过与点云共用的 AgX 逆变换 LUT 补偿最终曝光与色调映射，不改变底图曝光。关闭可对照旧输出。该补偿发生在透明混合前，半透明边缘与其他物体混合后的结果不保证与 Cesium 逐像素一致；实际外观仍需同视角核验。
+
 Spark 2.1.0 的 ESM 上传路径通过 `pnpm-workspace.yaml` 应用 `patches/@sparkjsdev__spark@2.1.0.patch`：三处 `UNPACK_FLIP_Y_WEBGL` 写入改走 Three.js 的状态缓存接口，避免高斯排序更新后 Canvas 底图纹理上下翻转、瓦片错缝。ArcGIS 的 URL 顺序仍为 `{z}/{y}/{x}`。升级 Spark 时运行 `sparkPixelStore.test.ts` 核验上游是否已修复；应用补丁后若开发页面仍使用旧预构建，执行 `pnpm exec vite optimize --force --config examples/vite.config.ts` 并硬刷新，必要时重启已有开发服务。
 
 保留自定义 3D Tiles 入口，在项目根目录 .env 设置后默认选中它：

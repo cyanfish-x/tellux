@@ -133,7 +133,8 @@ if (telluxPointColorTransformEnabled > 0.5) {
     )
 }
 
-function createAgxInverseLut() {
+/** 内部显示色适配器共享的 LUT；不属于公开 barrel。 Shared internal display-color LUT, not a public barrel export. */
+export function createAgxInverseLut() {
   const size = POINT_COLOR_LUT_SIZE
   const data = new Float32Array(size * size * size * 4)
   const maxIndex = size - 1

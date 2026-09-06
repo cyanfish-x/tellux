@@ -1,4 +1,5 @@
 export const GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES = [
+  'SplatColorTransform', 'getSparkRendererForScene',
   'GaussianSplatPlugin', 'SparkRenderer', 'SplatMesh', 'CesiumIonAuthPlugin', 'ImplicitTilingPlugin', 'CESIUM_ION_EVALUATION_TOKEN'
 ] as const
 

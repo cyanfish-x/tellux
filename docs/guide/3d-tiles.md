@@ -97,6 +97,8 @@ viewer.flyToTarget(layer.tileset, {
 
 ## 高斯泼溅案例
 
+案例的“保留数据颜色”用于补偿 Tellux 最终曝光 / AgX 对高斯显示色的影响，默认开启；关闭可与原始输出路径对比。它不调整全局曝光，透明混合区域仍可能与其他渲染器不同。
+
 [高斯泼溅案例](../../gaussian-splat-3d-tiles.html)提供 SvirnasAlyt、Elevator、Cesium ion / Redmond 和 Spark / Butterfly 四种预设。切换预设后自动加载，也可编辑 URL 或 ion 的 Asset ID / Token 后重试。
 
 - 两个 GitHub 预设使用固定提交中的高斯 3D Tiles，按相机需要加载瓦片。

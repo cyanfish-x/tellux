@@ -34,7 +34,7 @@ function setup() {
   const viewer = {
     scene: { raw: new THREE.Scene() }, camera: { raw: new THREE.PerspectiveCamera() },
     renderer: { raw: Object.create(THREE.WebGLRenderer.prototype) },
-    globe: { show: true }, flyToTarget: vi.fn(),
+    globe: { show: true }, postProcess: { toneMappingExposure: 5 }, flyToTarget: vi.fn(),
     cartographicToMatrix4: () => new THREE.Matrix4(), render() {}, destroy() {},
   }
   const fetch = vi.fn()
@@ -48,6 +48,8 @@ function setup() {
     tellux: { Viewer: function () { return viewer } }, THREE, TilesRenderer: Tiles,
     GaussianSplatPlugin: class {}, SparkRenderer: Spark, SplatMesh: Mesh,
     CESIUM_ION_EVALUATION_TOKEN: 'public-evaluation-test',
+    SplatColorTransform: class { update() {} attach() {} dispose() {} },
+    getSparkRendererForScene: () => null,
     CesiumIonAuthPlugin: class { constructor(options: unknown) { auth(options) } }, ImplicitTilingPlugin: class {},
     bootExampleI18n() {}, t: (value: any) => value.en,
     ExampleMessage: { error: errors },

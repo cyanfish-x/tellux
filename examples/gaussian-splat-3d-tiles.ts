@@ -1,5 +1,6 @@
 import tellux from "../src"
 import * as THREE from "three"
+import { SplatColorTransform, getSparkRendererForScene } from "./gaussian-splat/sandcastleBindings"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin, SparkRenderer, SplatMesh, CesiumIonAuthPlugin, ImplicitTilingPlugin, CESIUM_ION_EVALUATION_TOKEN } from "./gaussian-splat/sandcastleBindings"
 import { bootExampleI18n, t } from "./i18n"
@@ -84,6 +85,7 @@ if (!(rawRenderer instanceof THREE.WebGLRenderer)) {
   throw new Error("This Gaussian splat example requires WebGLRenderer.")
 }
 const renderer: THREE.WebGLRenderer = rawRenderer
+const splatColors = new SplatColorTransform()
 
 
 let panel: TelluxPanel<ReturnType<typeof splatSchema>> | undefined
@@ -155,6 +157,7 @@ function syncDisplay() {
   if (splatRoot) splatRoot.visible = visible
   if (sparkRenderer) sparkRenderer.visible = visible
   viewer.globe.show = globe
+  splatColors.update(viewer.postProcess.toneMappingExposure, panel.controls.display.sourceColors)
 }
 
 async function loadSource() {
@@ -201,6 +204,7 @@ async function loadSource() {
       splatRoot.matrix.copy(viewer.cartographicToMatrix4(BUTTERFLY_ANCHOR))
       splatRoot.add(mesh)
       sparkRenderer = new SparkRenderer({ renderer, focalAdjustment: 2, depthTest: true, depthWrite: false })
+      splatColors.attach(sparkRenderer)
       viewer.scene.raw.add(splatRoot, sparkRenderer)
       requestController = null
       syncDisplay()
@@ -220,6 +224,7 @@ async function loadSource() {
       renderer, scene: viewer.scene.raw, minRaycastOpacity: 0.08,
       sparkRendererOptions: { focalAdjustment: 2, depthTest: true, depthWrite: false },
     }))
+    splatColors.attach(getSparkRendererForScene(viewer.scene.raw))
     tileset.addEventListener("load-error", event => fail(event.error, request))
     tileset.addEventListener("load-root-tileset", () => {
       if (request !== generation) return
@@ -241,6 +246,7 @@ async function loadSource() {
 }
 
 function frame(time: number) {
+  if (panel) splatColors.update(viewer.postProcess.toneMappingExposure, panel.controls.display.sourceColors)
   const tileset = activeTileset
   if (tileset?.group.visible) {
     const request = generation
@@ -291,6 +297,7 @@ const splatSchema = () => ({
   display: {
     $: { label: t({ zh: "显示控制", en: "Display" }) },
     visible: { value: true, label: t({ zh: "显示高斯", en: "Show splats" }) },
+    sourceColors: { value: true, label: t({ zh: "保留数据颜色", en: "Preserve source colors" }) },
     globe: { value: true, label: t({ zh: "显示地球", en: "Show globe" }) },
     detail: { value: 8, min: 1, max: 32, step: 1, label: t({ zh: "细节误差", en: "Detail error" }) },
   },
@@ -327,6 +334,7 @@ function bindPanel(currentPanel: TelluxPanel<ReturnType<typeof splatSchema>>) {
   })
   const displayEffect = controls.effect(() => {
     void controls.display.visible; void controls.display.globe; void controls.display.detail
+    void controls.display.sourceColors
     syncDisplay()
   })
   return () => { sourceEffect(); displayEffect() }
@@ -342,6 +350,7 @@ animationFrame = window.requestAnimationFrame(frame)
 window.addEventListener("beforeunload", () => {
   window.cancelAnimationFrame(animationFrame)
   clearSource()
+  splatColors.dispose()
   panel?.dispose()
   viewer.destroy()
 })
