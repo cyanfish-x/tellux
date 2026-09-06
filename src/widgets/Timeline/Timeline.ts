@@ -24,6 +24,7 @@ import {
   startOfLocalDay,
 } from './logic'
 import { installTimelineStyles } from './styles'
+import { bindRangePointer } from './rangePointer'
 import type { TimelineOptions } from './types'
 
 const MILLISECONDS_PER_DAY = 86400000
@@ -431,24 +432,6 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     syncDisplay()
   }
 
-  const bindPointerLifecycle = (
-    element: HTMLElement,
-    control: 'range' | 'day' | 'speed'
-  ) => {
-    element.addEventListener('pointerdown', (event) => {
-      beginControl(control)
-      try {
-        element.setPointerCapture?.((event as PointerEvent).pointerId)
-      } catch {
-        // Native range inputs may reject capture on some browsers.
-      }
-      syncDisplay()
-    })
-    element.addEventListener('pointerup', endActiveControl)
-    element.addEventListener('pointercancel', endActiveControl)
-    element.addEventListener('change', endActiveControl)
-  }
-
   playButton.addEventListener('click', () => {
     viewer.clock.shouldAnimate = !viewer.clock.shouldAnimate
     if (viewer.clock.shouldAnimate) {
@@ -478,10 +461,14 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     if (activeControl !== 'range') beginControl('range')
     applyRangeFromInput()
   })
-  bindPointerLifecycle(input, 'range')
-  bindPointerLifecycle(dayInput, 'day')
-  bindPointerLifecycle(speedInput, 'speed')
-  window.addEventListener('pointerup', endActiveControl)
+  const pointerCleanups = [
+    bindRangePointer(input, 14, () => beginControl('range'), endActiveControl),
+    bindRangePointer(dayInput, 11, () => beginControl('day'), endActiveControl),
+    bindRangePointer(speedInput, 11, () => beginControl('speed'), endActiveControl),
+  ]
+  for (const element of [input, dayInput, speedInput]) {
+    element.addEventListener('change', endActiveControl)
+  }
   window.addEventListener('blur', endActiveControl)
 
   updateRangeBounds()
@@ -507,7 +494,7 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
     },
     dispose() {
       viewer.clock.off('change', syncTargetTimeFromClock)
-      window.removeEventListener('pointerup', endActiveControl)
+      for (const cleanup of pointerCleanups) cleanup()
       window.removeEventListener('blur', endActiveControl)
       if (linkCloudSpeed) {
         viewer.scene.clouds.speed = baseCloudSpeed

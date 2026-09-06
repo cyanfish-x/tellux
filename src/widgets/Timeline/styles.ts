@@ -224,6 +224,7 @@ const TIMELINE_STYLES = `
 
 .tellux-timeline__day,
 .tellux-timeline__speed {
+  touch-action: none;
   grid-area: input;
   width: 100%;
   height: 18px;
@@ -334,6 +335,7 @@ const TIMELINE_STYLES = `
 }
 
 .tellux-timeline__range {
+  touch-action: none;
   position: relative;
   z-index: 1;
   display: block;

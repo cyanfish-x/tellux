@@ -98,6 +98,8 @@ Cesium Ion 是可选的数据服务；Tellux 的地形、影像和 3D Tiles API 
 
 ## ✨ 特性
 
+- Timeline 时间条：日序、倍率和时间滑块支持连续拖动与键盘调整，读数即时响应，场景时间可平滑过渡。
+
 - 在 WGS84 地球上使用经纬高、heading、pitch、roll 控制相机，并支持飞行定位、拾取和高度采样。
 - 加载 Cesium quantized-mesh 地形、XYZ、WMS、WMTS、Cesium Ion 影像，以及 GeoJSON、MVT 贴地矢量 overlay。
 - 加载 URL 或 Cesium Ion 3D Tiles，并处理 glTF / GLB 模型、动画和贴地放置。

@@ -46,6 +46,8 @@ Timeline 控件将这个绝对时间点转换为浏览器本地时间显示，�
 
 启用 Timeline 且省略 Clock 配置时，时钟默认从当前真实时间开始以 `1×` 流动；显式配置 `clock.shouldAnimate: false` 可保持初始暂停。
 
+Timeline 的日序、倍率和时间滑块支持按住后移出轨道继续拖动，松开时采用最终指针位置，也支持键盘方向键调整。滑块读数立即更新；时间调整的 spring 只平滑场景时钟，不延迟滑块位置。
+
 ## 场景配置
 
 `scene` 配置按能力分组：`atmosphere` 管大气、天空和光照，`clouds` 管体积云，`surface` 管基础地球表面材质。后处理在顶层 `postProcess`。

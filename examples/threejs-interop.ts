@@ -108,8 +108,9 @@ async function main() {
     },
     widgets: {
       timeline: {
-        // 夜景开关直接读 clock；关闭 spring 避免 UI 已到 19:00 而 clock 仍停在 18:00 导致灯灭。
-        spring: false,
+        // 滑块即时显示目标时间；太阳和夜景灯光共同跟随 spring 平滑后的 clock。
+        // Show the target immediately; sun and night lights follow the spring-smoothed clock.
+        spring: true,
       },
     },
   })

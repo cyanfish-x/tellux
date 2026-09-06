@@ -98,6 +98,8 @@ Cesium Ion is an optional data service. Tellux APIs support both self-hosted URL
 
 ## ✨ Features
 
+- Timeline widget with continuous dragging and keyboard controls for day, playback rate, and time; immediate readouts with optional scene-time smoothing.
+
 - Control a WGS84 globe using longitude, latitude, height, heading, pitch, and roll, with flights, picking, and height sampling.
 - Load Cesium quantized-mesh terrain, XYZ, WMS, WMTS, Cesium Ion imagery, and draped GeoJSON and MVT vector overlays.
 - Load URL- or Cesium Ion-based 3D Tiles, plus glTF / GLB models with animation and ground alignment.

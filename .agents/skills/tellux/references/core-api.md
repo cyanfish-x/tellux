@@ -96,6 +96,7 @@ viewer.clock.on('tick', ({ currentTime }) => {
 
 Timeline 显示和交互使用浏览器本地时区；`viewer.clock.currentTime` 本身仍是绝对时间点。
 启用 Timeline 且未显式配置 Clock 时，默认从当前真实时间开始以 `1×` 流动；显式设置 `clock.shouldAnimate: false` 可保持暂停。
+Timeline 三个滑块按指针位置即时更新，支持拖出轨道后继续调整及键盘方向键；spring 只平滑场景时钟。应用无需额外接管滑块的指针事件。
 
 ## 相机
 
