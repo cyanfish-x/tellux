@@ -148,6 +148,8 @@ export class AtmosphereManager {
   private currentNightFactor = 0
   private lightSourceScene: THREE.Scene | null = null
   private previousEnvironmentIntensity: number | null = null
+  private appliedCloudCoverage = DEFAULT_CLOUD_COVERAGE
+  private cloudAltitudeFade = 1
   private isDisposed = false
 
   constructor(
@@ -206,6 +208,18 @@ export class AtmosphereManager {
     scene.add(this.moonLightSource.target)
     scene.add(this.nightAmbientLightSource)
     scene.add(this.stars)
+  }
+
+  /**
+   * 用相机高度淡出乘在用户 coverage 上，不改写 `scene.clouds.coverage`。
+   *
+   * Multiplies the user coverage by the altitude fade; does not rewrite `scene.clouds.coverage`.
+   */
+  applyCloudAltitudeFade(fade: number) {
+    const next = THREE.MathUtils.clamp(this.toFinite(fade, 1), 0, 1)
+    if (next === this.cloudAltitudeFade) return
+    this.cloudAltitudeFade = next
+    this.syncCloudCoverage()
   }
 
   syncCloudAtmosphereComposition(cloudsVisible: boolean, atmosphereVisible: boolean) {
@@ -336,7 +350,8 @@ export class AtmosphereManager {
       this.cloudsEffect.qualityPreset = state.quality
     }
     this.cloudsEffect.lightShafts = state.lightShafts
-    this.cloudsEffect.coverage = this.toFinite(state.coverage, DEFAULT_CLOUD_COVERAGE)
+    this.appliedCloudCoverage = this.toFinite(state.coverage, DEFAULT_CLOUD_COVERAGE)
+    this.syncCloudCoverage()
     this.cloudsEffect.localWeatherVelocity.set(Math.max(0, this.toFinite(state.speed, DEFAULT_CLOUD_SPEED)), 0)
     applyCloudAppearanceState(this.cloudsEffect, state)
 
@@ -347,6 +362,10 @@ export class AtmosphereManager {
       layer.altitude = this.toFinite(state.layer.altitude, 1500) + offset
       layer.height = this.toFinite(state.layer.height, 650) * CLOUD_LAYER_HEIGHT_SCALES[index]
     })
+  }
+
+  private syncCloudCoverage() {
+    this.cloudsEffect.coverage = this.appliedCloudCoverage * this.cloudAltitudeFade
   }
 
   async loadTextures() {

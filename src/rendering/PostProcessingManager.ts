@@ -9,10 +9,9 @@ import type { PointCloudEdlAggregate } from '../tiles/PointCloudShadingControlle
 import type { AtmosphereManager } from './AtmosphereManager'
 import { applyLensFlareAppearanceState } from './lensFlareAppearance'
 import { applyBloomAppearanceState } from './bloomAppearance'
+import { cloudAltitudeFade, shouldRenderCloudPass } from './cloudAltitudeFade'
 import { LightingMaskPass } from './LightingMaskPass'
 import { PointCloudEdlPass } from './PointCloudEdlEffect'
-
-const CLOUD_RENDER_MAX_HEIGHT = 27000
 
 /**
  * 法线 pass 专用材质：
@@ -77,6 +76,7 @@ export class PostProcessingManager {
   private readonly outlineAdapter: ThreeEffectPass | null
   private currentEffectsKey = ''
   private activeEffects: ThreeEffectPass[] = []
+  private cloudPassActive = false
 
   constructor(
     private readonly renderer: ThreeRendererWithEffects,
@@ -179,10 +179,13 @@ export class PostProcessingManager {
 
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.atmosphere.show
+    const fade = cloudAltitudeFade(currentHeight)
+    this.atmosphere.applyCloudAltitudeFade(fade)
     const shouldRenderClouds =
       shouldRenderAtmosphere &&
       this.scene.clouds.show &&
-      this.shouldRenderCloudsAtHeight(currentHeight)
+      shouldRenderCloudPass(currentHeight, this.cloudPassActive)
+    this.cloudPassActive = shouldRenderClouds
     const outlineEnabled =
       Boolean(this.outlineAdapter) && this.highlight.outline.enabled
     const entityOitEnabled = this.isEntityWeightedOitEnabled()
@@ -292,10 +295,6 @@ export class PostProcessingManager {
       this.renderer.setEffects(this.activeEffects)
       this.renderer.toneMapping = previousToneMapping
     }
-  }
-
-  private shouldRenderCloudsAtHeight(currentHeight: number | null) {
-    return currentHeight !== null && Number.isFinite(currentHeight) && currentHeight < CLOUD_RENDER_MAX_HEIGHT
   }
 
   private configureNormalPass(normalPass: NormalPass) {

@@ -154,6 +154,8 @@ viewer.scene.clouds.shadow.quality = 'medium'
 viewer.scene.clouds.show = false
 ```
 
+体积云从大约 20 km 起随相机高度逐渐淡出，约 40 km 以上不再渲染，避免从太空俯视时硬切。`clouds.show` 和 `coverage` 仍是用户设置，不会被改写。
+
 ::: warning WebGPU 限制
 体积云是 WebGL 专属能力，在 **WebGPU 模式下不渲染**（`show` 即使为 `true` 也不会显示）。WebGPU 模式下应设置 `clouds.show: false`。
 :::

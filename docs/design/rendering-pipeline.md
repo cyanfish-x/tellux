@@ -134,7 +134,7 @@ threeScene (THREE.Scene)
 
 ```
 7. syncFallbackAmbientLight()            // 从相机高度计算兜底环境光强度
-8. postProcessing.updateForCameraHeight()// 判断是否渲染云（>27km 关闭）
+8. postProcessing.updateForCameraHeight()// 体积云按高度淡出，约 40km 卸 pass
 9. tilesets.update()                     // 3D Tiles 瓦片加载/卸载 + LoD
 10. atmosphere.setAtmosphereVisible()    // WebGPU: 控制大气可见性
 11. atmosphere.updateLightSources()      // 同步相机位置到光源 target
@@ -375,7 +375,7 @@ CloudsEffect
 **云可见性条件：**
 - `scene.atmosphere.show === true`
 - `scene.clouds.show === true`
-- `cameraHeight !== null && cameraHeight < 27000m`
+- 相机椭球高度在淡出窗口内：20km 以下全量，20–40km `smoothstep` 乘在 `coverage` 上，40km 以上卸下云 pass（下降时提前 2km 挂回，避免终点抖动）
 
 **EffectPass 组合：**
 - 有云 + 有大气：`EffectPass(camera, cloudsEffect, aerialPerspectiveEffect)` — 云先渲染，大气合成叠加

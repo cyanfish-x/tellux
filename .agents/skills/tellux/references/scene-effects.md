@@ -111,7 +111,7 @@ viewer.scene.clouds.look.haze = true
 viewer.scene.clouds.shadow.quality = 'medium' // 'low' | 'medium' | 'high'
 ```
 
-典型用法：阴天效果 `coverage = 0.7, quality = 'high'`；关云 `show = false`。
+典型用法：阴天效果 `coverage = 0.7, quality = 'high'`；关云 `show = false`。体积云从大约 20 km 起随相机高度淡出，约 40 km 以上不渲染；`show` / `coverage` 不会被改写。
 
 ## 地表材质
 
