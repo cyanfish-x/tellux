@@ -103,6 +103,7 @@ Cesium Ion is an optional data service. Tellux APIs support both self-hosted URL
 - Load URL- or Cesium Ion-based 3D Tiles, plus glTF / GLB models with animation and ground alignment.
 - Build geospatial scenes with atmospheric sky, aerial perspective, volumetric clouds, day-night lighting, SMAA, lens flare, and dithering; WebGPU supports lens flare and optional TAA.
 - Interoperate with Three.js scenes, objects, coordinate conversion, and custom render loops.
+- The [Gaussian splat example](https://tellux.cyanfish.site/gaussian-splat-3d-tiles.html) switches between SvirnasAlyt, Elevator, Cesium ion, and standalone Spark assets (WebGL; the official ion sample can use a public evaluation token).
 - Use WebGL by default. The experimental WebGPU renderer supports the base globe, terrain, imagery, 3D Tiles, models, picking, atmosphere, lens flare, and optional TAA; see [Known limitations](https://tellux.cyanfish.site/docs/guide/limitations).
 
 ## 🛠️ Development

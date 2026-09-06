@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@sparkjsdev/spark@2.1.0':
+    hash: 8a99a1dd49b62cc0b535f12a9101421e5f776b712a1d5f15f6a5508fd08474a0
+    path: patches/@sparkjsdev__spark@2.1.0.patch
+
 importers:
 
   .:
@@ -20,7 +25,7 @@ importers:
         version: 0.4.28(@react-three/fiber@9.6.1(@types/react@19.2.17)(react@19.2.7)(three@0.184.0))(react@19.2.7)(three@0.184.0)
       3d-tiles-rendererjs-3dgs-plugin:
         specifier: ^0.1.13
-        version: 0.1.14(3d-tiles-renderer@0.4.28(@react-three/fiber@9.6.1(@types/react@19.2.17)(react@19.2.7)(three@0.184.0))(react@19.2.7)(three@0.184.0))(@sparkjsdev/spark@2.1.0(three@0.184.0))(three@0.184.0)
+        version: 0.1.14(3d-tiles-renderer@0.4.28(@react-three/fiber@9.6.1(@types/react@19.2.17)(react@19.2.7)(three@0.184.0))(react@19.2.7)(three@0.184.0))(@sparkjsdev/spark@2.1.0(patch_hash=8a99a1dd49b62cc0b535f12a9101421e5f776b712a1d5f15f6a5508fd08474a0)(three@0.184.0))(three@0.184.0)
       '@commitlint/cli':
         specifier: ^21.2.0
         version: 21.2.0(@types/node@18.19.130)(typescript@5.2.2)
@@ -38,7 +43,7 @@ importers:
         version: 2.0.5
       '@sparkjsdev/spark':
         specifier: ^2.1.0
-        version: 2.1.0(three@0.184.0)
+        version: 2.1.0(patch_hash=8a99a1dd49b62cc0b535f12a9101421e5f776b712a1d5f15f6a5508fd08474a0)(three@0.184.0)
       '@takram/three-atmosphere':
         specifier: 0.19.1
         version: 0.19.1(@react-three/fiber@9.6.1(@types/react@19.2.17)(react@19.2.7)(three@0.184.0))(postprocessing@6.39.1(three@0.184.0))(react@19.2.7)(three@0.184.0)
@@ -2591,10 +2596,10 @@ snapshots:
       react: 19.2.7
       three: 0.184.0
 
-  3d-tiles-rendererjs-3dgs-plugin@0.1.14(3d-tiles-renderer@0.4.28(@react-three/fiber@9.6.1(@types/react@19.2.17)(react@19.2.7)(three@0.184.0))(react@19.2.7)(three@0.184.0))(@sparkjsdev/spark@2.1.0(three@0.184.0))(three@0.184.0):
+  3d-tiles-rendererjs-3dgs-plugin@0.1.14(3d-tiles-renderer@0.4.28(@react-three/fiber@9.6.1(@types/react@19.2.17)(react@19.2.7)(three@0.184.0))(react@19.2.7)(three@0.184.0))(@sparkjsdev/spark@2.1.0(patch_hash=8a99a1dd49b62cc0b535f12a9101421e5f776b712a1d5f15f6a5508fd08474a0)(three@0.184.0))(three@0.184.0):
     dependencies:
       3d-tiles-renderer: 0.4.28(@react-three/fiber@9.6.1(@types/react@19.2.17)(react@19.2.7)(three@0.184.0))(react@19.2.7)(three@0.184.0)
-      '@sparkjsdev/spark': 2.1.0(three@0.184.0)
+      '@sparkjsdev/spark': 2.1.0(patch_hash=8a99a1dd49b62cc0b535f12a9101421e5f776b712a1d5f15f6a5508fd08474a0)(three@0.184.0)
       three: 0.184.0
 
   '@algolia/abtesting@1.21.1':
@@ -3360,7 +3365,7 @@ snapshots:
 
   '@simple-libs/stream-utils@2.0.0': {}
 
-  '@sparkjsdev/spark@2.1.0(three@0.184.0)':
+  '@sparkjsdev/spark@2.1.0(patch_hash=8a99a1dd49b62cc0b535f12a9101421e5f776b712a1d5f15f6a5508fd08474a0)(three@0.184.0)':
     dependencies:
       fflate: 0.8.3
       three: 0.184.0

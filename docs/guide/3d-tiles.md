@@ -95,6 +95,17 @@ viewer.flyToTarget(layer.tileset, {
 })
 ```
 
+## 高斯泼溅案例
+
+[高斯泼溅案例](../../gaussian-splat-3d-tiles.html)提供 SvirnasAlyt、Elevator、Cesium ion / Redmond 和 Spark / Butterfly 四种预设。切换预设后自动加载，也可编辑 URL 或 ion 的 Asset ID / Token 后重试。
+
+- 两个 GitHub 预设使用固定提交中的高斯 3D Tiles，按相机需要加载瓦片。
+- 官方资产 `4547222` 的 Token 留空时使用 CesiumJS 公开评估 token，无需自己的 token，与[官方教程](https://cesium.com/learn/cesiumjs-learn/3d-guassian-splat-tilesets-lods/)一致。显式填写 token 优先；其他资产留空时使用 `VITE_CESIUM_ION_TOKEN`。评估 token 不用于生产应用。
+- Spark 单文件不经过 TilesRenderer；蝴蝶被放置到展示锚点，缩放至约 12 米，不代表真实地理位置。可替换为 Spark 支持的单文件 URL。
+- 保留自定义 tileset URL，可通过 `VITE_GAUSSIAN_SPLAT_3D_TILESET_URL` 设置默认值。
+
+面板提供定位、移除、高斯与地球显示开关；3D Tiles 模式还提供细节误差，数值越低，加载量通常越大。该案例在示例侧接入 GaussianSplatPlugin / Spark，使用 WebGL，不是 `viewer.tilesets` 的内置高斯 API。
+
 ## 移除图层
 
 ```ts

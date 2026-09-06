@@ -152,7 +152,7 @@ runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`
 
 Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner 基础依赖图中静态加载。[runtime-bindings.ts](../../examples/sandcastle/runtime-bindings.ts) 根据当前编译后源码实际使用的 binding 判定所需能力，runner 再通过动态 import 加载：
 
-- `GaussianSplatPlugin` → `3d-tiles-rendererjs-3dgs-plugin`
+- `GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES` → `examples/gaussian-splat/sandcastleBindings.ts`，集中注入 `GaussianSplatPlugin`、`SparkRenderer`、`SplatMesh`、`CesiumIonAuthPlugin` 和 `ImplicitTilingPlugin`。高斯案例支持两个固定提交的 3D Tiles 样例、ion 和 Spark 单文件；专用依赖保持异步加载。
 - `Tree` → `@dgreenheck/ez-tree`
 - HISM helper binding → `examples/hism/shared.ts`
 - Water Area helper、默认参数和归一化函数 → `examples/water-area/sandcastleBindings.ts`

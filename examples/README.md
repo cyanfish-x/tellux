@@ -82,10 +82,30 @@ VITE_CESIUM_ION_TOKEN=your_token
 `TilesRenderer` 加载带 `KHR_gaussian_splatting` / SPZ 压缩扩展的 3DGS
 tileset，并挂到 Tellux 的 Three.js 场景中。
 
-示例默认使用插件仓库中的样例 tileset。可以在项目根目录 `.env` 中替换默认地址：
+面板提供四个预设，可切换后自动加载，也可修改连接配置再点「加载 / 重试」：
+
+| 预设 | 加载方式 | 说明 |
+| --- | --- | --- |
+| SvirnasAlyt（默认） | 高斯 3D Tiles | 约 100 MiB，按需加载 |
+| Elevator | 高斯 3D Tiles | 约 269 MiB，按需加载 |
+| Cesium ion / Redmond | ion 鉴权 + 高斯 3D Tiles | 默认 Asset ID 4547222，Token 留空使用 CesiumJS 公开评估 token |
+| Spark / Butterfly | 单文件 SPZ | 约 4 MB；展示锚点为 142.8343°E、38.5822°S、椭球高度 120 米，缩放至约 12 米，无真实地理参考 |
+
+GitHub 样例固定到上游提交 e5abce2422ff72eae8576c814babbec20ed8fe34。来源：[插件样例](https://github.com/WilliamLiu-1997/3D-Tiles-RendererJS-3DGS-Plugin)、[Cesium 官方教程](https://cesium.com/learn/cesiumjs-learn/3d-guassian-splat-tilesets-lods/)、[Spark](https://github.com/sparkjsdev/spark)。
+
+官方资产 4547222 的 Token 留空时使用 CesiumJS 内置公开评估 token，无需用户自己的 token。这与官方教程一致，仍是带 token 的请求，并非匿名访问。2026-09-06 已验证 endpoint、tileset 和首层 GLB 均返回 200，包含当前插件支持的高斯/SPZ 扩展。显式输入 token 优先；切换其他 Asset ID 时，留空使用 VITE_CESIUM_ION_TOKEN。公开 token 仅供评估，生产应用使用自己的凭据。
+
+「细节误差」越低，瓦片细节越高、加载量越大；单文件模式不显示该控件。可分别切换高斯和地球显示，并用「定位资源」返回目标。3D Tiles 在目录加载后根据包围球定位。Spark 模式支持修改为其他可解码的单文件 URL，仍使用上述展示锚点与尺度归一化。
+
+案例使用 WebGL。独立页与 Sandcastle 共用案例源码，Spark / 高斯插件仅在需要时加载。切源会取消单文件下载、隔离旧请求结果并释放场景资源。
+
+Spark 2.1.0 的 ESM 上传路径通过 `pnpm-workspace.yaml` 应用 `patches/@sparkjsdev__spark@2.1.0.patch`：三处 `UNPACK_FLIP_Y_WEBGL` 写入改走 Three.js 的状态缓存接口，避免高斯排序更新后 Canvas 底图纹理上下翻转、瓦片错缝。ArcGIS 的 URL 顺序仍为 `{z}/{y}/{x}`。升级 Spark 时运行 `sparkPixelStore.test.ts` 核验上游是否已修复；应用补丁后若开发页面仍使用旧预构建，执行 `pnpm exec vite optimize --force --config examples/vite.config.ts` 并硬刷新，必要时重启已有开发服务。
+
+保留自定义 3D Tiles 入口，在项目根目录 .env 设置后默认选中它：
 
 ```txt
 VITE_GAUSSIAN_SPLAT_3D_TILESET_URL=https://example.com/3dgs/tileset.json
+VITE_CESIUM_ION_TOKEN=your_token
 ```
 
 ## 天地图地形示例

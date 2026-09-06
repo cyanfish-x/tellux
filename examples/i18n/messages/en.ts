@@ -134,7 +134,7 @@ export const en: MessageTable = {
   'example.3d-tiles-picking.registry.title': 'Pick & Highlight',
   'example.3d-tiles-picking.registry.description': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',
   'example.gaussian-splat-3d-tiles.registry.title': 'Gaussian Splat 3D Tiles',
-  'example.gaussian-splat-3d-tiles.registry.description': 'Integrates 3d-tiles-rendererjs-3dgs-plugin to load Gaussian splat 3D Tiles in a Tellux globe scene.',
+  'example.gaussian-splat-3d-tiles.registry.description': 'Explore Gaussian splats from SvirnasAlyt, Elevator, Cesium ion, and standalone Spark assets in a globe scene.',
   'example.point-cloud-3d-tiles.registry.title': 'Point Cloud 3D Tiles',
   'example.point-cloud-3d-tiles.registry.description': 'Load pnts point cloud 3D Tiles such as Cesium Ion Melbourne Point Cloud.',
   'example.google-photorealistic-3d-tiles.registry.title': 'City-scale Massive Models',

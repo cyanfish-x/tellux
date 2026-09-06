@@ -77,6 +77,14 @@ viewer.scene.raw.add(marker)   // 加到这里参与 Tellux 渲染
 
 > **尺度单位是米**。地球半径约 637 万米，半径 50 的球在地表尺度只是一个点，要看得见需放大或贴近查看。
 
+### 高斯泼溅示例侧集成
+
+`examples/gaussian-splat-3d-tiles.ts` 提供 SvirnasAlyt / Elevator 高斯 3D Tiles、Cesium ion 和 Spark 单文件切换。高斯 3D Tiles 走 `TilesRenderer` + `GaussianSplatPlugin`，ion 另注册鉴权插件；独立 SPZ/PLY 走 `SplatMesh` + `SparkRenderer`，用 `cartographicToMatrix4` 把父 Group 放到展示锚点。示例需要 WebGL，没有新增 Tellux 公开门面。无地理参考资源的锚点与缩放应明确标注，不能暗示为真实位置。
+
+接入专用依赖后，同步 `examples/gaussian-splat/sandcastleBindings.ts` 与 `GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES`，避免 Sandcastle 剥离 import 后缺失运行时值。数据源切换需隔离过期异步结果、释放对象，并在 tileset 根目录加载完成后定位；`flyToTarget` 不返回定位成功布尔值。
+
+官方 Redmond 资产的 token 留空时，案例使用 CesiumJS 公开评估 token；其他资产使用显式 token 或环境配置。Spark 2.1.0 ESM 的原生 `gl.pixelStorei` 会绕过 Three.js 缓存，使后续 Canvas 纹理翻转失效，仓库通过 pnpm patch 修复。瓦片错缝先区分 URL 索引、ImageBitmap 方向与 WebGL 上传状态，不要仅凭截图交换 x/y。
+
 ## 世界坐标 → 经纬高（反向）
 
 通常通过拾取接口完成（见 interaction.md）：

@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
   WATER_AREA_RUNTIME_BINDING_NAMES
 } from './runtime-bindings'
 
 describe('Sandcastle optional runtime bindings', () => {
+  it('detects every Gaussian runtime import, including standalone Spark and ion', () => {
+    for (const name of GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES) {
+      expect(detectOptionalRuntimeBindings(`new ${name}()` ).gaussianSplat).toBe(true)
+    }
+    expect(detectOptionalRuntimeBindings('const SparkRendererOptions = {}').gaussianSplat).toBe(false)
+  })
   it('keeps ordinary examples on the base runner graph', () => {
     expect(detectOptionalRuntimeBindings(`
       import tellux from "../src"

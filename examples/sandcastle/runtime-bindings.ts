@@ -1,3 +1,7 @@
+export const GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES = [
+  'GaussianSplatPlugin', 'SparkRenderer', 'SplatMesh', 'CesiumIonAuthPlugin', 'ImplicitTilingPlugin', 'CESIUM_ION_EVALUATION_TOKEN'
+] as const
+
 export const HISM_RUNTIME_BINDING_NAMES = [
   'HISM_DEMO_CENTER',
   'HISM_DEMO_VIEW_POSE',
@@ -39,7 +43,7 @@ export function detectOptionalRuntimeBindings(
   source: string
 ): OptionalRuntimeBindings {
   return {
-    gaussianSplat: hasIdentifier(source, 'GaussianSplatPlugin'),
+    gaussianSplat: GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES.some(name => hasIdentifier(source, name)),
     hism: HISM_RUNTIME_BINDING_NAMES.some((name) => hasIdentifier(source, name)),
     tree: hasIdentifier(source, 'Tree'),
     waterArea: WATER_AREA_RUNTIME_BINDING_NAMES.some((name) =>

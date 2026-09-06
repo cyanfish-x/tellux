@@ -134,7 +134,7 @@ export const zh: MessageTable = {
   'example.3d-tiles-picking.registry.title': '拾取与高亮',
   'example.3d-tiles-picking.registry.description': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',
   'example.gaussian-splat-3d-tiles.registry.title': '高斯泼溅 3D Tiles',
-  'example.gaussian-splat-3d-tiles.registry.description': '示例侧集成 3d-tiles-rendererjs-3dgs-plugin，在 Tellux 地球场景中加载高斯泼溅 3D Tiles。',
+  'example.gaussian-splat-3d-tiles.registry.description': '切换 SvirnasAlyt、Elevator、Cesium ion 与 Spark 单文件，在地球场景中浏览高斯泼溅。',
   'example.point-cloud-3d-tiles.registry.title': '点云 3D Tiles',
   'example.point-cloud-3d-tiles.registry.description': '从 Cesium Ion 加载 Melbourne Point Cloud 等 pnts 点云 3D Tiles。',
   'example.google-photorealistic-3d-tiles.registry.title': '城市级海量模型',

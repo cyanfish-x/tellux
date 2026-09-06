@@ -1,0 +1,31 @@
+diff --git a/dist/spark.module.js b/dist/spark.module.js
+index aec3d5590a50f27b56a39169c08b4557afe5748c..bbb628775bc3336647e9319067cce2c562515fe2 100644
+--- a/dist/spark.module.js	
++++ b/dist/spark.module.js
+@@ -10326,7 +10326,7 @@ const _SparkRenderer = class _SparkRenderer extends THREE.Mesh {
+         renderer.state.activeTexture(gl.TEXTURE0);
+         renderer.state.bindTexture(gl.TEXTURE_2D, glTexture);
+         gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, null);
+-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
++        renderer.state.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+         gl.texSubImage2D(
+           gl.TEXTURE_2D,
+           0,
+@@ -10715,7 +10715,7 @@ const _SparkRenderer = class _SparkRenderer extends THREE.Mesh {
+             renderer.state.activeTexture(gl.TEXTURE0);
+             renderer.state.bindTexture(gl.TEXTURE_2D, glTexture);
+             gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, null);
+-            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
++            renderer.state.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+             gl.texSubImage2D(
+               gl.TEXTURE_2D,
+               0,
+@@ -11316,7 +11316,7 @@ class PagedSplats {
+         getGlTexture(renderer, indicesTexture)
+       );
+       gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, null);
+-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
++      renderer.state.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+       gl.texSubImage2D(
+         gl.TEXTURE_2D,
+         0,

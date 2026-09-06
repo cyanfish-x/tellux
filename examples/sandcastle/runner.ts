@@ -22,6 +22,7 @@ import { setupSymbolPanel } from "../setupSymbolPanel"
 import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
 import type { BootExampleI18nOptions } from "../i18n"
 import {
+  GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES,
   HISM_RUNTIME_BINDING_NAMES,
   THREEJS_INTEROP_RUNTIME_BINDING_NAMES,
   WATER_AREA_RUNTIME_BINDING_NAMES,
@@ -164,7 +165,7 @@ async function executeExampleScript(source: string) {
     "tellux",
     "THREE",
     "TilesRenderer",
-    "GaussianSplatPlugin",
+    ...GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES,
     "GLTFLoader",
     "Tree",
     "createTiandituWmtsPreprocessURL",
@@ -206,7 +207,7 @@ async function executeExampleScript(source: string) {
     tellux,
     THREE,
     TilesRenderer,
-    optionalBindings.GaussianSplatPlugin,
+    ...GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES.map(name => optionalBindings.gaussianSplat[name]),
     GLTFLoader,
     optionalBindings.Tree,
     createTiandituWmtsPreprocessURL,
@@ -247,7 +248,7 @@ async function loadOptionalRuntimeBindings(source: string) {
   const [gaussianSplatModule, treeModule, hismModule, waterAreaModule, threejsInteropModule] =
     await Promise.all([
       required.gaussianSplat
-        ? import("3d-tiles-rendererjs-3dgs-plugin")
+        ? import("../gaussian-splat/sandcastleBindings")
         : null,
       required.tree
         ? import("@dgreenheck/ez-tree")
@@ -264,7 +265,9 @@ async function loadOptionalRuntimeBindings(source: string) {
     ])
 
   return {
-    GaussianSplatPlugin: gaussianSplatModule?.GaussianSplatPlugin,
+    gaussianSplat: (gaussianSplatModule ?? {}) as Partial<
+      Pick<typeof import("../gaussian-splat/sandcastleBindings"), (typeof GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES)[number]>
+    >,
     Tree: treeModule?.Tree,
     hism: (hismModule ?? {}) as Record<
       (typeof HISM_RUNTIME_BINDING_NAMES)[number],
