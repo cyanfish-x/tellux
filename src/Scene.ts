@@ -77,7 +77,8 @@ export class Scene {
     applyCloudsState: CloudStateApplier,
     onEffectsChange: () => void,
     onSurfaceMaterialModeChange: () => void,
-    onEntityTransparencyModeChange: (mode: ResolvedSceneOptions['entities']['transparency']['mode']) => void
+    onEntityTransparencyModeChange: (mode: ResolvedSceneOptions['entities']['transparency']['mode']) => void,
+    applyWorldToECEFMatrix: (matrix: THREE.Matrix4) => void = () => {}
   ) {
     this.fallbackAmbientLightSource = new THREE.AmbientLight(0xffffff, 0)
     this.atmosphere = new AtmosphereSettings(
@@ -85,7 +86,8 @@ export class Scene {
       this.fallbackAmbientLightSource,
       applyAtmosphereState,
       onEffectsChange,
-      onSurfaceMaterialModeChange
+      onSurfaceMaterialModeChange,
+      applyWorldToECEFMatrix
     )
     this.clouds = new CloudSettings(options.clouds, applyCloudsState, onEffectsChange)
     this.surface = new SurfaceSettings(options.surface, onSurfaceMaterialModeChange)

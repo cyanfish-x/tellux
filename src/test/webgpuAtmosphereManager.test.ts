@@ -106,6 +106,7 @@ vi.mock('@takram/three-atmosphere/webgpu', () => {
     moonDirectionECEF = { value: new THREE.Vector3() }
     matrixECIToECEF = { value: new THREE.Matrix4() }
     matrixMoonFixedToECEF = { value: new THREE.Matrix4() }
+    matrixWorldToECEF = { value: new THREE.Matrix4() }
     dispose = vi.fn()
 
     constructor() {
@@ -256,6 +257,27 @@ function createAtmosphereState(overrides: Partial<AtmosphereRuntimeState> = {}):
 describe('WebGPUAtmosphereManager', () => {
   beforeEach(() => {
     atmosphereTextureLoaderInstances.length = 0
+  })
+
+  it('writes the world-to-ECEF matrix onto the atmosphere context', async () => {
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera()
+    const renderer = {
+      library: { addLight: vi.fn() },
+      render: vi.fn()
+    } as unknown as TelluxWebGPURenderer
+    const { manager } = createManager(renderer, scene, camera)
+    const webgpuAtmosphere = await import('@takram/three-atmosphere/webgpu') as unknown as {
+      atmosphereContextInstances: Array<{
+        matrixWorldToECEF: { value: THREE.Matrix4 }
+      }>
+    }
+    const context = webgpuAtmosphere.atmosphereContextInstances.at(-1)!
+    const matrix = new THREE.Matrix4().makeTranslation(100, 200, 300)
+
+    manager.setWorldToECEFMatrix(matrix)
+
+    expect(context.matrixWorldToECEF.value.equals(matrix)).toBe(true)
   })
 
   it('sets and removes its scene compositor without owning the render delegate', () => {

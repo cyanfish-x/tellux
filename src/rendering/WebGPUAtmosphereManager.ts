@@ -189,6 +189,15 @@ export class WebGPUAtmosphereManager {
     return this.currentNightFactor
   }
 
+  /**
+   * 设置 Three.js 世界到 ECEF 的变换。
+   *
+   * Sets the Three.js world-to-ECEF transform.
+   */
+  setWorldToECEFMatrix(matrix: THREE.Matrix4) {
+    this.atmosphereContext.matrixWorldToECEF.value.copy(matrix)
+  }
+
   loadTextures() {
     if (this.isDisposed || this.isStarsLoading || this.starsReady) return
 
@@ -232,6 +241,7 @@ export class WebGPUAtmosphereManager {
 
   private updateNightFactor() {
     this.camera.getWorldPosition(this.cameraPosition)
+    this.cameraPosition.applyMatrix4(this.atmosphereContext.matrixWorldToECEF.value)
     if (this.cameraPosition.lengthSq() === 0) {
       this.currentNightFactor = 0
       return
