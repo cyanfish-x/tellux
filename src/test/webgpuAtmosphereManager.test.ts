@@ -280,6 +280,26 @@ describe('WebGPUAtmosphereManager', () => {
     expect(context.matrixWorldToECEF.value.equals(matrix)).toBe(true)
   })
 
+  it('does not treat a camera at the world origin as invalid after a translating world-to-ECEF matrix', async () => {
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera()
+    camera.position.set(0, 0, 0)
+    camera.updateMatrixWorld()
+    const renderer = {
+      library: { addLight: vi.fn() },
+      render: vi.fn()
+    } as unknown as TelluxWebGPURenderer
+    const { manager } = createManager(renderer, scene, camera)
+
+    manager.updateLightSources()
+    expect(manager.getNightFactor()).toBe(0)
+
+    manager.setWorldToECEFMatrix(new THREE.Matrix4().makeTranslation(6_371_000, 0, 0))
+    manager.updateLightSources()
+
+    expect(manager.getNightFactor()).not.toBe(0)
+  })
+
   it('sets and removes its scene compositor without owning the render delegate', () => {
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera()

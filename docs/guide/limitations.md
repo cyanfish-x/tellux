@@ -62,6 +62,7 @@ WebGPU 是实验能力，以下能力在 WebGPU 模式下**不渲染或不支持
 - 对外 API 统一使用**度和米**：纬度 / 经度 / heading / pitch / roll 为度，高度为米（WGS84 椭球海拔）。
 - 经纬高元组输入顺序是 `[经度, 纬度, 高度]`（遵循 GeoJSON），与对象形式 `{ longitude, latitude, height }` 字段顺序相反，混用时易出错。
 - heading / pitch / roll 相对**当地东北天（ENU）坐标系**。
+- 底层 Three.js 世界默认是 ECEF。自行改世界原点时，大气不会自动跟上，需调用 `viewer.scene.atmosphere.setWorldToECEFMatrix` 传入与场景重基准同一套矩阵。地球、相机和控件仍按 ECEF。
 
 ## 资源与生命周期
 

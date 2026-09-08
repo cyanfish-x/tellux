@@ -254,17 +254,14 @@ export class AtmosphereManager {
   }
 
   /**
-   * 设置 Three.js 世界到 ECEF 的变换。
+   * 设置 Three.js 世界到 ECEF 的变换。以空气透视为源，并立刻写入云。
    *
-   * Sets the Three.js world-to-ECEF transform.
+   * Sets the Three.js world-to-ECEF transform. Aerial perspective is the source
+   * of truth; clouds are updated immediately.
    */
   setWorldToECEFMatrix(matrix: THREE.Matrix4) {
     this.aerialPerspectiveEffect.worldToECEFMatrix.copy(matrix)
     this.cloudsEffect.worldToECEFMatrix.copy(matrix)
-    this.sunLightSource.worldToECEFMatrix.copy(matrix)
-    this.moonLightSource.worldToECEFMatrix.copy(matrix)
-    this.skyLightSource.worldToECEFMatrix.copy(matrix)
-    this.starsMaterial.worldToECEFMatrix.copy(matrix)
   }
 
   updateSunDirection(currentTime: Date) {

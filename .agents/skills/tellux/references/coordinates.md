@@ -21,7 +21,7 @@ const tuple: [number, number, number] = [121.4737, 31.2304, 50]
 const object = { longitude: 121.4737, latitude: 31.2304, height: 50 }
 ```
 
-底层 Three.js 场景用 **ECEF 世界坐标系**（原点地心，单位米），通常不需直接接触。
+底层 Three.js 场景用 **ECEF 世界坐标系**（原点地心，单位米），通常不需直接接触。自行改世界原点时大气不会自动跟，用 `viewer.scene.atmosphere.setWorldToECEFMatrix` 传入与重基准同一套矩阵；不要当作 ENU 或换锚 API。
 
 ## 经纬高 → 世界坐标
 

@@ -94,6 +94,7 @@ type _OmitsLegacyViewerPaths = Assert<
 type _OmitsHighlighterInternals = Assert<
   OmitsKey<HighlightManager, 'syncStyleFromSettings' | 'outlineEffect'>
 >
+type _OmitsViewerAtmosphereManager = Assert<OmitsKey<Viewer, 'atmosphere'>>
 
 describe('stable public API contract', () => {
   it('keeps domain facades on Viewer', () => {

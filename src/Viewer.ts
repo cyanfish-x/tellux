@@ -331,12 +331,6 @@ export class Viewer {
    */
   readonly scene: Scene
   /**
-   * 大气管理器。
-   *
-   * Atmosphere manager.
-   */
-  readonly atmosphere: ViewerAtmosphereManager | null
-  /**
    * 带 Cesium 风格视角辅助方法的相机控制项。
    *
    * Camera controls with Cesium-style view helpers.
@@ -455,6 +449,7 @@ export class Viewer {
   private readonly symbolOcclusionPass: SymbolOcclusionPass | null
   private readonly groundClampPass: GroundClampPass | null
   private readonly viewport: ViewportResizeManager
+  private readonly atmosphere: ViewerAtmosphereManager | null
   private readonly postProcessing: PostProcessingManager | null
   private readonly webgpuPostProcessing: WebGPUPostProcessingManager | null
   private readonly webgpuBloom: WebGPUBloomManager | null

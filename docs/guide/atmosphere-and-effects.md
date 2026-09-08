@@ -38,15 +38,21 @@ viewer.scene.atmosphere.show = true
 
 ### 世界到 ECEF 变换
 
-默认世界是 ECEF，一般不必调用。若把场景改成当地东北天（ENU），用同一点的 `cartographicToMatrix4` 告诉大气如何回到 ECEF：
+默认 Three.js 世界就是 ECEF，一般不必调用。仅当应用已经把场景世界从 ECEF 换走时，把**与场景重基准同一套**的矩阵交给大气：
 
 ```ts
-viewer.scene.atmosphere.setWorldToECEFMatrix(
-  viewer.cartographicToMatrix4({ longitude: 121.4737, latitude: 31.2304, height: 0 })
-)
+const worldToECEF = ecefToWorld.clone().invert()
+viewer.scene.atmosphere.setWorldToECEFMatrix(worldToECEF)
+const current = viewer.scene.atmosphere.getWorldToECEFMatrix()
 ```
 
-只在更换当地原点时更新。恢复默认传入 `new THREE.Matrix4()`。
+矩阵必须正交，只含平移和旋转。更换世界原点后再调用一次。恢复默认传入单位阵：
+
+```ts
+viewer.scene.atmosphere.setWorldToECEFMatrix(new THREE.Matrix4())
+```
+
+`cartographicToMatrix4` 是物体当地框架（`+Y` 上、`+Z` 前），**不是**地理 ENU（X 东、Y 北、Z 上）。只有整个场景世界就用这套物体框架时，才可以把该矩阵当作 world→ECEF。地球、相机和控件仍按 ECEF；本方法只同步大气。
 
 ### 散射参数
 

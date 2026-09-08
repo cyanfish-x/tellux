@@ -27,7 +27,7 @@ const object = { longitude: 121.4737, latitude: 31.2304, height: 50 }
 元组输入遵循 GeoJSON 习惯，**第一个元素是经度、第二个是纬度**，与对象形式的 `{ longitude, latitude }` 字段名顺序相反，使用时注意区分。
 :::
 
-底层 Three.js 场景使用 **ECEF 世界坐标系**（原点在地心，单位米），通常不需要直接接触。
+底层 Three.js 场景使用 **ECEF 世界坐标系**（原点在地心，单位米），通常不需要直接接触。自行改世界原点时，大气不会自动跟上，见 [大气、云与后处理](./atmosphere-and-effects.md#世界到-ecef-变换)。
 
 ## 经纬高 → 世界坐标
 

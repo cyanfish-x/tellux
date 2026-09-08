@@ -47,6 +47,16 @@ viewer.scene.atmosphere.lighting.albedoScale = 0.6
 viewer.scene.atmosphere.show = true   // 总开关，关掉则天空/空气透视/太阳光都不渲染
 ```
 
+默认世界是 ECEF，不必改大气矩阵。仅当应用已经把 Three.js 世界从 ECEF 换走时：
+
+```ts
+viewer.scene.atmosphere.setWorldToECEFMatrix(worldToECEF) // 与场景重基准同一套；正交、只含平移旋转
+viewer.scene.atmosphere.getWorldToECEFMatrix()
+viewer.scene.atmosphere.setWorldToECEFMatrix(new THREE.Matrix4()) // 单位阵恢复默认
+```
+
+不要用 `viewer.atmosphere`。`cartographicToMatrix4` 是物体 Y-up / Z-forward，不是 ENU；仅当整个世界就用这套框架时才能把它当作 world→ECEF。地球 / 相机 / 控件仍按 ECEF。
+
 ### 空气散射（远处发蓝发雾）
 
 ```ts

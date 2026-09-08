@@ -1,4 +1,4 @@
-import type * as THREE from 'three'
+import * as THREE from 'three'
 import type { AtmosphereRuntimeState } from '../rendering/AtmosphereRuntimeState'
 import type { AtmosphereStateApplier } from './SceneStateAppliers'
 import type { ResolvedSceneOptions } from './SceneOptions'
@@ -24,6 +24,7 @@ export class AtmosphereSettings {
   readonly shadow: AtmosphereShadowSettings
   readonly fallbackAmbientLight: FallbackAmbientLightSettings
   private readonly visibility: SceneToggle
+  private readonly worldToECEFMatrix = new THREE.Matrix4()
 
   constructor(
     options: ResolvedSceneOptions['atmosphere'],
@@ -67,10 +68,30 @@ export class AtmosphereSettings {
   /**
    * 设置 Three.js 世界到 ECEF 的变换。
    *
+   * 仅当应用已把场景世界从 ECEF 换走时调用。传入与场景重基准同一套矩阵；
+   * 必须正交，只含平移和旋转。门面会 copy，不持有调用方引用。
+   * 恢复默认传入单位阵。地球、相机和控件仍按 ECEF。
+   *
    * Sets the Three.js world-to-ECEF transform.
+   *
+   * Call this only after the app has rebased the scene world away from ECEF.
+   * Pass the same matrix used for that rebase. It must be orthogonal and contain
+   * only translation and rotation. The facade copies the matrix and does not
+   * keep the caller's reference. Pass an identity matrix to restore the default.
+   * Globe, camera, and controls still assume ECEF.
    */
   setWorldToECEFMatrix(matrix: THREE.Matrix4) {
-    this.applyWorldToECEFMatrix(matrix)
+    this.worldToECEFMatrix.copy(matrix)
+    this.applyWorldToECEFMatrix(this.worldToECEFMatrix)
+  }
+
+  /**
+   * 读出当前世界到 ECEF 的变换。传入 `target` 时写入并返回它。
+   *
+   * Reads the current world-to-ECEF transform. Writes into `target` when provided.
+   */
+  getWorldToECEFMatrix(target = new THREE.Matrix4()) {
+    return target.copy(this.worldToECEFMatrix)
   }
 
   #apply() {
