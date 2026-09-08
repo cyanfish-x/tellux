@@ -253,6 +253,20 @@ export class AtmosphereManager {
     return this.currentNightFactor
   }
 
+  /**
+   * 设置 Three.js 世界到 ECEF 的变换。
+   *
+   * Sets the Three.js world-to-ECEF transform.
+   */
+  setWorldToECEFMatrix(matrix: THREE.Matrix4) {
+    this.aerialPerspectiveEffect.worldToECEFMatrix.copy(matrix)
+    this.cloudsEffect.worldToECEFMatrix.copy(matrix)
+    this.sunLightSource.worldToECEFMatrix.copy(matrix)
+    this.moonLightSource.worldToECEFMatrix.copy(matrix)
+    this.skyLightSource.worldToECEFMatrix.copy(matrix)
+    this.starsMaterial.worldToECEFMatrix.copy(matrix)
+  }
+
   updateSunDirection(currentTime: Date) {
     const sunDirection = this.sunDirection
     const moonDirection = this.moonDirection
@@ -278,6 +292,7 @@ export class AtmosphereManager {
     this.moonLightSource.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
     this.skyLightSource.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
     this.starsMaterial.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
+    this.cloudsEffect.worldToECEFMatrix.copy(this.aerialPerspectiveEffect.worldToECEFMatrix)
     this.sunLightSource.target.updateMatrixWorld(true)
     this.moonLightSource.target.updateMatrixWorld(true)
     this.skyLightSource.updateMatrixWorld(true)

@@ -36,6 +36,18 @@ viewer.scene.clouds.coverage = 0.5
 viewer.scene.atmosphere.show = true
 ```
 
+### 世界到 ECEF 变换
+
+默认世界是 ECEF，一般不必调用。若把场景改成当地东北天（ENU），用同一点的 `cartographicToMatrix4` 告诉大气如何回到 ECEF：
+
+```ts
+viewer.scene.atmosphere.setWorldToECEFMatrix(
+  viewer.cartographicToMatrix4({ longitude: 121.4737, latitude: 31.2304, height: 0 })
+)
+```
+
+只在更换当地原点时更新。恢复默认传入 `new THREE.Matrix4()`。
+
 ### 散射参数
 
 `viewer.scene.atmosphere.scattering` 控制大气散射的物理参数：

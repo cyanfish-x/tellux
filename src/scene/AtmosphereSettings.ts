@@ -30,7 +30,8 @@ export class AtmosphereSettings {
     fallbackAmbientLightSource: THREE.AmbientLight,
     private readonly applyAtmosphereState: AtmosphereStateApplier,
     onEffectsChange: () => void,
-    onSurfaceMaterialModeChange: () => void
+    onSurfaceMaterialModeChange: () => void,
+    private readonly applyWorldToECEFMatrix: (matrix: THREE.Matrix4) => void = () => {}
   ) {
     const onStateChange = () => {
       this.#apply()
@@ -61,6 +62,15 @@ export class AtmosphereSettings {
 
   set show(value: boolean) {
     this.visibility.show = value
+  }
+
+  /**
+   * 设置 Three.js 世界到 ECEF 的变换。
+   *
+   * Sets the Three.js world-to-ECEF transform.
+   */
+  setWorldToECEFMatrix(matrix: THREE.Matrix4) {
+    this.applyWorldToECEFMatrix(matrix)
   }
 
   #apply() {
