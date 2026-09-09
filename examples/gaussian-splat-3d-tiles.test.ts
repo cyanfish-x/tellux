@@ -35,7 +35,7 @@ function setup() {
   const viewer = {
     scene: { raw: new THREE.Scene() }, camera: { raw: new THREE.PerspectiveCamera(), flyTo: vi.fn() },
     renderer: { raw: Object.create(THREE.WebGLRenderer.prototype) },
-    globe: { show: true }, postProcess: { toneMapping: { exposure: 5 } }, flyToTarget: vi.fn(),
+    globe: { show: true, material: { mode: 'auto' } }, postProcess: { toneMapping: { exposure: 5 } }, flyToTarget: vi.fn(),
     cartographicToMatrix4: () => new THREE.Matrix4(), render() {}, destroy() {},
   }
   const fetch = vi.fn()
