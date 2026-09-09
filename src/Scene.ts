@@ -3,7 +3,6 @@ import {
   AtmosphereSettings,
   CloudSettings,
   EntitySettings,
-  SurfaceSettings,
   type AtmosphereStateApplier,
   type CloudStateApplier,
   type ResolvedSceneOptions
@@ -56,12 +55,6 @@ export class Scene {
    */
   readonly clouds: CloudSettings
   /**
-   * 地表渲染运行时设置。
-   *
-   * Surface rendering runtime settings.
-   */
-  readonly surface: SurfaceSettings
-  /**
    * 实体渲染运行时设置。与初始化 {@link ViewerSceneOptions.entities} 同构。
    *
    * Entity rendering runtime settings. Isomorphic with
@@ -90,7 +83,6 @@ export class Scene {
       applyWorldToECEFMatrix
     )
     this.clouds = new CloudSettings(options.clouds, applyCloudsState, onEffectsChange)
-    this.surface = new SurfaceSettings(options.surface, onSurfaceMaterialModeChange)
     this.entities = new EntitySettings(options.entities, onEntityTransparencyModeChange)
     this.raw.add(this.fallbackAmbientLightSource)
     sceneRuntime.set(this, {

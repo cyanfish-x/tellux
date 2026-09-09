@@ -65,6 +65,7 @@ import {
   resolveModelMaterialMode,
   resolveSceneContentMaterialMode,
   resolveSurfaceMaterialMode,
+  resolveSurfaceMaterialOptions,
   resolveViewerClockOptions,
   resolveViewerCameraOptions,
   resolveViewerHighlightOptions,
@@ -294,7 +295,6 @@ export type {
   ViewerRendererOptions,
   ViewerRendererType,
   ViewerSceneOptions,
-  ViewerSurfaceOptions,
   ViewerWidgetOptions,
   ViewerOptions,
   HighlightTarget,
@@ -392,9 +392,12 @@ export class Viewer {
    */
   readonly terrain: Terrain
   /**
-   * 地球表面门面（裸球或当前地形）。
+   * 地球表面门面（裸球或当前地形）。`show` 控制可见性，`opacity` 淡整张皮肤，
+   * `material` 是着色（不是 Three.js Material）。
    *
-   * Globe surface facade (base ellipsoid or current terrain).
+   * Globe surface facade (base ellipsoid or current terrain). `show` controls
+   * visibility, `opacity` fades the whole skin, and `material` is shading
+   * (not a Three.js Material).
    */
   readonly globe: Globe
   /**
@@ -645,10 +648,10 @@ export class Viewer {
         transparentOverlayTexture: this.transparentOverlayTexture,
         terrain: options.terrain,
         surfaceMaterialMode: resolveSurfaceMaterialMode(
-          sceneOptions.surface.materialMode,
+          'auto',
           sceneOptions.atmosphere.lighting.mode
         ),
-        surfaceMaterialOptions: sceneOptions.surface.material,
+        surfaceMaterialOptions: resolveSurfaceMaterialOptions(undefined),
         sceneTilesetMaterialMode: resolveSceneContentMaterialMode(sceneOptions.atmosphere.lighting.mode),
         onPointCloudEdlChange: () => this.postProcessing?.applyEffects()
       })
@@ -662,7 +665,9 @@ export class Viewer {
         this.tilesetManager,
         () => this.cancelMostDetailedHeightSampling()
       )
-      this.globe = createGlobe(this.tilesetManager)
+      this.globe = createGlobe(this.tilesetManager, () => {
+        if (tilesets) this.syncSurfaceMaterialMode()
+      })
       this.terrain = createTerrain(
         () => this.tilesetManager.terrainOptions,
         (terrain) => {
@@ -1287,11 +1292,11 @@ export class Viewer {
 
   private syncSurfaceMaterialMode() {
     this.tilesetManager.setSurfaceMaterial(
-      resolveSurfaceMaterialMode(this.scene.surface.materialMode, this.scene.atmosphere.lighting.mode),
+      resolveSurfaceMaterialMode(this.globe.material.mode, this.scene.atmosphere.lighting.mode),
       {
-        roughness: this.scene.surface.material.roughness,
-        metalness: this.scene.surface.material.metalness,
-        useRoughnessMap: this.scene.surface.material.useRoughnessMap
+        roughness: this.globe.material.roughness,
+        metalness: this.globe.material.metalness,
+        useRoughnessMap: this.globe.material.useRoughnessMap
       }
     )
     const contentMaterialMode = resolveSceneContentMaterialMode(this.scene.atmosphere.lighting.mode)

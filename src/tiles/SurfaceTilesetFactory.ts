@@ -32,6 +32,7 @@ export type SurfaceTilesetFactoryOptions = {
   imageryOverlayFactory: ImageryOverlayFactory
   getSurfaceMaterialMode: () => ResolvedSurfaceMaterialMode
   getSurfaceMaterialOptions: () => SurfaceMaterialOptions
+  getGlobeOpacity?: () => number
   useDirectOverlayTexture: boolean
   registerCommonTilesetPlugins: (tileset: TilesRenderer) => void
 }
@@ -61,7 +62,9 @@ export class SurfaceTilesetFactory {
         : tilingOverlay
     const surfaceMaterialPlugin = new SurfaceMaterialPlugin(
       this.options.getSurfaceMaterialMode(),
-      this.options.getSurfaceMaterialOptions()
+      this.options.getSurfaceMaterialOptions(),
+      this.options.getGlobeOpacity?.() ?? 1,
+      this.options.useDirectOverlayTexture
     )
 
     tileset.registerPlugin(generatedSurfaceOverlay ? new GeneratedSurfacePlugin({

@@ -79,11 +79,10 @@ const viewer = new tellux.Viewer(container, {
     clouds: {
       show: false,
     },
-    surface: {
-      materialMode: "standard",
-    },
   },
 })
+
+viewer.globe.material.mode = "standard"
 
 ;(window as any).viewer = viewer
 

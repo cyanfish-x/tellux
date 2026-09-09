@@ -30,12 +30,13 @@ WebGPU 是实验能力，以下能力在 WebGPU 模式下**不渲染或不支持
 
 - 仅支持 **Cesium quantized-mesh** 格式（自托管 URL 或 Cesium Ion）。不支持 GeoTIFF、高度图等其它地形格式。
 - 地形裙边、法线生成等渲染参数通过 `terrain.tileLoading` / `TerrainRenderOptions` 配置。
+- `viewer.globe.opacity < 1` 时地形瓦片仍按不透明排序，山脊交叉、与场景 3D Tiles 穿插可能花。`depthWrite=false` 时贴地、场景深度、空气透视里的地面可能对不齐。这不是 Cesium framebuffer translucency。WebGPU 不默认承诺与 WebGL 同品质。`opacity === 0` 仍加载瓦片，不等于 `globe.show = false`。
 
 ### 影像图层
 
 - 栅格影像支持 XYZ、WMS、WMTS、Cesium Ion 四种栅格源；矢量图层支持 GeoJSON 和 MVT。
 - GeoJSON / MVT 图层是**把矢量内容栅格化成纹理**贴到地表，不是矢量几何直接渲染。样式以像素为单位，受 `resolution` 影响；极度放大时会出现纹理模糊。
-- 图层透明度 `opacity` 作用于整层；`color` 乘色作用于整层色调。
+- 图层透明度 `opacity` 作用于整层；`color` 乘色作用于整层色调。这不是地球皮肤透明度；淡整张皮肤用 `viewer.globe.opacity`。
 
 ### 3D Tiles
 

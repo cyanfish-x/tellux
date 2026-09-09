@@ -1,12 +1,37 @@
 import type { SurfaceMaterialMode } from '../types'
 import type { SurfaceMaterialOptions } from '../materials/materialMode'
-import type { ResolvedSceneOptions } from './SceneOptions'
 
+/**
+ * 地球皮肤着色参数。不是 Three.js `Material`，没有 `color` / `map`。
+ *
+ * Globe skin shading settings. This is not a Three.js `Material` and has
+ * no `color` / `map`.
+ */
 export class SurfaceMaterialSettings {
   constructor(
     private readonly options: SurfaceMaterialOptions,
+    private currentMode: SurfaceMaterialMode,
     private readonly onChange: () => void
   ) {}
+
+  /**
+   * 地球皮肤材质模式。
+   *
+   * `auto` 会根据大气光照模式选择材质。
+   *
+   * Globe skin material mode.
+   *
+   * `auto` derives the material from the atmosphere lighting mode.
+   */
+  get mode() {
+    return this.currentMode
+  }
+
+  set mode(value: SurfaceMaterialMode) {
+    if (this.currentMode === value) return
+    this.currentMode = value
+    this.onChange()
+  }
 
   /** 表面粗糙度。Surface roughness. */
   get roughness() {
@@ -47,37 +72,6 @@ export class SurfaceMaterialSettings {
   }
 }
 
-export class SurfaceSettings {
-  private currentMaterialMode: SurfaceMaterialMode
-  private readonly onMaterialChange: () => void
-  readonly material: SurfaceMaterialSettings
-
-  constructor(options: ResolvedSceneOptions['surface'], onMaterialChange: () => void) {
-    this.currentMaterialMode = options.materialMode
-    this.onMaterialChange = onMaterialChange
-    this.material = new SurfaceMaterialSettings(options.material, this.onMaterialChange)
-  }
-
-  /**
-   * 基础地球表面瓦片材质模式。
-   *
-   * `auto` 会根据大气光照模式选择材质。
-   *
-   * Base globe surface tile material mode.
-   *
-   * `auto` derives the material from the atmosphere lighting mode.
-   */
-  get materialMode() {
-    return this.currentMaterialMode
-  }
-
-  set materialMode(value: SurfaceMaterialMode) {
-    if (this.currentMaterialMode === value) return
-    this.currentMaterialMode = value
-    this.onMaterialChange()
-  }
-}
-
-function clamp01(value: number, fallback: number) {
+export function clamp01(value: number, fallback: number) {
   return Number.isFinite(value) ? Math.min(Math.max(value, 0), 1) : fallback
 }

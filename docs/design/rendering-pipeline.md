@@ -715,7 +715,7 @@ RTC 清零了 `instanceMatrix` 平移，导致 `computeBoundingBox/Sphere` 把�
 
 `surfaceMaterialMode` 变化时：
 ```
-scene.surface.materialMode 改变
+globe.material.mode 改变
   → onSurfaceMaterialModeChange 回调
   → Viewer.syncSurfaceMaterialMode()
   → TilesetManager.setSurfaceMaterial(mode, options)

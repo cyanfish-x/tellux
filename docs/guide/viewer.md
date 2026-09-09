@@ -67,9 +67,6 @@ const viewer = new Viewer(container, {
       show: true,
       quality: 'medium',
       coverage: 0.35
-    },
-    surface: {
-      materialMode: 'auto'
     }
   },
   postProcess: {
@@ -86,6 +83,8 @@ const viewer = new Viewer(container, {
 viewer.scene.atmosphere.lighting.mode = 'post-process'
 viewer.scene.atmosphere.sky.stars.show = false
 viewer.scene.clouds.quality = 'high'
+viewer.globe.material.mode = 'auto'
+viewer.globe.opacity = 1
 viewer.postProcess.smaa.enabled = true
 viewer.postProcess.taa.enabled = true // WebGPU
 ```

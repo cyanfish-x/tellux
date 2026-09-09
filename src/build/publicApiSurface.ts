@@ -221,7 +221,6 @@ export const PUBLIC_TYPE_EXPORTS = [
   'ViewerRendererType',
   'ViewerSceneOptions',
   'ViewerSurfaceMaterialOptions',
-  'ViewerSurfaceOptions',
   'ViewerToneMappingOptions',
   'ViewerWidgetOptions',
   'WMSImagerySourceOptions',

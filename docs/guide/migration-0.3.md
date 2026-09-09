@@ -14,13 +14,16 @@
 | --- | --- |
 | `viewer.layers` | `viewer.overlays` |
 | `ViewerOptions.layers` | `ViewerOptions.overlays` |
-| `viewer.tileset`（裸球 / 地形 renderer） | `viewer.globe`（`show` / `ellipsoid` / `raw`） |
+| `viewer.tileset`（裸球 / 地形 renderer） | `viewer.globe`（`show` / `opacity` / `material` / `ellipsoid` / `raw`） |
 | `viewer.load3DTileset` / `get3DTileset` / `remove3DTileset` | `viewer.tilesets.add` / `.get` / `.remove` |
 | `viewer.setTerrain(options)` / `setTerrain(null)` | `viewer.terrain.set(options)` / `viewer.terrain.clear()` |
 | `viewer.addModel` | `viewer.models.add` |
 | `viewer.highlight` | `viewer.highlighter` |
 | `viewer.scene.highlight` | `viewer.highlighter.outline` / `.overlay` |
 | `ViewerOptions.scene.highlight` | `ViewerOptions.highlighter` |
+| `viewer.scene.surface.materialMode` | `viewer.globe.material.mode` |
+| `viewer.scene.surface.material.*` | `viewer.globe.material.*` |
+| `ViewerOptions.scene.surface` | 删除；地表着色只在运行时 `viewer.globe.material`。没有 `ViewerOptions.globe` |
 | `viewer.scene.postProcess` | `viewer.postProcess` |
 | `ViewerOptions.scene.postProcess` | `ViewerOptions.postProcess` |
 | `viewer.toneMappingExposure` | `viewer.postProcess.toneMapping.exposure` |
@@ -81,7 +84,7 @@ new Viewer(el, {
 viewer.terrain.clear()
 ```
 
-隐藏裸球 / 地形用 `viewer.globe.show = false`，不要写 `viewer.globe.raw.group.visible`。
+隐藏裸球 / 地形用 `viewer.globe.show = false`，不要写 `viewer.globe.raw.group.visible`。淡整张皮肤（网格 + 已贴 overlays）用 `viewer.globe.opacity`（0～1）；`opacity === 0` 不等于 `show = false`。没有 `ViewerOptions.globe`，构造后赋值。
 
 ## 相机
 

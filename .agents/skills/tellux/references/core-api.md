@@ -58,13 +58,13 @@ const viewer = await tellux.Viewer.create(container, {
 ### 顶层常用属性
 
 ```ts
-viewer.scene          // 场景控制（大气/云/地表）— 见 scene-effects.md
+viewer.scene          // 场景控制（大气/云）— 见 scene-effects.md
 viewer.camera         // 相机 — 见下文
 viewer.overlays       // 影像图层管理器 — 见下文
 viewer.tilesets       // 场景 3D Tiles
 viewer.models         // glTF 模型
 viewer.terrain        // 地形门面
-viewer.globe          // 裸球 / 地形表面（show / ellipsoid / raw）
+viewer.globe          // 裸球 / 地形表面（show / opacity / material / ellipsoid / raw）
 viewer.postProcess    // 后处理（曝光、Bloom、TAA）
 viewer.highlighter    // 统一高亮
 viewer.controls       // 地球交互控制器（拖拽/滚轮）；完整 API 在 .raw

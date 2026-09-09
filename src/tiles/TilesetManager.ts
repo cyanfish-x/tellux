@@ -84,6 +84,7 @@ export class TilesetManager {
   private currentImageryLayers: ImageryLayer[] = []
   private currentTerrain: TerrainOptions | undefined
   private globeShow = true
+  private globeOpacity = 1
   private sceneTilesetId = 0
 
   constructor(private readonly options: TilesetManagerOptions) {
@@ -104,6 +105,7 @@ export class TilesetManager {
       imageryOverlayFactory: this.imageryOverlayFactory,
       getSurfaceMaterialMode: () => this.options.surfaceMaterialMode,
       getSurfaceMaterialOptions: () => this.options.surfaceMaterialOptions,
+      getGlobeOpacity: () => this.globeOpacity,
       useDirectOverlayTexture: options.useWebGPUCompatibleSurfaceOverlay ?? false,
       registerCommonTilesetPlugins: (tileset) => this.registerCommonTilesetPlugins(tileset)
     })
@@ -111,6 +113,7 @@ export class TilesetManager {
       imageryOverlayFactory: this.imageryOverlayFactory,
       getSurfaceMaterialMode: () => this.options.surfaceMaterialMode,
       getSurfaceMaterialOptions: () => this.options.surfaceMaterialOptions,
+      getGlobeOpacity: () => this.globeOpacity,
       useDirectOverlayTexture: options.useWebGPUCompatibleSurfaceOverlay ?? false,
       registerCommonTilesetPlugins: (tileset) => this.registerCommonTilesetPlugins(tileset)
     })
@@ -210,6 +213,20 @@ export class TilesetManager {
   applyGlobeShow(show: boolean) {
     this.globeShow = show
     this.syncGlobeVisibility()
+  }
+
+  applyGlobeOpacity(opacity: number) {
+    this.globeOpacity = opacity
+    this.surfaceMaterialPlugins.get(this.activeSurfaceTileset)?.setOpacity(
+      opacity,
+      this.activeSurfaceTileset
+    )
+    if (this.activeTerrainTileset) {
+      this.surfaceMaterialPlugins.get(this.activeTerrainTileset)?.setOpacity(
+        opacity,
+        this.activeTerrainTileset
+      )
+    }
   }
 
   load3DTileset(options: Load3DTilesetOptions): TilesetLayer {
@@ -427,6 +444,8 @@ export class TilesetManager {
   private registerCommonTilesetPlugins(tileset: TilesRenderer, modelProcessing: TileModelProcessingOptions = {}) {
     this.registerGltfExtensionsPlugin(tileset)
     this.registerTileModelProcessingPlugins(tileset, modelProcessing)
+    // LOD fade uses shader dither (fadeIn/fadeOut), not material.opacity.
+    // globe.opacity is host-material compositing and is not overwritten here.
     tileset.registerPlugin(new TilesFadePlugin())
     tileset.registerPlugin(new UpdateOnChangePlugin())
     tileset.setCamera(this.options.camera)

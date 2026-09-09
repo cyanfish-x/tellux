@@ -1,7 +1,14 @@
 import type { TilesRenderer } from '3d-tiles-renderer'
 import type { TilesetManager } from './tiles/TilesetManager'
+import { SurfaceMaterialSettings, clamp01 } from './scene/SurfaceSettings'
 
-export let createGlobe: (manager: TilesetManager) => Globe
+export let createGlobe: (manager: TilesetManager, onMaterialChange?: () => void) => Globe
+
+const DEFAULT_GLOBE_MATERIAL = {
+  roughness: 1,
+  metalness: 0,
+  useRoughnessMap: false
+} as const
 
 /**
  * 地球表面门面：裸球或当前地形，不含场景 3D Tiles。
@@ -10,13 +17,30 @@ export let createGlobe: (manager: TilesetManager) => Globe
  */
 export class Globe {
   static {
-    createGlobe = manager => new Globe(manager)
+    createGlobe = (manager, onMaterialChange = () => {}) => new Globe(manager, onMaterialChange)
   }
 
   private userShow = true
+  private userOpacity = 1
+  /**
+   * 地球皮肤着色。不是 Three.js `Material`，没有 `color` / `map`。
+   *
+   * Globe skin shading. This is not a Three.js `Material` and has no
+   * `color` / `map`.
+   */
+  readonly material: SurfaceMaterialSettings
 
-  private constructor(private readonly tilesetManager: TilesetManager) {
+  private constructor(
+    private readonly tilesetManager: TilesetManager,
+    onMaterialChange: () => void
+  ) {
+    this.material = new SurfaceMaterialSettings(
+      { ...DEFAULT_GLOBE_MATERIAL },
+      'auto',
+      onMaterialChange
+    )
     this.tilesetManager.applyGlobeShow(this.userShow)
+    this.tilesetManager.applyGlobeOpacity(this.userOpacity)
   }
 
   /**
@@ -37,6 +61,27 @@ export class Globe {
     if (this.userShow === value) return
     this.userShow = value
     this.tilesetManager.applyGlobeShow(value)
+  }
+
+  /**
+   * 地球皮肤整体透明度，范围 `0` 到 `1`，默认 `1`。
+   *
+   * `opacity === 0` 仍加载瓦片且可拾取 / 采样，不等于 {@link Globe.show}` = false`。
+   *
+   * Globe skin opacity from `0` to `1`. Defaults to `1`.
+   *
+   * `opacity === 0` still loads tiles and remains pickable / sampleable; it is
+   * not the same as {@link Globe.show}` = false`.
+   */
+  get opacity() {
+    return this.userOpacity
+  }
+
+  set opacity(value: number) {
+    const nextValue = clamp01(value, 1)
+    if (this.userOpacity === nextValue) return
+    this.userOpacity = nextValue
+    this.tilesetManager.applyGlobeOpacity(nextValue)
   }
 
   /**

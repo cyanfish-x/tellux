@@ -74,7 +74,7 @@ const model = viewer.models.add({
 })
 ```
 
-基础地表和 terrain 会额外应用 `scene.surface.material` 中的 PBR 参数。默认 `roughness: 1`、`metalness: 0`、`useRoughnessMap: false`，用于保留受光明暗同时避免 terrain watermask 在海面产生强太阳反光。需要恢复上游粗糙度贴图时，可设置 `viewer.scene.surface.material.useRoughnessMap = true`。
+基础地表和 terrain 会额外应用 `viewer.globe.material` 中的 PBR 参数。默认 `roughness: 1`、`metalness: 0`、`useRoughnessMap: false`，用于保留受光明暗同时避免 terrain watermask 在海面产生强太阳反光。需要恢复上游粗糙度贴图时，可设置 `viewer.globe.material.useRoughnessMap = true`。
 
 摄影测量 3D Tiles 的几何法线可能缺失或不稳定。此时可以为该 3D Tiles 图层重新生成折痕法线，让 `NormalPass` 为后处理光照提供更稳定的几何法线：
 
@@ -103,9 +103,9 @@ const layer = viewer.tilesets.add({
 | `atmosphere.lighting.albedoScale` | `1` | 后处理光照使用的反照率缩放，主要用于 `post-process` 模式。 |
 | `atmosphere.lighting.photometric.enabled` | `false` | 是否启用光度单位。默认关闭，避免未改灯的地球示例过曝。 |
 | `atmosphere.lighting.photometric.sunIlluminance` | `111000` | 正午太阳照度锚（lux），对齐 CesiumSunSky。映射为 Takram 强度缩放 `sunIlluminance / 111000`，**不会**写成 `SunDirectionalLight.intensity = 111000`，也**不会**换算点光或自发光。 |
-| `surface.material.roughness` | `1` | 基础地表和 terrain 的 standard 材质粗糙度。 |
-| `surface.material.metalness` | `0` | 基础地表和 terrain 的 standard 材质金属度。 |
-| `surface.material.useRoughnessMap` | `false` | 是否沿用 terrain watermask 等上游粗糙度贴图。 |
+| `globe.material.roughness` | `1` | 基础地表和 terrain 的 standard 材质粗糙度。运行时 `viewer.globe.material.roughness`。 |
+| `globe.material.metalness` | `0` | 基础地表和 terrain 的 standard 材质金属度。 |
+| `globe.material.useRoughnessMap` | `false` | 是否沿用 terrain watermask 等上游粗糙度贴图。 |
 | `atmosphere.fallbackAmbientLight.enabled` | `true` | 是否启用夜间兜底环境光。 |
 | `atmosphere.fallbackAmbientLight.intensity` | `0.5` | 夜间兜底环境光最大强度。 |
 

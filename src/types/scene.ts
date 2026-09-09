@@ -96,8 +96,6 @@ export interface ViewerSceneOptions {
   clouds?: ViewerCloudOptions
   /** 实体渲染配置。Entity rendering options. */
   entities?: ViewerEntityOptions
-  /** 地表渲染配置。Surface rendering options. */
-  surface?: ViewerSurfaceOptions
 }
 
 /**
@@ -408,22 +406,6 @@ export interface ViewerCloudLookOptions {
 export interface ViewerCloudShadowOptions {
   /** 云影质量档位，默认 `medium`。Cloud shadow quality preset. Defaults to `medium`. */
   quality?: CloudShadowQuality
-}
-
-/**
- * Viewer 地表渲染配置。
- *
- * Viewer surface rendering options.
- */
-export interface ViewerSurfaceOptions {
-  /**
-   * 基础地球表面瓦片材质模式，默认 `auto`。
-   *
-   * Base globe surface tile material mode. Defaults to `auto`.
-   */
-  materialMode?: SurfaceMaterialMode
-  /** 基础地球表面 PBR 材质参数。Base globe surface PBR material options. */
-  material?: ViewerSurfaceMaterialOptions
 }
 
 /**

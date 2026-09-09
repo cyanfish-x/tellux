@@ -6,10 +6,8 @@ import type {
   ColorInput,
   EntityTransparencyMode,
   LensFlareQuality,
-  SurfaceMaterialMode,
   ToneMappingMode
 } from '../types'
-import type { SurfaceMaterialOptions } from '../materials/materialMode'
 
 export interface ResolvedSceneOptions {
   atmosphere: {
@@ -97,10 +95,6 @@ export interface ResolvedSceneOptions {
     transparency: {
       mode: EntityTransparencyMode
     }
-  }
-  surface: {
-    materialMode: SurfaceMaterialMode
-    material: SurfaceMaterialOptions
   }
 }
 

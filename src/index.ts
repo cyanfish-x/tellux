@@ -238,7 +238,6 @@ export {
   type ViewerToneMappingOptions,
   type ToneMappingMode,
   type ViewerSceneOptions,
-  type ViewerSurfaceOptions,
   type ViewerWidgetOptions,
   type ViewerOptions,
   type TelluxRenderer,

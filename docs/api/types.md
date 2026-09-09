@@ -12,7 +12,6 @@ Tellux 的类型入口是 `dist/index.d.ts`，源码中的公开类型主要从 
 - `ViewerCloudOptions`
 - `ViewerEntityOptions`
 - `ViewerEntityTransparencyOptions`
-- `ViewerSurfaceOptions`
 - `ViewerSurfaceMaterialOptions`
 - `ViewerPostProcessOptions`
 - `ViewerHighlightOptions` / `ViewerHighlightOutlineOptions` / `ViewerHighlightOverlayOptions`
@@ -94,14 +93,6 @@ const viewer = new Viewer(container, {
       transparency: {
         mode: 'auto'
       }
-    },
-    surface: {
-      materialMode: 'auto',
-      material: {
-        roughness: 1,
-        metalness: 0,
-        useRoughnessMap: false
-      }
     }
   },
   postProcess: {
@@ -131,8 +122,9 @@ viewer.scene.atmosphere.scattering.intensity = 0.45
 viewer.scene.atmosphere.sky.stars.show = false
 viewer.scene.clouds.quality = 'high'
 viewer.scene.clouds.coverage = 0.35
-viewer.scene.surface.materialMode = 'standard'
-viewer.scene.surface.material.roughness = 0.9
+viewer.globe.material.mode = 'standard'
+viewer.globe.material.roughness = 0.9
+viewer.globe.opacity = 1
 viewer.postProcess.smaa.enabled = true
 viewer.postProcess.taa.enabled = true // WebGPU
 viewer.postProcess.toneMapping.exposure = 8
@@ -294,16 +286,6 @@ const viewer = new tellux.Viewer(container, {
     entities: {
       transparency: {
         mode: 'auto'      // 'auto' | 'weighted-oit' | 'sorted'，默认 'auto'
-      }
-    },
-
-    // 地表材质：只作用于基础地球和地形，不影响 tilesets.add / models.add
-    surface: {
-      materialMode: 'auto',    // 'auto'（随光照模式）| 'basic' | 'standard'，默认 'auto'
-      material: {
-        roughness: 1,          // 表面粗糙度 0~1，默认 1
-        metalness: 0,          // 表面金属度 0~1，默认 0
-        useRoughnessMap: false // 是否沿用地形 / 上游粗糙度贴图，默认 false（避免海面强反光）
       }
     }
   },

@@ -123,15 +123,17 @@ viewer.scene.clouds.shadow.quality = 'medium' // 'low' | 'medium' | 'high'
 
 典型用法：阴天效果 `coverage = 0.7, quality = 'high'`；关云 `show = false`。体积云从大约 20 km 起随相机高度淡出，约 40 km 以上不渲染；`show` / `coverage` 不会被改写。
 
-## 地表材质
+## 地球皮肤
 
-只作用于 Viewer 管理的基础地球和地形，不影响 `tilesets.add` / `models.add`。
+只作用于 Viewer 管理的基础地球和地形，不影响 `tilesets.add` / `models.add`。没有 `ViewerOptions.globe`，构造后赋值。
 
 ```ts
-viewer.scene.surface.materialMode = 'auto'   // 'auto'(随光照) | 'basic' | 'standard'
-viewer.scene.surface.material.roughness = 1
-viewer.scene.surface.material.metalness = 0
-viewer.scene.surface.material.useRoughnessMap = false   // 关掉可避免海面强太阳反光
+viewer.globe.show = true
+viewer.globe.opacity = 1                 // 整张皮肤透明度；不等于 overlay.style.opacity
+viewer.globe.material.mode = 'auto'      // 'auto'(随光照) | 'basic' | 'standard'
+viewer.globe.material.roughness = 1
+viewer.globe.material.metalness = 0
+viewer.globe.material.useRoughnessMap = false   // 关掉可避免海面强太阳反光
 ```
 
 ## 后处理
@@ -173,8 +175,7 @@ const viewer = new tellux.Viewer(container, {
       coverage: 0.35,
       look: { detail: true, turbulence: true, haze: true },
       shadow: { quality: 'medium' }
-    },
-    surface: { materialMode: 'auto', material: { roughness: 1, useRoughnessMap: false } }
+    }
   },
   postProcess: {
     bloom: { enabled: false, intensity: 1, luminanceThreshold: 1, luminanceSmoothing: 0.03, radius: 0.85 },

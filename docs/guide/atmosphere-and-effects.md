@@ -1,17 +1,17 @@
 # 大气、云与后处理
 
-Tellux 把视觉氛围相关的能力组织在 `viewer.scene` 下，分为大气与天空、体积云、地表材质和后处理四个领域。其中**光照模式**单独有一篇详细说明（见「光照模式与参数」），本章覆盖其余部分。
+Tellux 把视觉氛围相关的能力组织在 `viewer.scene` 下，分为大气与天空、体积云和后处理。地球皮肤着色在 `viewer.globe.material`。其中**光照模式**单独有一篇详细说明（见「光照模式与参数」），本章覆盖其余部分。
 
 ## 场景结构总览
 
 ```ts
 viewer.scene.atmosphere          // 大气天空、空气透视、光照、夜景、星空、云影
 viewer.scene.clouds              // 体积云
-viewer.scene.surface             // 基础地球表面材质
+viewer.globe.material           // 基础地球表面材质（运行时）
 viewer.postProcess         // 后处理开关（Bloom、镜头光晕、TAA、SMAA、抖动）
 ```
 
-每个领域都遵循「初始化配置与运行时入口同构」的原则：`ViewerOptions.scene.xxx` 的字段结构和 `viewer.scene.xxx` 的属性一一对应。
+每个领域都遵循「初始化配置与运行时入口同构」的原则：`ViewerOptions.scene.xxx` 的字段结构和 `viewer.scene.xxx` 的属性一一对应。地球皮肤是例外：没有 `ViewerOptions.globe`，`show` / `opacity` / `material` 只在运行时赋值。
 
 ```ts
 // 初始化配置
@@ -184,24 +184,27 @@ viewer.scene.clouds.show = false
 
 ## 地表材质
 
-`viewer.scene.surface` 控制基础地球（裸球）和地形的表面 PBR 材质。光照模式下的材质切换（`materialMode`）详见「光照模式与参数」。
+`viewer.globe.material` 控制基础地球（裸球）和地形的表面 PBR 材质。光照模式下的材质切换（`material.mode`）详见「光照模式与参数」。`globe.material` 不是 Three.js `Material`。
 
 ```ts
 // 地表粗糙度 / 金属度
-viewer.scene.surface.material.roughness = 1
-viewer.scene.surface.material.metalness = 0
+viewer.globe.material.roughness = 1
+viewer.globe.material.metalness = 0
 
 // 是否沿用 terrain watermask 等上游粗糙度贴图
-viewer.scene.surface.material.useRoughnessMap = false
+viewer.globe.material.useRoughnessMap = false
+
+// 整张皮肤透明度（网格 + 已贴 overlays）；不等于 overlay.style.opacity
+viewer.globe.opacity = 1
 ```
 
-`materialMode` 决定瓦片材质类型：
+`material.mode` 决定瓦片材质类型：
 
-| `materialMode` | 说明 |
+| `material.mode` | 说明 |
 | --- | --- |
 | `'auto'`（默认） | 随光照模式自动切换（`light-source` 用 standard，`post-process` 用 basic）。 |
 | `'standard'` | 强制 PBR 受光材质。 |
-| `'unlit'` | 强制不受光材质，常用于后处理光照场景。 |
+| `'basic'` | 强制 `MeshBasicMaterial`，不受 Three.js 光源影响。 |
 
 ## 后处理
 

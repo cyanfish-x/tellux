@@ -10,6 +10,7 @@ import {
   type SurfaceMaterialOptions
 } from '../materials/materialMode'
 import type { SurfaceMaterialMode } from '../types'
+import { applyGlobeOpacityToMaterial } from './globeOpacity'
 
 export interface TileModelPlugin {
   processTileModel: (scene: THREE.Object3D) => void
@@ -109,12 +110,30 @@ export class SceneTilesetMaterialPlugin implements TileModelPlugin {
   }
 }
 
+function applyGlobeCompositingToObject(
+  root: THREE.Object3D,
+  opacity: number,
+  applyThreeMaterialOpacity: boolean
+) {
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh
+    if (!mesh.material) return
+
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    for (const material of materials) {
+      applyGlobeOpacityToMaterial(material, opacity, applyThreeMaterialOpacity)
+    }
+  })
+}
+
 export class SurfaceMaterialPlugin implements TileModelPlugin {
   readonly priority = -20
 
   constructor(
     private currentMode: ResolvedSurfaceMaterialMode,
-    currentOptions: SurfaceMaterialOptions
+    currentOptions: SurfaceMaterialOptions,
+    private currentOpacity = 1,
+    private readonly applyThreeMaterialOpacity = false
   ) {
     this.currentOptions = { ...currentOptions }
   }
@@ -130,7 +149,9 @@ export class SurfaceMaterialPlugin implements TileModelPlugin {
     options: SurfaceMaterialOptions,
     tileset: TilesRenderer
   ) {
-    if (this.currentMode === mode && isSameSurfaceMaterialOptions(this.currentOptions, options)) return
+    if (this.currentMode === mode && isSameSurfaceMaterialOptions(this.currentOptions, options)) {
+      return
+    }
 
     this.currentMode = mode
     this.currentOptions = { ...options }
@@ -140,8 +161,27 @@ export class SurfaceMaterialPlugin implements TileModelPlugin {
     tileset.dispatchEvent({ type: 'needs-render' })
   }
 
+  setOpacity(opacity: number, tileset: TilesRenderer) {
+    if (this.currentOpacity === opacity) return
+
+    this.currentOpacity = opacity
+    tileset.forEachLoadedModel((tileScene) => {
+      applyGlobeCompositingToObject(
+        tileScene,
+        this.currentOpacity,
+        this.applyThreeMaterialOpacity
+      )
+    })
+    tileset.dispatchEvent({ type: 'needs-render' })
+  }
+
   private applyToScene(tileScene: THREE.Object3D) {
     applySurfaceMaterialModeToObject(tileScene, this.currentMode, this.currentOptions)
+    applyGlobeCompositingToObject(
+      tileScene,
+      this.currentOpacity,
+      this.applyThreeMaterialOpacity
+    )
   }
 }
 

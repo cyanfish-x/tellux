@@ -117,7 +117,7 @@ glTF 模型集合。`add(options)` 加载 glTF / GLB 并按经纬高放入场景
 
 类型：`Globe`
 
-地球表面（裸球或当前地形）。`show` 控制可见性且在切换地形后保持；`ellipsoid` 用于经纬高换算；`raw` 是底层 `TilesRenderer`。不要写 `globe.raw.group.visible`。
+地球表面（裸球或当前地形）。`show` 控制可见性且在切换地形后保持；`opacity`（0～1，默认 1）淡整张皮肤；`material.mode` / `material.roughness` 等控制着色（`material` 不是 Three.js `Material`）；`ellipsoid` 用于经纬高换算；`raw` 是底层 `TilesRenderer`。不要写 `globe.raw.group.visible`。没有 `ViewerOptions.globe`。
 
 ### `postProcess`
 
