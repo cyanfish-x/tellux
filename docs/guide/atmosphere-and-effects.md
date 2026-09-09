@@ -36,6 +36,10 @@ viewer.scene.clouds.coverage = 0.5
 viewer.scene.atmosphere.show = true
 ```
 
+WebGL 下，空气透视的天空分支在**远平面像素**上把场景色按覆盖率 alpha 预乘叠在天空上，而不是整像素换成天空。高斯泼溅这类不写深度、但带覆盖率的内容因此能剪影在天空前；暗部和软边不会被大气盖住。这要求场景 HDR 缓冲以 alpha 0 清除（引擎已设置）。不写入场景缓冲的透明实体仍走大气之后的 OIT，见实体文档。
+
+On WebGL, the aerial-perspective sky branch composites scene color over sky on far-plane pixels using premultiplied coverage alpha, instead of replacing the texel with sky. Depth-less coverage content such as Gaussian splats can silhouette against the sky without dark interiors being washed out. This needs the scene HDR buffer cleared at alpha 0, which the engine already does. Transparent entities that never write into the scene buffer still composite after atmosphere.
+
 ### 世界到 ECEF 变换
 
 默认 Three.js 世界就是 ECEF，一般不必调用。仅当应用已经把场景世界从 ECEF 换走时，把**与场景重基准同一套**的矩阵交给大气：

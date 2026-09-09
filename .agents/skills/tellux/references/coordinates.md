@@ -79,7 +79,7 @@ viewer.scene.raw.add(marker)   // 加到这里参与 Tellux 渲染
 
 ### 高斯泼溅示例侧集成
 
-Spark 默认输出 sRGB，而 Tellux WebGL 最终对整帧应用曝光与 AgX。案例通过 `SplatColorTransform` 复用点云 AgX 逆 LUT，保留高斯显示色，不以降低全局曝光修复高斯偏白；透明混合区域需视觉核验。纹理翻转错缝另见 `notes/engineering/Spark纹理上传状态缓存冲突.md`，不要混为颜色问题。
+Spark 默认输出 sRGB，而 Tellux WebGL 最终对整帧应用曝光与 AgX。案例通过 `SplatColorTransform` 复用点云 AgX 逆 LUT，保留高斯显示色，不以降低全局曝光修复高斯偏白；透明混合区域需视觉核验。高斯核保持 `depthWrite: false`；天空剪影发灰是大气天空分支覆盖无深度内容，由引擎按覆盖率 alpha 叠在天空上，不要开 `depthWrite` 或关大气来“修复”。纹理翻转错缝另见 `notes/engineering/Spark纹理上传状态缓存冲突.md`，不要混为颜色或大气问题。
 
 `examples/gaussian-splat-3d-tiles.ts` 提供 SvirnasAlyt / Elevator 高斯 3D Tiles、Cesium ion 和 Spark 单文件切换。高斯 3D Tiles 走 `TilesRenderer` + `GaussianSplatPlugin`，ion 另注册鉴权插件；独立 SPZ/PLY 走 `SplatMesh` + `SparkRenderer`，用 `cartographicToMatrix4` 把父 Group 放到展示锚点。示例需要 WebGL，没有新增 Tellux 公开门面。无地理参考资源的锚点与缩放应明确标注，不能暗示为真实位置。
 

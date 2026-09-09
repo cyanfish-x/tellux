@@ -33,6 +33,20 @@ export function createRendererAdapter(options: ViewerOptions): TelluxRendererAda
     : new WebGLRendererAdapter(options)
 }
 
+/**
+ * `setEffects` 场景 HDR 目标的 clear alpha。必须为 0，高斯等预乘无深度内容才能把覆盖率
+ * 留给大气天空分支做 over。画布在 `alpha: false` 时仍不透明。
+ *
+ * Clear alpha for the setEffects scene HDR target. Must be 0 so premultiplied
+ * no-depth content can keep coverage for the sky-over composite. The canvas stays
+ * opaque when `alpha` is false.
+ */
+export const WEBGL_SCENE_BUFFER_CLEAR_ALPHA = 0
+
+export function applyWebGLSceneBufferClearAlpha(renderer: THREE.WebGLRenderer) {
+  renderer.setClearAlpha(WEBGL_SCENE_BUFFER_CLEAR_ALPHA)
+}
+
 class WebGLRendererAdapter implements TelluxRendererAdapter {
   readonly type = 'webgl' as const
   readonly supportsWebGLEffects = true
@@ -45,6 +59,7 @@ class WebGLRendererAdapter implements TelluxRendererAdapter {
       antialias: options.renderer?.antialias,
       outputBufferType: THREE.HalfFloatType
     }) as TelluxWebGLRenderer
+    applyWebGLSceneBufferClearAlpha(this.renderer)
   }
 
   hasInitialized() {
