@@ -1,6 +1,6 @@
 import tellux from "../src"
 import * as THREE from "three"
-import { SplatColorTransform, getSparkRendererForScene } from "./gaussian-splat/sandcastleBindings"
+import { SplatColorTransform, getSparkRendererForScene, stabilizeSplatRaycast } from "./gaussian-splat/sandcastleBindings"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GaussianSplatPlugin, SparkRenderer, SplatMesh, CesiumIonAuthPlugin, ImplicitTilingPlugin, CESIUM_ION_EVALUATION_TOKEN } from "./gaussian-splat/sandcastleBindings"
 import { bootExampleI18n, t } from "./i18n"
@@ -191,6 +191,7 @@ async function loadSource() {
       const mesh = new SplatMesh({ fileBytes, fileName: new URL(url, window.location.href).pathname })
       try { await mesh.initialized } catch (error) { mesh.dispose(); throw error }
       if (request !== generation) { mesh.dispose(); return }
+      stabilizeSplatRaycast(mesh)
       activeSplat = mesh
       const bounds = mesh.getBoundingBox()
       const center = bounds.getCenter(new THREE.Vector3())
@@ -229,6 +230,12 @@ async function loadSource() {
       sparkRendererOptions: { focalAdjustment: 2, depthTest: true, depthWrite: false },
     }))
     splatColors.attach(getSparkRendererForScene(viewer.scene.raw))
+    tileset.addEventListener("load-model", ({ scene }) => {
+      if (request !== generation) return
+      scene.traverse(object => {
+        if (object.userData.gaussianSplat) stabilizeSplatRaycast(object as SplatMesh)
+      })
+    })
     tileset.addEventListener("load-error", event => fail(event.error, request))
     tileset.addEventListener("load-root-tileset", () => {
       if (request !== generation) return

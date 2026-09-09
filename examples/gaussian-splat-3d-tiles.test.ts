@@ -50,6 +50,7 @@ function setup() {
     CESIUM_ION_EVALUATION_TOKEN: 'public-evaluation-test',
     SplatColorTransform: class { update() {} attach() {} dispose() {} },
     getSparkRendererForScene: () => null,
+    stabilizeSplatRaycast() {},
     CesiumIonAuthPlugin: class { constructor(options: unknown) { auth(options) } }, ImplicitTilingPlugin: class {},
     bootExampleI18n() {}, t: (value: any) => value.en,
     ExampleMessage: { error: errors },
