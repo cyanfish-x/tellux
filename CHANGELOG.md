@@ -6,14 +6,13 @@
 
 ## [Unreleased]
 
-### Breaking
-- `postProcess.toneMappingExposure` 改为嵌套 `postProcess.toneMapping.{ enabled, mode, exposure }`；默认仍为 AgX、曝光 `5`。没有兼容 alias。
+本版本重点：
 
-### Added
-- `postProcess.toneMapping.mode` 支持 `linear` / `reinhard` / `cineon` / `aces-filmic` / `agx` / `neutral`
-
-### Changed
-- 高斯泼溅案例默认改为 Cesium ion Redmond 资产及对应近景视角，并更新 Sandcastle 封面
+- **稳定公开 API**：收敛为 `overlays` / `tilesets` / `models` / `terrain` / `globe` / `renderer` / `postProcess` / `highlighter` 领域门面与 `LonLat*` 坐标，初始化与运行时同构；0.2 顶层拍平路径已删除，没有兼容层。
+- **色调映射**：顶层 `postProcess.toneMappingExposure` 改为 `postProcess.toneMapping.{ enabled, mode, exposure }`，默认仍为 AgX、曝光 `5`，支持多种映射算子。没有兼容 alias。
+- **WebGPU 后处理**：接入 Bloom、镜头光晕、时间抗锯齿与星空。
+- **场景时钟**：统一 Clock 与 Timeline。
+- **局部世界与案例**：大气支持局部 ENU 世界，高斯泼溅、草地等示例同步到新 API。
 
 ## [0.2.0] - 2026-07-23
 
