@@ -9,6 +9,7 @@ import {
   getLocalDayNumber,
   getLocalTimeOfDayHours,
   resolveDynamicDayRange,
+  nextLinkedCloudSpeedBase,
   resolveLinkedCloudSpeed,
   shiftTimelineWindow,
   shouldWriteControlValue,
@@ -68,6 +69,13 @@ describe('timelineLogic', () => {
     expect(resolveLinkedCloudSpeed(true, false, 0.001, 600)).toBe(0)
     expect(resolveLinkedCloudSpeed(true, true, 0.001, 600)).toBe(0.06)
     expect(resolveLinkedCloudSpeed(true, true, 0.001, 86400)).toBe(0.06)
+  })
+
+  it('adopts an external clouds.speed write as the new linked base', () => {
+    expect(nextLinkedCloudSpeedBase(0.001, null, 0.001)).toBe(0.001)
+    expect(nextLinkedCloudSpeedBase(0.06, 0.06, 0.001)).toBe(0.001)
+    expect(nextLinkedCloudSpeedBase(0.02, 0.06, 0.001)).toBe(0.02)
+    expect(nextLinkedCloudSpeedBase(0, 0, 0.02)).toBe(0.02)
   })
 
   it('preserves time of day when jumping by day of year', () => {

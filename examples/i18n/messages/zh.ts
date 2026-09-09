@@ -170,7 +170,6 @@ export const zh: MessageTable = {
   'example.atmosphere.panel.aria': '大气与云控件',
   'example.atmosphere.panel.title': '体积云与大气',
   'example.atmosphere.folder.place': '地点',
-  'example.atmosphere.hint': '使用右上角公共设置面板调整大气、体积云、日期、光照和曝光。',
   'example.atmosphere.btn.dujiangyan': '紫坪铺水库',
   'example.atmosphere.btn.himalaya': '喜马拉雅',
   'example.atmosphere.docTitle': 'Tellux 体积云与大气',

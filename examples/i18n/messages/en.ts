@@ -170,7 +170,6 @@ export const en: MessageTable = {
   'example.atmosphere.panel.aria': 'Atmosphere & clouds controls',
   'example.atmosphere.panel.title': 'Volumetric clouds & atmosphere',
   'example.atmosphere.folder.place': 'Places',
-  'example.atmosphere.hint': 'Use the top-right shared settings panel for atmosphere, clouds, date, lighting, and exposure.',
   'example.atmosphere.btn.dujiangyan': 'Zipingpu Reservoir',
   'example.atmosphere.btn.himalaya': 'Himalaya',
   'example.atmosphere.docTitle': 'Tellux Volumetric Clouds & Atmosphere',

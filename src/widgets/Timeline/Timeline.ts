@@ -16,6 +16,7 @@ import {
   getLocalDayRange,
   getLocalTimeOfDayHours,
   getLocalTimeZoneLabel,
+  nextLinkedCloudSpeedBase,
   resolveDynamicDayRange,
   resolveLinkedCloudSpeed,
   shiftTimelineWindow,
@@ -50,14 +51,17 @@ interface CivilTimeSpring {
  * Viewer 时间条控件。
  *
  * 控制 {@link Viewer.clock} 的播放、倍率与当前时间。仅在
- * `linkCloudSpeed: true` 时按播放态联动 `scene.clouds.speed`。日期、时刻和
- * 日范围按浏览器本地时区显示与交互。
+ * `linkCloudSpeed: true` 时按播放态联动 `scene.clouds.speed`。外部改写云速
+ * （如示例面板）会成为新的联动基准；暂停时云速为 `0`，销毁时恢复基准。
+ * 日期、时刻和日范围按浏览器本地时区显示与交互。
  *
  * Timeline widget for a Viewer.
  *
  * Controls {@link Viewer.clock} playback, multiplier, and current time. Only
- * links `scene.clouds.speed` when `linkCloudSpeed: true`. Dates, clock values,
- * and day ranges use the browser's local time zone.
+ * links `scene.clouds.speed` when `linkCloudSpeed: true`. External writes to
+ * cloud speed (for example a settings panel) become the new linked base;
+ * paused speed is `0`, dispose restores the base. Dates, clock values, and
+ * day ranges use the browser's local time zone.
  */
 export class Timeline {
   private readonly viewer: Viewer
@@ -94,8 +98,15 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
   const linkCloudSpeed = options.linkCloudSpeed === true
   const initialTime = viewer.clock.currentTime
 
-  const baseCloudSpeed = viewer.scene.clouds.speed
+  let baseCloudSpeed = viewer.scene.clouds.speed
+  let lastAppliedLinkedSpeed: number | null = null
   const syncCloudSpeed = () => {
+    const currentSpeed = viewer.scene.clouds.speed
+    baseCloudSpeed = nextLinkedCloudSpeedBase(
+      currentSpeed,
+      lastAppliedLinkedSpeed,
+      baseCloudSpeed
+    )
     const nextSpeed = resolveLinkedCloudSpeed(
       linkCloudSpeed,
       viewer.clock.shouldAnimate,
@@ -103,7 +114,10 @@ function mountTimeline(viewer: Viewer, options: TimelineOptions) {
       viewer.clock.multiplier
     )
     if (nextSpeed === null) return
-    viewer.scene.clouds.speed = nextSpeed
+    lastAppliedLinkedSpeed = nextSpeed
+    if (currentSpeed !== nextSpeed) {
+      viewer.scene.clouds.speed = nextSpeed
+    }
   }
 
   const dynamicDayRange = options.startTime === undefined && options.endTime === undefined

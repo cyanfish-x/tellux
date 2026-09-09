@@ -174,6 +174,24 @@ export function resolveLinkedCloudSpeed(
   return baseCloudSpeed * Math.min(Math.max(multiplier, 0), CLOUD_SPEED_MULTIPLIER_CAP)
 }
 
+/**
+ * 时间轴只应改写自己写过的联动结果。公开 `clouds.speed` 若与上次写入不同，
+ * 视为面板或应用改了基准云速，不要继续用挂载快照盖回去。
+ *
+ * Only replace the value this widget last applied. A different public
+ * `clouds.speed` is a new user base, not the mount-time snapshot.
+ */
+export function nextLinkedCloudSpeedBase(
+  currentSpeed: number,
+  lastAppliedSpeed: number | null,
+  previousBase: number
+) {
+  if (lastAppliedSpeed === null || currentSpeed !== lastAppliedSpeed) {
+    return currentSpeed
+  }
+  return previousBase
+}
+
 export function clockMultiplierToSliderValue(value: number) {
   return Math.log2(
     Math.min(Math.max(toFinite(value, 1), 0), MAX_CLOCK_MULTIPLIER) + 1

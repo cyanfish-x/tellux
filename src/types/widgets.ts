@@ -54,14 +54,15 @@ export interface TimelineOptions {
   /**
    * 是否将播放态下的 `clock.multiplier` 联动到 `scene.clouds.speed`，默认 `false`。
    *
-   * 开启后：播放时为挂载时快照的基准云速 × 倍率（倍率上限 `60`），暂停时为 `0`；
-   * 销毁时恢复基准云速。
+   * 开启后：播放时为当前基准云速 × 倍率（倍率上限 `60`），暂停时为 `0`；
+   * 面板或应用改写 `scene.clouds.speed` 会更新基准；销毁时恢复基准云速。
    *
    * Whether to link play-state `clock.multiplier` to `scene.clouds.speed`.
    * Defaults to `false`.
    *
-   * When enabled: playing uses base cloud speed captured at mount × multiplier
-   * (capped at `60`), paused uses `0`; dispose restores the base speed.
+   * When enabled: playing uses the current base cloud speed × multiplier
+   * (capped at `60`), paused uses `0`. External writes to `scene.clouds.speed`
+   * update the base; dispose restores it.
    */
   linkCloudSpeed?: boolean
   /**

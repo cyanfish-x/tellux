@@ -1701,6 +1701,16 @@ select.field__input {
   --leva-colors-accent3: var(--tellux-accent-hover);
 }
 
+/*
+ * 底部 Timeline 约占 150–170px（含 bottom: 16px）。把内容区高度压到时间轴上方，
+ * 避免左侧长面板盖住播放控件；超出部分在面板内滚动。
+ */
+#leva__root .leva__content-container {
+  max-height: calc(
+    100dvh - 12px - var(--leva--titleBarHeight, 39px) - 196px
+  );
+}
+
 /* 按钮：与 Sandcastle Run（sandcastle-button--primary）同色 */
 #leva__root .leva__input--button {
   color: var(--tellux-accent-ink);

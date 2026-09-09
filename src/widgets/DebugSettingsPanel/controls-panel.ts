@@ -168,7 +168,7 @@ export function buildDebugSettingsControls(
     id: "cloud-speed",
     label: "云速",
     min: 0,
-    max: 0.05,
+    max: 0.02,
     step: 0.0001,
     value: clouds?.speed ?? viewer.scene.clouds.speed,
     format: (value) => value.toFixed(4),
