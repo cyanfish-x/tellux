@@ -104,6 +104,9 @@ importers:
       three:
         specifier: ^0.184.0
         version: 0.184.0
+      three-stylized:
+        specifier: link:../three-stylized
+        version: link:../three-stylized
       typescript:
         specifier: ~5.2.2
         version: 5.2.2

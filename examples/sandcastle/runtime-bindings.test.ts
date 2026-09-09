@@ -22,7 +22,8 @@ describe('Sandcastle optional runtime bindings', () => {
       hism: false,
       tree: false,
       waterArea: false,
-      threejsInterop: false
+      threejsInterop: false,
+      localMeadow: false,
     })
   })
 
@@ -73,6 +74,16 @@ describe('Sandcastle optional runtime bindings', () => {
     expect(detectOptionalRuntimeBindings(`
       const altitude = computeSunAltitudeAtLocation(lon, lat, date)
     `).threejsInterop).toBe(true)
+  })
+
+  it('detects the local-meadow helper without widening the base runner graph', () => {
+    expect(detectOptionalRuntimeBindings(`
+      createLocalMeadowAtmosphereDemo(container)
+    `).localMeadow).toBe(true)
+
+    expect(detectOptionalRuntimeBindings(`
+      const meadow = { density: 36 }
+    `).localMeadow).toBe(false)
   })
 
   it('does not confuse generic shared helpers with HISM helpers', () => {

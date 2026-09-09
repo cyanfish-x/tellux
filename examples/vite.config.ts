@@ -74,6 +74,7 @@ const htmlInputs = {
   pointCloud3dTiles: resolve(__dirname, "point-cloud-3d-tiles.html"),
   terrain: resolve(__dirname, "terrain.html"),
   atmosphere: resolve(__dirname, "atmosphere.html"),
+  atmosphereLocalMeadow: resolve(__dirname, "atmosphere-local-meadow.html"),
   webgpuBasic: resolve(__dirname, "webgpu-basic.html"),
   waterArea: resolve(__dirname, "water-area.html"),
   threejsInterop: resolve(__dirname, "threejs-interop.html"),
@@ -116,7 +117,7 @@ export default defineConfig(({ mode }) => {
     envDir: projectRoot,
     optimizeDeps: {
       include: ["@mapbox/vector-tile", "pbf", "@sparkjsdev/spark", "3d-tiles-rendererjs-3dgs-plugin", "three-mesh-bvh"],
-      exclude: ["leva-vanilla"],
+      exclude: ["leva-vanilla", "three-stylized"],
     },
     resolve: {
       alias: [
@@ -128,11 +129,19 @@ export default defineConfig(({ mode }) => {
           find: "leva-vanilla",
           replacement: resolve(projectRoot, "../leva-vanilla/src/index.ts"),
         },
+        {
+          find: "three-stylized",
+          replacement: resolve(projectRoot, "../three-stylized/src/grass/index.ts"),
+        },
       ],
     },
     server: {
       fs: {
-        allow: [projectRoot, resolve(projectRoot, "../leva-vanilla")],
+        allow: [
+          projectRoot,
+          resolve(projectRoot, "../leva-vanilla"),
+          resolve(projectRoot, "../three-stylized"),
+        ],
       },
       proxy: exampleProxy,
     },

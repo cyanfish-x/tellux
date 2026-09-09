@@ -32,12 +32,18 @@ export const THREEJS_INTEROP_RUNTIME_BINDING_NAMES = [
   'setupLittlestTokyoNightRig',
 ] as const
 
+export const LOCAL_MEADOW_RUNTIME_BINDING_NAMES = [
+  'createLocalMeadowAtmosphereDemo',
+  'LOCAL_MEADOW_ANCHOR',
+] as const
+
 export interface OptionalRuntimeBindings {
   gaussianSplat: boolean
   hism: boolean
   tree: boolean
   waterArea: boolean
   threejsInterop: boolean
+  localMeadow: boolean
 }
 
 export function detectOptionalRuntimeBindings(
@@ -52,7 +58,10 @@ export function detectOptionalRuntimeBindings(
     ),
     threejsInterop: THREEJS_INTEROP_RUNTIME_BINDING_NAMES.some((name) =>
       hasIdentifier(source, name)
-    )
+    ),
+    localMeadow: LOCAL_MEADOW_RUNTIME_BINDING_NAMES.some((name) =>
+      hasIdentifier(source, name)
+    ),
   }
 }
 

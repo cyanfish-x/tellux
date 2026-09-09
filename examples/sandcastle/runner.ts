@@ -25,6 +25,7 @@ import type { BootExampleI18nOptions } from "../i18n"
 import {
   GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES,
   HISM_RUNTIME_BINDING_NAMES,
+  LOCAL_MEADOW_RUNTIME_BINDING_NAMES,
   THREEJS_INTEROP_RUNTIME_BINDING_NAMES,
   WATER_AREA_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
@@ -200,6 +201,7 @@ async function executeExampleScript(source: string) {
     "generatePoissonPlacements",
     ...WATER_AREA_RUNTIME_BINDING_NAMES,
     ...THREEJS_INTEROP_RUNTIME_BINDING_NAMES,
+    ...LOCAL_MEADOW_RUNTIME_BINDING_NAMES,
     "t",
     "bootExampleI18n",
     "__sandcastleImportMeta",
@@ -240,6 +242,9 @@ async function executeExampleScript(source: string) {
     ...THREEJS_INTEROP_RUNTIME_BINDING_NAMES.map(
       (name) => optionalBindings.threejsInterop[name]
     ),
+    ...LOCAL_MEADOW_RUNTIME_BINDING_NAMES.map(
+      (name) => optionalBindings.localMeadow[name]
+    ),
     t,
     bootExampleI18nInRunner,
     sandcastleImportMeta
@@ -248,7 +253,14 @@ async function executeExampleScript(source: string) {
 
 async function loadOptionalRuntimeBindings(source: string) {
   const required = detectOptionalRuntimeBindings(source)
-  const [gaussianSplatModule, treeModule, hismModule, waterAreaModule, threejsInteropModule] =
+  const [
+    gaussianSplatModule,
+    treeModule,
+    hismModule,
+    waterAreaModule,
+    threejsInteropModule,
+    localMeadowModule,
+  ] =
     await Promise.all([
       required.gaussianSplat
         ? import("../gaussian-splat/sandcastleBindings")
@@ -264,6 +276,9 @@ async function loadOptionalRuntimeBindings(source: string) {
         : null,
       required.threejsInterop
         ? import("../threejs-interop/sandcastleBindings")
+        : null,
+      required.localMeadow
+        ? import("../atmosphere-local-meadow/sandcastleBindings")
         : null,
     ])
 
@@ -286,6 +301,12 @@ async function loadOptionalRuntimeBindings(source: string) {
       Pick<
         typeof import("../threejs-interop/sandcastleBindings"),
         (typeof THREEJS_INTEROP_RUNTIME_BINDING_NAMES)[number]
+      >
+    >,
+    localMeadow: (localMeadowModule ?? {}) as Partial<
+      Pick<
+        typeof import("../atmosphere-local-meadow/sandcastleBindings"),
+        (typeof LOCAL_MEADOW_RUNTIME_BINDING_NAMES)[number]
       >
     >,
   }

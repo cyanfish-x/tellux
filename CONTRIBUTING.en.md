@@ -16,6 +16,27 @@ cd tellux
 pnpm install
 ```
 
+### Sibling local dependencies (examples)
+
+Some examples resolve packages via `link:../…` in `package.json`, pointing at repositories that sit **next to** `tellux` (not vendored into this repo). Today that includes:
+
+| Package | Sibling directory | Used for |
+| --- | --- | --- |
+| `leva-vanilla` | `../leva-vanilla` | Example control panels |
+| `three-stylized` | `../three-stylized` | Meadow prop in `atmosphere-local-meadow` (not a public Tellux API) |
+
+Before running those examples, clone the siblings beside `tellux`, then reinstall:
+
+```bash
+# In the parent of tellux (e.g. MyProjects/)
+git clone https://github.com/Alkebsi/leva-vanilla.git
+git clone https://github.com/Steve245270533/three-stylized.git
+cd tellux
+pnpm install
+```
+
+If a sibling is missing, `pnpm install` or Vite resolution for that `link:` / alias fails by design. Public example deploys / CI are not required to run sibling-linked examples. See `examples/vite.config.ts` for `resolve.alias` and `server.fs.allow`.
+
 Common commands:
 
 | Command | Description |

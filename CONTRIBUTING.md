@@ -16,6 +16,27 @@ cd tellux
 pnpm install
 ```
 
+### 本地兄弟仓库依赖（示例用）
+
+部分示例通过 `package.json` 的 `link:../…` 引用**与 tellux 同级**的本地仓库，不会打进 Tellux 包体积。当前包括：
+
+| 依赖 | 同级目录 | 用途 |
+| --- | --- | --- |
+| `leva-vanilla` | `../leva-vanilla` | 示例控制面板 |
+| `three-stylized` | `../three-stylized` | `atmosphere-local-meadow` 案例中的草地道具（非公开 API） |
+
+首次跑相关示例前，在 `tellux` 的父目录准备兄弟仓库，再回到 tellux 安装：
+
+```bash
+# 在 MyProjects/（或你的 monorepo 父目录）下
+git clone https://github.com/Alkebsi/leva-vanilla.git
+git clone https://github.com/Steve245270533/three-stylized.git
+cd tellux
+pnpm install
+```
+
+缺少兄弟目录时，`pnpm install` 或 Vite 解析对应 `link:` / alias 会失败；这是预期行为。公开示例站 / CI 不保证能跑依赖兄弟仓库的案例。`examples/vite.config.ts` 里为这些包配置了 `resolve.alias` 与 `server.fs.allow`。
+
 常用命令：
 
 | 命令 | 说明 |
