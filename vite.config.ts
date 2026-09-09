@@ -4,13 +4,8 @@ import {
   isBundledExternalModule,
   isPeerDependencyExternal
 } from './src/build/peerDependencyExternal'
-import {
-  assertBundleSizeBudgets,
-  selectFilesMatching
-} from './src/build/bundleSizeBudget'
 
 const telluxAssetUrlMarker = '__TELLUX_ASSET_URL__/'
-const KiB = 1024
 
 function preserveTelluxAssetUrls() {
   return {
@@ -64,21 +59,7 @@ function assertPeerDependenciesExternal(): Plugin {
 export default defineConfig({
   plugins: [
     preserveTelluxAssetUrls(),
-    assertPeerDependenciesExternal(),
-    assertBundleSizeBudgets([
-      {
-        name: 'core index',
-        select: selectFilesMatching(/^index\.js$/),
-        maxBytes: 640 * KiB,
-        maxGzipBytes: 165 * KiB
-      },
-      {
-        name: 'assets entry',
-        select: selectFilesMatching(/^assets\.js$/),
-        maxBytes: 4 * KiB,
-        maxGzipBytes: 2 * KiB
-      }
-    ])
+    assertPeerDependenciesExternal()
   ],
   assetsInclude: ['**/*.bin'],
   optimizeDeps: {

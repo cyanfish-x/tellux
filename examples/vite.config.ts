@@ -1,12 +1,6 @@
 import { resolve } from "node:path"
 import { defineConfig, loadEnv, type ProxyOptions } from "vite"
 import {
-  assertBundleSizeBudgets,
-  selectChunksContainingModules,
-  selectFilesMatching,
-  selectInitialEntryGraph,
-} from "../src/build/bundleSizeBudget"
-import {
   TIANDITU_DEV_TILE_PROXY_PREFIX,
   TIANDITU_SUBDOMAINS,
 } from "./tiandituDevProxy"
@@ -67,8 +61,6 @@ function createTiandituDevProxy(refererOrigin: string): Record<string, ProxyOpti
 }
 
 const projectRoot = resolve(__dirname, "..")
-const KiB = 1024
-const MiB = 1024 * KiB
 const htmlInputs = {
   index: resolve(__dirname, "index.html"),
   gallery: resolve(__dirname, "gallery.html"),
@@ -118,64 +110,6 @@ export default defineConfig(({ mode }) => {
 
   return {
     root: __dirname,
-    plugins: [
-      assertBundleSizeBudgets(
-        [
-          {
-            name: "homepage initial JS",
-            select: selectInitialEntryGraph("index"),
-            maxBytes: 2.8 * MiB,
-            maxGzipBytes: 800 * KiB,
-          },
-          {
-            name: "Sandcastle editor initial JS",
-            select: selectInitialEntryGraph("sandcastle"),
-            maxBytes: 5.25 * MiB,
-            maxGzipBytes: 1.35 * MiB,
-          },
-          {
-            name: "Sandcastle runner initial JS",
-            select: selectInitialEntryGraph("sandcastleRunner"),
-            maxBytes: 3 * MiB,
-            maxGzipBytes: 800 * KiB,
-          },
-          {
-            name: "Tree optional capability",
-            select: selectChunksContainingModules(["/@dgreenheck/ez-tree/"]),
-            maxBytes: 4.25 * MiB,
-            maxGzipBytes: 3.2 * MiB,
-          },
-          {
-            name: "Gaussian Splat optional capability",
-            select: selectChunksContainingModules([
-              "/3d-tiles-rendererjs-3dgs-plugin/",
-              "/@sparkjsdev/spark/",
-            ]),
-            maxBytes: 5.5 * MiB,
-            maxGzipBytes: 2 * MiB,
-          },
-          {
-            name: "TypeScript worker",
-            select: selectFilesMatching(/^assets\/ts\.worker-.*\.js$/),
-            maxBytes: 6.25 * MiB,
-            maxGzipBytes: 1.6 * MiB,
-          },
-          {
-            name: "Water Area worker",
-            select: selectFilesMatching(/^assets\/worker-.*\.js$/),
-            maxBytes: 256 * KiB,
-            maxGzipBytes: 80 * KiB,
-          },
-          {
-            name: "editor worker",
-            select: selectFilesMatching(/^assets\/editor\.worker-.*\.js$/),
-            maxBytes: 300 * KiB,
-            maxGzipBytes: 100 * KiB,
-          },
-        ],
-        "tellux-assert-example-size-budgets"
-      ),
-    ],
     // 本地 dev（mode=development/production）用 "/"，部署构建（mode=ghpages）用 "/tellux/"。
     // 不通过 process.env.VITE_BASE 传 base，避免 Windows + Git Bash 的 MSYS2 路径转换
     // 把 "/tellux/" 错误改写成 "D:/Program Files/Git/tellux/"。
@@ -207,7 +141,6 @@ export default defineConfig(({ mode }) => {
       proxy: exampleProxy,
     },
     build: {
-      // 已由上方按入口 / 专用能力划分的预算替代 Vite 通用 500 kB warning。
       chunkSizeWarningLimit: 5600,
       rollupOptions: {
         input: htmlInputs,

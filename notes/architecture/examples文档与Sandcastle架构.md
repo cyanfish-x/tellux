@@ -1,6 +1,6 @@
 # examples 架构说明
 
-> 2026-09-06 复核范围：静态核对 package scripts、Vite 预算与资源配置、Sandcastle runner/app 和 runtime bindings；没有启动站点或重跑站点构建。
+> 2026-09-09 复核范围：静态核对 package scripts、资源配置、Sandcastle runner/app 和 runtime bindings；构建期体积预算已取消。没有启动站点或重跑站点构建。
 
 
 本文记录 `examples/` 目录的项目级架构。这里的内容面向维护者，不属于面向用户发布的文档页。
@@ -158,30 +158,6 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 - Water Area helper、默认参数和归一化函数 → `examples/water-area/sandcastleBindings.ts`
 
 普通示例只加载 Tellux / Three.js 和通用 helper；专用依赖加载失败会进入 runner 现有的错误回传通道。新增专用注入能力时，应把同一领域的运行时值成组维护在 `*_RUNTIME_BINDING_NAMES` 与专用 re-export 模块中，并同步更新 binding 检测测试。只注入入口函数、遗漏示例导入的默认参数或 helper，会在 import 被剥离后产生 `ReferenceError`。
-
-## 构建体积预算
-
-根 [vite.config.ts](../../vite.config.ts) 与 [examples/vite.config.ts](../../examples/vite.config.ts) 使用同一套构建期预算插件。预算在本地 `pnpm build` / `pnpm build:examples` 中直接执行，不依赖 CI。
-
-核心库与示例站使用不同口径：
-
-| 范围 | 预算口径 | raw 上限 | gzip 上限 |
-| --- | --- | ---: | ---: |
-| 核心 `index.js` | 单一库入口 | 640 KiB | 165 KiB |
-| 首页 | 入口及其静态 JS import 图 | 2.8 MiB | 800 KiB |
-| Sandcastle 编辑器 | 入口及其静态 JS import 图 | 5.25 MiB | 1.35 MiB |
-| Sandcastle runner | 入口及其静态 JS import 图 | 3 MiB | 800 KiB |
-| Tree | 包含 `@dgreenheck/ez-tree` 的异步能力 chunk | 4.25 MiB | 3.2 MiB |
-| Gaussian Splat | 包含 3DGS plugin / Spark 的异步能力 chunk | 5.5 MiB | 2 MiB |
-| TypeScript worker | worker 文件 | 6.25 MiB | 1.6 MiB |
-| Water Area worker | 水域 MVT 解码与遮罩栅格化 worker 文件 | 256 KiB | 80 KiB |
-| editor worker | worker 文件 | 300 KiB | 100 KiB |
-
-入口预算只递归静态 `imports`，不把 `dynamicImports` 计入首屏；异步重能力有独立预算。这样既能阻止普通入口意外吃进专用依赖，又不会用整个多页站点的总产物体积掩盖责任边界。
-
-预算超过或目标产物缺失时构建直接失败。调整上限前必须先说明增长来自哪个领域能力，并在本节更新基线；不要只提高 Vite 的通用 chunk warning 阈值。
-
-核心 `index.js` 在公开 API 稳定窗口从 600 / 160 KiB 调到 640 / 165 KiB：增长来自领域门面（`tilesets` / `models` / `terrain` / `globe` / `renderer` / `postProcess` / `highlighter` / `controls`）和调试面板嵌套 options，不是示例站入口。
 
 ### 示例控件面板
 
