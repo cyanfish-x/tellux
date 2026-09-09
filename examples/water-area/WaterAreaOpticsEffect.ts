@@ -7,6 +7,7 @@ import {
 } from '@takram/three-atmosphere/webgpu'
 
 import {
+  DEFAULT_WATER_AREA_OPTICS,
   normalizeWaterAreaOptics,
   type ResolvedWaterAreaOptics,
   type WaterAreaEnvironment,
@@ -44,7 +45,7 @@ export class WaterAreaOpticsEffect implements WaterAreaOptics {
   readonly environment: WaterAreaEnvironment
 
   environmentEnabled = true
-  environmentIntensity = 1
+  environmentIntensity = DEFAULT_WATER_AREA_OPTICS.environment.intensity
 
   private disposed = false
 

@@ -1,5 +1,7 @@
 import tellux from "../src"
 import { bootExampleI18n } from "./i18n"
+import type { WaterAreaAppearanceOptions } from "./water-area/WaterAreaAppearance"
+import type { WaterAreaOpticsOptions } from "./water-area/WaterAreaOptics"
 import { setupWaterAreaPanel } from "./water-area/setupWaterAreaPanel"
 
 const WATER_AREA_VIEW = {
@@ -9,6 +11,24 @@ const WATER_AREA_VIEW = {
   heading: 57.090078519217464,
   pitch: 1.7434647918138277,
   roll: -0.000009369041331049295,
+}
+
+const WATER_AREA_APPEARANCE: WaterAreaAppearanceOptions = {
+  show: true,
+  color: "#06172d",
+  colorMix: 0.9,
+  roughness: 0.05,
+  waveStrength: 0.44,
+  waveScale: 0.25,
+  waveSpeed: 0.4,
+  waveDirection: 160,
+}
+
+const WATER_AREA_OPTICS: WaterAreaOpticsOptions = {
+  environment: {
+    enabled: true,
+    intensity: 0.7,
+  },
 }
 
 const WATER_AREA_UTC_TIME = new Date(Date.UTC(2026, 7, 23, 15, 12, 18))
@@ -74,6 +94,8 @@ async function main() {
     viewer,
     defaultIonToken: DEFAULT_ION_TOKEN,
     attributionsElement,
+    appearance: WATER_AREA_APPEARANCE,
+    optics: WATER_AREA_OPTICS,
     onDemoChange: (demo) => {
       ;(window as any).waterAreaDemo = demo
     },

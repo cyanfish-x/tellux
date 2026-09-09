@@ -6,17 +6,20 @@ import {
   type WaterAreaDemo,
 } from "./createWaterAreaDemo"
 import {
-  DEFAULT_WATER_AREA_APPEARANCE,
   normalizeWaterAreaAppearance,
   type ResolvedWaterAreaAppearance,
+  type WaterAreaAppearanceOptions,
 } from "./WaterAreaAppearance"
 import {
-  DEFAULT_WATER_AREA_OPTICS,
   normalizeWaterAreaOptics,
   type ResolvedWaterAreaOptics,
+  type WaterAreaOpticsOptions,
 } from "./WaterAreaOptics"
 
-const waterAreaSchema = () =>
+const waterAreaSchema = (
+  appearance: ResolvedWaterAreaAppearance,
+  optics: ResolvedWaterAreaOptics
+) =>
   ({
     setup: {
       $: { label: t({ zh: "效果", en: "Effect" }) },
@@ -25,25 +28,25 @@ const waterAreaSchema = () =>
         label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
       },
       show: {
-        value: true,
+        value: appearance.show,
         label: t({ zh: "显示水域外观", en: "Show water appearance" }),
       },
     },
     appearance: {
       $: { label: t({ zh: "外观", en: "Appearance" }) },
       color: {
-        value: "#06172d",
+        value: appearance.color,
         label: t({ zh: "水色", en: "Water color" }),
       },
       colorMix: {
-        value: 0.8,
+        value: appearance.colorMix,
         min: 0,
         max: 1,
         step: 0.05,
         label: t({ zh: "颜色混合", en: "Color mix" }),
       },
       roughness: {
-        value: 0.11,
+        value: appearance.roughness,
         min: 0.05,
         max: 0.8,
         step: 0.01,
@@ -53,28 +56,28 @@ const waterAreaSchema = () =>
     waves: {
       $: { label: t({ zh: "波纹", en: "Waves" }) },
       strength: {
-        value: 0.8,
+        value: appearance.waveStrength,
         min: 0,
         max: 1,
         step: 0.01,
         label: t({ zh: "强度", en: "Strength" }),
       },
       scale: {
-        value: 0.3,
+        value: appearance.waveScale,
         min: 0.25,
         max: 4,
         step: 0.05,
         label: t({ zh: "尺度", en: "Scale" }),
       },
       speed: {
-        value: 0.5,
+        value: appearance.waveSpeed,
         min: 0,
         max: 2,
         step: 0.05,
         label: t({ zh: "速度", en: "Speed" }),
       },
       direction: {
-        value: 160,
+        value: appearance.waveDirection,
         min: 0,
         max: 360,
         step: 1,
@@ -84,11 +87,11 @@ const waterAreaSchema = () =>
     environment: {
       $: { label: t({ zh: "环境", en: "Environment" }) },
       enabled: {
-        value: true,
+        value: optics.environment.enabled,
         label: t({ zh: "天空环境倒影", en: "Sky environment" }),
       },
       intensity: {
-        value: 1,
+        value: optics.environment.intensity,
         min: 0,
         max: 2,
         step: 0.05,
@@ -110,6 +113,8 @@ export interface SetupWaterAreaPanelOptions {
   viewer: Viewer
   defaultIonToken?: string
   attributionsElement: HTMLElement
+  appearance?: WaterAreaAppearanceOptions
+  optics?: WaterAreaOpticsOptions
   onDemoChange?: (demo: WaterAreaDemo | null) => void
 }
 
@@ -123,15 +128,14 @@ export function setupWaterAreaPanel({
   viewer,
   defaultIonToken = "",
   attributionsElement,
+  appearance,
+  optics,
   onDemoChange,
 }: SetupWaterAreaPanelOptions): WaterAreaPanelHandle {
   let activeDemo: WaterAreaDemo | null = null
-  let appearanceState: ResolvedWaterAreaAppearance = {
-    ...DEFAULT_WATER_AREA_APPEARANCE,
-  }
-  let opticsState: ResolvedWaterAreaOptics = normalizeWaterAreaOptics(
-    DEFAULT_WATER_AREA_OPTICS
-  )
+  let appearanceState: ResolvedWaterAreaAppearance =
+    normalizeWaterAreaAppearance(appearance)
+  let opticsState: ResolvedWaterAreaOptics = normalizeWaterAreaOptics(optics)
   let attributionFrame = 0
   let reloading = false
 
@@ -249,12 +253,15 @@ export function setupWaterAreaPanel({
     }
   }
 
-  const panel = createTelluxPanel(waterAreaSchema, {
-    id: "water-area-panel",
-    title: () => t({ zh: "水域渲染", en: "Water Area" }),
-    statusPath: "status.message",
-    onRebuild: bindPanelInteractions,
-  })
+  const panel = createTelluxPanel(
+    () => waterAreaSchema(appearanceState, opticsState),
+    {
+      id: "water-area-panel",
+      title: () => t({ zh: "水域渲染", en: "Water Area" }),
+      statusPath: "status.message",
+      onRebuild: bindPanelInteractions,
+    }
+  )
 
   function renderAttributions() {
     const attributions = activeDemo?.tileset.getAttributions() ?? []
