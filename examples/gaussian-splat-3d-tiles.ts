@@ -203,6 +203,8 @@ async function loadSource() {
       splatRoot.matrixAutoUpdate = false
       splatRoot.matrix.copy(viewer.cartographicToMatrix4(BUTTERFLY_ANCHOR))
       splatRoot.add(mesh)
+      // 高斯核是半透明的，保持 depthWrite:false；大气天空分支按覆盖率 alpha 叠在天空上。
+      // Keep depthWrite false for translucent kernels; atmosphere composites coverage over sky.
       sparkRenderer = new SparkRenderer({ renderer, focalAdjustment: 2, depthTest: true, depthWrite: false })
       splatColors.attach(sparkRenderer)
       viewer.scene.raw.add(splatRoot, sparkRenderer)
@@ -222,6 +224,8 @@ async function loadSource() {
     tileset.registerPlugin(new ImplicitTilingPlugin())
     tileset.registerPlugin(new GaussianSplatPlugin({
       renderer, scene: viewer.scene.raw, minRaycastOpacity: 0.08,
+      // 半透明核不写深度；大气按覆盖率叠在天空上。
+      // Translucent kernels skip depth; atmosphere composites coverage over sky.
       sparkRendererOptions: { focalAdjustment: 2, depthTest: true, depthWrite: false },
     }))
     splatColors.attach(getSparkRendererForScene(viewer.scene.raw))

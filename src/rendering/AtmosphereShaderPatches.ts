@@ -210,7 +210,31 @@ export function patchAerialPerspectiveShader(effect: AerialPerspectiveEffect, ni
   }
 
   const shaderWithNightSky = withNightSky === shaderWithDaySky ? shaderWithDaySky : withNightSky
-  const withPostProcessNightLighting = shaderWithNightSky.replace(
+
+  // 高斯泼溅等不写深度的场景内容会落在天空像素上（深度仍为远平面 1.0）。上游天空
+  // 分支会用天空辐射度整像素覆盖并丢掉 inputColor，暗部与软边看起来像被大气盖住。
+  // 在覆盖率 alpha 上做预乘 over：空像素 a=0 仍是纯天空，不透明无深度内容（含暗面）保留。
+  //
+  // Scene content that does not write depth (Gaussian splats, particles) lands on sky
+  // pixels whose depth is still the far plane. Upstream replaces those texels with sky
+  // radiance and drops inputColor, so dark interiors and soft edges look atmosphere-covered.
+  // Premultiplied over by coverage alpha keeps empty pixels as sky and preserves opaque
+  // no-depth shading, including dark surfaces.
+  const withSkyOverUnwrittenDepth = shaderWithNightSky.replace(
+    '    outputColor.a = 1.0;\n    #else // SKY',
+    [
+      '    outputColor.rgb = inputColor.rgb + outputColor.rgb * (1.0 - inputColor.a);',
+      '    outputColor.a = 1.0;',
+      '    #else // SKY'
+    ].join('\n')
+  )
+  if (withSkyOverUnwrittenDepth === shaderWithNightSky) {
+    console.warn('Tellux atmosphere shader patch failed: sky-over-unwritten-depth hook was not found.')
+  }
+
+  const shaderWithSkyOverUnwrittenDepth =
+    withSkyOverUnwrittenDepth === shaderWithNightSky ? shaderWithNightSky : withSkyOverUnwrittenDepth
+  const withPostProcessNightLighting = shaderWithSkyOverUnwrittenDepth.replace(
     '#endif // defined(SUN_LIGHT) || defined(SKY_LIGHT)\n\n  #if defined(TRANSMITTANCE) || defined(INSCATTER)',
     [
       '#endif // defined(SUN_LIGHT) || defined(SKY_LIGHT)',
@@ -233,12 +257,14 @@ export function patchAerialPerspectiveShader(effect: AerialPerspectiveEffect, ni
       '  #if defined(TRANSMITTANCE) || defined(INSCATTER)'
     ].join('\n')
   )
-  if (withPostProcessNightLighting === shaderWithNightSky) {
+  if (withPostProcessNightLighting === shaderWithSkyOverUnwrittenDepth) {
     console.warn('Tellux atmosphere shader patch failed: post-process night lighting hook was not found.')
   }
 
   const shaderWithNightLighting =
-    withPostProcessNightLighting === shaderWithNightSky ? shaderWithNightSky : withPostProcessNightLighting
+    withPostProcessNightLighting === shaderWithSkyOverUnwrittenDepth
+      ? shaderWithSkyOverUnwrittenDepth
+      : withPostProcessNightLighting
 
   // 无法线点云是 unlit 内容：NormalPass 用零 alpha 明确标记这类像素，避免全局
   // 空气透视在材质着色之后再次改变原始 RGB。这里只做后处理排除，不重建法线、
