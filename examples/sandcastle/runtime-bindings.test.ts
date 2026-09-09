@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
+  LOCAL_MEADOW_RUNTIME_BINDING_NAMES,
   WATER_AREA_RUNTIME_BINDING_NAMES
 } from './runtime-bindings'
 
@@ -76,14 +77,32 @@ describe('Sandcastle optional runtime bindings', () => {
     `).threejsInterop).toBe(true)
   })
 
-  it('detects the local-meadow helper without widening the base runner graph', () => {
+  it('detects the local-meadow Grass / OrbitControls bindings without widening the base runner graph', () => {
     expect(detectOptionalRuntimeBindings(`
-      createLocalMeadowAtmosphereDemo(container)
+      const meadow = new Grass()
+    `).localMeadow).toBe(true)
+
+    expect(detectOptionalRuntimeBindings(`
+      const orbit = new OrbitControls(camera, dom)
+    `).localMeadow).toBe(true)
+
+    expect(detectOptionalRuntimeBindings(`
+      const meadowRtc = createMeadowRtc(camera)
     `).localMeadow).toBe(true)
 
     expect(detectOptionalRuntimeBindings(`
       const meadow = { density: 36 }
     `).localMeadow).toBe(false)
+  })
+
+  it('injects every runtime value imported by the local-meadow example', () => {
+    expect(LOCAL_MEADOW_RUNTIME_BINDING_NAMES).toEqual([
+      'Grass',
+      'OrbitControls',
+      'applyMeadowRtc',
+      'createMeadowRtc',
+      'setMeadowRtcOrigin',
+    ])
   })
 
   it('does not confuse generic shared helpers with HISM helpers', () => {

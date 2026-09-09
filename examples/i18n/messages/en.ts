@@ -130,7 +130,7 @@ export const en: MessageTable = {
   'example.atmosphere.registry.title': 'Volumetric Clouds & Atmosphere',
   'example.atmosphere.registry.description': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',
   'example.atmosphere-local-meadow.registry.title': 'Atmosphere Without Globe',
-  'example.atmosphere-local-meadow.registry.description': 'Hide the globe, place a Three.js meadow at a local origin anchored to lon/lat, and align Tellux atmosphere with setWorldToECEFMatrix.',
+  'example.atmosphere-local-meadow.registry.description': 'Hide the globe and place a Three.js meadow at a local lon/lat origin. Toggling the globe switches to globe controls and a preset view by the meadow. Lower globe opacity to see the meadow through the surface.',
   'example.3d-tiles.registry.title': 'Load 3D Tiles',
   'example.3d-tiles.registry.description': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',
   'example.3d-tiles-picking.registry.title': 'Pick & Highlight',

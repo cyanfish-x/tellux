@@ -33,8 +33,11 @@ export const THREEJS_INTEROP_RUNTIME_BINDING_NAMES = [
 ] as const
 
 export const LOCAL_MEADOW_RUNTIME_BINDING_NAMES = [
-  'createLocalMeadowAtmosphereDemo',
-  'LOCAL_MEADOW_ANCHOR',
+  'Grass',
+  'OrbitControls',
+  'applyMeadowRtc',
+  'createMeadowRtc',
+  'setMeadowRtcOrigin',
 ] as const
 
 export interface OptionalRuntimeBindings {

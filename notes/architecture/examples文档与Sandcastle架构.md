@@ -156,6 +156,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 - `Tree` → `@dgreenheck/ez-tree`
 - HISM helper binding → `examples/hism/shared.ts`
 - Water Area helper、默认参数和归一化函数 → `examples/water-area/sandcastleBindings.ts`
+- `Grass` / `OrbitControls` / meadow RTC helpers → `examples/atmosphere-local-meadow/sandcastleBindings.ts`。无球大气案例的 Viewer、`setWorldToECEFMatrix` 与自定义循环写在入口 `examples/atmosphere-local-meadow.ts`；Sandcastle 注入第三方草地、轨道控件和该案例导入的 RTC helper，不要再把教程逻辑收进 factory。
 
 普通示例只加载 Tellux / Three.js 和通用 helper；专用依赖加载失败会进入 runner 现有的错误回传通道。新增专用注入能力时，应把同一领域的运行时值成组维护在 `*_RUNTIME_BINDING_NAMES` 与专用 re-export 模块中，并同步更新 binding 检测测试。只注入入口函数、遗漏示例导入的默认参数或 helper，会在 import 被剥离后产生 `ReferenceError`。
 
@@ -163,7 +164,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 
 有控件的示例页分两类：
 
-- **Leva 面板**（`createTelluxPanel` + `leva-vanilla`）：schema 驱动案例（water-area、fly-to、atmosphere、ground-clamp、3d-tiles、entities、symbol、horses 系列、terrain、data-sources、threejs-interop、hism-forest、hism-compare 等）；Tellux accent 见 `styles.css` 的 `#leva__root` 变量覆盖。
+- **Leva 面板**（`createTelluxPanel` + `leva-vanilla`）：schema 驱动案例（water-area、fly-to、atmosphere、atmosphere-local-meadow、ground-clamp、3d-tiles、entities、symbol、horses 系列、terrain、data-sources、threejs-interop、hism-forest、hism-compare 等）；Tellux accent 见 `styles.css` 的 `#leva__root` 变量覆盖。
 - **遗留 HTML 声明式 `.example-panel`**（`examples/example-panel.ts`）：仅保留折叠 helper，供尚未改完的页面或 Sandcastle runner 注入；独立示例页已迁到 Leva。
 
 通用约定：
@@ -179,7 +180,7 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 - `createTelluxPanel(schemaFactory, options)` 为薄封装；`title` 可传函数；locale 变化时按 factory 重建面板并恢复控件值。
 - 需要页面级错误/成功提示（类似 Element UI Message）时使用 `examples/example-message.ts` 的 `ExampleMessage.error()` 等；Sandcastle runner 已注入 `showExampleMessage` / `ExampleMessage`。
 - `onRebuild` 在初次挂载与每次 locale 重建后调用，用于注册 `effect()` / DOM 监听；`statusPath` 配合 `setStatus()` 写入 `hint` 字段。
-- 已迁移案例：`water-area`、`fly-to`、`atmosphere`、`ground-clamp`、`ground-clamp-polygon`、`google-photorealistic-3d-tiles`、`3d-tiles`、`point-cloud-3d-tiles`、`gaussian-splat-3d-tiles`、`3d-tiles-picking`、`entities`、`symbol`（`setupSymbolPanel.ts`）、`instanced-horses`、`mixed-height-sampling-horses`、`terrain`、`data-sources`、`threejs-interop`、`hism-forest`、`hism-compare`。
+- 已迁移案例：`water-area`、`fly-to`、`atmosphere`、`atmosphere-local-meadow`、`ground-clamp`、`ground-clamp-polygon`、`google-photorealistic-3d-tiles`、`3d-tiles`、`point-cloud-3d-tiles`、`gaussian-splat-3d-tiles`、`3d-tiles-picking`、`entities`、`symbol`（`setupSymbolPanel.ts`）、`instanced-horses`、`mixed-height-sampling-horses`、`terrain`、`data-sources`、`threejs-interop`、`hism-forest`、`hism-compare`。
 - `threejs-interop` 用 `Viewer.create` + `renderer.type: 'webgpu'`，并打开 `postProcess.taa`。WebGPU 下 `highlight.outline` 无效，示例显式关闭。对齐 Cesium for Unreal 动态光照：Littlest Tokyo 使用 `lighting: 'local'` + `materialMode: 'preserve'`，挂载上游 `emissive.jpg` 与模型内点光/面光（`examples/littlest-tokyo-night.ts`）。灯挂在带 `scale` 的 glTF 根上；作者坐标先减去上游 `gltf.scene` 的 bbox offset（居中 xz，并含 `-min.y - 12`），再写入 scene 局部，避免灯停在未平移的墙体里。点光 intensity 按 `(scale / 0.01)² × 0.1` 对齐上游 `scale={0.01}` / `0.1` 的暖色 spill。`cosSun < 0.1` 时二值开灯，再乘面板「光源亮度」（默认 1，同时缩放点光 / 面光 / 广告牌自发光）。打开 `photometric`（正午锚只缩放太阳）与 `autoExposure`。不开 Bloom / 镜头光晕。不关 `sunLight`、不靠 luma / 月光补偿自发光。夜景走 `light-source`，不依赖 WebGL lighting mask。
 - 无独立控件面板的示例：`basic`、`webgpu-basic`（以及主页 / gallery / Sandcastle 壳）。
 - Sandcastle runner 基线注入含 `createTelluxPanel`（`example-panel-leva.ts`）。

@@ -130,7 +130,7 @@ export const zh: MessageTable = {
   'example.atmosphere.registry.title': '体积云与大气',
   'example.atmosphere.registry.description': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',
   'example.atmosphere-local-meadow.registry.title': '无球大气与局部草地',
-  'example.atmosphere-local-meadow.registry.description': '藏球后以经纬锚点为局部原点放置 Three.js 草地，并用 setWorldToECEFMatrix 对齐 Tellux 大气。',
+  'example.atmosphere-local-meadow.registry.description': '藏球后以经纬锚点为局部原点放置 Three.js 草地；打开地球会切换地球操作并飞到草地附近的预设视角，可用地表透明度透过地球看到草地。',
   'example.3d-tiles.registry.title': '3D Tiles 加载',
   'example.3d-tiles.registry.description': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',
   'example.3d-tiles-picking.registry.title': '拾取与高亮',
