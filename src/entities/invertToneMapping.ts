@@ -12,6 +12,8 @@ import type { ColorInput } from '../types'
  *
  * 为了让实体颜色"所见即所得"，这里对用户输入的 sRGB 目标色做 AgX 解析反求，
  * 得到一个会被 AgX 还原回目标色的预补偿 linear 颜色，作为材质 color 使用。
+ * 仅 `mode: 'agx'`（默认）走解析反求；其它算子与关闭色调映射时不做反求，
+ * 实体 / 高亮颜色按未经该算子校正处理（非所见即所得）。
  *
  * 反求是 AgX 各步骤的解析逆运算：sRGB→linear → REC2020 → pow(1/2.2) →
  * AgX outset 逆 → contrast 逆（单调多项式二分）→ log2 逆 → AgX inset 逆 →
@@ -33,7 +35,9 @@ import type { ColorInput } from '../types'
  * will map back to the target. Inversion is the analytical inverse of each AgX
  * step; the clamp step is not invertible so highly saturated colors lose a
  * little precision, but round-trip verification shows the displayed color
- * matches the target almost exactly.
+ * matches the target almost exactly. Only `mode: 'agx'` (the default) uses
+ * this inverse; other operators and disabled tone mapping leave colors
+ * uncompensated (not WYSIWYG).
  */
 
 type Vec3 = [number, number, number]

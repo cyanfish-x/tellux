@@ -2,7 +2,11 @@
 
 公开 API 已收敛为稳定形状，随 **0.3** 发布。0.2 的顶层拍平方法、错误路径和分裂形状已删除，没有兼容层。本文给出旧写法到新写法的对照。
 
-初始化路径与运行时路径同构：`postProcess.toneMappingExposure` 既是 `ViewerOptions.postProcess.toneMappingExposure`，也是 `viewer.postProcess.toneMappingExposure`。
+初始化路径与运行时路径同构：`postProcess.toneMapping.exposure` 既是 `ViewerOptions.postProcess.toneMapping.exposure`，也是 `viewer.postProcess.toneMapping.exposure`。
+
+::: warning 色调映射
+顶层 `postProcess.toneMappingExposure` 已删除，没有兼容 alias。请改用 `postProcess.toneMapping.exposure`；算子与开关分别是 `toneMapping.mode`（默认 `'agx'`）和 `toneMapping.enabled`。
+:::
 
 ## 领域门面
 
@@ -19,7 +23,7 @@
 | `ViewerOptions.scene.highlight` | `ViewerOptions.highlighter` |
 | `viewer.scene.postProcess` | `viewer.postProcess` |
 | `ViewerOptions.scene.postProcess` | `ViewerOptions.postProcess` |
-| `viewer.toneMappingExposure` | `viewer.postProcess.toneMappingExposure` |
+| `viewer.toneMappingExposure` | `viewer.postProcess.toneMapping.exposure` |
 | `viewer.threeScene` / `viewer.scene.threeScene` | `viewer.scene.raw` |
 | `viewer.threeCamera` / `viewer.camera.threeCamera` | `viewer.camera.raw` |
 | `viewer.renderer`（裸 Three.js 对象） | `viewer.renderer` 门面；原生对象是 `viewer.renderer.raw` |
@@ -143,9 +147,9 @@ viewer.toneMappingExposure = 8
 viewer.highlight.set(pick)
 
 // 0.3
-postProcess: { toneMappingExposure: 5, taa: true }
+postProcess: { toneMapping: { exposure: 5 }, taa: true }
 highlighter: { outline: { enabled: false } }
-viewer.postProcess.toneMappingExposure = 8
+viewer.postProcess.toneMapping.exposure = 8
 viewer.highlighter.set(pick)
 ```
 

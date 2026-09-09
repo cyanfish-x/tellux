@@ -78,6 +78,10 @@ describe('scene setting normalization', () => {
         min: -1,
         max: Number.NaN,
         speed: -2
+      },
+      toneMapping: {
+        exposure: -1,
+        mode: 'punchy' as never
       }
     })
 
@@ -158,6 +162,11 @@ describe('scene setting normalization', () => {
       max: 10,
       speed: 0
     })
+    expect(postProcess.toneMapping).toEqual({
+      enabled: true,
+      mode: 'agx',
+      exposure: 0
+    })
   })
 
   it('accepts boolean shorthand for stars and post-process stages', () => {
@@ -173,7 +182,8 @@ describe('scene setting normalization', () => {
       lensFlare: false,
       smaa: false,
       taa: true,
-      dithering: true
+      dithering: true,
+      toneMapping: false
     })
 
     expect(options.atmosphere.sky.stars.show).toBe(false)
@@ -182,6 +192,21 @@ describe('scene setting normalization', () => {
     expect(postProcess.smaa.enabled).toBe(false)
     expect(postProcess.taa.enabled).toBe(true)
     expect(postProcess.dithering.enabled).toBe(true)
+    expect(postProcess.toneMapping).toEqual({
+      enabled: false,
+      mode: 'agx',
+      exposure: 5
+    })
+    expect(resolveViewerPostProcessOptions({ toneMapping: true }).toneMapping).toEqual({
+      enabled: true,
+      mode: 'agx',
+      exposure: 5
+    })
+    expect(resolveViewerPostProcessOptions(undefined).toneMapping).toEqual({
+      enabled: true,
+      mode: 'agx',
+      exposure: 5
+    })
   })
 
   it('keeps atmosphere getters and adapter state identical after runtime updates', () => {
@@ -334,6 +359,32 @@ describe('scene setting normalization', () => {
     expect(settings.autoExposure.min).toBe(12)
     expect(settings.autoExposure.max).toBe(3)
     expect(settings.autoExposure.speed).toBe(0)
+  })
+
+  it('keeps tone-mapping getters normalized after runtime updates', () => {
+    const onToneMappingChange = vi.fn()
+    const settings = new PostProcessSettings(
+      resolveViewerPostProcessOptions(undefined),
+      vi.fn(),
+      onToneMappingChange
+    )
+
+    expect(settings.toneMapping).toMatchObject({
+      enabled: true,
+      mode: 'agx',
+      exposure: 5
+    })
+
+    settings.toneMapping.enabled = false
+    settings.toneMapping.mode = 'neutral'
+    settings.toneMapping.exposure = -1
+    expect(settings.toneMapping.enabled).toBe(false)
+    expect(settings.toneMapping.mode).toBe('neutral')
+    expect(settings.toneMapping.exposure).toBe(0)
+    expect(onToneMappingChange).toHaveBeenCalledTimes(3)
+
+    settings.toneMapping.mode = 'punchy' as typeof settings.toneMapping.mode
+    expect(settings.toneMapping.mode).toBe('agx')
   })
 
   it('exposes entity transparency mode as a runtime setting', () => {

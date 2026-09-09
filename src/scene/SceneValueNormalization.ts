@@ -2,6 +2,7 @@ import type {
   AtmosphereRuntimeState,
   CloudRuntimeState
 } from '../rendering/AtmosphereRuntimeState'
+import { isToneMappingMode } from './toneMapping'
 
 const RANGE_EPSILON = 1e-6
 
@@ -78,6 +79,9 @@ export const sceneValueNormalizers = {
   autoExposureMin: (value: number) => nonNegative(value, 2),
   autoExposureMax: (value: number) => nonNegative(value, 10),
   autoExposureSpeed: (value: number) => nonNegative(value, 1.5),
+  toneMappingExposure: (value: number) => nonNegative(value, 5),
+  toneMappingMode: (value: string | undefined) =>
+    isToneMappingMode(value) ? value : 'agx',
   sunIlluminance: (value: number) => nonNegative(value, 111000),
   lensFlareIntensity: (value: number) => nonNegative(value, 0.005),
   lensFlareThresholdLevel: (value: number) => nonNegative(value, 10),

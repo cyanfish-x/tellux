@@ -123,7 +123,7 @@ glTF 模型集合。`add(options)` 加载 glTF / GLB 并按经纬高放入场景
 
 类型：`PostProcessSettings`
 
-顶层后处理运行时设置（曝光、Bloom、TAA、SMAA 等）。与 `ViewerOptions.postProcess` 同构。色调映射曝光走 `viewer.postProcess.toneMappingExposure`，不要直接改 `renderer.raw.toneMappingExposure`。
+顶层后处理运行时设置（色调映射、Bloom、TAA、SMAA 等）。与 `ViewerOptions.postProcess` 同构。色调映射走 `viewer.postProcess.toneMapping`（`enabled` / `mode` / `exposure`），不要直接改 `renderer.raw.toneMapping` 或 `renderer.raw.toneMappingExposure`。
 
 ### `highlighter`
 

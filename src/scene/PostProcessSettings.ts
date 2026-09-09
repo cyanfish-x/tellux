@@ -1,4 +1,4 @@
-import type { LensFlareQuality } from '../types'
+import type { LensFlareQuality, ToneMappingMode, ViewerPostProcessOptions } from '../types'
 import type { ResolvedPostProcessOptions } from './SceneOptions'
 import { sceneValueNormalizers } from './SceneValueNormalization'
 
@@ -245,6 +245,73 @@ class AutoExposureSettings {
   }
 }
 
+class ToneMappingSettings {
+  readonly #options: ResolvedPostProcessOptions['toneMapping']
+  readonly #onChange: () => void
+
+  constructor(
+    options: ResolvedPostProcessOptions['toneMapping'],
+    onChange: () => void
+  ) {
+    this.#options = options
+    this.#onChange = onChange
+  }
+
+  /**
+   * 是否启用色调映射。关闭时底层为 `NoToneMapping`。
+   *
+   * Whether tone mapping is enabled. Disabled maps to `NoToneMapping`.
+   */
+  get enabled() {
+    return this.#options.enabled
+  }
+
+  set enabled(value: boolean) {
+    if (this.#options.enabled === value) return
+    this.#options.enabled = value
+    this.#onChange()
+  }
+
+  /**
+   * 色调映射算子。仅 `'agx'` 对实体 / 高亮做解析反求。
+   *
+   * Tone-mapping operator. Only `'agx'` analytically inverts entity / highlight
+   * colors.
+   */
+  get mode() {
+    return this.#options.mode
+  }
+
+  set mode(value: ToneMappingMode) {
+    const next = sceneValueNormalizers.toneMappingMode(value)
+    if (this.#options.mode === next) return
+    this.#options.mode = next
+    this.#onChange()
+  }
+
+  /**
+   * 色调映射曝光。
+   *
+   * 不要直接写 `viewer.renderer.raw.toneMappingExposure`：实体与高亮颜色的 AgX
+   * 反求补偿会用旧曝光值。
+   *
+   * Tone-mapping exposure.
+   *
+   * Do not write `viewer.renderer.raw.toneMappingExposure` directly: entity and
+   * highlight AgX inverse compensation would keep using the previous exposure.
+   */
+  get exposure() {
+    return this.#options.exposure
+  }
+
+  set exposure(value: number) {
+    const next = sceneValueNormalizers.toneMappingExposure(value)
+    if (this.#options.exposure === next) return
+    this.#options.exposure = next
+    this.#onChange()
+  }
+}
+
 export class PostProcessSettings {
   /** Bloom 后处理阶段。Bloom post-processing stage. */
   readonly bloom: BloomSettings
@@ -271,17 +338,24 @@ export class PostProcessSettings {
   /** 抖动后处理阶段。Dithering post-processing stage. */
   readonly dithering: PostProcessStage
   /**
-   * 自动曝光。用夜因子在 min（白天）与 max（夜晚）之间平滑插值曝光。
+   * 自动曝光。用夜因子在 min（白天）与 max（夜晚）之间平滑插值 `toneMapping.exposure`。
    *
-   * Auto exposure. Smoothly interpolates exposure between min (day) and max
-   * (night) from the night factor.
+   * Auto exposure. Smoothly interpolates `toneMapping.exposure` between min
+   * (day) and max (night) from the night factor.
    */
   readonly autoExposure: AutoExposureSettings
+  /**
+   * 色调映射（开关、算子、曝光）。与 {@link ViewerPostProcessOptions.toneMapping} 同构。
+   *
+   * Tone mapping (enabled, operator, exposure). Same shape as
+   * {@link ViewerPostProcessOptions.toneMapping}.
+   */
+  readonly toneMapping: ToneMappingSettings
 
   constructor(
-    private readonly options: ResolvedPostProcessOptions,
+    options: ResolvedPostProcessOptions,
     onChange: () => void,
-    private readonly onToneMappingExposureChange: (value: number) => void = () => {}
+    onToneMappingChange: () => void = () => {}
   ) {
     this.bloom = new BloomSettings(options.bloom, onChange)
     this.lensFlare = new LensFlareSettings(options.lensFlare, onChange)
@@ -289,26 +363,6 @@ export class PostProcessSettings {
     this.taa = new PostProcessStage(options.taa.enabled, onChange)
     this.dithering = new PostProcessStage(options.dithering.enabled, onChange)
     this.autoExposure = new AutoExposureSettings(options.autoExposure)
-  }
-
-  /**
-   * 渲染器色调映射曝光值。
-   *
-   * 不要直接写 `viewer.renderer.raw.toneMappingExposure`：实体与高亮颜色的 AgX
-   * 反求补偿会用旧曝光值。
-   *
-   * Renderer tone mapping exposure.
-   *
-   * Do not write `viewer.renderer.raw.toneMappingExposure` directly: entity and
-   * highlight AgX inverse compensation would keep using the previous exposure.
-   */
-  get toneMappingExposure() {
-    return this.options.toneMappingExposure
-  }
-
-  set toneMappingExposure(value: number) {
-    if (this.options.toneMappingExposure === value) return
-    this.options.toneMappingExposure = value
-    this.onToneMappingExposureChange(value)
+    this.toneMapping = new ToneMappingSettings(options.toneMapping, onToneMappingChange)
   }
 }

@@ -20,7 +20,7 @@ Cesium Ion Melbourne Point Cloud（asset `43978`）等 legacy `pnts` 数据只�
 无法线点云（以及显式 `normalShading: false` 的点云）按 **display-referred 数据色** 处理。WebGL 下由 `TilesetManager` 持有一个 Viewer 级 `PointCloudColorTransform`：
 
 1. 首次遇到带顶点色的 `PointsMaterial` 时，惰性生成共享的 33³ Float 3D LUT。
-2. LUT 存储 AgX 的逆向线性颜色；顶点 shader 根据源 RGB 采样，并除以当前 `toneMappingExposure`。
+2. LUT 存储 AgX 的逆向线性颜色；顶点 shader 根据源 RGB 采样，并除以当前 `toneMapping.exposure`。
 3. Three 的最终全屏 AgX 再乘曝光并输出 sRGB，得到接近源 RGB 的显示色。
 4. 每帧只同步两个 uniform（是否为 AgX、曝光）；不复制或改写原始点云颜色 attribute。
 

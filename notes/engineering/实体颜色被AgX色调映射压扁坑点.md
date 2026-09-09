@@ -12,7 +12,7 @@
 - 设置纯红 `#ff0000`，实际显示成橘色。
 - 设置 `#38bdf8`、`#ffd166` 等饱和色，显示色与目标色明显对不上。
 
-偏色程度随 `toneMappingExposure` 增大而加剧；当前默认曝光为 `5`，已足以放大这种输出阶段偏色。
+偏色程度随 `toneMapping.exposure` 增大而加剧；当前默认曝光为 `5`，已足以放大这种输出阶段偏色。
 
 ## 容易误判的方向
 
@@ -76,9 +76,9 @@ Tellux 在 `Viewer.ts` 设置 `renderer.toneMapping = THREE.AgXToneMapping`，�
 
 3. **必须传 `THREE.Color` 实例而非 hex/number**：反求结果含负分量，`getHex()` 会把负值裁成 0（丢失信息）。所以 `resolveColor` 返回 `THREE.Color`，`createPointMaterial` 等构造参数也从 `number` 改成 `THREE.Color`，全程直接传 Color 实例。
 
-4. **Viewer 级状态隔离**：反求依赖当前 `toneMapping` 和 `toneMappingExposure`。每个 `Viewer` 持有独立的 `ToneMappingColorResolver`，并把绑定到本实例的 `resolveColor` 显式注入 `EntityManager` 和 `HighlightManager`，模块中不再保存可变 Viewer 状态。
+4. **Viewer 级状态隔离**：反求依赖当前 `toneMapping` 算子和曝光。每个 `Viewer` 持有独立的 `ToneMappingColorResolver`，并把绑定到本实例的 `resolveColor` 显式注入 `EntityManager` 和 `HighlightManager`，模块中不再保存可变 Viewer 状态。
    - Viewer 初始化 renderer 后创建自己的 resolver。
-   - `toneMappingExposure` setter 更新该 resolver，并刷新已有实体材质和高亮样式。
+   - `postProcess.toneMapping` 的 `enabled` / `mode` / `exposure` setter 更新该 resolver，并刷新已有实体材质和高亮样式。
    - 图形对象保留用户传入的语义颜色；刷新时重新反求，不从已经补偿过的材质颜色反推。
 
 5. **非 AgX 不补偿**：`resolveColor` 检测到 `toneMapping !== AgXToneMapping`（含 NoToneMapping）时直接返回目标色，避免无谓反求。
@@ -95,10 +95,10 @@ Tellux 在 `Viewer.ts` 设置 `renderer.toneMapping = THREE.AgXToneMapping`，�
 
 实体颜色显示偏色时，按这个顺序查：
 
-1. 确认 `renderer.toneMapping` 是不是 `AgXToneMapping`，以及当前 `toneMappingExposure` 值（DebugSettingsPanel 可调）。
+1. 确认 `postProcess.toneMapping.mode` 是不是 `'agx'`，以及当前 `toneMapping.exposure` 值（DebugSettingsPanel 可调）。
 2. 确认是否走了 `setEffects()` 后处理管线（`PostProcessingManager` 存在即启用）。在该管线下 `toneMapped` 必然失效，不要再去改材质的 `toneMapped`。
 3. 确认 `resolveColor` 是否被实体材质调用（点 / 线 / 面 / 描边都应走这个统一入口）。
-4. 确认当前 `Viewer` 是否把自己的 `colorResolver.resolveColor` 注入实体和高亮；exposure setter 是否依次更新 resolver、调用 `entitiesManager.refreshColors()` 和 `highlightManager.syncStyleFromSettings()`。
+4. 确认当前 `Viewer` 是否把自己的 `colorResolver.resolveColor` 注入实体和高亮；`postProcess.toneMapping` 变更是否依次更新 resolver、调用 `entitiesManager.refreshColors()` 和 `syncHighlightStyleFromSettings()`。
 5. 如果改了 AgX 相关常量或 three.js 升级，重新跑反求的正向回代验证脚本，确认 inset/outset 矩阵数值未变（变了要同步更新 `invertToneMapping.ts`）。
 
 ## 相关文件

@@ -228,15 +228,16 @@ viewer.postProcess.autoExposure.enabled = false
 | `bloom.enabled` / `intensity` / `luminanceThreshold` / `luminanceSmoothing` / `radius` | 基于 HDR 亮度的泛光，WebGL / WebGPU 均支持；默认关闭。 |
 | `lensFlare.enabled` / `intensity` / `threshold` / `quality` | 镜头光晕开关、强度、亮部阈值与质量档。 |
 | `dithering.enabled` | 抖动，减少色带。 |
-| `autoExposure.enabled` / `min` / `max` / `speed` | 按太阳高度平滑插值 `toneMappingExposure`。默认关闭。`min` 为白天曝光，`max` 为夜晚曝光。 |
-
-色调映射曝光通过 Viewer 顶层属性控制（不属于 postProcess 子树）：
+| `autoExposure.enabled` / `min` / `max` / `speed` | 按太阳高度平滑插值 `toneMapping.exposure`。默认关闭。`min` 为白天曝光，`max` 为夜晚曝光。 |
+| `toneMapping.enabled` / `mode` / `exposure` | 色调映射。默认 `'agx'`、曝光 `5`。`enabled: false` 等价 `NoToneMapping`。仅 `'agx'` 对实体 / 高亮做解析反求（所见即所得）；点云 AgX LUT 也仅在 `'agx'` 时启用。 |
 
 ```ts
-viewer.postProcess.toneMappingExposure = 10
+viewer.postProcess.toneMapping.enabled = true
+viewer.postProcess.toneMapping.mode = 'agx'
+viewer.postProcess.toneMapping.exposure = 10
 ```
 
-Bloom 作用于整帧 HDR 亮部，并不只识别材质的 `emissive` 字段。`luminanceThreshold` 比较的是 AgX / `toneMappingExposure` **之前** 的线性亮度：夜里曝光拉到 10 时窗灯看起来很亮，缓冲里却可能只有 0.1。阈值 1 会切光，阈值 0 会把整片暗场景都送进亮部。`intensity` 是亮部提取之后的混合系数：输入已经是几千 nits 量级时，滑条拧到 0.05 仍会核爆。夜景模型应 `models.add({ lighting: 'local', materialMode: 'preserve' })`。点光要挂在带 `scale` 的 glTF 根上，intensity 按 `(modelScale / 0.01)² × 0.1` 对齐上游沙盘。验收示例 `threejs-interop` 走 WebGPU + TAA，对齐上游 Non-geospatial，**不开 Bloom**；夜景靠自发光、点光和 `postProcess.autoExposure`。若其它页面启用 Bloom，按该页 HDR 标定一次，不要按昼夜改。不要把 Cesium「UE 默认 10 lux → 111000 lux」的 ×11100 写进 `emissiveIntensity`。
+Bloom 作用于整帧 HDR 亮部，并不只识别材质的 `emissive` 字段。`luminanceThreshold` 比较的是 AgX / `toneMapping.exposure` **之前** 的线性亮度：夜里曝光拉到 10 时窗灯看起来很亮，缓冲里却可能只有 0.1。阈值 1 会切光，阈值 0 会把整片暗场景都送进亮部。`intensity` 是亮部提取之后的混合系数：输入已经是几千 nits 量级时，滑条拧到 0.05 仍会核爆。夜景模型应 `models.add({ lighting: 'local', materialMode: 'preserve' })`。点光要挂在带 `scale` 的 glTF 根上，intensity 按 `(modelScale / 0.01)² × 0.1` 对齐上游沙盘。验收示例 `threejs-interop` 走 WebGPU + TAA，对齐上游 Non-geospatial，**不开 Bloom**；夜景靠自发光、点光和 `postProcess.autoExposure`。若其它页面启用 Bloom，按该页 HDR 标定一次，不要按昼夜改。不要把 Cesium「UE 默认 10 lux → 111000 lux」的 ×11100 写进 `emissiveIntensity`。
 
 ::: warning WebGPU 后处理边界
 WebGPU 已接入 Bloom、LensFlare 与 TAA，固定顺序为 Bloom → LensFlare → TAA。TAA 会增加一个高精度 velocity MRT 和两张随绘制缓冲尺寸变化的历史纹理。SMAA 和抖动仍是 WebGL 专属，在 WebGPU 模式下调整这些开关没有视觉效果。由于 TAA 会累积历史，动态材质或逐实例动画需要单独验证运动矢量质量。

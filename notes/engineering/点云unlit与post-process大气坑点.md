@@ -28,7 +28,7 @@
 无法线点云的 `RGB` 是要显示的源颜色，而不是 HDR 光照结果。Tellux 在 WebGL 下为点云材质挂接 Viewer 级 `PointCloudColorTransform`：
 
 1. 延迟生成一张标准尺寸的 33³ AgX 逆向 3D LUT。
-2. 在点云顶点阶段按源 RGB 采样 LUT，并除以当前 `toneMappingExposure`。
+2. 在点云顶点阶段按源 RGB 采样 LUT，并除以当前 `toneMapping.exposure`。
 3. Three 的最终 output pass 再乘曝光并执行 AgX，把点色还原成源显示色。
 
 这是颜色管理，不是额外光照或艺术调色。LUT 不改写数百万点的颜色 attribute，只在 GPU 每个点顶点采样一次；所有点云图层共享同一个 TilesetManager / Viewer 级 LUT，曝光变化只同步一个 uniform。非 AgX 或非 WebGL 路径不会启用该补偿。尤其 WebGPU 下 `toneMapped=false` 同样不是最终输出豁免；在 TSL / `RenderPipeline` 存在等价显示色节点前，应明确视为“不提供显示色保持补偿”，而不是悄悄退化。
@@ -48,7 +48,7 @@ AgX 反求必须严格按 GLSL `mat3` 的列主序还原成 CPU 行主序。`LIN
 | 5. 着色程序 | 点材质 cache key / uniforms 是否含 `tellux-point-color-transform`，program diagnostics 是否为空 | 缺 patch 表示控制器或 WebGL 条件未接通；有 patch 仍偏色时先跑 AgX 正反向 round-trip，再检查矩阵方向 |
 | 6. 可选增强 | attenuation 和 EDL 的运行时状态 | 只影响点大小和深度轮廓；它们不能解释整片泛白，也不能作为颜色修复手段 |
 
-推荐先对一个已加载的 `Points` 节点采样，再切换 `toneMappingExposure` 做 A/B 截图：若背景随曝光大幅变化、点色也同步冲白，问题在最终 output；若点色稳定而只剩空气雾化，则问题仍在大气分支。调试探针必须只采集颜色范围、标记位和 renderer 状态，完成后移除。
+推荐先对一个已加载的 `Points` 节点采样，再切换 `postProcess.toneMapping.exposure` 做 A/B 截图：若背景随曝光大幅变化、点色也同步冲白，问题在最终 output；若点色稳定而只剩空气雾化，则问题仍在大气分支。调试探针必须只采集颜色范围、标记位和 renderer 状态，完成后移除。
 
 ## 责任边界与不可变量
 

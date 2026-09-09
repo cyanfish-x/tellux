@@ -73,7 +73,7 @@ const viewer = new Viewer(container, {
     }
   },
   postProcess: {
-    toneMappingExposure: 5,
+    toneMapping: { exposure: 5 },
     smaa: true,
     taa: false // 仅 WebGPU；按需启用
   }

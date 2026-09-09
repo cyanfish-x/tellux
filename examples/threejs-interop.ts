@@ -90,7 +90,7 @@ async function main() {
       },
     },
     postProcess: {
-      toneMappingExposure: 10,
+      toneMapping: { exposure: 10 },
       autoExposure: {
         enabled: true,
         min: 2,

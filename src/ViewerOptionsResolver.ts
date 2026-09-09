@@ -18,7 +18,8 @@ import type {
   ViewerOptions,
   ViewerPostProcessOptions,
   ViewerPostProcessStageOptions,
-  ViewerSurfaceMaterialOptions
+  ViewerSurfaceMaterialOptions,
+  ViewerToneMappingOptions
 } from './types'
 
 export type ResolvedSurfaceMaterialMode = Exclude<SurfaceMaterialMode, 'auto'>
@@ -194,7 +195,7 @@ export function resolveViewerPostProcessOptions(
     taa: resolvePostProcessStageOptions(options?.taa, false),
     dithering: resolvePostProcessStageOptions(options?.dithering, false),
     autoExposure: resolveAutoExposureOptions(options?.autoExposure),
-    toneMappingExposure: options?.toneMappingExposure ?? 5
+    toneMapping: resolveToneMappingOptions(options?.toneMapping)
   }
 }
 
@@ -343,6 +344,17 @@ function resolveAutoExposureOptions(
     min: Math.min(min, max),
     max: Math.max(min, max),
     speed: sceneValueNormalizers.autoExposureSpeed(values.speed ?? 1.5)
+  }
+}
+
+function resolveToneMappingOptions(
+  options: boolean | ViewerToneMappingOptions | undefined
+): ResolvedPostProcessOptions['toneMapping'] {
+  const values = typeof options === 'boolean' || options === undefined ? {} : options
+  return {
+    enabled: typeof options === 'boolean' ? options : options?.enabled ?? true,
+    mode: sceneValueNormalizers.toneMappingMode(values.mode),
+    exposure: sceneValueNormalizers.toneMappingExposure(values.exposure ?? 5)
   }
 }
 

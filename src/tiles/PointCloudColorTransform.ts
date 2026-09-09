@@ -17,7 +17,7 @@ type Shader = Parameters<THREE.PointsMaterial['onBeforeCompile']>[0]
  *
  * WebGL `setEffects()` 会在场景渲染后对整帧统一执行 AgX，因此
  * `PointsMaterial.toneMapped = false` 无法保留 3D Tiles 点云的显示 RGB。
- * 该适配器用标准 33³ 3D LUT 在顶点阶段反求 AgX，既不改写大体量颜色属性，
+ * 该适配器用标准 33³ 3D LUT 在顶点阶段反求 AgX（仅 `mode: 'agx'` 时启用），既不改写大体量颜色属性，
  * 也不引入任何非标准光照；最终 output pass 会把颜色还原为数据原色。
  *
  * Full-frame tone-mapping adapter for point-cloud vertex colors.
@@ -25,7 +25,7 @@ type Shader = Parameters<THREE.PointsMaterial['onBeforeCompile']>[0]
  * WebGL `setEffects()` applies AgX to the complete frame after scene rendering,
  * so `PointsMaterial.toneMapped = false` cannot preserve display RGB from 3D
  * Tiles. This adapter uses a standard 33³ 3D LUT to invert AgX in the vertex
- * stage without rewriting large color buffers or introducing non-standard
+ * stage (enabled only for `mode: 'agx'`) without rewriting large color buffers or introducing non-standard
  * lighting. The final output pass then restores the source display color.
  */
 export class PointCloudColorTransform {

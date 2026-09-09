@@ -21,7 +21,7 @@ export interface DebugSettingsPanelOptions {
   /** 后处理初始值。Post-process initial values. */
   postProcess?: Pick<
     ViewerPostProcessOptions,
-    'toneMappingExposure' | 'lensFlare' | 'smaa' | 'taa' | 'dithering'
+    'toneMapping' | 'lensFlare' | 'smaa' | 'taa' | 'dithering'
   >
   /** 渲染器初始值。Renderer initial values. */
   renderer?: {

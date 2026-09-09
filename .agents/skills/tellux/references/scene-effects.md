@@ -149,7 +149,8 @@ viewer.postProcess.lensFlare.quality = 'medium'
 viewer.postProcess.taa.enabled = true // WebGPU，默认 false
 viewer.postProcess.dithering.enabled = false
 viewer.postProcess.autoExposure.enabled = false
-viewer.postProcess.toneMappingExposure = 10
+viewer.postProcess.toneMapping.exposure = 10
+viewer.postProcess.toneMapping.mode = 'agx'
 ```
 
 > Bloom 在 WebGL / WebGPU 均可用，基于整帧 HDR 亮度提取。`luminanceThreshold` 比的是 AgX / 曝光之前的线性 luma，不是屏幕看起来有多亮。`intensity` 乘的是已经提取的亮部，不是画面亮度百分比。城市夜景用 `models.add({ lighting: 'local' })`，点光挂在带 `scale` 的 glTF 根上并按 `(scale / 0.01)²` 补偿 intensity，打开 `photometric`（只缩放太阳）+ `autoExposure`；不要关太阳。夜景不依赖 Bloom（上游 Non-geospatial 未开）。WebGPU 顺序固定为 Bloom → LensFlare → TAA；SMAA / 抖动仍不渲染。WebGPU 暂无 lighting mask。
@@ -180,7 +181,7 @@ const viewer = new tellux.Viewer(container, {
     lensFlare: { enabled: true, intensity: 0.005, quality: 'medium' },
     smaa: true,
     autoExposure: false,
-    toneMappingExposure: 5
+    toneMapping: { exposure: 5 }
   }
 })
 ```

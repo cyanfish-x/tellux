@@ -446,11 +446,12 @@ function animate(time: number) {
 requestAnimationFrame(animate)
 ```
 
-像素比与色调曝光（顶层属性）：
+像素比与色调映射：
 
 ```ts
 viewer.renderer.resolutionScale = 1.5
-viewer.postProcess.toneMappingExposure = 8
+viewer.postProcess.toneMapping.exposure = 8
+viewer.postProcess.toneMapping.mode = 'agx'
 ```
 
 `viewer.models` 只提供 `add/get/list/remove`；不要自行推进动画、同步材质或销毁管理器。`ModelManager`、`Globe`、`Terrain`、`SceneTilesetCollection`、`ViewerRenderer` 由 Viewer 创建，不能直接构造。

@@ -61,8 +61,7 @@ export class ViewerRenderer {
    *
    * 下列属性由 Viewer 托管，请走对应入口，不要直接改原生对象：
    * - `setPixelRatio()` → {@link ViewerRenderer.resolutionScale}
-   * - `toneMappingExposure` → `viewer.postProcess.toneMappingExposure`
-   * - `toneMapping`：构造期固定为 AgX，改了会导致实体与高亮颜色失准
+   * - `toneMapping` / `toneMappingExposure` → `viewer.postProcess.toneMapping`
    * - `setSize()` → {@link Viewer.resize}（另有 ResizeObserver 自动维护）
    * - `setAnimationLoop()` → {@link Viewer.useDefaultRenderLoop}
    *
@@ -71,9 +70,7 @@ export class ViewerRenderer {
    *
    * Viewer hosts the following; use the matching entry instead of the native object:
    * - `setPixelRatio()` → {@link ViewerRenderer.resolutionScale}
-   * - `toneMappingExposure` → `viewer.postProcess.toneMappingExposure`
-   * - `toneMapping`: fixed to AgX at construction; changing it desyncs entity
-   *   and highlight color compensation
+   * - `toneMapping` / `toneMappingExposure` → `viewer.postProcess.toneMapping`
    * - `setSize()` → {@link Viewer.resize} (also maintained by ResizeObserver)
    * - `setAnimationLoop()` → {@link Viewer.useDefaultRenderLoop}
    */

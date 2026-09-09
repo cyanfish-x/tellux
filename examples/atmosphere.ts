@@ -293,7 +293,7 @@ const atmosphereSchema = () =>
         collapsed: true,
       },
       exposure: {
-        value: viewer.postProcess.toneMappingExposure,
+        value: viewer.postProcess.toneMapping.exposure,
         min: 2,
         max: 14,
         step: 0.1,
@@ -356,7 +356,7 @@ function bindPanelInteractions(
     viewer.scene.clouds.look.haze = controls.clouds.haze
     viewer.scene.atmosphere.shadow.radius = controls.clouds.shadowRadius
 
-    viewer.postProcess.toneMappingExposure = controls.postProcess.exposure
+    viewer.postProcess.toneMapping.exposure = controls.postProcess.exposure
     viewer.postProcess.lensFlare.enabled = controls.postProcess.lensFlare
     viewer.postProcess.smaa.enabled = controls.postProcess.smaa
   })

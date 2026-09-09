@@ -1,5 +1,5 @@
 ﻿import { SpringControl } from '../../SpringControl'
-import type { AtmosphereLightingMode } from '../../types'
+import type { AtmosphereLightingMode, ToneMappingMode } from '../../types'
 import type { Viewer } from '../../Viewer'
 import { buildDebugSettingsControls } from './controls-panel'
 import { mountDebugFpsHud } from './fps'
@@ -67,6 +67,8 @@ export function mountDebugSettingsPanel(
     taaToggle,
     ditheringToggle,
     fpsToggle,
+    toneMappingEnabledToggle,
+    toneMappingModeControl,
     coverageControl,
     cloudSpeedControl,
     cloudAltitudeControl,
@@ -169,14 +171,14 @@ export function mountDebugSettingsPanel(
     viewer.scene.clouds.speed = smooth.cloudSpeed.tick(deltaTime)
     viewer.scene.clouds.layer.altitude = smooth.cloudLayerAltitude.tick(deltaTime)
     viewer.scene.clouds.layer.height = smooth.cloudLayerHeight.tick(deltaTime)
-    viewer.postProcess.toneMappingExposure = smooth.toneMappingExposure.tick(deltaTime)
+    viewer.postProcess.toneMapping.exposure = smooth.toneMappingExposure.tick(deltaTime)
   }
 
   function updateStatus() {
     status.textContent =
       `云量 ${viewer.scene.clouds.coverage.toFixed(2)} / ` +
       `散射 ${viewer.scene.atmosphere.scattering.intensity.toFixed(2)} / ` +
-      `曝光 ${viewer.postProcess.toneMappingExposure.toFixed(1)}`
+      `曝光 ${viewer.postProcess.toneMapping.exposure.toFixed(1)}`
   }
 
   function applyControls() {
@@ -255,6 +257,8 @@ export function mountDebugSettingsPanel(
     smooth.cloudSpeed.target = Number(cloudSpeedControl.input.value)
     smooth.cloudLayerAltitude.target = Number(cloudAltitudeControl.input.value)
     smooth.cloudLayerHeight.target = Number(cloudHeightControl.input.value)
+    viewer.postProcess.toneMapping.enabled = toneMappingEnabledToggle.input.checked
+    viewer.postProcess.toneMapping.mode = toneMappingModeControl.input.value as ToneMappingMode
     smooth.toneMappingExposure.target = Number(exposureControl.input.value)
     viewer.renderer.resolutionScale = Number(resolutionControl.input.value)
     viewer.postProcess.lensFlare.enabled =
@@ -325,7 +329,11 @@ export function mountDebugSettingsPanel(
         }
       },
       postProcess: {
-        toneMappingExposure: Number(exposureControl.input.value),
+        toneMapping: {
+          enabled: toneMappingEnabledToggle.input.checked,
+          mode: toneMappingModeControl.input.value as ToneMappingMode,
+          exposure: Number(exposureControl.input.value)
+        },
         lensFlare: lensFlareToggle.input.checked,
         smaa: smaaToggle.input.checked,
         taa: taaToggle.input.checked,

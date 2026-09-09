@@ -181,7 +181,7 @@ function syncDisplay() {
   if (splatRoot) splatRoot.visible = visible
   if (sparkRenderer) sparkRenderer.visible = visible
   viewer.globe.show = globe
-  splatColors.update(viewer.postProcess.toneMappingExposure, panel.controls.display.sourceColors)
+  splatColors.update(viewer.postProcess.toneMapping.exposure, panel.controls.display.sourceColors)
 }
 
 async function loadSource() {
@@ -281,7 +281,7 @@ async function loadSource() {
 }
 
 function frame(time: number) {
-  if (panel) splatColors.update(viewer.postProcess.toneMappingExposure, panel.controls.display.sourceColors)
+  if (panel) splatColors.update(viewer.postProcess.toneMapping.exposure, panel.controls.display.sourceColors)
   const tileset = activeTileset
   if (tileset?.group.visible) {
     const request = generation

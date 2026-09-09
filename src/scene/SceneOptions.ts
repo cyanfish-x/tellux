@@ -6,7 +6,8 @@ import type {
   ColorInput,
   EntityTransparencyMode,
   LensFlareQuality,
-  SurfaceMaterialMode
+  SurfaceMaterialMode,
+  ToneMappingMode
 } from '../types'
 import type { SurfaceMaterialOptions } from '../materials/materialMode'
 
@@ -135,7 +136,11 @@ export interface ResolvedPostProcessOptions {
     max: number
     speed: number
   }
-  toneMappingExposure: number
+  toneMapping: {
+    enabled: boolean
+    mode: ToneMappingMode
+    exposure: number
+  }
 }
 
 export interface ResolvedHighlightOptions {

@@ -8,6 +8,7 @@ import { OverlayHighlighter } from '../highlight/OverlayHighlighter'
 import type { Picked3DTilesFeature } from '../types'
 import { readLonLatHeight } from '../lonlat'
 import { PostProcessSettings } from '../scene/PostProcessSettings'
+import { resolveThreeToneMapping } from '../scene/toneMapping'
 import { resolveViewerPostProcessOptions } from '../ViewerOptionsResolver'
 
 beforeAll(() => {
@@ -287,31 +288,65 @@ describe('ToneMappingColorResolver Viewer isolation', () => {
   it('refreshes existing Viewer colors when exposure changes', () => {
     const setState = vi.fn()
     const refreshColors = vi.fn()
-    const renderer = {
+    const renderer: {
+      toneMapping: THREE.ToneMapping
+      toneMappingExposure: number
+    } = {
       toneMapping: THREE.AgXToneMapping,
       toneMappingExposure: 2
     }
     const postProcess = new PostProcessSettings(
-      resolveViewerPostProcessOptions({ toneMappingExposure: 2 }),
+      resolveViewerPostProcessOptions({ toneMapping: { exposure: 2 } }),
       () => {},
-      (exposure) => {
-        renderer.toneMappingExposure = exposure
+      () => {
+        renderer.toneMapping = resolveThreeToneMapping(
+          postProcess.toneMapping.enabled,
+          postProcess.toneMapping.mode
+        )
+        renderer.toneMappingExposure = postProcess.toneMapping.exposure
         setState({
           toneMapping: renderer.toneMapping,
-          exposure
+          exposure: postProcess.toneMapping.exposure
         })
         refreshColors()
       }
     )
 
-    postProcess.toneMappingExposure = 4
+    postProcess.toneMapping.exposure = 4
 
-    expect(postProcess.toneMappingExposure).toBe(4)
+    expect(postProcess.toneMapping.exposure).toBe(4)
     expect(renderer.toneMappingExposure).toBe(4)
     expect(setState).toHaveBeenCalledWith({
       toneMapping: THREE.AgXToneMapping,
       exposure: 4
     })
     expect(refreshColors).toHaveBeenCalledOnce()
+  })
+
+  it('drops AgX inverse when mode is not agx or tone mapping is disabled', () => {
+    const renderer: {
+      toneMapping: THREE.ToneMapping
+      toneMappingExposure: number
+    } = {
+      toneMapping: THREE.AgXToneMapping,
+      toneMappingExposure: 5
+    }
+    const postProcess = new PostProcessSettings(
+      resolveViewerPostProcessOptions(undefined),
+      () => {},
+      () => {
+        renderer.toneMapping = resolveThreeToneMapping(
+          postProcess.toneMapping.enabled,
+          postProcess.toneMapping.mode
+        )
+        renderer.toneMappingExposure = postProcess.toneMapping.exposure
+      }
+    )
+
+    postProcess.toneMapping.mode = 'neutral'
+    expect(renderer.toneMapping).toBe(THREE.NeutralToneMapping)
+
+    postProcess.toneMapping.enabled = false
+    expect(renderer.toneMapping).toBe(THREE.NoToneMapping)
   })
 })

@@ -58,7 +58,7 @@ type _PostProcessFields = Assert<Equal<
   | 'taa'
   | 'dithering'
   | 'autoExposure'
-  | 'toneMappingExposure'
+  | 'toneMapping'
 >>
 
 type SampleHeightOverloads = {

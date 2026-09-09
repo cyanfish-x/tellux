@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+### Breaking
+- `postProcess.toneMappingExposure` 改为嵌套 `postProcess.toneMapping.{ enabled, mode, exposure }`；默认仍为 AgX、曝光 `5`。没有兼容 alias。
+
+### Added
+- `postProcess.toneMapping.mode` 支持 `linear` / `reinhard` / `cineon` / `aces-filmic` / `agx` / `neutral`
+
 ### Changed
 - 高斯泼溅案例默认改为 Cesium ion Redmond 资产及对应近景视角，并更新 Sandcastle 封面
 

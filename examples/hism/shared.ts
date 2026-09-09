@@ -81,7 +81,7 @@ export function createHismDemoViewerOptions(options?: { includeTerrain?: boolean
       },
       clouds: { show: false },
     },
-    postProcess: { toneMappingExposure: 7 },
+    postProcess: { toneMapping: { exposure: 7 } },
   }
 }
 

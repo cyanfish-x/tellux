@@ -494,11 +494,62 @@ export interface ViewerLensFlareOptions {
 }
 
 /**
+ * 色调映射算子。默认 `'agx'`。不含上游 Story 私有的 AgX Punchy。
+ *
+ * Tone-mapping operator. Defaults to `'agx'`. Does not include the Story-only
+ * AgX Punchy operator.
+ */
+export type ToneMappingMode =
+  | 'linear'
+  | 'reinhard'
+  | 'cineon'
+  | 'aces-filmic'
+  | 'agx'
+  | 'neutral'
+
+/**
+ * Viewer 色调映射配置。
+ *
+ * Viewer tone-mapping options.
+ */
+export interface ViewerToneMappingOptions {
+  /**
+   * 是否启用色调映射；`false` 等价 `NoToneMapping`。默认 `true`。
+   *
+   * Whether tone mapping is enabled; `false` is `NoToneMapping`. Defaults to
+   * `true`.
+   */
+  enabled?: boolean
+  /**
+   * 色调映射算子。默认 `'agx'`。
+   *
+   * 仅 `'agx'` 对实体 / 高亮做解析反求（所见即所得）；其它算子不做反求。
+   * 点云 AgX LUT 也仅在 `'agx'` 时启用。
+   *
+   * Tone-mapping operator. Defaults to `'agx'`.
+   *
+   * Only `'agx'` analytically inverts entity / highlight colors (WYSIWYG).
+   * Other operators leave those colors uncompensated. The point-cloud AgX LUT
+   * is also enabled only for `'agx'`.
+   */
+  mode?: ToneMappingMode
+  /** 曝光，默认 `5`。Exposure. Defaults to `5`. */
+  exposure?: number
+}
+
+/**
  * Viewer 后处理配置，用于 {@link ViewerOptions.postProcess}。
  *
  * Viewer post-processing options used by {@link ViewerOptions.postProcess}.
  */
 export interface ViewerPostProcessOptions {
+  /**
+   * 色调映射。传入 `boolean` 时等价于 `{ enabled }`。默认 AgX、曝光 `5`。
+   *
+   * Tone mapping. A `boolean` is treated as `{ enabled }`. Defaults to AgX
+   * with exposure `5`.
+   */
+  toneMapping?: boolean | ViewerToneMappingOptions
   /**
    * Bloom 配置。传入 `boolean` 时等价于 `{ enabled }`，默认关闭。
    *
@@ -536,14 +587,12 @@ export interface ViewerPostProcessOptions {
    */
   dithering?: boolean | ViewerPostProcessStageOptions
   /**
-   * 自动曝光。用太阳高度 / 夜因子平滑插值 `toneMappingExposure`。默认关闭。
+   * 自动曝光。用太阳高度 / 夜因子平滑插值 `toneMapping.exposure`。默认关闭。
    *
-   * Auto exposure. Smoothly interpolates `toneMappingExposure` from sun
+   * Auto exposure. Smoothly interpolates `toneMapping.exposure` from sun
    * altitude / night factor. Disabled by default.
    */
   autoExposure?: boolean | ViewerAutoExposureOptions
-  /** 渲染器色调映射曝光值，默认 `5`。Renderer tone mapping exposure. Defaults to `5`. */
-  toneMappingExposure?: number
 }
 
 /**

@@ -3,7 +3,8 @@ import type {
   ViewerAtmosphereOptions,
   ViewerAtmosphereStarsOptions,
   ViewerPostProcessOptions,
-  ViewerPostProcessStageOptions
+  ViewerPostProcessStageOptions,
+  ViewerToneMappingOptions
 } from '../../types'
 import type { DebugSettingsPanelOptions } from './types'
 
@@ -29,9 +30,7 @@ export function applyInitialDebugSettings(
 
   const postProcess = settings.postProcess
   if (postProcess) {
-    if (postProcess.toneMappingExposure !== undefined) {
-      viewer.postProcess.toneMappingExposure = postProcess.toneMappingExposure
-    }
+    applyToneMapping(viewer, postProcess.toneMapping)
     const lensFlare = stageEnabled(postProcess.lensFlare)
     if (lensFlare !== undefined) viewer.postProcess.lensFlare.enabled = lensFlare
     const smaa = stageEnabled(postProcess.smaa)
@@ -44,6 +43,26 @@ export function applyInitialDebugSettings(
 
   if (settings.renderer?.resolutionScale !== undefined) {
     viewer.renderer.resolutionScale = settings.renderer.resolutionScale
+  }
+}
+
+function applyToneMapping(
+  viewer: Viewer,
+  toneMapping: boolean | ViewerToneMappingOptions | undefined
+) {
+  if (toneMapping === undefined) return
+  if (typeof toneMapping === 'boolean') {
+    viewer.postProcess.toneMapping.enabled = toneMapping
+    return
+  }
+  if (toneMapping.enabled !== undefined) {
+    viewer.postProcess.toneMapping.enabled = toneMapping.enabled
+  }
+  if (toneMapping.mode !== undefined) {
+    viewer.postProcess.toneMapping.mode = toneMapping.mode
+  }
+  if (toneMapping.exposure !== undefined) {
+    viewer.postProcess.toneMapping.exposure = toneMapping.exposure
   }
 }
 

@@ -1,4 +1,5 @@
 ﻿import type { Viewer } from "../../Viewer"
+import { TONE_MAPPING_MODES } from "../../scene/toneMapping"
 import {
   createGroup,
   createRangeControl,
@@ -473,13 +474,28 @@ export function buildDebugSettingsControls(
     )
   )
 
+  const configuredToneMapping =
+    typeof postProcess?.toneMapping === "boolean" ? undefined : postProcess?.toneMapping
+  const toneMappingEnabledToggle = createSwitchControl(
+    "tone-mapping",
+    "色调映射",
+    typeof postProcess?.toneMapping === "boolean"
+      ? postProcess.toneMapping
+      : configuredToneMapping?.enabled ?? viewer.postProcess.toneMapping.enabled
+  )
+  const toneMappingModeControl = createSelectControl({
+    id: "tone-mapping-mode",
+    label: "色调映射算子",
+    value: configuredToneMapping?.mode ?? viewer.postProcess.toneMapping.mode,
+    options: TONE_MAPPING_MODES,
+  })
   const exposureControl = createRangeControl({
     id: "exposure",
     label: "曝光",
     min: 2,
     max: 14,
     step: 0.1,
-    value: postProcess?.toneMappingExposure ?? viewer.postProcess.toneMappingExposure,
+    value: configuredToneMapping?.exposure ?? viewer.postProcess.toneMapping.exposure,
     format: (value) => value.toFixed(1),
   })
   const resolutionControl = createRangeControl({
@@ -496,6 +512,8 @@ export function buildDebugSettingsControls(
     createGroup(
       "渲染与后处理",
       [
+        toneMappingEnabledToggle.element,
+        toneMappingModeControl.element,
         exposureControl.element,
         resolutionControl.element,
         fpsToggle.element,
@@ -546,6 +564,8 @@ export function buildDebugSettingsControls(
     taaToggle,
     ditheringToggle,
     fpsToggle,
+    toneMappingEnabledToggle,
+    toneMappingModeControl,
     coverageControl,
     cloudSpeedControl,
     cloudAltitudeControl,

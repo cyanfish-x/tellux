@@ -79,9 +79,7 @@ async function main() {
         show: false,
       },
     },
-    postProcess: {
-      toneMappingExposure: 5,
-    },
+    postProcess: { toneMapping: { exposure: 5 } },
     widgets: {
       timeline: true,
     },

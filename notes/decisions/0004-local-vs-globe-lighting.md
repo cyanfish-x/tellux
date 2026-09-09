@@ -20,7 +20,7 @@ Cesium for Unreal / CesiumSunSky 用正午 111000 lux 做太阳语义锚。Tellu
 1. **光照域**：`viewer.models.add({ lighting: 'globe' | 'local' })`。`preserve` 默认 `local`，`auto` 默认 `globe`。`local` 在 `post-process` 下强制保留 glTF 材质。
 2. **Shader 契约**：`light-source` 已着色 radiance **不**乘 `dayLightFactor`，不用 luma 猜自发光，不用 albedo 月光替换局部像素。`post-process` 的太阳/天光重建仍乘日夜因子。自写 `LightingMaskPass` + `telluxLightingMaskBuffer`：1=globe，0=local 保留 `inputColor`。
 3. **光度**：`scene.atmosphere.lighting.photometric.{ enabled, sunIlluminance: 111000 }`。内部 `TakramScale = sunIlluminance / 111000`，禁止 `SunDirectionalLight.intensity = 111000`。该 API **只缩放太阳**，不改点光或自发光。局部灯 / `emissiveIntensity` 与 Takram 太阳同一套场景单位（约 O(1)～几）。默认关闭。
-4. **自动曝光**：`postProcess.autoExposure.{ enabled, min, max, speed }`，用已有 `nightFactor`（太阳高度）平滑插值 `toneMappingExposure`。默认关闭。地球主光是太阳，不用直方图。
+4. **自动曝光**：`postProcess.autoExposure.{ enabled, min, max, speed }`，用已有 `nightFactor`（太阳高度）平滑插值 `toneMapping.exposure`。默认关闭。地球主光是太阳，不用直方图。
 5. **验收形态**：`examples/threejs-interop.ts` 走 `Viewer.create` + `renderer.type: 'webgpu'`，必须同时打开 photometric、local lighting、autoExposure 与 `postProcess.taa`。对齐上游 Non-geospatial：**不开 Bloom / 镜头光晕**；WebGPU 下关闭 `highlighter.outline`。其它示例保持旧默认。
 6. **WebGPU**：同一套 photometric 换算和 `getNightFactor()`；lighting mask 仍是 WebGL `setEffects` 路径。不在 WebGPU 复制一份 GLSL mask。验收页停在 `light-source`，不靠 mask 在 `post-process` 下抠局部灯。
 
@@ -39,5 +39,5 @@ Cesium for Unreal / CesiumSunSky 用正午 111000 lux 做太阳语义锚。Tellu
 - 重新评估自写 pass 时，比较官方 `postprocessing.Pass` 与本地 `ThreeEffectPass` 的生命周期、深度输入、selection 和 mask 采样语义，再做昼夜与局部灯场景回归；不能仅凭导出存在直接替换。Tellux 现有契约必须保持 **1=globe / 0=local**。本次只核验导出，未验证替换等价性；`src/rendering/LightingMaskPass.ts` 的旧“未导出”注释也已过期。
 - `sunLightIntensity` 在未开 photometric 时仍是无量纲倍率；打开光度后变为「用户倍率 × lux 锚缩放」。
 - Bloom `intensity` 是亮部提取之后的混合系数，不是画面亮度百分比。阈值挡不住的 HDR（例如自发光 5550）乘 0.05 仍然是一团白。
-- 自动曝光开启时每帧会覆盖 `viewer.postProcess.toneMappingExposure`；调曝光请改 `autoExposure.min` / `max`。
+- 自动曝光开启时每帧会覆盖 `viewer.postProcess.toneMapping.exposure`；调曝光请改 `autoExposure.min` / `max`。
 - WebGPU 没有 lighting mask，`lighting: 'local'` 在 WebGPU 上只保证材质 preserve 与光度换算，不能在 `post-process` 下按像素排除大气光照。

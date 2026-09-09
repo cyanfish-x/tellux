@@ -58,6 +58,7 @@ import { ScenePicker } from './sampling/ScenePicker'
 import { Scene, syncSceneRuntimeEffects, updateSceneFallbackAmbientLight } from './Scene'
 import { HighlightSettings } from './scene/HighlightSettings'
 import { PostProcessSettings } from './scene/PostProcessSettings'
+import { resolveThreeToneMapping } from './scene/toneMapping'
 import { SceneTilesetCollection, createSceneTilesetCollection } from './tiles/SceneTilesetCollection'
 import { TilesetManager } from './tiles/TilesetManager'
 import {
@@ -288,6 +289,8 @@ export type {
   ViewerLensFlareThresholdOptions,
   ViewerPostProcessOptions,
   ViewerPostProcessStageOptions,
+  ViewerToneMappingOptions,
+  ToneMappingMode,
   ViewerRendererOptions,
   ViewerRendererType,
   ViewerSceneOptions,
@@ -395,9 +398,9 @@ export class Viewer {
    */
   readonly globe: Globe
   /**
-   * 后处理运行时设置。
+   * 后处理运行时设置。色调映射走 `postProcess.toneMapping`。
    *
-   * Post-processing runtime settings.
+   * Post-processing runtime settings. Tone mapping is `postProcess.toneMapping`.
    */
   readonly postProcess: PostProcessSettings
   /**
@@ -534,8 +537,11 @@ export class Viewer {
       void this.ready.catch(() => undefined)
       this.rendererAdapter.setPixelRatio(this.currentResolutionScale)
       this.rendererAdapter.setSize(width, height)
-      this.renderer.raw.toneMapping = THREE.AgXToneMapping
-      this.renderer.raw.toneMappingExposure = postProcessOptions.toneMappingExposure
+      this.renderer.raw.toneMapping = resolveThreeToneMapping(
+        postProcessOptions.toneMapping.enabled,
+        postProcessOptions.toneMapping.mode
+      )
+      this.renderer.raw.toneMappingExposure = postProcessOptions.toneMapping.exposure
       this.colorResolver = new ToneMappingColorResolver({
         toneMapping: this.renderer.raw.toneMapping,
         exposure: this.renderer.raw.toneMappingExposure
@@ -560,7 +566,7 @@ export class Viewer {
           webgpuLensFlare?.sync(this.postProcess.lensFlare)
           webgpuTemporalAntialias?.setEnabled(this.postProcess.taa.enabled)
         },
-        (exposure) => this.applyToneMappingExposure(exposure)
+        () => this.applyToneMapping()
       )
       this.highlightSettings = new HighlightSettings(
         resolveViewerHighlightOptions(options.highlighter),
@@ -869,11 +875,13 @@ export class Viewer {
     this.renderLoop.useDefaultRenderLoop = value
   }
 
-  private applyToneMappingExposure(value: number) {
-    this.renderer.raw.toneMappingExposure = value
+  private applyToneMapping() {
+    const { enabled, mode, exposure } = this.postProcess.toneMapping
+    this.renderer.raw.toneMapping = resolveThreeToneMapping(enabled, mode)
+    this.renderer.raw.toneMappingExposure = exposure
     this.colorResolver.setState({
       toneMapping: this.renderer.raw.toneMapping,
-      exposure: value
+      exposure
     })
     this.entitiesManager.refreshColors()
     syncHighlightStyleFromSettings(this.highlighter)
@@ -887,13 +895,13 @@ export class Viewer {
     const min = Math.min(autoExposure.min, autoExposure.max)
     const max = Math.max(autoExposure.min, autoExposure.max)
     const target = THREE.MathUtils.lerp(min, max, nightFactor)
-    const current = this.postProcess.toneMappingExposure
+    const current = this.postProcess.toneMapping.exposure
     const next =
       autoExposure.speed <= 0
         ? target
         : THREE.MathUtils.damp(current, target, autoExposure.speed, deltaTime)
     if (Math.abs(next - current) < 1e-4) return
-    this.postProcess.toneMappingExposure = next
+    this.postProcess.toneMapping.exposure = next
   }
 
   /**

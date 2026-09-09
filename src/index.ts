@@ -235,6 +235,8 @@ export {
   type ViewerLensFlareThresholdOptions,
   type ViewerPostProcessOptions,
   type ViewerPostProcessStageOptions,
+  type ViewerToneMappingOptions,
+  type ToneMappingMode,
   type ViewerSceneOptions,
   type ViewerSurfaceOptions,
   type ViewerWidgetOptions,

@@ -105,7 +105,11 @@ const viewer = new Viewer(container, {
     }
   },
   postProcess: {
-    toneMappingExposure: 5,
+    toneMapping: {
+      enabled: true,
+      mode: 'agx',
+      exposure: 5
+    },
     lensFlare: {
       enabled: true,
       intensity: 0.005,
@@ -131,7 +135,7 @@ viewer.scene.surface.materialMode = 'standard'
 viewer.scene.surface.material.roughness = 0.9
 viewer.postProcess.smaa.enabled = true
 viewer.postProcess.taa.enabled = true // WebGPU
-viewer.postProcess.toneMappingExposure = 8
+viewer.postProcess.toneMapping.exposure = 8
 ```
 
 详细的逐项说明见下文「配置项参考」。
@@ -305,9 +309,13 @@ const viewer = new tellux.Viewer(container, {
   },
 
   // —— 后处理（Bloom / TAA / 镜头光晕支持 WebGPU；SMAA / 抖动为 WebGL 专属）
-  // bloom / lensFlare / smaa / taa / dithering 也可传 boolean，等价于 { enabled }
+  // bloom / lensFlare / smaa / taa / dithering / toneMapping 也可传 boolean，等价于 { enabled }
   postProcess: {
-    toneMappingExposure: 5,  // 色调映射曝光，默认 5；运行时也可用 viewer.postProcess.toneMappingExposure 调整
+    toneMapping: {            // 也可传 boolean，等价于 { enabled }
+      enabled: true,         // 是否启用色调映射；false 等价 NoToneMapping，默认 true
+      mode: 'agx',           // 'linear' | 'reinhard' | 'cineon' | 'aces-filmic' | 'agx' | 'neutral'；默认 'agx'
+      exposure: 5            // 曝光，默认 5；运行时 viewer.postProcess.toneMapping.exposure
+    },
     autoExposure: {          // 自动曝光，默认关闭；用太阳高度在 min（白天）与 max（夜晚）之间插值
       enabled: false,
       min: 2,
