@@ -367,7 +367,7 @@ const hismForestSchema = () =>
 
 panel = createTelluxPanel(hismForestSchema, {
   id: "hism-forest-panel",
-  title: () => t({ zh: "HISM 森林基准", en: "HISM forest benchmark" }),
+  title: () => t({ zh: "HISM 实例化森林", en: "HISM instanced forest" }),
   statusPath: "status.message",
 })
 

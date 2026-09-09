@@ -572,64 +572,56 @@
     "Camera Fly-to"
   ],
   "example.fly-to.registry.description": [
-    "选择一个目的地开始飞行。",
-    "Pick a destination to start flying."
+    "选择目的地飞行，并在面板中调节 FOV、姿态和飞行参数。",
+    "Fly to a destination and adjust FOV, pose, and flight parameters."
   ],
   "example.entities.registry.title": [
     "实体绘制",
     "Entity Drawing"
   ],
   "example.entities.registry.description": [
-    "已加载示例实体。",
-    "Sample entities loaded."
+    "绘制点、折线与多边形实体，支持点击拾取查看属性。",
+    "Draw points, polylines, and polygons; click to inspect properties."
   ],
   "example.symbol.registry.title": [
     "图标与文字标签",
     "Icons & Text Labels"
   ],
   "example.symbol.registry.description": [
-    "加载中…",
-    "Loading…"
+    "在地球上放置图标与文字标签，支持样式改色与压测。",
+    "Place icons and text labels on the globe, with restyle and stress tests."
   ],
   "example.ground-clamp.registry.title": [
     "贴地折线",
     "Ground-clamped Polyline"
   ],
   "example.ground-clamp.registry.description": [
-    "加载中…",
-    "Loading…"
+    "用 GPU 深度分类让折线贴合峡谷地形，并与固定高折线对比。",
+    "Clamp polylines to canyon terrain via GPU depth classification, compared with fixed-height lines."
   ],
   "example.ground-clamp-polygon.registry.title": [
     "贴地面",
     "Ground-clamped Polygon"
   ],
   "example.ground-clamp-polygon.registry.description": [
-    "加载中…",
-    "Loading…"
+    "凹多边形贴地（含镂空），并与固定高平面对比。",
+    "Clamp concave polygons (with holes) to terrain, compared with fixed-height planes."
   ],
   "example.instanced-horses.registry.title": [
     "若尔盖草原奔马实例化",
     "Zoige Instanced Horses"
   ],
   "example.instanced-horses.registry.description": [
-    "正在准备若尔盖草原点位...",
-    "Preparing Zoige grassland placements..."
+    "在若尔盖草原采样地形高度，实例化放置大量奔马模型。",
+    "Sample Zoige grassland heights and place many instanced horse models."
   ],
   "example.mixed-height-sampling-horses.registry.title": [
     "混合场景高度采样奔马",
     "Mixed Height Sampling Horses"
   ],
   "example.mixed-height-sampling-horses.registry.description": [
-    "正在准备混合采样场景...",
-    "Preparing mixed sampling scene..."
-  ],
-  "example.vegetation.registry.title": [
-    "程序化植被森林",
-    "Procedural Vegetation Forest"
-  ],
-  "example.vegetation.registry.description": [
-    "正在准备植被场景...",
-    "Preparing vegetation scene..."
+    "在 3D Tiles 与地形混合表面上采样高度并实例化奔马。",
+    "Sample heights on mixed 3D Tiles + terrain and place instanced horses."
   ],
   "example.threejs-interop.registry.title": [
     "Three.js 原生互操作",
@@ -640,20 +632,20 @@
     "Place Littlest Tokyo on the globe with WebGPU and TAA."
   ],
   "example.hism-forest.registry.title": [
-    "HISM 森林基准",
-    "HISM Forest Benchmark"
+    "HISM 实例化森林",
+    "HISM Instanced Forest"
   ],
   "example.hism-forest.registry.description": [
-    "正在准备 HISM 场景...",
-    "Preparing HISM scene..."
+    "用 HISM 渲染万级树木与岩石：簇级剔除、LOD、拾取与描边高亮。",
+    "Render tens of thousands of trees and rocks with HISM: cluster culling, LOD, picking, and outlines."
   ],
   "example.hism-compare.registry.title": [
     "Legacy vs HISM 性能对比",
     "Legacy vs HISM Compare"
   ],
   "example.hism-compare.registry.description": [
-    "正在初始化模板...",
-    "Initializing templates..."
+    "在相同散布下对比 Legacy InstancedMesh 与 HISM 的构建与运行时性能。",
+    "Compare Legacy InstancedMesh vs HISM build and runtime performance at the same placements."
   ],
   "example.basic.title": [
     "三维地球",
@@ -1803,58 +1795,6 @@
     "已在 3D Tiles 和地形混合表面放置 {n} 匹实例化奔马。",
     "Placed {n} instanced horses on mixed 3D Tiles + terrain surface."
   ],
-  "example.vegetation.panel.aria": [
-    "程序化植被森林控件",
-    "Procedural vegetation forest controls"
-  ],
-  "example.vegetation.panel.title": [
-    "程序化植被森林",
-    "Procedural vegetation forest"
-  ],
-  "example.vegetation.folder.actions": [
-    "操作",
-    "Actions"
-  ],
-  "example.vegetation.folder.status": [
-    "状态",
-    "Status"
-  ],
-  "example.vegetation.btn.fly": [
-    "飞到森林",
-    "Fly to forest"
-  ],
-  "example.vegetation.btn.regen": [
-    "重新生成",
-    "Regenerate"
-  ],
-  "example.vegetation.status.initial": [
-    "正在准备植被场景...",
-    "Preparing vegetation scene..."
-  ],
-  "example.vegetation.status.initPreset": [
-    "正在初始化 ez-tree 预设...",
-    "Initializing ez-tree presets..."
-  ],
-  "example.vegetation.status.genPoints": [
-    "正在生成森林散布点（泊松分布）...",
-    "Generating forest placements (Poisson)..."
-  ],
-  "example.vegetation.status.sampling": [
-    "已生成 {n} 个候选点，正在通过 sampleHeightMostDetailed 采样地表高度...",
-    "Generated {n} candidates; sampling surface height via sampleHeightMostDetailed..."
-  ],
-  "example.vegetation.status.sampleFail": [
-    "地表高度采样失败，请检查地形数据源是否可访问。",
-    "Surface height sampling failed."
-  ],
-  "example.vegetation.status.noHit": [
-    "地表高度未命中，未加载植被。",
-    "No surface hits; vegetation not loaded."
-  ],
-  "example.vegetation.status.ready": [
-    "已在 ({lon}, {lat}) 周边 {r}m 范围内放置 {n} 棵程序化植被。",
-    "Placed {n} procedural trees within {r}m of ({lon}, {lat})."
-  ],
   "example.threejs-interop.panel.aria": [
     "Three.js 互操作控件",
     "Three.js interop controls"
@@ -1964,12 +1904,12 @@
     "Hit {layerId} · cluster {clusterKey} · archetype {archetypeIndex} · LOD {lodIndex} · instance {instanceId}"
   ],
   "example.hism-forest.panel.aria": [
-    "HISM 森林基准控件",
-    "HISM forest benchmark controls"
+    "HISM 实例化森林控件",
+    "HISM instanced forest controls"
   ],
   "example.hism-forest.panel.title": [
-    "HISM 森林基准",
-    "HISM forest benchmark"
+    "HISM 实例化森林",
+    "HISM instanced forest"
   ],
   "example.hism-forest.folder.actions": [
     "操作",

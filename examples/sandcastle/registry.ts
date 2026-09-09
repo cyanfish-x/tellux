@@ -44,9 +44,7 @@ const categoryById: Record<string, string> = {
   "mixed-height-sampling-horses": "Sampling",
   terrain: "Terrain",
   "threejs-interop": "Models",
-  vegetation: "Vegetation",
   "hism-forest": "HISM",
-  "hism-compare": "HISM",
   "webgpu-basic": "Rendering",
   "water-area": "Rendering",
 }
@@ -104,7 +102,8 @@ const tagByTerm: Array<[string, string]> = [
   ["飞行", "Flight"],
 ]
 
-const excludedHtmlFiles = new Set(["index", "sandcastle", "gallery"])
+// hism-compare：性能基准页，保留独立 URL + 文档入口，不进 Sandcastle 案例列表。
+const excludedHtmlFiles = new Set(["index", "sandcastle", "gallery", "hism-compare"])
 const defaultExampleId = "basic"
 
 function getFileId(path: string) {
@@ -157,13 +156,10 @@ function getHtmlFallbackTitle(html: string) {
   )
 }
 
-function getHtmlFallbackDescription(html: string) {
-  const document = parseHtmlDocument(html)
-  return (
-    document
-      .querySelector(".toolbar p, .layer-manager__status, .status")
-      ?.textContent?.trim() || ""
-  )
+function getHtmlFallbackDescription(_html: string) {
+  // 不再从页面 DOM 刮取 `.status` / toolbar 文案：那些是运行时加载态，
+  // 曾被误当成 Sandcastle 目录描述（出现「加载中…」）。缺 key 时回落到默认描述。
+  return ""
 }
 
 function localizedFromKey(

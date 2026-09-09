@@ -106,7 +106,7 @@
 架构见 [docs/design/engine-ownership-and-dependency-strategy.md](./notes/archive/engine-ownership-and-dependency-strategy.md)；使用见 [docs/guide/hism.md](./docs/guide/hism.md)。
 
 - 现状：`src/hism/` 已落地 PositionPipeline、RTC stage、风摆 stage、簇网格、视锥剔除、LOD bucketing、BVH 拾取、`viewer.addHismLayer` / `viewer.pick(..., { layers: ['hismInstance'] })` / `viewer.highlight.set(hismPick)`。
-- 演示：`examples/hism/hism-forest`（功能 + 描边高亮）、`examples/hism/hism-compare`（legacy InstancedMesh vs HISM 性能对照）；旧 `examples/vegetation.ts` 仍可作对照基线。
+- 演示：`examples/hism/hism-forest`（功能 + 描边高亮）、`examples/hism/hism-compare`（legacy InstancedMesh vs HISM 性能对照）。
 - **明确不做**：HZB 遮挡剔除；Nanite 级 GPU-driven meshlet（另立项）。
 
 - [X] C1 PositionPipeline 协议 + 单元测试
