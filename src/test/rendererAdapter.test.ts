@@ -1,7 +1,11 @@
 import * as THREE from 'three'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import type { TelluxRendererAdapter } from '../rendering/RendererAdapter'
+import {
+  applyWebGLSceneBufferClearAlpha,
+  WEBGL_SCENE_BUFFER_CLEAR_ALPHA,
+  type TelluxRendererAdapter
+} from '../rendering/RendererAdapter'
 
 function renderThroughAdapter(
   adapter: Pick<TelluxRendererAdapter, 'setRenderDelegate' | 'render'>,
@@ -60,5 +64,14 @@ describe('renderer adapter render delegate contract', () => {
     renderThroughAdapter(adapter, scene, camera)
 
     expect(calls).toEqual(['default'])
+  })
+})
+
+describe('WebGL scene buffer clear alpha', () => {
+  it('clears the HDR scene target with alpha 0 so coverage can composite over sky', () => {
+    expect(WEBGL_SCENE_BUFFER_CLEAR_ALPHA).toBe(0)
+    const renderer = { setClearAlpha: vi.fn() }
+    applyWebGLSceneBufferClearAlpha(renderer as unknown as THREE.WebGLRenderer)
+    expect(renderer.setClearAlpha).toHaveBeenCalledWith(0)
   })
 })

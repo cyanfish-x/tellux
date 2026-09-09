@@ -66,3 +66,27 @@ describe('patchAerialPerspectiveShader point-cloud lighting', () => {
     expect(fragmentShader).toContain('telluxNightRadiance *= telluxGlobeLightingMask;')
   })
 })
+
+describe('patchAerialPerspectiveShader sky over unwritten depth', () => {
+  it('composites scene color over sky on far-plane pixels instead of replacing it', () => {
+    const fragmentShader = patchedFragment(false, false)
+
+    expect(fragmentShader).toContain(
+      'outputColor.rgb = inputColor.rgb + outputColor.rgb * (1.0 - inputColor.a);'
+    )
+    expect(fragmentShader).toContain('outputColor.rgb = getSkyRadiance(')
+  })
+
+  it('keeps empty far-plane pixels as sky by using coverage alpha rather than luma', () => {
+    const fragmentShader = patchedFragment(false, false)
+
+    expect(fragmentShader).not.toContain('telluxSceneLuma')
+    expect(fragmentShader).not.toContain('telluxSelfLitMask')
+    const skyBranch = fragmentShader.slice(
+      fragmentShader.indexOf('if (depth >= 1.0 - 1e-8)'),
+      fragmentShader.indexOf('depth = reverseLogDepth')
+    )
+    expect(skyBranch).toContain('inputColor.rgb + outputColor.rgb * (1.0 - inputColor.a)')
+    expect(skyBranch).not.toContain('outputColor.rgb = inputColor.rgb;')
+  })
+})
