@@ -532,8 +532,8 @@
     "Gaussian Splat 3D Tiles"
   ],
   "example.gaussian-splat-3d-tiles.registry.description": [
-    "切换 SvirnasAlyt、Elevator、Cesium ion 与 Spark 单文件，在地球场景中浏览高斯泼溅。",
-    "Explore Gaussian splats from SvirnasAlyt, Elevator, Cesium ion, and standalone Spark assets in a globe scene."
+    "默认加载 Cesium ion Redmond，也可切换 SvirnasAlyt、Elevator 与 Spark 单文件，在地球场景中浏览高斯泼溅。",
+    "Defaults to Cesium ion Redmond; also explore SvirnasAlyt, Elevator, and standalone Spark assets in a globe scene."
   ],
   "example.point-cloud-3d-tiles.registry.title": [
     "点云 3D Tiles",

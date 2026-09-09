@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+### Changed
+- 高斯泼溅案例默认改为 Cesium ion Redmond 资产及对应近景视角，并更新 Sandcastle 封面
+
 ## [0.2.0] - 2026-07-23
 
 本版本重点：

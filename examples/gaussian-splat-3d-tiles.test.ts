@@ -21,6 +21,7 @@ function setup() {
     addEventListener(name: string, fn: (event?: any) => void) { this.events[name] = fn }
     dispose() { this.disposed = true }
     getBoundingSphere(sphere: THREE.Sphere) { sphere.radius = 50; return true }
+    getAttributions() { return [] }
   }
   let finishDecode!: () => void
   class Mesh extends THREE.Group {
@@ -32,7 +33,7 @@ function setup() {
   }
   class Spark extends THREE.Group { dispose() {} }
   const viewer = {
-    scene: { raw: new THREE.Scene() }, camera: { raw: new THREE.PerspectiveCamera() },
+    scene: { raw: new THREE.Scene() }, camera: { raw: new THREE.PerspectiveCamera(), flyTo: vi.fn() },
     renderer: { raw: Object.create(THREE.WebGLRenderer.prototype) },
     globe: { show: true }, postProcess: { toneMappingExposure: 5 }, flyToTarget: vi.fn(),
     cartographicToMatrix4: () => new THREE.Matrix4(), render() {}, destroy() {},
@@ -76,6 +77,7 @@ function setup() {
 describe('Gaussian source lifecycle', () => {
   it('uses the public evaluation token only for the official asset and honors explicit credentials', async () => {
     const h = setup()
+    expect(h.auth).toHaveBeenCalledWith(expect.objectContaining({ assetId: '4547222', apiToken: 'public-evaluation-test' }))
     h.panel.controls.source.kind = 'ion'
     await h.api.loadSource()
     expect(h.auth).toHaveBeenLastCalledWith(expect.objectContaining({ assetId: '4547222', apiToken: 'public-evaluation-test' }))
@@ -87,6 +89,22 @@ describe('Gaussian source lifecycle', () => {
     h.panel.controls.connection.assetId = '123'
     await h.api.loadSource()
     expect(h.auth).not.toHaveBeenCalled()
+  })
+  it('flies to the designed Redmond view for the ion source', () => {
+    const h = setup()
+    h.Tiles.instances[0].events['load-root-tileset']()
+    expect(h.viewer.camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({
+      destination: expect.objectContaining({
+        longitude: -122.1382540879472,
+        latitude: 47.64458159198655,
+        height: 120.68304803496336,
+      }),
+      orientation: expect.objectContaining({
+        heading: -73.89912707399358,
+        pitch: -14.14961796254038,
+      }),
+    }))
+    expect(h.viewer.flyToTarget).not.toHaveBeenCalled()
   })
   it('ignores stale tileset errors and root events after switching', async () => {
     const h = setup()
@@ -113,6 +131,7 @@ describe('Gaussian source lifecycle', () => {
       signal.addEventListener('abort', () => reject(new Error('aborted')))
     }))
     h.panel.controls.source.kind = 'butterfly'
+    h.panel.controls.connection.url = 'https://sparkjs.dev/assets/splats/butterfly.spz'
     const loading = h.api.loadSource()
     h.api.clearSource()
     await loading
@@ -124,9 +143,11 @@ describe('Gaussian source lifecycle', () => {
     const h = setup()
     h.fetch.mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
     h.panel.controls.source.kind = 'butterfly'
+    h.panel.controls.connection.url = 'https://sparkjs.dev/assets/splats/butterfly.spz'
     const loading = h.api.loadSource()
     await vi.waitFor(() => expect(h.Mesh.instances).toHaveLength(1))
     h.panel.controls.source.kind = 'svirnas'
+    h.panel.controls.connection.url = 'https://example.com/svirnas/tileset.json'
     await h.api.loadSource()
     h.decode()
     await loading
@@ -139,6 +160,7 @@ describe('Gaussian source lifecycle', () => {
     const h = setup()
     h.fetch.mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
     h.panel.controls.source.kind = 'butterfly'
+    h.panel.controls.connection.url = 'https://sparkjs.dev/assets/splats/butterfly.spz'
     const loading = h.api.loadSource()
     await vi.waitFor(() => expect(h.Mesh.instances).toHaveLength(1))
     h.decode()

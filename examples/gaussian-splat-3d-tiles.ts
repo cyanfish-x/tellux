@@ -21,9 +21,16 @@ const SOURCES = {
   custom: { label: "", url: import.meta.env.VITE_GAUSSIAN_SPLAT_3D_TILESET_URL ?? "" },
 }
 type SourceId = keyof typeof SOURCES
-const INITIAL_SOURCE: SourceId = SOURCES.custom.url ? "custom" : "svirnas"
+const INITIAL_SOURCE: SourceId = SOURCES.custom.url ? "custom" : "ion"
 const DEFAULT_ION_TOKEN = import.meta.env.VITE_CESIUM_ION_TOKEN ?? ""
-const SAMPLE_VIEW = { latitude: -38.5, longitude: 142.8, height: 600, heading: 35, pitch: -26, roll: 0 }
+const SAMPLE_VIEW = {
+  longitude: -122.1382540879472,
+  latitude: 47.64458159198655,
+  height: 120.68304803496336,
+  heading: -73.89912707399358,
+  pitch: -14.14961796254038,
+  roll: 0.0000035976405824963356,
+}
 // 单文件资源没有真实地理参考，此处仅为展示锚点（椭球高度，米）。
 // The single-file asset has no georeference; this is a display anchor in ellipsoid meters.
 const BUTTERFLY_ANCHOR = { longitude: 142.8343, latitude: -38.5822, height: 120 }
@@ -133,6 +140,23 @@ function fail(error: unknown, request: number) {
 }
 
 function flyToSource() {
+  const source = panel?.controls.source.kind as SourceId | undefined
+  if (activeTileset && source === "ion") {
+    viewer.camera.flyTo({
+      destination: {
+        longitude: SAMPLE_VIEW.longitude,
+        latitude: SAMPLE_VIEW.latitude,
+        height: SAMPLE_VIEW.height,
+      },
+      orientation: {
+        heading: SAMPLE_VIEW.heading,
+        pitch: SAMPLE_VIEW.pitch,
+        roll: SAMPLE_VIEW.roll,
+      },
+      duration: 1.2,
+    })
+    return
+  }
   if (activeTileset) {
     const sphere = new THREE.Sphere()
     if (!activeTileset.getBoundingSphere(sphere)) return

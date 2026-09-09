@@ -99,7 +99,7 @@ viewer.flyToTarget(layer.tileset, {
 
 案例的“保留数据颜色”用于补偿 Tellux 最终曝光 / AgX 对高斯显示色的影响，默认开启；关闭可与原始输出路径对比。它不调整全局曝光，透明混合区域仍可能与其他渲染器不同。
 
-[高斯泼溅案例](../../gaussian-splat-3d-tiles.html)提供 SvirnasAlyt、Elevator、Cesium ion / Redmond 和 Spark / Butterfly 四种预设。切换预设后自动加载，也可编辑 URL 或 ion 的 Asset ID / Token 后重试。
+[高斯泼溅案例](../../gaussian-splat-3d-tiles.html)默认加载 Cesium ion / Redmond，并提供 SvirnasAlyt、Elevator 和 Spark / Butterfly 预设。切换预设后自动加载，也可编辑 URL 或 ion 的 Asset ID / Token 后重试。
 
 - 两个 GitHub 预设使用固定提交中的高斯 3D Tiles，按相机需要加载瓦片。
 - 官方资产 `4547222` 的 Token 留空时使用 CesiumJS 公开评估 token，无需自己的 token，与[官方教程](https://cesium.com/learn/cesiumjs-learn/3d-guassian-splat-tilesets-lods/)一致。显式填写 token 优先；其他资产留空时使用 `VITE_CESIUM_ION_TOKEN`。评估 token 不用于生产应用。
