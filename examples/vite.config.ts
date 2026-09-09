@@ -120,7 +120,13 @@ export default defineConfig(({ mode }) => {
       exclude: ["leva-vanilla", "three-stylized"],
     },
     resolve: {
+      // 链接包 three-stylized 在仓库外，Rollup 不会从它自己的 node_modules 找到 three。
+      dedupe: ["three"],
       alias: [
+        {
+          find: /^three$/,
+          replacement: resolve(projectRoot, "node_modules/three"),
+        },
         {
           find: "leva-vanilla/gui",
           replacement: resolve(projectRoot, "../leva-vanilla/src/dom/gui.ts"),
