@@ -89,19 +89,16 @@ if (globeContainer instanceof HTMLElement) {
       },
     ],
     camera: {
-      destination: {
-        longitude: 109.11101722751532,
-        latitude: 37.3006381769495,
-        height: 6406304.285449645,
+      "destination": {
+        "longitude": -172.64189026815131,
+        "latitude": 37.69373233981144,
+        "height": 12471407.212467723
       },
-      orientation: {
-        heading: -10.737398475171885,
-        pitch: -89.81337176751433,
-        roll: 0.648027734186861,
-      },
-      projection: {
-        far: 8000000,
-      },
+      "orientation": {
+        "heading": -13.479441046974207,
+        "pitch": -89.88178523486314,
+        "roll": 6.247381123153318
+      }
     },
     scene: {
       atmosphere: {
@@ -119,8 +116,8 @@ if (globeContainer instanceof HTMLElement) {
 
   viewer.scene.clouds.layer.altitude = 1500
   viewer.scene.clouds.layer.height = 650
-  ;(window as any).viewer = viewer
-  ;(window as any).portalViewer = viewer
+    ; (window as any).viewer = viewer
+    ; (window as any).portalViewer = viewer
 
   // Viewer 构造后双 rAF：等首帧把 canvas 画上再淡出新月 loading。
   // Double rAF after Viewer construction: fade out the crescent loader once the first canvas frame has been painted.
