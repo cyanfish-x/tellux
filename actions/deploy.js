@@ -1,10 +1,13 @@
 /**
  * deploy.js
- * 功能：使用 rclone 增量同步本地构建产物到服务器 -> 刷新 CDN
+ * 功能：rclone 增量同步到自建站 -> 可选刷新腾讯云 CDN -> Wrangler Direct Upload 到 Cloudflare Pages
  *
  * 依赖：
  * - 本机需要可执行 rclone
  * - 先通过 rclone config 创建固定 remote，再在 .env 中配置 RCLONE_REMOTE
+ * - Cloudflare Pages 必须是 Direct Upload 项目（不要 Connect Git）
+ * - .env 必填 CLOUDFLARE_PAGES_PROJECT
+ * - 本机优先 `wrangler login`；CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID 仅在无 OAuth 时需要
  */
 
 import fs from "node:fs"
@@ -15,6 +18,7 @@ import { fileURLToPath } from "node:url"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+const projectRoot = path.resolve(__dirname, "..")
 const require = createRequire(import.meta.url)
 
 const dotenv = require("dotenv")
@@ -38,6 +42,14 @@ const CONFIG = {
     secretKey: process.env.CDN_SECRET_KEY,
     flushPaths: parseCdnFlushPaths(process.env.CDN_FLUSH_PATHS),
   },
+  cloudflare: {
+    apiToken: process.env.CLOUDFLARE_API_TOKEN,
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
+    projectName: process.env.CLOUDFLARE_PAGES_PROJECT,
+    // Direct Upload 用 branch 名选择 production / preview；默认 main，
+    // 避免本机从 dev 部署时被 Wrangler 推断成 preview。
+    branch: process.env.CLOUDFLARE_PAGES_BRANCH || "main",
+  },
 }
 
 function parseCdnFlushPaths(value) {
@@ -52,6 +64,7 @@ function assertConfig() {
     ["LOCAL_DIR", CONFIG.localDir],
     ["REMOTE_DIR", CONFIG.remoteDir],
     ["RCLONE_REMOTE", CONFIG.rclone.remote],
+    ["CLOUDFLARE_PAGES_PROJECT", CONFIG.cloudflare.projectName],
   ]
 
   const missingFields = requiredFields
@@ -68,6 +81,7 @@ function assertConfig() {
 
   assertCommandAvailable("rclone", "未找到 rclone，请先安装 rclone 并确认它已加入 PATH")
   assertRcloneRemoteExists(CONFIG.rclone.remote)
+  resolveWranglerCli()
 }
 
 function assertCommandAvailable(command, message) {
@@ -124,6 +138,42 @@ function runCommand(command, args, options = {}) {
 
 function normalizeRcloneRemoteName(remote) {
   return String(remote).trim().replace(/:$/, "")
+}
+
+function resolveWranglerCli() {
+  const wranglerCli = path.join(projectRoot, "node_modules/wrangler/bin/wrangler.js")
+  if (!fs.existsSync(wranglerCli)) {
+    throw new Error("未找到 wrangler，请先在仓库根目录执行 pnpm install")
+  }
+  return wranglerCli
+}
+
+async function deployCloudflarePages() {
+  const localSource = path.resolve(CONFIG.localDir)
+  const wranglerCli = resolveWranglerCli()
+  const { projectName, branch, apiToken, accountId } = CONFIG.cloudflare
+
+  const wranglerEnv = { ...process.env }
+  // 空字符串也会盖掉 wrangler login 的 OAuth，只在显式配置时传入。
+  if (apiToken) wranglerEnv.CLOUDFLARE_API_TOKEN = apiToken
+  if (accountId) wranglerEnv.CLOUDFLARE_ACCOUNT_ID = accountId
+
+  console.log(`☁️ 正在部署到 Cloudflare Pages 项目 ${projectName}（branch=${branch}）...`)
+  await runCommand(process.execPath, [
+    wranglerCli,
+    "pages",
+    "deploy",
+    localSource,
+    "--project-name",
+    projectName,
+    "--branch",
+    branch,
+    "--commit-dirty=true",
+  ], {
+    cwd: projectRoot,
+    env: wranglerEnv,
+  })
+  console.log("✅ Cloudflare Pages 部署完成")
 }
 
 function createRemoteTarget() {
@@ -209,6 +259,7 @@ async function main() {
     await ensureRemoteDir()
     await syncFilesByRclone()
     await refreshCDN()
+    await deployCloudflarePages()
     console.log("🎉 部署全流程结束！")
   } catch (error) {
     console.error("❌ 部署过程中止:", error)

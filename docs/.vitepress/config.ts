@@ -7,20 +7,8 @@ const examplesOrigin = (process.env.TELLUX_EXAMPLES_ORIGIN || 'http://127.0.0.1:
 export default ({ command }: ConfigEnv) => defineConfig({
   title: 'Tellux',
   description: 'An open-source 3D Earth Engine built on Three.js for digital globes, digital twins, 3D maps, and modern web applications.',
-  // 开发用相对 base（本地预览）。
-  // 构建时按部署目标区分：
-  //   - GitHub Pages（仓库名 tellux 作为前缀）：DEPLOY_TARGET=ghpages → /tellux/docs/
-  //   - 自部署站点（docs 与 examples 主站同级）：→ /docs/
-  // 用 DEPLOY_TARGET（不带 / 的标志值）区分，而不是直接传 base：
-  // Windows + Git Bash 的 MSYS2 会把 "/tellux/docs/" 这种以 / 开头的值
-  // 改写成绝对路径（如 D:/Program Files/Git/tellux/docs/）。
-  // command 只有 serve/build 两个值，无法区分两种部署，故必须额外信号。
-  base:
-    command === 'serve'
-      ? '/'
-      : process.env.DEPLOY_TARGET === 'ghpages'
-        ? '/tellux/docs/'
-        : '/docs/',
+  // 开发用相对 base（本地预览）；构建后 docs 与 examples 主站同级。
+  base: command === 'serve' ? '/' : '/docs/',
   outDir: process.env.DOCS_OUT_DIR || '../examples/public/docs',
   cleanUrls: true,
   lastUpdated: true,
