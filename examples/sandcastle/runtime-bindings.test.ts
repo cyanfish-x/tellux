@@ -4,6 +4,7 @@ import {
   GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
   LOCAL_MEADOW_RUNTIME_BINDING_NAMES,
+  THREEJS_INTEROP_RUNTIME_BINDING_NAMES,
   WATER_AREA_RUNTIME_BINDING_NAMES
 } from './runtime-bindings'
 
@@ -67,6 +68,15 @@ describe('Sandcastle optional runtime bindings', () => {
     `).waterArea).toBe(true)
   })
 
+  it('injects every runtime value imported by the threejs-interop example', () => {
+    expect(THREEJS_INTEROP_RUNTIME_BINDING_NAMES).toEqual([
+      'isNightLightsOn',
+      'computeSunAltitudeAtLocation',
+      'setupLittlestTokyoNightRig',
+      'EMISSIVE_TEXTURE_URL',
+    ])
+  })
+
   it('detects the threejs-interop helper without widening the base runner graph', () => {
     expect(detectOptionalRuntimeBindings(`
       const rig = setupLittlestTokyoNightRig(model.root, emissiveMap)
@@ -74,6 +84,10 @@ describe('Sandcastle optional runtime bindings', () => {
 
     expect(detectOptionalRuntimeBindings(`
       const altitude = computeSunAltitudeAtLocation(lon, lat, date)
+    `).threejsInterop).toBe(true)
+
+    expect(detectOptionalRuntimeBindings(`
+      const url = EMISSIVE_TEXTURE_URL
     `).threejsInterop).toBe(true)
   })
 

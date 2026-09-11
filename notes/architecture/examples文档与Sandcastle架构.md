@@ -27,10 +27,12 @@
 
 示例代码默认从 `../src` 引入 Tellux，而不是从 `dist` 引入。这样开发示例可以直接验证源码行为，适合作为库功能开发时的反馈面。
 
-`examples/public/` 是示例站点的静态资源根目录：
+`examples/public/` 是示例站点的静态资源根目录，只放**必须保持固定 URL** 的文件：
 
 - `examples/public/draco/` 存放 Draco 解码器资源。根目录是 three.js 完整 decoder（mesh + 点云）；`gltf/` 子目录是体积更小的 glTF 专用 decoder，不能解点云。
 - `examples/public/docs/` 是 VitePress 文档的构建输出目录。
+
+示例私有贴图、图标不要放 `public/`。它们通过 `new URL(..., import.meta.url)` 或 CSS 相对 `url()` 进入 Vite 依赖图，例如 `examples/water-area/assets/`、`examples/threejs-interop/assets/`、`examples/assets/icons/`、`examples/back.svg`。Sandcastle runner 会剥离示例源码里的 ESM import，这类 URL 必须放在 runner 注入的模块里解析（如 `sandcastleBindings`、`symbol-icons.ts`）；CSS 则用 `?inline` 让 `url()` 在 iframe 内仍指向构建后的地址。
 
 Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模块进入 Vite 依赖图，不再通过
 `examples/public/tellux/` 和 `tellux.baseUrl = '/tellux/'` 作为示例默认路径。
@@ -129,14 +131,14 @@ Sandcastle 是一个可编辑、可运行示例的交互页面，设计上分成
 
 - 从 URL query 或 localStorage 读取 `SandcastleRunPayload`。
 - 把示例 HTML 写入当前 document。
-- 将 `styles.css` 链接替换为内联样式，保证 iframe 内样式完整。
+- 把 `styles.css` 换成 `?inline` 处理后的内联样式，保证 iframe 内样式完整，且 CSS `url()` 指向构建后的资源。
 - 注入 `<base href="../">`，让相对资源路径按示例目录解析。
 - 移除 HTML 中原本的 module script。
 - 去掉示例脚本中的 ESM import/export 声明。
 - 用 `new Function(...)` 注入 Tellux、Three.js、GLTFLoader 和共享示例工具后执行示例代码。
 - 劫持 console，将日志通过 `postMessage` 发回主应用。
 
-runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`、`exampleMapServiceConfig`、`t` / `bootExampleI18n`、HISM demo helpers 等。新增被示例 `import` 的本地模块时，必须同步在 `runner.ts` 的 `new Function` 参数列表中注入，否则 Sandcastle 剥离 import 后会报 `ReferenceError`。
+runner 注入的共享工具包括 `mountLocationReadout`、`setupExamplePanels`、`SYMBOL_ICON_URLS`、`exampleMapServiceConfig`、`t` / `bootExampleI18n`、HISM demo helpers 等。新增被示例 `import` 的本地模块时，必须同步在 `runner.ts` 的 `new Function` 参数列表中注入，否则 Sandcastle 剥离 import 后会报 `ReferenceError`。
 
 ### 中英文切换（i18n）
 

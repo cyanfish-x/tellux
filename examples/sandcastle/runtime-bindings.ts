@@ -30,6 +30,7 @@ export const THREEJS_INTEROP_RUNTIME_BINDING_NAMES = [
   'isNightLightsOn',
   'computeSunAltitudeAtLocation',
   'setupLittlestTokyoNightRig',
+  'EMISSIVE_TEXTURE_URL',
 ] as const
 
 export const LOCAL_MEADOW_RUNTIME_BINDING_NAMES = [

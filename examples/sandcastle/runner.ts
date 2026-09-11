@@ -20,6 +20,7 @@ import { setupExamplePanels } from "../example-panel"
 import { createTelluxPanel } from "../example-panel-leva"
 import { ExampleMessage, showExampleMessage } from "../example-message"
 import { setupSymbolPanel } from "../setupSymbolPanel"
+import { SYMBOL_ICON_URLS } from "../symbol-icons"
 import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
 import type { BootExampleI18nOptions } from "../i18n"
 import {
@@ -30,7 +31,7 @@ import {
   WATER_AREA_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
 } from "./runtime-bindings"
-import exampleStyles from "../styles.css?raw"
+import exampleStyles from "../styles.css?inline"
 import levaStyles from "../../../leva-vanilla/src/styles/index.css?inline"
 import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
@@ -184,6 +185,7 @@ async function executeExampleScript(source: string) {
     "setupExamplePanels",
     "createTelluxPanel",
     "setupSymbolPanel",
+    "SYMBOL_ICON_URLS",
     "showExampleMessage",
     "ExampleMessage",
     "createWindSwayLeavesMaterial",
@@ -228,6 +230,7 @@ async function executeExampleScript(source: string) {
     setupExamplePanels,
     createTelluxPanel,
     setupSymbolPanel,
+    SYMBOL_ICON_URLS,
     showExampleMessage,
     ExampleMessage,
     createWindSwayLeavesMaterial,

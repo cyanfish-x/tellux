@@ -3,6 +3,7 @@ import { bootExampleI18n, t } from "./i18n"
 import { exampleMapServiceConfig } from "./shared"
 import { mountLocationReadout } from "./location-readout"
 import { setupSymbolPanel } from "./setupSymbolPanel"
+import { SYMBOL_ICON_URLS } from "./symbol-icons"
 
 bootExampleI18n()
 
@@ -66,17 +67,16 @@ const locationReadout = mountLocationReadout(viewer, {
   parent: container.parentElement ?? document.body,
 })
 
-// ----- 图标：从 public/icons 加载真实彩色图标（保留原色，colorize 默认 false）。
-// ----- Icons loaded from public/icons as full-color PNGs (original colors preserved).
+// ----- 图标：示例私有 PNG，经打包器解析 URL（保留原色，colorize 默认 false）。
+// ----- Icons from example-owned PNGs resolved by the bundler (original colors preserved).
 //
 // icon.colorize 默认 false = 保留图标原色直接渲染；若要单色 marker，设 colorize: true
 // 并用 color 染色（按 alpha 剪影）。原 30px/45px PNG 比旧的 64px canvas 小，scale
 // 相应放大以保持视觉尺寸（可见尺寸 ≈ contentW × scale）。
-const iconUrl = (name: string) => `${import.meta.env.BASE_URL}icons/${name}.png`
-const pinIcon = iconUrl('locate')
-const starIcon = iconUrl('star')
-const restaurantIcon = iconUrl('餐厅')
-const barIcon = iconUrl('酒吧')
+const pinIcon = SYMBOL_ICON_URLS.locate
+const starIcon = SYMBOL_ICON_URLS.star
+const restaurantIcon = SYMBOL_ICON_URLS.restaurant
+const barIcon = SYMBOL_ICON_URLS.bar
 
 // ----- 1) POI：图标 + 文字标签（icon + text 共锚点，anchor bottom）。-----
 // ----- 1) POIs: icon + text sharing an anchor (anchor bottom). -----

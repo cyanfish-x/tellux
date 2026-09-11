@@ -1242,8 +1242,8 @@ select.field__input {
   width: 20px;
   height: 20px;
   background: #cbd5e1;
-  -webkit-mask: url("/back.svg") center / contain no-repeat;
-  mask: url("/back.svg") center / contain no-repeat;
+  -webkit-mask: url("./back.svg") center / contain no-repeat;
+  mask: url("./back.svg") center / contain no-repeat;
   transform: translate(-50%, -50%);
 }
 

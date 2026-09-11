@@ -10,6 +10,7 @@ import {
   setupLittlestTokyoNightRig,
   type LittlestTokyoNightRig,
 } from "./littlest-tokyo-night"
+import { EMISSIVE_TEXTURE_URL } from "./threejs-interop/emissiveUrl"
 
 bootExampleI18n()
 
@@ -17,7 +18,6 @@ const MODEL_LONGITUDE = 113.9958
 const MODEL_LATITUDE = 30.0072
 const MODEL_HEIGHT = 0
 const MODEL_URL = "https://threejs.org/examples/models/gltf/LittlestTokyo.glb"
-const EMISSIVE_TEXTURE_URL = "/littlest-tokyo/emissive.jpg"
 
 const container = document.querySelector("#viewer")
 
