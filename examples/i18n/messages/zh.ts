@@ -40,7 +40,6 @@ export const zh: MessageTable = {
   'portal.hero.ctaSandcastle': '进入 Sandcastle',
   'portal.hero.ctaQuickstart': '快速开始',
   'portal.hero.visualAria': '可交互三维地球预览',
-  'portal.metrics.aria': 'Tellux 基础信息',
   'portal.capabilities.eyebrow': 'Capabilities',
   'portal.capabilities.title': '把底层渲染能力收束成 GIS 开发者熟悉的入口',
   'portal.capabilities.body': 'Tellux 不替代 Three.js，而是在 Three.js、3d-tiles-renderer 与 Takram geospatial 生态之上提供应用侧封装。',

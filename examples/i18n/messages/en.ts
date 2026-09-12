@@ -40,7 +40,6 @@ export const en: MessageTable = {
   'portal.hero.ctaSandcastle': 'Open Sandcastle',
   'portal.hero.ctaQuickstart': 'Quick start',
   'portal.hero.visualAria': 'Interactive 3D globe preview',
-  'portal.metrics.aria': 'Tellux basics',
   'portal.capabilities.eyebrow': 'Capabilities',
   'portal.capabilities.title': 'Package low-level rendering into GIS-friendly APIs',
   'portal.capabilities.body': 'Tellux does not replace Three.js; it adds an application layer on Three.js, 3d-tiles-renderer, and the Takram geospatial stack.',

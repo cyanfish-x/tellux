@@ -66,19 +66,45 @@ if (
   portalVideoMedia instanceof HTMLVideoElement &&
   portalVideoPlay instanceof HTMLButtonElement
 ) {
-  const syncPortalVideo = () => {
-    const playing = !portalVideoMedia.paused && !portalVideoMedia.ended
-    portalVideo.classList.toggle("is-playing", playing)
-    portalVideoMedia.controls = playing
+  // Chrome 拖进度条会先 pause 再 seeking；立刻叠加大按钮会盖住控件并打断拖动。
+  // Chrome fires pause before seeking while scrubbing; showing the overlay immediately covers the controls.
+  let overlayTimerId: ReturnType<typeof setTimeout> | null = null
+
+  const cancelOverlayTimer = () => {
+    if (overlayTimerId === null) return
+    clearTimeout(overlayTimerId)
+    overlayTimerId = null
+  }
+
+  const hidePlayOverlay = () => {
+    cancelOverlayTimer()
+    portalVideo.classList.add("is-playing")
+    portalVideoMedia.controls = true
+  }
+
+  const showPlayOverlay = () => {
+    portalVideo.classList.remove("is-playing")
+    portalVideoMedia.controls = false
+  }
+
+  const schedulePlayOverlay = () => {
+    cancelOverlayTimer()
+    overlayTimerId = setTimeout(() => {
+      overlayTimerId = null
+      if (portalVideoMedia.seeking) return
+      if (!portalVideoMedia.paused && !portalVideoMedia.ended) return
+      showPlayOverlay()
+    }, 120)
   }
 
   portalVideoPlay.addEventListener("click", () => {
     void portalVideoMedia.play()
   })
-  portalVideoMedia.addEventListener("play", syncPortalVideo)
-  portalVideoMedia.addEventListener("pause", syncPortalVideo)
-  portalVideoMedia.addEventListener("ended", syncPortalVideo)
-  syncPortalVideo()
+  portalVideoMedia.addEventListener("play", hidePlayOverlay)
+  portalVideoMedia.addEventListener("playing", hidePlayOverlay)
+  portalVideoMedia.addEventListener("seeking", hidePlayOverlay)
+  portalVideoMedia.addEventListener("pause", schedulePlayOverlay)
+  portalVideoMedia.addEventListener("ended", schedulePlayOverlay)
 }
 
 if (globeContainer instanceof HTMLElement) {
