@@ -58,6 +58,29 @@ document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((link) => {
   })
 })
 
+const portalVideo = document.querySelector(".portal-video")
+const portalVideoMedia = portalVideo?.querySelector("video")
+const portalVideoPlay = portalVideo?.querySelector(".portal-video__play")
+if (
+  portalVideo instanceof HTMLElement &&
+  portalVideoMedia instanceof HTMLVideoElement &&
+  portalVideoPlay instanceof HTMLButtonElement
+) {
+  const syncPortalVideo = () => {
+    const playing = !portalVideoMedia.paused && !portalVideoMedia.ended
+    portalVideo.classList.toggle("is-playing", playing)
+    portalVideoMedia.controls = playing
+  }
+
+  portalVideoPlay.addEventListener("click", () => {
+    void portalVideoMedia.play()
+  })
+  portalVideoMedia.addEventListener("play", syncPortalVideo)
+  portalVideoMedia.addEventListener("pause", syncPortalVideo)
+  portalVideoMedia.addEventListener("ended", syncPortalVideo)
+  syncPortalVideo()
+}
+
 if (globeContainer instanceof HTMLElement) {
   const globeLoader = document.querySelector("#portal-globe-loader")
   const initialClockTime = new Date()

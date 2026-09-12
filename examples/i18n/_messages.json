@@ -227,6 +227,10 @@
     "Tellux 渲染的体积云随视角推进和光照变化的效果",
     "Tellux volumetric clouds responding to camera motion and lighting"
   ],
+  "portal.showcase.clouds.playAria": [
+    "播放体积云展示视频",
+    "Play volumetric clouds video"
+  ],
   "portal.showcase.clouds.eyebrow": [
     "Volumetric Clouds",
     "Volumetric Clouds"
@@ -274,6 +278,18 @@
   "portal.community.viewAll": [
     "查看全部案例",
     "View all works"
+  ],
+  "portal.footer.aria": [
+    "站点页脚",
+    "Site footer"
+  ],
+  "portal.footer.poweredBy": [
+    "Powered by",
+    "Powered by"
+  ],
+  "portal.footer.author": [
+    "作者",
+    "by"
   ],
   "gallery.meta.description": [
     "基于 Tellux 构建的社区优秀案例合集：数字地球、数字孪生、三维地图与行业应用。",
@@ -511,6 +527,14 @@
     "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
     "Full-page example. Edit JavaScript and HTML/CSS, then run again."
   ],
+  "example.atmosphere-local-meadow.registry.title": [
+    "无球大气与局部草地",
+    "Atmosphere Without Globe"
+  ],
+  "example.atmosphere-local-meadow.registry.description": [
+    "藏球后以经纬锚点为局部原点放置 Three.js 草地；打开地球会切换地球操作并飞到草地附近的预设视角，可用地表透明度透过地球看到草地。",
+    "Hide the globe and place a Three.js meadow at a local lon/lat origin. Toggling the globe switches to globe controls and a preset view by the meadow. Lower globe opacity to see the meadow through the surface."
+  ],
   "example.3d-tiles.registry.title": [
     "3D Tiles 加载",
     "Load 3D Tiles"
@@ -682,6 +706,14 @@
   "example.atmosphere.docTitle": [
     "Tellux 体积云与大气",
     "Tellux Volumetric Clouds & Atmosphere"
+  ],
+  "example.atmosphere-local-meadow.docTitle": [
+    "Tellux 无球大气与局部草地",
+    "Tellux Atmosphere Without Globe"
+  ],
+  "example.atmosphere-local-meadow.panel.title": [
+    "无球大气 + 局部草地",
+    "Atmosphere without globe"
   ],
   "example.3d-tiles.docTitle": [
     "Tellux 3D Tiles",
