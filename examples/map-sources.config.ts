@@ -1,16 +1,17 @@
 /**
  * 示例 GIS 数据源配置。
  *
- * 改 `localMapSourceProfile` 即可切换本地默认底图 / 地形；生产构建忽略该项，
- * 固定使用 `tianditu`。
+ * 改 `localMapSourceProfile` 切换本地默认底图 / 地形；
+ * 改 `productionMapSourceProfile` 切换生产构建默认。两者默认都是 `local`。
  *
  * 密钥不要写在这里，放项目根 `.env`：
  * - `VITE_CESIUM_ION_TOKEN`：Cesium Ion 地形
  * - `VITE_TIANDITU_TOKEN`：天地图影像 / 地形（可逗号分隔多个 tk）
  * - `VITE_CESIUM_TERRAIN_URL`：仅当某个 profile 的 terrain 选 `cesium-url` 时使用
  *
- * GIS data sources for examples. Change `localMapSourceProfile` to switch the
- * local default; production builds always use `tianditu`. Keep secrets in `.env`.
+ * GIS data sources for examples. Change `localMapSourceProfile` for local
+ * defaults and `productionMapSourceProfile` for production builds. Both
+ * default to `local`. Keep secrets in `.env`.
  */
 
 export const ARCGIS_WORLD_IMAGERY_URL =
@@ -49,9 +50,9 @@ export type TerrainSourceId = keyof typeof mapSourceCatalog.terrain
 
 export const mapSourceProfiles = {
   /**
-   * 本地开发默认：ArcGIS 卫星影像 + Cesium Ion 地形，不消耗天地图额度。
+   * 默认档：ArcGIS 卫星影像 + Cesium Ion 地形，不消耗天地图额度。
    *
-   * Local default: ArcGIS satellite imagery + Cesium Ion terrain.
+   * Default profile: ArcGIS satellite imagery + Cesium Ion terrain.
    */
   local: {
     imagery: "arcgis",
@@ -92,3 +93,10 @@ export type MapSourceProfileId = keyof typeof mapSourceProfiles
  * Local profile. Set to `'tianditu'` and reload to test Tianditu everywhere.
  */
 export const localMapSourceProfile: MapSourceProfileId = "local"
+
+/**
+ * 生产构建使用的数据源组合。改成 `'tianditu'` 后重新构建即可切回天地图。
+ *
+ * Production profile. Set to `'tianditu'` and rebuild to switch back.
+ */
+export const productionMapSourceProfile: MapSourceProfileId = "local"

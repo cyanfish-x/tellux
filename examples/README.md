@@ -7,14 +7,16 @@
 `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`
 放到 `examples/public/tellux/`，再在示例入口中临时设置 `tellux.baseUrl = '/tellux/'`。
 
-本地 `pnpm dev` 默认使用 **ArcGIS 卫星影像 + Cesium Ion 地形**，不请求天地图，避免消耗额度。生产构建仍使用天地图。
+本地 `pnpm dev` 和生产构建默认都使用 **ArcGIS 卫星影像 + Cesium Ion 地形**，不请求天地图，避免消耗额度。
 
-GIS 数据源集中在 `examples/map-sources.config.ts`：改 `localMapSourceProfile` 后刷新即可切换全部示例。
+GIS 数据源集中在 `examples/map-sources.config.ts`：改 `localMapSourceProfile` 后刷新即可切换本地示例；改 `productionMapSourceProfile` 后重新构建即可切换线上。
 
 ```ts
-export const localMapSourceProfile = "local"     // ArcGIS + Cesium Ion
-// export const localMapSourceProfile = "tianditu" // 天地图影像 + swdx
-// export const localMapSourceProfile = "cesiumUrl" // ArcGIS + VITE_CESIUM_TERRAIN_URL
+export const localMapSourceProfile = "local"          // ArcGIS + Cesium Ion
+export const productionMapSourceProfile = "local"     // 线上默认与本地相同
+// export const localMapSourceProfile = "tianditu"     // 天地图影像 + swdx
+// export const productionMapSourceProfile = "tianditu"
+// export const localMapSourceProfile = "cesiumUrl"    // ArcGIS + VITE_CESIUM_TERRAIN_URL
 ```
 
 本地走天地图时，Vite 会把瓦片 / 地形 / 行政区划请求转到代理，并把 Referer 改写成已备案域名（默认 `https://tellux.cyanfish.site/`）。白名单域名不同时覆盖：

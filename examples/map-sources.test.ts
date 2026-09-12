@@ -9,11 +9,26 @@ const baseOptions = {
 }
 
 describe("resolveMapSourceProfile", () => {
-  it("keeps production on Tianditu", () => {
+  it("defaults production to the config production profile", () => {
+    expect(resolveMapSourceProfile({ isDevelopment: false })).toBe("local")
+  })
+
+  it("uses the production profile and ignores the local profile", () => {
+    expect(
+      resolveMapSourceProfile({
+        isDevelopment: false,
+        localProfile: "tianditu",
+        productionProfile: "local",
+      })
+    ).toBe("local")
+  })
+
+  it("can switch production back to Tianditu", () => {
     expect(
       resolveMapSourceProfile({
         isDevelopment: false,
         localProfile: "local",
+        productionProfile: "tianditu",
       })
     ).toBe("tianditu")
   })
@@ -23,6 +38,7 @@ describe("resolveMapSourceProfile", () => {
       resolveMapSourceProfile({
         isDevelopment: true,
         localProfile: "local",
+        productionProfile: "tianditu",
       })
     ).toBe("local")
   })

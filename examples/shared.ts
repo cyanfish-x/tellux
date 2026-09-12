@@ -99,8 +99,8 @@ export function buildTiandituTerrainUrls(token = defaultTiandituToken): string[]
 export function getTokenNoticeMessage() {
   if (exampleMapServiceConfig.profile === "local") {
     return t({
-      zh: "当前示例使用 ArcGIS 卫星影像和 Cesium Ion 地形。改 map-sources.config.ts 的 localMapSourceProfile 可切到天地图。",
-      en: "This example uses ArcGIS satellite imagery and Cesium Ion terrain. Change localMapSourceProfile in map-sources.config.ts to switch to Tianditu.",
+      zh: "当前示例使用 ArcGIS 卫星影像和 Cesium Ion 地形。改 map-sources.config.ts 的 localMapSourceProfile / productionMapSourceProfile 可切到天地图。",
+      en: "This example uses ArcGIS satellite imagery and Cesium Ion terrain. Change localMapSourceProfile / productionMapSourceProfile in map-sources.config.ts to switch to Tianditu.",
     })
   }
 

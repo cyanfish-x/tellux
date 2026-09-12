@@ -7,6 +7,7 @@ import {
   localMapSourceProfile,
   mapSourceCatalog,
   mapSourceProfiles,
+  productionMapSourceProfile,
   type MapSourceProfileId,
 } from "./map-sources.config"
 import type {
@@ -20,6 +21,7 @@ export {
   localMapSourceProfile,
   mapSourceCatalog,
   mapSourceProfiles,
+  productionMapSourceProfile,
 } from "./map-sources.config"
 export type {
   ImagerySourceId,
@@ -47,18 +49,21 @@ export interface CreateExampleMapServiceConfigOptions {
 export interface ResolveMapSourceProfileOptions {
   isDevelopment: boolean
   localProfile?: MapSourceProfileId
+  productionProfile?: MapSourceProfileId
 }
 
 /**
- * 生产环境固定天地图。本地开发读 `localMapSourceProfile`。
+ * 生产读 `productionMapSourceProfile`，本地读 `localMapSourceProfile`。
  *
- * Production always uses Tianditu. Local development uses
+ * Production uses `productionMapSourceProfile`. Local development uses
  * `localMapSourceProfile`.
  */
 export function resolveMapSourceProfile(
   options: ResolveMapSourceProfileOptions
 ): MapSourceProfileId {
-  if (!options.isDevelopment) return "tianditu"
+  if (!options.isDevelopment) {
+    return options.productionProfile ?? productionMapSourceProfile
+  }
   return options.localProfile ?? localMapSourceProfile
 }
 
@@ -126,6 +131,7 @@ export function createExampleMapServiceConfig(
 export const exampleMapSourceProfile = resolveMapSourceProfile({
   isDevelopment: import.meta.env.DEV,
   localProfile: localMapSourceProfile,
+  productionProfile: productionMapSourceProfile,
 })
 
 export const exampleMapServiceConfig = createExampleMapServiceConfig({
