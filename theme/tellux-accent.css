@@ -1,0 +1,21 @@
+/**
+ * Tellux 站点共用主题色。
+ * 文档站（VitePress `--vp-c-brand-*`）和示例站（主页 / Sandcastle / leva）都从这里取值。
+ * 改色只动本文件，不要在各站点再写一份 hex。
+ *
+ * 主色 #40CC9E，实心，不用渐变。
+ */
+:root {
+  --tellux-accent: #40cc9e;
+  --tellux-accent-hover: color-mix(in srgb, var(--tellux-accent) 82%, white);
+  --tellux-accent-bright: color-mix(in srgb, var(--tellux-accent) 72%, white);
+  --tellux-accent-ink: #03110d;
+  --tellux-accent-rgb: 64, 204, 158;
+  --tellux-accent-border: rgba(var(--tellux-accent-rgb), 0.82);
+  --tellux-accent-glow: rgba(var(--tellux-accent-rgb), 0.16);
+  --tellux-accent-soft: rgba(var(--tellux-accent-rgb), 0.08);
+  --tellux-accent-mid: rgba(var(--tellux-accent-rgb), 0.45);
+  --tellux-accent-mid-strong: rgba(var(--tellux-accent-rgb), 0.62);
+  /* 浅色底链接 / 标题：压暗一点，但不要混到接近正文黑。 */
+  --tellux-accent-on-light: color-mix(in srgb, var(--tellux-accent) 72%, black);
+}

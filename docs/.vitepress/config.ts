@@ -6,7 +6,7 @@ const examplesOrigin = (process.env.TELLUX_EXAMPLES_ORIGIN || 'http://127.0.0.1:
 
 export default ({ command }: ConfigEnv) => defineConfig({
   title: 'Tellux',
-  description: 'An open-source 3D Earth Engine built on Three.js for digital globes, digital twins, 3D maps, and modern web applications.',
+  description: 'An open-source 3D Earth engine for the web, for building digital globes, digital twins, 3D maps, and other geospatial 3D apps on real geographic coordinates and physical scale.',
   // 开发用相对 base（本地预览）；构建后 docs 与 examples 主站同级。
   base: command === 'serve' ? '/' : '/docs/',
   outDir: process.env.DOCS_OUT_DIR || '../examples/public/docs',
@@ -18,6 +18,14 @@ export default ({ command }: ConfigEnv) => defineConfig({
   ignoreDeadLinks: [
     (url: string) => /(?:^|\/)\.\.\/\.\.\//.test(url)
   ],
+  // 主题 token 在仓库根 theme/，开发服务器需要放行 docs/ 以外的文件。
+  vite: {
+    server: {
+      fs: {
+        allow: ['..']
+      }
+    }
+  },
   themeConfig: {
     logo: { text: 'T' },
     // logoLink / Sandcastle 指向示例主站（与文档站同源但属不同子站）。

@@ -1,0 +1,26 @@
+@import '../../../theme/tellux-accent.css';
+
+/**
+ * 把 VitePress 品牌色映射到 Tellux accent token。
+ * 链接与主按钮都走实心 #40CC9E。
+ */
+:root {
+  --vp-c-brand-1: var(--tellux-accent-on-light);
+  --vp-c-brand-2: color-mix(in srgb, var(--tellux-accent) 72%, var(--tellux-accent-ink));
+  --vp-c-brand-3: var(--tellux-accent);
+  --vp-c-brand-soft: var(--tellux-accent-glow);
+
+  --vp-button-brand-bg: var(--tellux-accent);
+  --vp-button-brand-hover-bg: var(--tellux-accent-hover);
+  --vp-button-brand-active-bg: var(--tellux-accent);
+  --vp-button-brand-text: var(--tellux-accent-ink);
+  --vp-button-brand-hover-text: var(--tellux-accent-ink);
+  --vp-button-brand-active-text: var(--tellux-accent-ink);
+}
+
+.dark {
+  --vp-c-brand-1: var(--tellux-accent-bright);
+  --vp-c-brand-2: color-mix(in srgb, var(--tellux-accent-bright) 78%, white);
+  --vp-c-brand-3: var(--tellux-accent);
+  --vp-c-brand-soft: var(--tellux-accent-glow);
+}

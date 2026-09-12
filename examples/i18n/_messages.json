@@ -88,8 +88,8 @@
     "Pick"
   ],
   "portal.meta.description": [
-    "Tellux 是一个基于 Three.js 的开源 3D Earth Engine，用于构建数字地球、数字孪生、三维地图以及各类 3D Earth 应用。",
-    "Tellux is an open-source Three.js 3D Earth Engine for digital earth, digital twins, 3D maps, and other 3D Earth apps."
+    "Tellux 是面向 Web 的开源三维地球引擎，用于在浏览器中快速构建基于真实经纬坐标系和物理尺度的数字地球、数字孪生、三维地图等各类 3D Earth 应用。",
+    "Tellux is an open-source 3D Earth engine for the web. Use it to build digital globes, digital twins, 3D maps, and other 3D Earth applications on real geographic coordinates and physical scale."
   ],
   "portal.meta.title": [
     "Tellux - Three.js 3D Earth Engine",
@@ -132,8 +132,8 @@
     "Three.js 3D Earth Engine"
   ],
   "portal.hero.title": [
-    "用 Three.js<br />组织可扩展的<br />3D Earth 应用",
-    "Build scalable<br />3D Earth apps<br />with Three.js"
+    "面向 Web 的<br />开源三维地球引擎",
+    "An open-source<br />3D Earth engine<br />for the web"
   ],
   "portal.hero.body": [
     "Tellux 将 3D Tiles、Cesium 地形、影像图层、地球相机、大气、体积云和后处理能力封装成更贴近 Cesium / mapboxgl 使用习惯的 TypeScript API。",

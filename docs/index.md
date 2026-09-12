@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Tellux
   text: Three.js 3D Earth Engine
-  tagline: 面向数字地球、数字孪生、三维地图及各类 3D Earth 应用的 TypeScript API。
+  tagline: 面向 Web 的开源三维地球引擎。
   actions:
     - theme: brand
       text: 快速开始
@@ -18,6 +18,8 @@ features:
     details: 使用经纬高、heading、pitch、roll 组织视角，并提供飞行定位、拾取和高度采样能力。
   - title: 地形、影像和 3D Tiles
     details: 支持 Cesium quantized-mesh terrain、XYZ、WMS、WMTS、GeoJSON、MVT 和独立 3D Tiles 场景。
+  - title: 实体绘制
+    details: 在地球上绘制点、折线、多边形，以及屏幕空间图标与文字标注；可贴地、可拉伸，并参与拾取与半透明合成。
   - title: 大气、云和后处理
     details: 集成 Takram geospatial 生态中的大气、体积云、光照和后处理效果。
 ---

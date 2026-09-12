@@ -2,9 +2,9 @@
 
 中文 | [English](./CONTRIBUTING.en.md)
 
-感谢你关注 Tellux 并愿意参与贡献。Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，用于构建数字地球、数字孪生、三维地图及各类 3D Earth 应用；欢迎通过 Issue、Pull Request、文档和示例改进项目。
+感谢你关注 Tellux 并愿意参与贡献。Tellux 是面向 Web 的开源三维地球引擎，用于在浏览器中快速构建基于真实经纬坐标系和物理尺度的数字地球、数字孪生、三维地图等各类 3D Earth 应用；欢迎通过 Issue、Pull Request、文档和示例改进项目。
 
-Thank you for your interest in Tellux. It is an open-source ESM TypeScript 3D Earth Engine built on Three.js; contributions through issues, pull requests, documentation, and examples are welcome.
+Thank you for your interest in Tellux. It is an open-source 3D Earth engine for the web; contributions through issues, pull requests, documentation, and examples are welcome.
 
 ## 🚀 开始开发
 
@@ -53,6 +53,7 @@ pnpm install
 - `src/`：Tellux 源码和公开 API 实现。
 - `examples/`：独立示例、主页和 Sandcastle。
 - `docs/`：面向使用者的指南、API 和能力说明。
+- `theme/`：文档站与示例站共用的主题色 token。
 - `notes/`：维护者架构说明、调研资料和实现备忘。
 - `dist/`：构建产物，仅在需要刷新发布内容时更新。
 

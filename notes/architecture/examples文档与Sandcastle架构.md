@@ -44,7 +44,7 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 `examples/index.html` 负责页面结构和文案：
 
 - 顶部导航包含 Tellux 品牌、能力、工作流、Sandcastle、社区作品和 GitHub 入口。
-- Hero 区域展示 Tellux 的定位：基于 Three.js 的 3D Earth Engine。
+- Hero 区域展示 Tellux 的一句话定位：面向 Web 的开源三维地球引擎。
 - 页面中部介绍地球与相机、多源影像图层、3D Tiles、Cesium 地形、大气云和工程默认值。
 - 后续展示真实地形、大气和体积云效果素材。
 - `#showcase` 社区案例精选条：位于主内容末尾，只展示最新 3 条 + 「查看全部」入口（指向 `gallery.html`），空数据时整块隐藏。数据来自 `examples/showcase-data.ts`，由 `examples/showcase.ts` 的 `mountFeaturedStrip()` 渲染；完整列表与搜索 / 标签筛选在 gallery 页（`mountGallery()`）。
@@ -70,6 +70,7 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 
 - `base: '/docs/'`
 - `outDir: '../examples/public/docs'`
+- 品牌色与示例站共用 `theme/tellux-accent.css` 的 `--tellux-accent*`；主色实心 `#40CC9E`。VitePress `--vp-c-brand-*` 的映射在 `docs/.vitepress/theme/custom.css`。改色只动 token 文件。
 - 导航包含指南、API、能力参考和 Sandcastle。
 - `command === 'serve'` 时，Sandcastle 链接指向开发服务器 `${TELLUX_EXAMPLES_ORIGIN || 'http://127.0.0.1:5173'}/sandcastle.html`。
 - 构建后，Sandcastle 链接使用相对路径 `../../sandcastle.html`，从静态文档页跳回示例站点中的 Sandcastle。
@@ -173,13 +174,13 @@ Tree、Gaussian Splat 与 HISM demo helpers 属于专用能力，不在 runner �
 通用约定：
 
 - 示例脚本入口对 HTML 面板调用 `setupExamplePanels()` 绑定折叠动画。
-- 主题色走 `:root` 的 `--tellux-accent*` 变量；Sandcastle Run 按钮等同源。
+- 主题色走 `theme/tellux-accent.css` 的 `--tellux-accent*`；`examples/styles.css` 与文档站都 `@import` 这份文件。Sandcastle Run 按钮等同源。Timeline 控件仍在 `src/widgets/Timeline/styles.ts` 内联一份等价 hex（运行时注入 stylesheet，未接入该 CSS 文件）。
 - 不要再使用旧的 `.toolbar` / `.layer-manager` 外壳（图层列表内部仍可复用 `layer-manager__*` 条目样式）。
 
 **leva-vanilla 示例面板（`examples/example-panel-leva.ts`）**：
 
 - 使用 `leva-vanilla` 原生 GUI（`mountDOM`）+ schema / `effect()` 状态引擎。
-- Tellux accent 主题在 `examples/styles.css` 通过 `--leva-colors-accent*` 覆盖，对齐 `:root` 的 `--tellux-accent*`。
+- Tellux accent 主题在 `examples/styles.css` 通过 `--leva-colors-accent*` 覆盖，对齐 `theme/tellux-accent.css` 的 `--tellux-accent*`。
 - `createTelluxPanel(schemaFactory, options)` 为薄封装；`title` 可传函数；locale 变化时按 factory 重建面板并恢复控件值。
 - 需要页面级错误/成功提示（类似 Element UI Message）时使用 `examples/example-message.ts` 的 `ExampleMessage.error()` 等；Sandcastle runner 已注入 `showExampleMessage` / `ExampleMessage`。
 - `onRebuild` 在初次挂载与每次 locale 重建后调用，用于注册 `effect()` / DOM 监听；`statusPath` 配合 `setStatus()` 写入 `hint` 字段。

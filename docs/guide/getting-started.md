@@ -1,13 +1,13 @@
 # 快速开始
 
-Tellux 是一个基于 Three.js 的开源 ESM TypeScript 3D Earth Engine，公开包名为 `tellux`。它用于构建数字地球、数字孪生、三维地图及各类 3D Earth 应用。
+Tellux 是面向 Web 的开源三维地球引擎，公开包名为 `tellux`。它用于在浏览器中快速构建基于真实经纬坐标系和物理尺度的数字地球、数字孪生、三维地图等各类 3D Earth 应用。
 
-Tellux 建立在 Three.js 的渲染能力与开源生态之上，提供统一 API 来组织地球相机、Cesium Quantized Mesh 地形、多源影像与矢量图层、3D Tiles、天空大气、体积云及后处理效果。
+它建立在 Three.js 强大的渲染能力与丰富的开源生态之上，通过整合社区成熟开源项目能力，提供统一的 API 来组织地球相机、Cesium Quantized Mesh 地形、多源影像与矢量图层、3D Tiles、三维模型、天空大气、体积云及后处理效果。
 
 ## 安装
 
 ```bash
-pnpm add tellux three 3d-tiles-renderer @takram/three-geospatial @takram/three-geospatial-effects @takram/three-atmosphere @takram/three-clouds postprocessing
+npm install tellux three 3d-tiles-renderer @takram/three-geospatial @takram/three-geospatial-effects @takram/three-atmosphere @takram/three-clouds postprocessing
 ```
 
 `three`、`3d-tiles-renderer` 和 Takram 相关包是 Tellux 的 peer dependency。应用侧需要显式安装，便于你控制版本和打包策略。

@@ -1,19 +1,7 @@
+@import "../theme/tellux-accent.css";
+
 * {
   box-sizing: border-box;
-}
-
-:root {
-  /* Tellux 示例站点主题色：Sandcastle / leva 面板等共用，改色只动这里。 */
-  --tellux-accent: #20d6aa;
-  --tellux-accent-hover: #42f0c5;
-  --tellux-accent-bright: #2df5c3;
-  --tellux-accent-ink: #03110d;
-  --tellux-accent-rgb: 45, 245, 195;
-  --tellux-accent-border: rgba(var(--tellux-accent-rgb), 0.82);
-  --tellux-accent-glow: rgba(var(--tellux-accent-rgb), 0.16);
-  --tellux-accent-soft: rgba(var(--tellux-accent-rgb), 0.08);
-  --tellux-accent-mid: rgba(var(--tellux-accent-rgb), 0.45);
-  --tellux-accent-mid-strong: rgba(var(--tellux-accent-rgb), 0.62);
 }
 
 html,
@@ -2058,9 +2046,9 @@ body.sandcastle-page {
 .sandcastle-rail__button:hover,
 .sandcastle-rail__button:focus-visible,
 .sandcastle-rail__button[data-active] {
-  border-color: color-mix(in srgb, var(--tellux-accent-bright) 45%, transparent);
-  color: #f8fafc;
-  background: rgba(32, 214, 170, 0.82);
+  border-color: var(--tellux-accent-border);
+  color: var(--tellux-accent-ink);
+  background: var(--tellux-accent);
   outline: none;
 }
 
@@ -2327,7 +2315,7 @@ body.sandcastle-page {
 .sandcastle-side-toggle:focus-visible {
   border-color: color-mix(in srgb, var(--tellux-accent-bright) 50%, transparent);
   color: #ffffff;
-  background: rgba(32, 214, 170, 0.24);
+  background: rgba(var(--tellux-accent-rgb), 0.24);
   outline: none;
 }
 
@@ -2491,7 +2479,7 @@ body.sandcastle-page {
 .sandcastle-preview-fullscreen:focus-visible {
   border-color: color-mix(in srgb, var(--tellux-accent-bright) 62%, transparent);
   color: #ffffff;
-  background: rgba(32, 214, 170, 0.24);
+  background: rgba(var(--tellux-accent-rgb), 0.24);
   outline: none;
 }
 

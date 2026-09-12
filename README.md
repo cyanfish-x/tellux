@@ -2,11 +2,11 @@
 
 中文 | [English](./README.en.md)
 
-[![npm version](https://img.shields.io/npm/v/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![license](https://img.shields.io/npm/l/tellux?style=flat-square)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![npm downloads](https://img.shields.io/npm/dm/tellux?style=flat-square)](https://www.npmjs.com/package/tellux) [![license](https://img.shields.io/npm/l/tellux?style=flat-square)](LICENSE) [![WebGL/WebGPU](https://img.shields.io/badge/render-WebGL%20%7C%20WebGPU-black?style=flat-square)]()
 
-Tellux 是一个基于 Three.js 的开源 3D Earth Engine，用于在浏览器中构建数字地球、数字孪生、三维地图以及各类 3D Earth 应用。
+Tellux 是面向 Web 的开源三维地球引擎，用于在浏览器中快速构建基于真实经纬坐标系和物理尺度的数字地球、数字孪生、三维地图等各类 3D Earth 应用。
 
-它建立在 Three.js 强大的渲染能力与开源生态之上，提供统一的 API 来组织地球相机、Cesium Quantized Mesh 地形、多源影像与矢量图层、3D Tiles、天空大气、体积云及后处理效果，让开发者能够专注于构建从轻量级可视化到复杂三维地球场景的现代 Web 应用。
+它建立在 Three.js 强大的渲染能力与丰富的开源生态之上，通过整合社区成熟开源项目能力（详见 [开源致谢](#-开源致谢)），提供统一的 API 来组织地球相机、Cesium Quantized Mesh 地形、多源影像与矢量图层、3D Tiles、三维模型、天空大气、体积云及后处理效果，让开发者能够专注于构建从轻量级可视化到复杂三维地球场景的现代 Web 应用。
 
 ![](https://picture.cyanfish.site/202607201619427.png)
 
@@ -16,106 +16,130 @@ Tellux 是一个基于 Three.js 的开源 3D Earth Engine，用于在浏览器�
 
 ---
 
-## 🚀 开始使用
+## 🚀 快速开始
 
-### npm
+### 安装
 
-Tellux 是 ESM 包。使用 Vite、Webpack、Rollup 等模块打包器时，安装 Tellux 及其必需的 peer dependencies：
+Tellux 是 ESM 包。使用 Vite、Webpack、Rollup 等模块打包器时，需要同时安装 Tellux 及其 peer 依赖：
 
 ```bash
-pnpm add tellux three 3d-tiles-renderer @takram/three-geospatial @takram/three-geospatial-effects @takram/three-atmosphere @takram/three-clouds postprocessing
+npm install tellux three 3d-tiles-renderer @takram/three-geospatial @takram/three-geospatial-effects @takram/three-atmosphere @takram/three-clouds postprocessing
 ```
 
 使用 MVT 矢量瓦片时，再安装可选依赖：
 
 ```bash
-pnpm add @mapbox/vector-tile pbf
+npm install @mapbox/vector-tile pbf
 ```
 
-创建一个具有非零尺寸的容器，然后初始化 Viewer：
+### 继续学习
 
-```html
-<div id="viewer"></div>
+- 查看[快速开始](https://tellux.cyanfish.site/docs/guide/getting-started)，了解 Draco 解码器、资源路径和 Viewer 生命周期。 
+- 阅读[指南](https://tellux.cyanfish.site/docs/guide/viewer)，配置相机、交互、地形、影像、3D Tiles、模型、实体、大气和后处理。 
+- 在 [Sandcastle](https://tellux.cyanfish.site/sandcastle.html) 中浏览并编辑可运行示例。 
+- 查看 [API 参考](https://tellux.cyanfish.site/docs/api/viewer) 与 [类型参考](https://tellux.cyanfish.site/docs/api/types)。 
+- 希望参与开发？请阅读[贡献指南](CONTRIBUTING.md)，然后提交 Issue 或 Pull Request；提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/)。
 
-<style>
-  #viewer {
-    width: 100vw;
-    height: 100vh;
-  }
-</style>
+## ✨ 特性
+
+- **Terrain & Imagery**：支持 Cesium Quantized Mesh 地形、XYZ、WMS、WMTS、Cesium Ion 影像，以及 GeoJSON、MVT 贴地矢量图层。
+- **Entity**：支持点、折线、多边形矢量图形，以及屏幕空间图标与文字标注；可贴合地形与 3D Tiles，多边形可拉伸为体块，并参与拾取与半透明合成。
+- **3D Tiles & Gaussian Splatting**：支持加载 URL 或 Cesium Ion 3D Tiles，以及 glTF / GLB 模型、动画和 3D Gaussian Splatting 场景。
+- **Atmosphere & Rendering Effects**：支持天空大气、空气透视、体积云、昼夜光照以及 SMAA、镜头光晕等高级渲染效果。
+- **Three.js 原生兼容**：与 Three.js 场景、对象、坐标转换以及自定义渲染循环保持良好互操作性。
+- **WebGL & WebGPU**：默认使用 WebGL，同时提供实验性的 WebGPU 渲染路径，支持基础地球、地形、影像、3D Tiles、模型、大气和部分后处理效果。
+
+## 🌍 数据源
+
+Tellux 是面向三维地球应用的运行时与渲染引擎，不绑定特定数据源，也不托管基础地理数据，你可以自由组合：
+
+- Cesium Quantized Mesh 地形
+- XYZ / WMS / WMTS 影像
+- GeoJSON / MVT 矢量数据
+- 3D Tiles 场景数据
+- glTF / GLB 三维模型
+- 3D Gaussian Splatting 场景数据
+
+## 🧩 架构
+
+Tellux 并不是一个简单的地球组件，而是一个面向三维地球应用的引擎层。
+
+```mermaid
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 8, "bottom": 16}}}}%%
+flowchart TB
+    subgraph viewer["Viewer"]
+        direction TB
+
+        subgraph earth["地形与地球"]
+            direction LR
+            globe["globe"]
+            terrain["terrain"]
+        end
+
+        subgraph imagery["影像"]
+            overlays["overlays"]
+        end
+
+        subgraph tiles["场景 3D Tiles"]
+            tilesets["tilesets"]
+        end
+
+        subgraph objects["模型 / 实体 / 实例化"]
+            direction LR
+            models["models"]
+            entities["entities"]
+            hism["hism"]
+        end
+
+        subgraph nav["相机与交互"]
+            direction LR
+            camera["camera"]
+            controls["controls"]
+        end
+
+        subgraph state["场景状态与时间"]
+            direction LR
+            subgraph scene["scene"]
+                direction LR
+                atmosphere["atmosphere"]
+                clouds["clouds"]
+            end
+            clock["clock"]
+        end
+
+        subgraph out["输出与高亮"]
+            direction LR
+            renderer["renderer"]
+            postProcess["postProcess"]
+            highlighter["highlighter"]
+        end
+    end
+
+    subgraph runtime["运行时<br> "]
+        direction TB
+        three["Three.js"]
+        tileslib["3d-tiles-renderer"]
+        takram["takram"]
+        pplib["postprocessing"]
+    end
+
+    gpu["WebGL / WebGPU"]
+    viewer --> runtime --> gpu
 ```
 
-```ts
-import tellux from 'tellux'
+## 🌱 开源致谢
 
-const viewer = new tellux.Viewer('viewer', {
-  terrain: {
-    type: 'url',
-    url: 'https://example.com/terrain/'
-  },
-  overlays: [
-    {
-      source: {
-        type: 'xyz',
-        url: 'https://example.com/imagery/{z}/{y}/{x}.png'
-      }
-    }
-  ],
-  camera: {
-    destination: {
-      longitude: 121.4737,
-      latitude: 31.2304,
-      height: 1200
-    },
-    orientation: {
-      pitch: -25
-    }
-  }
-})
-```
+Tellux 基于以下优秀开源项目构建，并向所有贡献者表示感谢：
 
-### 📚 下一步
+- [Three.js](https://github.com/mrdoob/three.js)
+- [@takram/three-geospatial](https://github.com/takram-design-engineering/three-geospatial)
+- [@takram/three-atmosphere](https://github.com/takram-design-engineering/three-atmosphere)
+- [@takram/three-clouds](https://github.com/takram-design-engineering/three-clouds)
+- [3D Tiles Renderer](https://github.com/NASA-AMMOS/3DTilesRendererJS)
+- [postprocessing](https://github.com/pmndrs/postprocessing)
 
-- 查看[快速开始](https://tellux.cyanfish.site/docs/guide/getting-started)，了解 Draco 解码器、资源路径和 Viewer 生命周期。
-- 阅读[指南](https://tellux.cyanfish.site/docs/guide/viewer)，配置相机、交互、地形、影像、3D Tiles、模型、大气和后处理。
-- 在 [Sandcastle](https://tellux.cyanfish.site/sandcastle.html) 中浏览并编辑可运行示例。
-- 查看[公开 API](https://tellux.cyanfish.site/docs/api/viewer) 与[类型参考](https://tellux.cyanfish.site/docs/api/types)。
-- 希望参与开发？请阅读[贡献指南](./CONTRIBUTING.md)，然后提交 Issue 或 Pull Request；提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/)。
+感谢所有推动现代 Web 3D 生态发展的开源贡献者，以及所有持续分享与创造的开发者们~❤️ 
 
 ## ⚖️ License
 
 [MIT](./LICENSE)。Tellux 可用于商业和非商业项目。
-
-## 🌍 地理内容从哪里来？
-
-Tellux 是运行时和渲染库，不绑定或托管任何基础地理内容。你可以自由组合以下数据源：
-
-- 自托管或公开服务提供的 Cesium quantized-mesh 地形、XYZ、WMS、WMTS、GeoJSON、MVT 和 3D Tiles。
-- 通过 Cesium Ion token 访问的 terrain、imagery 和 3D Tiles 资源。
-- 按经纬高放置的应用自有 glTF / GLB 模型和 Three.js 对象。
-
-Cesium Ion 是可选的数据服务；Tellux 的地形、影像和 3D Tiles API 同时支持自托管 URL 与 Cesium Ion 资源。数据的授权、可用性与访问控制由使用方和数据提供方负责。
-
-## ✨ 特性
-
-- Timeline 时间条：日序、倍率和时间滑块支持连续拖动与键盘调整，读数即时响应，场景时间可平滑过渡。
-
-- 在 WGS84 地球上使用经纬高、heading、pitch、roll 控制相机，并支持飞行定位、拾取和高度采样。
-- 加载 Cesium quantized-mesh 地形、XYZ、WMS、WMTS、Cesium Ion 影像，以及 GeoJSON、MVT 贴地矢量 overlay。
-- 加载 URL 或 Cesium Ion 3D Tiles，并处理 glTF / GLB 模型、动画和贴地放置。
-- 使用大气天空、空气透视、体积云、昼夜光照、SMAA、镜头光晕和抖动等效果构建地理场景；WebGPU 支持镜头光晕与可选 TAA。
-- 与 Three.js 场景、对象、坐标转换及自定义渲染循环互操作。
-- [高斯泼溅案例](https://tellux.cyanfish.site/gaussian-splat-3d-tiles.html)默认加载 Cesium ion Redmond，也可切换 SvirnasAlyt、Elevator 和 Spark 单文件资源（WebGL；官方 ion 样例可留空使用公开评估 token）。
-- 默认使用 WebGL；实验性的 WebGPU renderer 支持基础地球、地形、影像、3D Tiles、模型、拾取、大气、镜头光晕与可选 TAA，具体限制见[能力边界](https://tellux.cyanfish.site/docs/guide/limitations)。
-
-## 🛠️ 开发
-
-| 命令                    | 说明                           |
-| ----------------------- | ------------------------------ |
-| `pnpm dev`            | 启动示例站点与文档站点开发服务 |
-| `pnpm type-check`     | 执行 TypeScript 类型检查       |
-| `pnpm test:run`       | 运行测试                       |
-| `pnpm build`          | 构建库产物和声明文件           |
-| `pnpm build:examples` | 构建文档和示例站点             |
-
-稳定公开 API 的迁移细节（相机状态、领域门面和实体描边）见 [0.3 迁移指南](docs/guide/migration-0.3.md)。

@@ -1,4 +1,4 @@
-# 核心 API：Viewer / 相机 / 图层 / 地形 / 3D Tiles / 模型
+# 核心 API：Viewer / 相机 / 图层 / 地形 / 3D Tiles / 模型 / 实体
 
 本文件覆盖使用 Tellux 的 80% 高频场景。示例代码中的 `url` 使用占位域名 `example.com`。
 
@@ -63,6 +63,7 @@ viewer.camera         // 相机 — 见下文
 viewer.overlays       // 影像图层管理器 — 见下文
 viewer.tilesets       // 场景 3D Tiles
 viewer.models         // glTF 模型
+viewer.entities       // 点 / 线 / 面 / symbol 实体 — 见下文
 viewer.terrain        // 地形门面
 viewer.globe          // 裸球 / 地形表面（show / opacity / material / ellipsoid / raw）
 viewer.postProcess    // 后处理（曝光、Bloom、TAA）
@@ -376,6 +377,33 @@ model.remove()
 `type` 固定 `'gltf'`，`url` 可指 `.gltf` 或 `.glb`。`scale` 支持数字（均匀）或 `[x,y,z]`。需要贴合地形时先用 `sampleHeight` 查高度再传入 `height`。
 
 需要呈现建筑窗灯等夜间自发光时，使用 `lighting: 'local'`（`materialMode: 'preserve'` 时默认就是 local）保留 glTF 的 `emissiveMap` / 点光，并打开 `viewer.scene.atmosphere.lighting.photometric` 与 `viewer.postProcess.autoExposure`。`photometric` 只缩放 Takram 太阳。点光要挂在带 `scale` 的模型根上；若上游把 `gltf.scene` 做了 bbox 平移而灯是兄弟节点，写入未平移模型时要用 `L - offset`。intensity 随世界尺度按距离平方补偿（上游 Non-geospatial 是 `scale={0.01}` / `0.1`）。夜景不依赖 Bloom，不要关太阳。
+
+## 实体
+
+`viewer.entities.add` 在地球上绘制点、折线、多边形，以及屏幕空间图标 / 文字（`symbol`）。一个实体可挂任意组合的图形，共享 `id`、`position` 和 `properties`。
+
+```ts
+viewer.entities.add({
+  position: [121.4737, 31.2304, 50],
+  point: { pixelSize: 12, color: '#ffd166' },
+  symbol: {
+    text: { text: '陆家嘴', color: '#ffffff' },
+    anchor: 'bottom'
+  },
+  properties: { kind: 'poi' }
+})
+
+viewer.entities.add({
+  polyline: {
+    positions: [[121.46, 31.23], [121.48, 31.24], [121.49, 31.22]],
+    width: 6,
+    color: '#f472b6',
+    clamp: true          // 贴合地形 / 3D Tiles；仅 WebGL
+  }
+})
+```
+
+折线 / 多边形 `clamp: true` 仅 WebGL。完整选项、运行时句柄、OIT 与拾取见仓库 `docs/guide/entities.md`。
 
 ## HISM 大规模实例化
 

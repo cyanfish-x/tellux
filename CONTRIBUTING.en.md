@@ -4,7 +4,7 @@
 
 Thank you for your interest in Tellux. Contributions are welcome through issues, pull requests, documentation, and examples.
 
-Tellux is an open-source ESM TypeScript 3D Earth Engine built on Three.js for digital globes, digital twins, 3D maps, and a wide range of 3D Earth applications. This guide explains how to set up the project, validate changes, and submit a contribution.
+Tellux is an open-source 3D Earth engine for the web, for building digital globes, digital twins, 3D maps, and other 3D Earth applications on real geographic coordinates and physical scale. This guide explains how to set up the project, validate changes, and submit a contribution.
 
 ## 🚀 Development setup
 
@@ -53,6 +53,7 @@ Common commands:
 - `src/`: Tellux source code and public API implementation.
 - `examples/`: Standalone examples, the homepage, and Sandcastle.
 - `docs/`: User-facing guides, API documentation, and capability references.
+- `theme/`: Shared accent tokens for the docs site and examples site.
 - `notes/`: Maintainer architecture notes, research, and implementation records.
 - `dist/`: Build output; update it only when release artifacts need to be refreshed.
 
