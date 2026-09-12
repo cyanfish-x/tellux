@@ -113,7 +113,9 @@ Cesium Ion is an optional data service. Tellux APIs support both self-hosted URL
 
 [Rendering boundary experiments](docs/guide/rendering-prototypes.md): three WebGL Sandcastle prototypes for staged rendering, splat aerial perspective, and cloud/transparency composition. These are not stable APIs.
 
-The follow-up A1 joint-media experiment adds GPU analytic checks, real cloud/air integration and error reports; it remains an algorithm experiment.
+The follow-up A1 experiment includes real cloud/air integration references, GPU numerical checks, an absorption-weighted depth approximation, and full-frame performance comparisons. It remains experimental and does not replace the production pipeline.
+
+The A3 case checks low-resolution medium query footprints, valid depth ranges, and missing history using analytic media. It does not implement the production pipeline.
 
 ```bash
 pnpm install
@@ -131,3 +133,5 @@ pnpm build
 | `pnpm build:examples` | Build the documentation and examples site  |
 
 See the [0.3 migration guide](docs/guide/migration-0.3.md) for camera snapshots, domain facades, and entity outlines.
+
+The A2 refraction experiment compares native transmission with smooth analytic medium paths and exposes repeated fogging and missing screen data. Real clouds and rough path evaluation are not yet validated.

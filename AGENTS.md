@@ -11,7 +11,8 @@ Tellux 是基于 Three.js 的 ESM TypeScript 3D Earth Engine。公开包名 `tel
 - 默认用中文回答。
 - 面向用户的 TypeScript API 用中英双语 JSDoc，中文在前。
 - 公开 API 按领域对象分组，初始化路径与运行时路径同构（例如 `scene.clouds.quality` ↔ `viewer.scene.clouds.quality`）。不要用前缀字段弥补缺失的对象边界；对外 API 表达领域概念，不反映内部实现步骤。
-- 改 TypeScript 行为时跑 `pnpm type-check`；改 `dist` / 导出路径时跑 `pnpm build`。不要每次小改都跑这两条。不要自行启动示例服务或做浏览器验证，除非用户明确要求。跳过了与本次改动相关的验证时，在回复里说明。
+- 改 TypeScript 行为时跑 `pnpm type-check`；改 `dist` / 导出路径时跑 `pnpm build`。不要每次小改都跑这两条。按任务需要自主启动或复用示例服务并执行浏览器验证，无需另行征询；涉及可见渲染或交互变化时，覆盖受影响的独立页面与 Sandcastle 等实际入口，不能仅以类型检查或单元测试代替验收。跳过了与本次改动相关的验证时，在回复里说明。
+- 默认自主完成实现、调试、验证和必要文档同步的闭环，遇到可自行解决的问题继续排查修复，不将常规操作或验证交回用户。仅在缺少必要信息、权限或需要用户作出不可代替的决策时请求介入；不得把尚未验证的结果表述为已通过。
 - 改源码后检查是否需要更新文档和 skill。用户可见行为、公开路径或示例变化时，同步 `docs/`、`.agents/skills/tellux/` 与 `README*.md`。
 - 提交信息用中文 Conventional Commits（`feat` / `fix` / `refactor` / `test` / `docs` / `chore`），不要加签名 trailer。细则见 `.cursorrules`。
 

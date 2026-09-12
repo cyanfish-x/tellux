@@ -70,6 +70,8 @@ const projectRoot = resolve(__dirname, "..")
 const KiB = 1024
 const MiB = 1024 * KiB
 const htmlInputs = {
+  renderingRefractionMedium: resolve(__dirname, "rendering-refraction-medium.html"),
+  renderingMediumCoverage: resolve(__dirname, "rendering-medium-coverage.html"),
   renderingMediumIntegration: resolve(__dirname, "rendering-medium-integration.html"),
   renderingStages: resolve(__dirname, "rendering-stages.html"),
   renderingSplatAtmosphere: resolve(__dirname, "rendering-splat-atmosphere.html"),

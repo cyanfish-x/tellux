@@ -226,3 +226,7 @@ runner 的 iframe 使用 `sandbox="allow-scripts allow-same-origin"`。它隔离
 文档站点构建输出会进入 `examples/public/docs/`，不要手动编辑该目录下的生成内容。
 
 仅调整 notes 文档时通常不需要运行 `pnpm type-check` 或 `pnpm build`。
+
+## 2026-09-12：runner 面板按需加载
+
+`executeExampleScript` 根据源码中的 `createTelluxPanel` / `setupSymbolPanel` 绑定加载对应模块，继续同步 `new Function` 参数和调用实参。未使用面板的案例不再拉入 Leva GUI 的初始依赖图；面板样式仍保留。`pnpm build:examples` 通过原有 runner 800 KiB gzip 预算，没有调整预算上限。

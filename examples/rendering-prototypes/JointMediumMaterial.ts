@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import type { CloudsEffect } from '@takram/three-clouds'
 import { mediumIntegralGLSL } from './mediumIntegral'
+import { mediumSamplingGLSL } from './mediumSampling'
+import { stabilizeCloudSampling } from './stableCloudSampling'
 
 /** 克隆上游已解析云 shader，只用于 A1 源项与积分实验。 Clone resolved upstream cloud shader for A1 source/integration experiments only. */
 export function createJointMediumMaterial(clouds: CloudsEffect) {
@@ -11,25 +13,38 @@ export function createJointMediumMaterial(clouds: CloudsEffect) {
   // Keep actual cloud density, sun self-shadowing, and the upstream lighting closure.
   // Return radiance AFTER multiplication by media.scattering, BEFORE integration.
   const cloudSource = source.fragmentShader.slice(start, end)
-  const fragment = source.fragmentShader
+  const fragment = stabilizeCloudSampling(source.fragmentShader)
     .replace('vUv * targetUvScale + temporalJitter', 'vUv')
     .replace('layout(location = 1) out vec3 outputDepthVelocity;', 'vec3 outputDepthVelocity;')
     .replace('layout(location = 2) out float outputShadowLength;', 'float outputShadowLength;')
     .replace('void main() {', 'void a1UnusedUpstreamMain() {')
   const uniforms = {
     ...source.uniforms,
+    inverseProjectionMatrix: { value: new THREE.Matrix4() },
     a1Scene: { value: null as THREE.Texture | null },
     a1Distance: { value: 12000 }, a1Steps: { value: 64 }, a1Mode: { value: 0 },
     a1Air: { value: true }, a1Cloud: { value: true }, a1Output: { value: 0 },
+    a1Segmented: { value: false },
+    a1CloudStep: { value: 5 },
+    a1Terminate: { value: true },
+    a1AirModel: { value: 1 }, a1SourceSpan: { value: 1000 },
+    a1LightingStep: { value: 100 },
   }
   const material = new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3, vertexShader: source.vertexShader,
     fragmentShader: fragment + `
 uniform sampler2D a1Scene;
 uniform float a1Distance;
+uniform float a1CloudStep;
+uniform int a1AirModel;
+uniform float a1SourceSpan;
+uniform float a1LightingStep;
 uniform int a1Steps, a1Mode, a1Output;
 uniform bool a1Air, a1Cloud;
+uniform bool a1Segmented;
+uniform bool a1Terminate;
 ${mediumIntegralGLSL}
+${mediumSamplingGLSL}
 float a1Density(DensityProfile profile, float heightKm) {
   DensityProfileLayer layer = profile.layers[1];
   if (heightKm < profile.layers[0].width) layer = profile.layers[0];
@@ -43,6 +58,7 @@ void a1AirSource(vec3 position, float cosTheta, out vec3 sigma, out vec3 j) {
   float mieDensity = a1Density(ATMOSPHERE.mie_density, h) * METER_TO_LENGTH_UNIT;
   sigma = rayleigh + ATMOSPHERE.mie_extinction * mieDensity
     + ATMOSPHERE.absorption_extinction * a1Density(ATMOSPHERE.absorption_density, h) * METER_TO_LENGTH_UNIT;
+  if (a1AirModel == 1) { j = vec3(0.0); return; }
   vec3 sun = ATMOSPHERE.solar_irradiance * GetTransmittanceToSun(ATMOSPHERE, transmittance_texture, r, dot(p / r, sunDirection)) * SUN_SPECTRAL_RADIANCE_TO_LUMINANCE;
   j = sun * (rayleigh * RayleighPhaseFunction(cosTheta) + ATMOSPHERE.mie_scattering * mieDensity * MiePhaseFunction(ATMOSPHERE.mie_phase_function_g, cosTheta));
 }
@@ -64,29 +80,96 @@ void main() {
     outputColor = vec4(a1Output == 3 ? lutT : lutS, 1.0);
     return;
   }
-  float ds = distance / float(a1Steps);
+  float cuts[18];
+  cuts[0] = 0.0; cuts[1] = distance;
+  int cutCount = 2;
+  if ((a1Segmented || a1CloudStep > 0.0) && a1Cloud) {
+    for (int layer = 0; layer < 4; ++layer) {
+      if (maxLayerHeights[layer] <= minLayerHeights[layer]) continue;
+      a1InsertShell(origin, direction, bottomRadius + minLayerHeights[layer], distance, cuts, cutCount);
+      a1InsertShell(origin, direction, bottomRadius + maxLayerHeights[layer], distance, cuts, cutCount);
+    }
+  }
+  for (int a = 1; a < 18; ++a) {
+    if (a >= cutCount) break;
+    float value = cuts[a];
+    int b = a - 1;
+    for (int k = 0; k < 18; ++k) {
+      if (b < 0) break;
+      if (cuts[b] <= value) break;
+      cuts[b + 1] = cuts[b]; b--;
+    }
+    cuts[b + 1] = value;
+  }
+  float baseStep = distance / float(a1Steps);
+  float cursor = 0.0;
+  int gridIndex = 1, boundaryIndex = 1;
   vec3 T = vec3(1.0), S = vec3(0.0);
   vec3 airT = vec3(1.0), airS = vec3(0.0), cloudT = vec3(1.0), cloudS = vec3(0.0);
   float cosTheta = dot(direction, sunDirection);
-  for (int i = 0; i < 512; ++i) {
-    if (i >= a1Steps) break;
-    vec3 position = origin + direction * ((float(i) + 0.5) * ds);
+  float lastAirLight = -1e10;
+  vec3 cachedAir = vec3(0.0);
+  for (int i = 0; i < 16384; ++i) {
+    if (cursor >= distance) break;
+    if (a1Terminate && a1Mode == 0 && max(T.r, max(T.g, T.b)) < 1e-6) break;
+    for (int k = 0; k < 18; ++k) {
+      if (boundaryIndex >= cutCount) break;
+      if (cuts[boundaryIndex] > cursor) break;
+      boundaryIndex++;
+    }
+    float gridEnd = min(float(gridIndex) * baseStep, distance);
+    float end = boundaryIndex < cutCount ? min(gridEnd, cuts[boundaryIndex]) : gridEnd;
+    if (a1Cloud && a1CloudStep > 0.0) {
+      float intervalHeight = length(origin + direction * (cursor + 0.5 * (end - cursor))) - bottomRadius;
+      bool inLayer = false;
+      for (int layer = 0; layer < 4; ++layer) {
+        if (maxLayerHeights[layer] > minLayerHeights[layer] && intervalHeight >= minLayerHeights[layer] && intervalHeight <= maxLayerHeights[layer]) inLayer = true;
+      }
+      if (inLayer) end = min(end, cursor + a1CloudStep);
+    }
+    if (end >= gridEnd) gridIndex++;
+    float ds = end - cursor;
+    vec3 position = origin + direction * (cursor + 0.5 * ds);
+    cursor = end;
     float height = length(position) - bottomRadius;
     vec3 sigmaAir = vec3(0.0), sourceAir = vec3(0.0), sigmaCloud = vec3(0.0), sourceCloud = vec3(0.0);
     if (a1Air) a1AirSource(position, cosTheta, sigmaAir, sourceAir);
+    if (a1Air && a1AirModel == 1 && cursor - lastAirLight >= a1LightingStep) {
+      // A finite-interval effective source, not an integrated LUT value used as j.
+      // The stencil is clipped to the same view ray and experiment domain.
+      float midpoint = cursor - 0.5 * ds;
+      float lo = max(0.0, midpoint - a1SourceSpan * 0.5);
+      float hi = min(distance, midpoint + a1SourceSpan * 0.5);
+      float span = hi - lo;
+      if (span > 0.0) {
+        vec3 lutT;
+        vec3 lutS = GetSkyRadianceToPoint((origin + direction * lo) * METER_TO_LENGTH_UNIT,
+          (origin + direction * hi) * METER_TO_LENGTH_UNIT, 0.0, sunDirection, lutT);
+        vec3 lutSigma = -log(clamp(lutT, vec3(1e-30), vec3(1.0))) / span;
+        sourceAir = max(vec3(0.0), lutS) / vec3(a1IntegralWeight(lutSigma.r, span), a1IntegralWeight(lutSigma.g, span), a1IntegralWeight(lutSigma.b, span));
+        cachedAir = sourceAir; lastAirLight = cursor;
+      }
+    }
+    if (a1Air && a1AirModel == 1) sourceAir = cachedAir;
     if (a1Cloud && height >= minHeight && height <= maxHeight) {
       vec2 uv = getGlobeUv(position);
       WeatherSample weather = sampleWeather(uv, height, 0.0);
+      // A zero weather envelope cannot produce density after the upstream
+      // erosion/remapping stages. Skip only proven-empty samples, not intervals.
+      if (any(greaterThan(weather.density, vec4(0.0)))) {
       ivec3 sampleCount = ivec3(0);
       MediaSample media = sampleMedia(weather, position, uv, 0.0, 0.5, sampleCount);
       if (media.extinction > 0.0) {
         sigmaCloud = vec3(media.extinction);
         sourceCloud = a1CloudSource(media, weather, position, height, cosTheta, direction);
       }
+      }
     }
     a1Accumulate(sigmaAir + sigmaCloud, sourceAir + sourceCloud, ds, T, S);
-    a1Accumulate(sigmaAir, sourceAir, ds, airT, airS);
-    a1Accumulate(sigmaCloud, sourceCloud, ds, cloudT, cloudS);
+    if (a1Mode != 0) {
+      a1Accumulate(sigmaAir, sourceAir, ds, airT, airS);
+      a1Accumulate(sigmaCloud, sourceCloud, ds, cloudT, cloudS);
+    }
   }
   if (a1Mode == 1) { T = airT * cloudT; S = airS + airT * cloudS; }
   if (a1Mode == 2) { T = airT * cloudT; S = cloudS + cloudT * airS; }
@@ -103,5 +186,5 @@ void main() {
 }
 `, uniforms, defines: { ...source.defines }, depthWrite: false, depthTest: false, toneMapped: false,
   })
-  return { material, uniforms, sync() { material.defines = { ...source.defines } } }
+  return { material, uniforms, sync() { material.defines = { ...source.defines } }, dispose() { material.dispose() } }
 }

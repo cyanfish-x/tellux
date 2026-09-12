@@ -17,9 +17,7 @@ import {
 import { formatHeight, mountLocationReadout } from "../location-readout"
 import { CESIUM_ION_WORLD_TERRAIN_ASSET_ID } from "../map-sources.config"
 import { setupExamplePanels } from "../example-panel"
-import { createTelluxPanel } from "../example-panel-leva"
 import { ExampleMessage, showExampleMessage } from "../example-message"
-import { setupSymbolPanel } from "../setupSymbolPanel"
 import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
 import type { BootExampleI18nOptions } from "../i18n"
 import {
@@ -158,8 +156,16 @@ function bootExampleI18nInRunner(options: BootExampleI18nOptions = {}) {
 
 async function executeExampleScript(source: string) {
   const optionalBindings = await loadOptionalRuntimeBindings(source)
+  const panelModule = /\bcreateTelluxPanel\b/.test(source)
+    ? await import('../example-panel-leva') : null
+  const symbolPanelModule = /\bsetupSymbolPanel\b/.test(source)
+    ? await import('../setupSymbolPanel') : null
   const prototypeModule = /\bstartRenderingPrototype\b/.test(source)
     ? await import('../rendering-prototypes/startRenderingPrototype') : null
+  const refractionModule = /\bstartRefractionMedium\b/.test(source)
+    ? await import('../rendering-prototypes/startRefractionMedium') : null
+  const coverageModule = /\bstartMediumCoverage\b/.test(source)
+    ? await import('../rendering-prototypes/startMediumCoverage') : null
   const mediumModule = /\bstartMediumIntegration\b/.test(source)
     ? await import('../rendering-prototypes/startMediumIntegration') : null
   const sandcastleImportMeta = {
@@ -167,6 +173,8 @@ async function executeExampleScript(source: string) {
     url: window.location.href,
   }
   const execute = new Function(
+    "startRefractionMedium",
+    "startMediumCoverage",
     "startMediumIntegration",
     "startRenderingPrototype",
     "tellux",
@@ -212,6 +220,8 @@ async function executeExampleScript(source: string) {
     `"use strict";\n${transformExampleScript(source)}\n//# sourceURL=tellux-sandcastle-example.js`
   )
   execute(
+    refractionModule?.startRefractionMedium,
+    coverageModule?.startMediumCoverage,
     mediumModule?.startMediumIntegration,
     prototypeModule?.startRenderingPrototype,
     tellux,
@@ -232,8 +242,8 @@ async function executeExampleScript(source: string) {
     mountLocationReadout,
     formatHeight,
     setupExamplePanels,
-    createTelluxPanel,
-    setupSymbolPanel,
+    panelModule?.createTelluxPanel,
+    symbolPanelModule?.setupSymbolPanel,
     showExampleMessage,
     ExampleMessage,
     createWindSwayLeavesMaterial,

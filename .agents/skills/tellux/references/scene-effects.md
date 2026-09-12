@@ -178,4 +178,10 @@ const viewer = new tellux.Viewer(container, {
 
 `examples/rendering-stages.ts`、`rendering-splat-atmosphere.ts`、`rendering-cloud-transparency.ts` 是 WebGL Sandcastle 实验。使用说明见 `docs/guide/rendering-prototypes.md`。实验 helper 访问内部管线并注入 shader，不能作为公开应用 API 范例；云穿插与跨渲染器透明排序尚未解决。
 
-`examples/rendering-medium-integration.ts` 是 A1 后续验证，包含共享积分核的 CPU/GPU 对照，以及上游真实云源项与空气直接单次散射实验。数值检查通过不代表完整照明、薄云采样或工业级性能通过；不得将其当成生产大气 API。
+`examples/rendering-medium-integration.ts` 是 A1 算法实验，不是生产大气 API。联合参考支持直接单次散射与 LUT 有限区间等效空气源项，默认 64 步空气网格、云内 5 m 细化及 T < 1e-6 终止；不代表空气与云完整多次散射耦合。
+
+GPU 检查包括 14 组解析积分、55 组稳定球面映射、真实介质对 8192 步加边界参考及 4096 步差异。吸收权重深度近似使用稳定球面映射，保留原采样质量和历史资源，参考控件在这两种模式禁用。固定稳定映射云样本的合成比较会统一关闭 shadow length，仅用于隔离空气合成误差。分别记录整帧与额外参考 draw 成本；性能要求同条件不低于原方案，不能从解析通过或单场景耗时推出管线已验收。详见 `docs/guide/rendering-prototypes.md` 与 `notes/research/A1联合介质积分验证.md`。
+
+`examples/rendering-medium-coverage.ts` 为 A3 有效域实验，以解析介质证明双线性查询足迹必须完整覆盖、截断尾段必须部分积分、无效历史不能当真空。独立/Sandcastle、DPR 与 resize 检查不等于真实云、透视重投影或折射已支持；不可当作公开介质查询 API。
+
+`examples/rendering-refraction-medium.ts` 为 A2 原生 transmission 与解析介质路径实验，使用原生光学厚度和平行界面参考。粗糙、离屏和遮挡必须保留能力/有效性含义，不能将实验 helper 当作公开折射 API，也不能以解析对照批准真实云质量。

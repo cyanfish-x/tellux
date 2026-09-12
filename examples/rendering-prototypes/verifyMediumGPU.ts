@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { analyticCases, compose, homogeneous, mediumIntegralGLSL, overlap } from './mediumIntegral'
+import { cubeFaceFixtures, stableCubeFaceGLSL } from './stableCloudSampling'
 
 /** 读取真实 GPU 浮点结果，与 CPU 解析解比较。 Read GPU float results and compare to CPU analytic solutions. */
 export function verifyMediumGPU(renderer: THREE.WebGLRenderer) {
@@ -43,7 +44,25 @@ void main(){vec3 T=vec3(1.),S=vec3(0.); for(int i=0;i<64;i++) {
       const error = Math.max(...expected.transmittance.map((v, i) => Math.abs(pixels[i] - v)), ...expected.scattering.map((v, i) => Math.abs(pixels[4 + i] - v)))
       results.push({ name: fixture.name, adjacent, maxError: error, passed: Number.isFinite(error) && error < 2e-5 })
     }
-    return { supported: true, passed: results.every(result => result.passed), tolerance: 2e-5, results }
+    const uvMaterial = new THREE.ShaderMaterial({
+      depthWrite: false, depthTest: false, toneMapped: false,
+      uniforms: { sphere: { value: new THREE.Vector2() } },
+      vertexShader: material.vertexShader,
+      fragmentShader: `uniform vec2 sphere; ${stableCubeFaceGLSL} void main(){gl_FragColor=vec4(a1StableCubeFace(sphere),0.,1.);}`,
+    })
+    let uvMaxError = 0
+    try {
+      ;(scene.children[0] as THREE.Mesh).material = uvMaterial
+      for (const fixture of cubeFaceFixtures) {
+        uvMaterial.uniforms.sphere.value.fromArray(fixture.sphere)
+        renderer.render(scene, camera)
+        const pixels = new Float32Array(8)
+        renderer.readRenderTargetPixels(target, 0, 0, 2, 1, pixels)
+        uvMaxError = Math.max(uvMaxError, ...fixture.cube.map((value, i) => Math.abs(value - pixels[i])))
+      }
+    } finally { uvMaterial.dispose() }
+    const cubeFace = { cases: cubeFaceFixtures.length, maxError: uvMaxError, tolerance: 5e-7, passed: Number.isFinite(uvMaxError) && uvMaxError < 5e-7 }
+    return { supported: true, passed: results.every(result => result.passed) && cubeFace.passed, tolerance: 2e-5, results, cubeFace }
   } finally {
     renderer.setRenderTarget(previous); renderer.toneMapping = tone; renderer.autoClear = autoClear
     target.dispose(); material.dispose(); geometry.dispose()
