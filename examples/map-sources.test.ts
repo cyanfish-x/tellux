@@ -10,7 +10,7 @@ const baseOptions = {
 
 describe("resolveMapSourceProfile", () => {
   it("defaults production to the config production profile", () => {
-    expect(resolveMapSourceProfile({ isDevelopment: false })).toBe("local")
+    expect(resolveMapSourceProfile({ isDevelopment: false })).toBe("cesiumIon")
   })
 
   it("uses the production profile and ignores the local profile", () => {
@@ -77,6 +77,25 @@ describe("createExampleMapServiceConfig", () => {
     expect(config.createTerrainOptions()).toMatchObject({
       type: "url",
       url: baseOptions.cesiumTerrainUrl,
+    })
+  })
+
+  it("uses Cesium Ion imagery and terrain for the cesiumIon profile", () => {
+    const config = createExampleMapServiceConfig({
+      ...baseOptions,
+      profile: "cesiumIon",
+    })
+
+    expect(config.profile).toBe("cesiumIon")
+    expect(config.createImagerySource()).toMatchObject({
+      type: "cesium-ion",
+      assetId: 2,
+      apiToken: baseOptions.cesiumIonToken,
+    })
+    expect(config.createTerrainOptions()).toMatchObject({
+      type: "cesium-ion",
+      assetId: 1,
+      apiToken: baseOptions.cesiumIonToken,
     })
   })
 

@@ -6,6 +6,7 @@ import {
 } from "./tiandituLoadBalancer"
 import {
   ARCGIS_WORLD_IMAGERY_URL,
+  defaultCesiumIonToken,
   exampleMapServiceConfig,
 } from "./map-sources"
 import { t } from "./i18n"
@@ -99,9 +100,21 @@ export function buildTiandituTerrainUrls(token = defaultTiandituToken): string[]
 export function getTokenNoticeMessage() {
   if (exampleMapServiceConfig.profile === "local") {
     return t({
-      zh: "当前示例使用 ArcGIS 卫星影像和 Cesium Ion 地形。改 map-sources.config.ts 的 localMapSourceProfile / productionMapSourceProfile 可切到天地图。",
-      en: "This example uses ArcGIS satellite imagery and Cesium Ion terrain. Change localMapSourceProfile / productionMapSourceProfile in map-sources.config.ts to switch to Tianditu.",
+      zh: "当前示例使用 ArcGIS 卫星影像和 Cesium Ion 地形。改 map-sources.config.ts 的 localMapSourceProfile / productionMapSourceProfile 可切换数据源。",
+      en: "This example uses ArcGIS satellite imagery and Cesium Ion terrain. Change localMapSourceProfile / productionMapSourceProfile in map-sources.config.ts to switch sources.",
     })
+  }
+
+  if (exampleMapServiceConfig.profile === "cesiumIon") {
+    return defaultCesiumIonToken
+      ? t({
+          zh: "当前示例使用 Cesium Ion Bing 航空影像和地形。",
+          en: "This example uses Cesium Ion Bing aerial imagery and terrain.",
+        })
+      : t({
+          zh: "当前示例使用 Cesium Ion Bing 航空影像和地形，请配置 VITE_CESIUM_ION_TOKEN。",
+          en: "This example uses Cesium Ion Bing aerial imagery and terrain; please set VITE_CESIUM_ION_TOKEN.",
+        })
   }
 
   return defaultTiandituToken

@@ -11,12 +11,14 @@ import {
   type MapSourceProfileId,
 } from "./map-sources.config"
 import type {
+  ImageryLayerSourceOptions,
   TerrainOptions,
   XYZImagerySourceOptions,
 } from "../src"
 
 export {
   ARCGIS_WORLD_IMAGERY_URL,
+  CESIUM_ION_BING_AERIAL_ASSET_ID,
   CESIUM_ION_WORLD_TERRAIN_ASSET_ID,
   localMapSourceProfile,
   mapSourceCatalog,
@@ -35,7 +37,7 @@ const tiandituTokens = parseTiandituTokens(import.meta.env.VITE_TIANDITU_TOKEN ?
 
 export interface ExampleMapServiceConfig {
   profile: MapSourceProfileId
-  createImagerySource(): XYZImagerySourceOptions
+  createImagerySource(): ImageryLayerSourceOptions
   createTerrainOptions(): TerrainOptions | undefined
 }
 
@@ -69,6 +71,16 @@ export function resolveMapSourceProfile(
 
 function createArcGisImagerySource(): XYZImagerySourceOptions {
   return { ...mapSourceCatalog.imagery.arcgis }
+}
+
+function createCesiumIonImagerySource(
+  options: CreateExampleMapServiceConfigOptions
+): ImageryLayerSourceOptions {
+  return {
+    type: "cesium-ion",
+    assetId: mapSourceCatalog.imagery["cesium-ion"].assetId,
+    apiToken: options.cesiumIonToken,
+  }
 }
 
 function createCesiumIonTerrainOptions(
@@ -117,6 +129,9 @@ export function createExampleMapServiceConfig(
     createImagerySource: () => {
       if (imagery === "tianditu") {
         return createTiandituXYZImagerySource(options.tiandituTokens)
+      }
+      if (imagery === "cesium-ion") {
+        return createCesiumIonImagerySource(options)
       }
       return createArcGisImagerySource()
     },

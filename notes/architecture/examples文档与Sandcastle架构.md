@@ -57,7 +57,7 @@ Tellux 自身的云、STBN、星空等运行资源默认从源码内置资源模
 - 绑定锚点平滑滚动和顶部导航滚动状态。
 - 调用 `mountFeaturedStrip()` 挂载首页社区案例精选条（空数据隐藏，语言切换重渲染）。
 - 在 `#portal-globe-viewer` 中创建 `tellux.Viewer`。
-- 使用 `examples/map-sources.config.ts` 配置示例 GIS 数据源，`examples/map-sources.ts` 据此生成 `exampleMapServiceConfig`。本地读 `localMapSourceProfile`，生产读 `productionMapSourceProfile`，两者默认都是 `local`（ArcGIS 卫星影像 + Cesium Ion 地形），避免消耗天地图额度。意图见 [示例站图源 profile](../../docs/intent/examples-map-source-profiles.md)。走天地图时，`pnpm dev` 经 Vite 代理 `/tianditu-t/{n}` 转发到 `t{n}.tianditu.gov.cn`，并把 Referer 改写成 `TELLUX_TIANDITU_DEV_REFERER`（默认 `https://tellux.cyanfish.site/`）。密钥仍只放 `.env`。
+- 使用 `examples/map-sources.config.ts` 配置示例 GIS 数据源，`examples/map-sources.ts` 据此生成 `exampleMapServiceConfig`。本地读 `localMapSourceProfile`（默认 `local`：ArcGIS 卫星影像 + Cesium Ion 地形），生产读 `productionMapSourceProfile`（默认 `cesiumIon`：Cesium Ion Bing 航空影像 + Cesium World Terrain），避免消耗天地图额度、也不把匿名 ArcGIS 瓦片打到线上。意图见 [示例站图源 profile](../../docs/intent/examples-map-source-profiles.md)。走天地图时，`pnpm dev` 经 Vite 代理 `/tianditu-t/{n}` 转发到 `t{n}.tianditu.gov.cn`，并把 Referer 改写成 `TELLUX_TIANDITU_DEV_REFERER`（默认 `https://tellux.cyanfish.site/`）。密钥仍只放 `.env`。
 - 开启云、大气、镜头光晕、SMAA 和曝光设置，让首页直接展示 Tellux 的渲染能力。
 
 主页中的 viewer 会挂到 `window.viewer` 和 `window.portalViewer`，便于开发调试。页面卸载时调用 `viewer.destroy()` 释放资源。
