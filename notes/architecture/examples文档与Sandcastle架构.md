@@ -230,3 +230,9 @@ runner 的 iframe 使用 `sandbox="allow-scripts allow-same-origin"`。它隔离
 ## 2026-09-12：runner 面板按需加载
 
 `executeExampleScript` 根据源码中的 `createTelluxPanel` / `setupSymbolPanel` 绑定加载对应模块，继续同步 `new Function` 参数和调用实参。未使用面板的案例不再拉入 Leva GUI 的初始依赖图；面板样式仍保留。`pnpm build:examples` 通过原有 runner 800 KiB gzip 预算，没有调整预算上限。
+
+2026-09-13：Leva 内联样式也按实际面板绑定（含 `setupWaterAreaPanel`）或 HTML 中的 `leva-` 类按需加载，加载完成后再写入 iframe；遗留 `setupExamplePanels`、`mountLocationReadout`／`formatHeight` 模块独立按需注入。普通无面板案例省去这些依赖，使用面板的页面仍在执行前取得样式。新增间接创建面板的 helper 时，应同步检测条件，不能只增加函数注入。
+
+库和示例构建使用 `stripRuntimeDocumentationPlugin`：只在构建时移除自有 TS 中解析器识别的 JSDoc，保持源码偏移和换行，保留许可证与 pure 标记。声明文件由原 TypeScript 单独生成，仍含双语文档；不修改运行时模板字符串中的注释，也不提高体积预算。
+
+2026-09-13 管线实施更新：runner 的 `examples/shared` 地图 helper、地图配置常量和消息组件按源码实际引用动态导入；`new Function` 的参数名保持一致，调用参数取自对应模块。地形绑定测试执行实际动态 loader，检查无引用不加载、有引用时正确注入常量。构建和真实高斯 Sandcastle 入口已验证，不提高 runner 初始依赖预算。

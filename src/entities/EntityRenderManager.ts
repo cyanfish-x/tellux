@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import type { ThreeEffectPass } from '../effects'
 import type { EntityTransparencyMode } from '../types'
 import { isSymbolOcclusionObject } from './SymbolOcclusionPass'
+import type { TransparentAtmosphere } from '../rendering/TransparentAtmosphere'
+import { TransparentDepthSlice } from '../rendering/TransparentDepthSlice'
 
 export interface EntityRenderModeResult {
   mode: Exclude<EntityTransparencyMode, 'auto'>
@@ -57,6 +59,15 @@ export class EntityRenderManager implements ThreeEffectPass {
   private revealageTarget: THREE.WebGLRenderTarget | null = null
   private width = 1
   private height = 1
+  private atmosphere: TransparentAtmosphere | null = null
+  private depthSlice: TransparentDepthSlice | null = null
+  private renderingDepthRange = false
+  private composedByPipeline = false
+
+  /** 设置管线共享的大气适配器。 Sets the pipeline's shared atmosphere adapter. */
+  setAtmosphere(atmosphere: TransparentAtmosphere | null) {
+    this.atmosphere = atmosphere
+  }
 
   constructor(private readonly options: EntityRenderManagerOptions) {
     this.requestedMode = options.requestedMode
@@ -142,6 +153,7 @@ export class EntityRenderManager implements ThreeEffectPass {
   }
 
   beginFrame() {
+    this.composedByPipeline = false
     this.restoreMainSceneVisibility()
     if (this.mode === 'weighted-oit') {
       this.hideTransparentObjectsForMainScene()
@@ -155,6 +167,7 @@ export class EntityRenderManager implements ThreeEffectPass {
     writeBuffer: THREE.WebGLRenderTarget,
     readBuffer: THREE.WebGLRenderTarget
   ) {
+    if (this.composedByPipeline) return
     this.restoreMainSceneVisibility()
     // 本 pass 排在大气之后：大气 swap 后 readBuffer 是不带深度的 targetB，深度纹理
     // 只在 targetA 上。read/write 两侧探测取场景深度（同 GroundClamp/SymbolOcclusion），
@@ -166,6 +179,41 @@ export class EntityRenderManager implements ThreeEffectPass {
       return
     }
 
+    this.renderWithDepth(renderer, readBuffer, depthTexture)
+  }
+
+  /**
+   * 向指定颜色目标合成深度范围内的实体；场景深度由管线显式提供。
+   * Composites entities in a depth range onto an explicit color target and scene depth.
+   */
+  renderDepthRange(
+    renderer: THREE.WebGLRenderer,
+    colorTarget: THREE.WebGLRenderTarget,
+    sceneDepth: THREE.Texture,
+    lower: THREE.Texture | null,
+    upper: THREE.Texture | null,
+  ) {
+    this.restoreMainSceneVisibility()
+    if (this.mode !== 'weighted-oit' || !this.hasTransparentRenderableEntities()) return
+    this.composedByPipeline = true
+    this.depthSlice ??= new TransparentDepthSlice()
+    this.depthSlice.setRange(lower, upper, colorTarget.width, colorTarget.height)
+    this.renderingDepthRange = true
+    try {
+      this.renderWithDepth(renderer, colorTarget, sceneDepth)
+    } finally {
+      this.depthSlice.endFrame()
+      this.renderingDepthRange = false
+    }
+  }
+
+  /** 恢复实体可见性；无透明实体时返回 null。 Restores visibility; returns null when no transparent entities exist. */
+  prepareTransparency() {
+    this.restoreMainSceneVisibility()
+    return this.hasTransparentRenderableEntities() ? this.options.root : null
+  }
+
+  private renderWithDepth(renderer: THREE.WebGLRenderer, readBuffer: THREE.WebGLRenderTarget, depthTexture: THREE.Texture) {
     this.ensureTargets(readBuffer.width, readBuffer.height)
     const accumulationTarget = this.accumulationTarget!
     const revealageTarget = this.revealageTarget!
@@ -199,6 +247,7 @@ export class EntityRenderManager implements ThreeEffectPass {
   }
 
   dispose() {
+    this.depthSlice?.endFrame()
     this.accumulationTarget?.dispose()
     this.revealageTarget?.dispose()
     this.compositeMesh.geometry.dispose()
@@ -284,8 +333,10 @@ export class EntityRenderManager implements ThreeEffectPass {
       renderer.setRenderTarget(target)
       renderer.setClearColor(clearColor, clearAlpha)
       renderer.clear(true, true, true)
+      if (purpose === 'accumulation') this.atmosphere?.update(this.options.camera, this.width, this.height)
       renderer.render(this.options.root, this.options.camera)
     } finally {
+      if (this.atmosphere) this.atmosphere.active.value = false
       replacements.forEach(({ object, material }) => {
         object.material = material
       })
@@ -320,6 +371,11 @@ export class EntityRenderManager implements ThreeEffectPass {
     }
     derived.visible = material.visible
     derived.opacity = material.opacity
+    if (derived.side !== material.side || derived.forceSinglePass !== material.forceSinglePass) {
+      derived.side = material.side
+      derived.forceSinglePass = material.forceSinglePass
+      derived.needsUpdate = true
+    }
     derived.transparent = true
     derived.depthTest = true
     derived.depthWrite = false
@@ -331,6 +387,8 @@ export class EntityRenderManager implements ThreeEffectPass {
       derived.userData.telluxResolution = new THREE.Vector2()
     }
     ;(derived.userData.telluxResolution as THREE.Vector2).set(this.width, this.height)
+    if (purpose === 'accumulation') this.atmosphere?.attach(derived)
+    if (this.renderingDepthRange) this.depthSlice?.attach(derived)
     return derived
   }
 }
@@ -390,7 +448,11 @@ function patchFragmentShader(fragmentShader: string, purpose: MaterialPurpose) {
     void telluxDepthDiscard() {
       vec2 telluxUv = gl_FragCoord.xy / telluxResolution;
       float telluxSceneDepthValue = texture2D(telluxSceneDepth, telluxUv).x;
-      if (gl_FragCoord.z > telluxSceneDepthValue + ${DEPTH_EPSILON.toFixed(8)}) {
+      float telluxFragmentDepth = gl_FragCoord.z;
+      #if defined(USE_LOGARITHMIC_DEPTH_BUFFER) || defined(USE_LOGDEPTHBUF)
+        telluxFragmentDepth = gl_FragDepth;
+      #endif
+      if (telluxFragmentDepth > telluxSceneDepthValue + ${DEPTH_EPSILON.toFixed(8)}) {
         discard;
       }
     }

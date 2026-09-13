@@ -12,6 +12,9 @@ import { applyBloomAppearanceState } from './bloomAppearance'
 import { cloudAltitudeFade, shouldRenderCloudPass } from './cloudAltitudeFade'
 import { LightingMaskPass } from './LightingMaskPass'
 import { PointCloudEdlPass } from './PointCloudEdlEffect'
+import { SceneSubmission, submitScenePhase } from './SceneSubmission'
+import { TransparentAtmosphere } from './TransparentAtmosphere'
+import type { EntityRenderManager } from '../entities/EntityRenderManager'
 
 /**
  * 法线 pass 专用材质：
@@ -77,6 +80,10 @@ export class PostProcessingManager {
   private currentEffectsKey = ''
   private activeEffects: ThreeEffectPass[] = []
   private cloudPassActive = false
+  private readonly sceneSubmission: SceneSubmission
+  private readonly transparentAtmosphere: TransparentAtmosphere
+  private readonly opaqueNormalAdapter: ThreeEffectPass
+  private readonly normalTexture: THREE.Texture
 
   constructor(
     private readonly renderer: ThreeRendererWithEffects,
@@ -93,7 +100,10 @@ export class PostProcessingManager {
     outlineEffect?: OutlineEffect | null,
     private readonly getPointCloudEdlState?: () => PointCloudEdlAggregate
   ) {
+    this.transparentAtmosphere = new TransparentAtmosphere(this.atmosphere.aerialPerspectiveEffect)
+    this.sceneSubmission = new SceneSubmission(threeScene, this.camera, this.transparentAtmosphere, this.entityRenderer as EntityRenderManager | undefined)
     const normalPass = new NormalPass(threeScene, this.camera)
+    this.normalTexture = normalPass.texture
     ;(normalPass as unknown as {
       renderPass: { overrideMaterial: THREE.Material }
     }).renderPass.overrideMaterial = createPointCloudAwareNormalMaterial()
@@ -109,6 +119,20 @@ export class PostProcessingManager {
       () => this.camera
     )
     this.normalAdapter = new EffectPassAdapter(normalPass, () => this.camera)
+    this.opaqueNormalAdapter = {
+      setSize: (width, height) => this.normalAdapter.setSize(width, height),
+      dispose() {},
+      render: (renderer, write, read, delta, mask) => {
+        const effect = this.atmosphere.aerialPerspectiveEffect
+        const needsNormals = this.cloudPassActive || effect.sunLight || effect.skyLight || this.sceneSubmission.hasPointNormalMask
+        effect.normalBuffer = needsNormals ? normalPass.texture : null
+        if (!needsNormals) return
+        submitScenePhase(renderer, threeScene, this.camera, 'opaque', {
+          draw: () => this.normalAdapter.render(renderer, write, read, delta, mask),
+        })
+      },
+    }
+    Object.assign(this.opaqueNormalAdapter, { needsSwap: false })
     this.lightingMaskPass = new LightingMaskPass(threeScene, this.camera)
     this.atmosphere.setLightingMaskMap(this.lightingMaskPass.texture)
     this.pointCloudEdlPass = new PointCloudEdlPass(threeScene, this.camera)
@@ -179,6 +203,8 @@ export class PostProcessingManager {
 
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.atmosphere.show
+    this.sceneSubmission.atmosphereEnabled = shouldRenderAtmosphere
+    this.transparentAtmosphere.postProcessLighting.value = this.scene.atmosphere.lighting.mode === 'post-process'
     const fade = cloudAltitudeFade(currentHeight)
     this.atmosphere.applyCloudAltitudeFade(fade)
     const shouldRenderClouds =
@@ -204,13 +230,19 @@ export class PostProcessingManager {
     ].join(':')
 
     this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
+    ;(this.entityRenderer as EntityRenderManager | undefined)?.setAtmosphere?.(
+      shouldRenderAtmosphere ? this.transparentAtmosphere : null
+    )
     if (!forceRecompile && effectsKey === this.currentEffectsKey) return
 
     this.cloudAtmosphereAdapter.recompile?.()
     this.atmosphereAdapter.recompile?.()
 
+    // One submission contract also applies when clouds or atmosphere are toggled.
+    // Clouds retain the upstream overlay; object/cloud intersection is deferred for this version.
+    nextEffects.push(this.sceneSubmission.opaque)
     if (shouldRenderAtmosphere) {
-      nextEffects.push(this.normalAdapter)
+      nextEffects.push(this.opaqueNormalAdapter)
       nextEffects.push(this.lightingMaskPass)
     }
     if (this.groundClampPass) {
@@ -226,6 +258,7 @@ export class PostProcessingManager {
       // EDL 在大气成图之后：自定义 pass 两侧取深度，needsSwap=false，避免 Effect 绑不到深度。
       nextEffects.push(this.pointCloudEdlPass)
     }
+    nextEffects.push(this.sceneSubmission.transparent)
     if (entityOitEnabled && this.entityRenderer) {
       // 透明实体在大气之后合成：实体不写深度，若排在大气前，大气的天空分支会把背景
       // 为天空（深度=远平面 1.0）的实体像素当作天空重画，导致实体在地平线处被"裁
@@ -306,6 +339,8 @@ export class PostProcessingManager {
 
   dispose() {
     this.renderer.setEffects(null)
+    this.sceneSubmission.dispose()
+    this.transparentAtmosphere.dispose()
     this.effectAdapters.forEach((adapter) => adapter.dispose())
   }
 }

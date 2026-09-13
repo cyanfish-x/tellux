@@ -2,22 +2,6 @@ import tellux, { createWindSwayLeavesMaterial } from "../../src"
 import * as THREE from "three"
 import { TilesRenderer } from "3d-tiles-renderer"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
-import {
-  createTiandituWmtsPreprocessURL,
-  createTiandituXYZImagery,
-  tiandituTerrainServiceTemplate,
-  buildTiandituTerrainUrls,
-  defaultTerrainUrl,
-  defaultTiandituToken,
-  defaultTiandituTokens,
-  showTokenNotice,
-  getTokenNoticeMessage,
-  exampleMapServiceConfig,
-} from "../shared"
-import { formatHeight, mountLocationReadout } from "../location-readout"
-import { CESIUM_ION_WORLD_TERRAIN_ASSET_ID } from "../map-sources.config"
-import { setupExamplePanels } from "../example-panel"
-import { ExampleMessage, showExampleMessage } from "../example-message"
 import { applyTranslations, bootExampleI18n, resolveLocale, t } from "../i18n"
 import type { BootExampleI18nOptions } from "../i18n"
 import {
@@ -28,10 +12,10 @@ import {
   detectOptionalRuntimeBindings,
 } from "./runtime-bindings"
 import exampleStyles from "../styles.css?raw"
-import levaStyles from "../../../leva-vanilla/src/styles/index.css?inline"
 import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
 const STORAGE_PREFIX = "tellux:sandcastle-run:"
+let levaStyles = ""
 
 function serializeConsoleValue(value: unknown) {
   if (value instanceof Error) {
@@ -156,6 +140,16 @@ function bootExampleI18nInRunner(options: BootExampleI18nOptions = {}) {
 
 async function executeExampleScript(source: string) {
   const optionalBindings = await loadOptionalRuntimeBindings(source)
+  const [sharedModule, mapConfigModule, messageModule] = await Promise.all([
+    /\b(?:createTiandituWmtsPreprocessURL|createTiandituXYZImagery|tiandituTerrainServiceTemplate|buildTiandituTerrainUrls|defaultTerrainUrl|defaultTiandituToken|defaultTiandituTokens|showTokenNotice|getTokenNoticeMessage|exampleMapServiceConfig)\b/.test(source)
+      ? import('../shared') : null,
+    /\bCESIUM_ION_WORLD_TERRAIN_ASSET_ID\b/.test(source) ? import('../map-sources.config') : null,
+    /\b(?:ExampleMessage|showExampleMessage)\b/.test(source) ? import('../example-message') : null,
+  ])
+  const legacyPanelModule = /\bsetupExamplePanels\b/.test(source)
+    ? await import('../example-panel') : null
+  const locationModule = /\b(?:formatHeight|mountLocationReadout)\b/.test(source)
+    ? await import('../location-readout') : null
   const panelModule = /\bcreateTelluxPanel\b/.test(source)
     ? await import('../example-panel-leva') : null
   const symbolPanelModule = /\bsetupSymbolPanel\b/.test(source)
@@ -230,25 +224,25 @@ async function executeExampleScript(source: string) {
     ...GAUSSIAN_SPLAT_RUNTIME_BINDING_NAMES.map(name => optionalBindings.gaussianSplat[name]),
     GLTFLoader,
     optionalBindings.Tree,
-    createTiandituWmtsPreprocessURL,
-    createTiandituXYZImagery,
-    tiandituTerrainServiceTemplate,
-    buildTiandituTerrainUrls,
-    defaultTerrainUrl,
-    defaultTiandituToken,
-    defaultTiandituTokens,
-    showTokenNotice,
-    getTokenNoticeMessage,
-    mountLocationReadout,
-    formatHeight,
-    setupExamplePanels,
+    sharedModule?.createTiandituWmtsPreprocessURL,
+    sharedModule?.createTiandituXYZImagery,
+    sharedModule?.tiandituTerrainServiceTemplate,
+    sharedModule?.buildTiandituTerrainUrls,
+    sharedModule?.defaultTerrainUrl,
+    sharedModule?.defaultTiandituToken,
+    sharedModule?.defaultTiandituTokens,
+    sharedModule?.showTokenNotice,
+    sharedModule?.getTokenNoticeMessage,
+    locationModule?.mountLocationReadout,
+    locationModule?.formatHeight,
+    legacyPanelModule?.setupExamplePanels,
     panelModule?.createTelluxPanel,
     symbolPanelModule?.setupSymbolPanel,
-    showExampleMessage,
-    ExampleMessage,
+    messageModule?.showExampleMessage,
+    messageModule?.ExampleMessage,
     createWindSwayLeavesMaterial,
-    exampleMapServiceConfig,
-    CESIUM_ION_WORLD_TERRAIN_ASSET_ID,
+    sharedModule?.exampleMapServiceConfig,
+    mapConfigModule?.CESIUM_ION_WORLD_TERRAIN_ASSET_ID,
     ...HISM_RUNTIME_BINDING_NAMES.map(
       (name) => optionalBindings.hism[name]
     ),
@@ -310,6 +304,10 @@ async function loadOptionalRuntimeBindings(source: string) {
 }
 
 async function runExample(payload: SandcastleRunPayload) {
+  const needsLevaStyles = /\b(?:createTelluxPanel|setupSymbolPanel|setupWaterAreaPanel)\b/.test(payload.compiledJavascript)
+    || /\bleva-/.test(payload.html)
+  levaStyles = needsLevaStyles
+    ? (await import("../../../leva-vanilla/src/styles/index.css?inline")).default : ""
   applyHtml(payload.html)
   installConsoleBridge(payload.runId)
   removeOriginalModuleScripts()

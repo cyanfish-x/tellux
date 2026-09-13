@@ -8,6 +8,7 @@ import {
   assertBundleSizeBudgets,
   selectFilesMatching
 } from './src/build/bundleSizeBudget'
+import { stripRuntimeDocumentationPlugin } from './src/build/stripRuntimeDocumentation'
 
 const telluxAssetUrlMarker = '__TELLUX_ASSET_URL__/'
 const KiB = 1024
@@ -63,6 +64,7 @@ function assertPeerDependenciesExternal(): Plugin {
 
 export default defineConfig({
   plugins: [
+    stripRuntimeDocumentationPlugin(),
     preserveTelluxAssetUrls(),
     assertPeerDependenciesExternal(),
     assertBundleSizeBudgets([

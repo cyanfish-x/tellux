@@ -113,9 +113,13 @@ Cesium Ion is an optional data service. Tellux APIs support both self-hosted URL
 
 [Rendering boundary experiments](docs/guide/rendering-prototypes.md): three WebGL Sandcastle prototypes for staged rendering, splat aerial perspective, and cloud/transparency composition. These are not stable APIs.
 
-The follow-up A1 experiment includes real cloud/air integration references, GPU numerical checks, an absorption-weighted depth approximation, and full-frame performance comparisons. It remains experimental and does not replace the production pipeline.
+Stage 0 adds GPU positive and negative controls for native material groups, depth, shadows, and callbacks, plus standalone/Sandcastle baseline capture. These checks do not establish production pipeline performance or correct cloud occlusion.
 
-The A3 case checks low-resolution medium query footprints, valid depth ranges, and missing history using analytic media. It does not implement the production pipeline.
+The development branch now implements unified staged submission, transparent aerial perspective, and mixed transparency partitioning across ordinary surfaces, entity OIT, and Spark. The tested mixed scene averages 76.33 FPS on an RTX 3060 Ti at 1080p, DPR 1, meeting this version's 60 FPS target. Up to eight surface layers are peeled; the remaining tail retains approximate ordering. Cloud/object intersection composition is deferred. See the [final validation record](notes/research/阶段2混合透明分段实现与验证.md) for compatibility, motion, performance, and limitations. Application APIs are unchanged.
+
+The retained A1 research includes cloud/air integration references, GPU numerical checks, an absorption-weighted depth approximation, and full-frame performance comparisons. It does not replace the production pipeline and is no longer a prerequisite for the refactor. The revised plan prioritizes upstream reuse, correct occlusion, and performance.
+
+The A3 case retains analytic research on low-resolution medium query footprints, valid depth ranges, and missing history. Its findings are reused only where an algorithm needs them; it does not implement the production pipeline.
 
 ```bash
 pnpm install
@@ -134,4 +138,4 @@ pnpm build
 
 See the [0.3 migration guide](docs/guide/migration-0.3.md) for camera snapshots, domain facades, and entity outlines.
 
-The A2 refraction experiment compares native transmission with smooth analytic medium paths and exposes repeated fogging and missing screen data. Real clouds and rough path evaluation are not yet validated.
+The retained A2 refraction case compares native transmission with smooth analytic medium paths and exposes repeated fogging and missing screen data. New refraction capabilities are outside the current pipeline scope and are not a public feature.

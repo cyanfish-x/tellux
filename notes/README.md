@@ -27,8 +27,13 @@
 | 排查颜色、深度、大气、影像或精度 | [坑点入口](engineering/项目坑点记录.md) | 按症状选择专题，再核对实际 renderer、材质与输出路径 |
 | Water Area 移动相机后缺水域或报 CORS | [新区域 MVT 加载排障](engineering/WaterArea新区域MVT加载503与CORS排查.md) | 先区分上游错误响应与跨域配置，再核对 Worker 请求、缓存及复现范围 |
 | 修改 WebGPU 后处理组合 | [单一后处理图 ADR](decisions/0003-webgpu-post-processing-graph.md) | 再读 [渲染管线](../docs/design/rendering-pipeline.md) 与涉及的 effect 实现 |
-| 审查统一场景、大气与透明合成重构 | [统一合成架构草案](decisions/统一场景渲染与大气透明合成架构.md) | 待审方案，非已采纳决策；先核对原型证据、云算法闸门和未决产品范围 |
-| 验证空气与云重叠积分及上游源项 | [A1 首轮验证](research/A1联合介质积分验证.md) | 解析对照已通过，真实介质质量和性能尚未过闸门；附原始测量和复现脚本 |
+| 审查统一场景、大气与透明合成重构 | [统一合成纠偏计划](decisions/统一场景渲染与大气透明合成架构.md) | 本版实施验收完成，云穿插暂缓；保留范围来源与算法边界，不再以 A1–A3 全通过为前置 |
+| 推进管线阶段 0、复验原生材质组和真实入口基线 | [阶段 0 提交接缝](research/阶段0场景提交接缝验证.md) | 含 GPU 正负对照、基线脚本与证据限制；不将实验过滤作用域当成生产合同 |
+| 回溯无云编排、透明自身空气透视及兼容回归 | [阶段 1 验证](research/阶段1透明大气管线验证.md) | 保留阶段 1 代码与测量快照；后续兼容、运动和性能结论见阶段 2 最终记录 |
+| 普通透明／实体 OIT／Spark 混合遮挡及最终验收 | [阶段 2 分段实现](research/阶段2混合透明分段实现与验证.md) | 最多八层分段已接入；交叉、曲壳、运动与兼容通过，1080p 实际混合场景平均 76.33 FPS；云穿插暂缓 |
+| 回溯已暂缓的云穿插实验 | [阶段 2 云深度接缝](research/阶段2云深度贡献接缝验证.md) | 用户已暂缓本版云穿插；保留固定帧参考和失败证据，不再执行或作为完成门槛 |
+| 审查范围扩张、上游重写或实验持续加码 | [需求扩张与实验偏航复盘](engineering/管线计划需求扩张与实验偏航复盘.md) | 先核对需求来源、最小复用方案和停止条件；不把设计建议变成产品要求 |
+| 按已选算法追查联合积分／覆盖域证据 | [A1 历史研究](research/A1联合介质积分验证.md)、[A3 覆盖域研究](research/A3低分辨率介质有效域验证.md) | 原始数值与性能边界保留，按需复用；旧记录中的后续计划不再作为当前任务 |
 | 修改点云颜色或局部灯光 | [点云显示色 ADR](decisions/0002-display-referred-point-cloud-colors.md)、[局部与地球光照 ADR](decisions/0004-local-vs-globe-lighting.md) | 结合对应坑点、当前材质与输出链核验 |
 | 修改高亮 | [高亮指南](../docs/guide/highlight.md) | 只有追查后端选择理由时读 [0.2 高亮背景](archive/highlight统一高亮方案.md) |
 | 修改主页、文档站或 Sandcastle | [examples 架构](architecture/examples文档与Sandcastle架构.md) | 社区案例布局理由见 [gallery ADR](decisions/0001-community-showcase-gallery-page.md) |

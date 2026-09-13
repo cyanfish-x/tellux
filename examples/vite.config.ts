@@ -6,6 +6,7 @@ import {
   selectFilesMatching,
   selectInitialEntryGraph,
 } from "../src/build/bundleSizeBudget"
+import { stripRuntimeDocumentationPlugin } from "../src/build/stripRuntimeDocumentation"
 import {
   TIANDITU_DEV_TILE_PROXY_PREFIX,
   TIANDITU_SUBDOMAINS,
@@ -125,6 +126,7 @@ export default defineConfig(({ mode }) => {
   return {
     root: __dirname,
     plugins: [
+      stripRuntimeDocumentationPlugin(),
       assertBundleSizeBudgets(
         [
           {

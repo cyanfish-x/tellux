@@ -37,6 +37,8 @@ export async function startRenderingPrototype(viewer: Viewer, kind: 'stages' | '
   const originalSetEffects = raw.setEffects
   let base: THREE.Effect[] = []
   const apply = () => {
+    // An inactive sampler still participates in WebGL feedback-loop validation.
+    if (mode === 'baseline') { stage.depth.value = null; stage.depthAvailable = false }
     const effects = [...base]
     const index = effects.findIndex(effect => effect === internal.postProcessing.atmosphereAdapter || effect === internal.postProcessing.cloudAtmosphereAdapter)
     if (mode !== 'baseline') effects.splice(index < 0 ? 0 : index + (mode === 'after' ? 1 : 0), 0, stage)
