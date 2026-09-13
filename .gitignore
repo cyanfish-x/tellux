@@ -46,5 +46,9 @@ benchmark-results/
 
 # MSDF atlas 生成脚本的中间产物
 scripts/charset.txt
+/artifacts/
 
 
+
+# Raw validation evidence stays local; keep the former path ignored too.
+/notes/research/evidence/
