@@ -66,7 +66,7 @@ export async function verifyMixedTransparency(options:{depthSplit?:boolean;trace
   if(useOit)oit.beginFrame()
   r.render(scene,camera)
   check('scene')
-  if(useOit)oit.render(r,target,target)
+  if(useOit)oit.renderTransparency(r,target,target.depthTexture!)
   check('oit')
   const pixels=new Uint8Array(size*size*4);r.readRenderTargetPixels(target,0,0,size,size,pixels);return pixels
  }
@@ -90,14 +90,14 @@ export async function verifyMixedTransparency(options:{depthSplit?:boolean;trace
    if(region===0){
     slice.value=0;r.clippingPlanes=[];select([separator])
     if(separator==='entity') {
-     if(options.depthTexture)oit.renderDepthRange(r,target,target.depthTexture!,null,null);else oit.render(r,target,target)
+     if(options.depthTexture)oit.renderDepthRange(r,target,target.depthTexture!,null,null);else oit.renderTransparency(r,target,target.depthTexture!)
     }else r.render(scene,camera)
    }else{
     select([layer])
     if(layer==='spark'){slice.value=region;r.render(scene,camera)}
     else{
      if(options.depthTexture)oit.renderDepthRange(r,target,target.depthTexture!,region===-1?separatorTarget.depthTexture:null,region===1?separatorTarget.depthTexture:null)
-     else{r.clippingPlanes=[new THREE.Plane(new THREE.Vector3(0,0,region===-1?-1:1),region===-1?z:-z)];oit.render(r,target,target)}
+     else{r.clippingPlanes=[new THREE.Plane(new THREE.Vector3(0,0,region===-1?-1:1),region===-1?z:-z)];oit.renderTransparency(r,target,target.depthTexture!)}
     }
    }
    check('split:'+region)
@@ -109,11 +109,11 @@ export async function verifyMixedTransparency(options:{depthSplit?:boolean;trace
  const rows=[]
  const productionDraw=()=>{
   if(options.implicitEntity){entity.material.transparent=false;entity2.material.transparent=false}
-  scene.updateMatrixWorld();camera.updateMatrixWorld();oit.beginFrame()
+  scene.updateMatrixWorld();camera.updateMatrixWorld();submission.beginFrame()
   r.setRenderTarget(target);r.setClearColor(0,0);r.autoClear=true
   submission.opaque.render(r,target,target,0,false)
   submission.transparent.render(r,target,target,0,false)
-  oit.render(r,target,target)
+  submission.endFrame()
   check('production scene submission')
   const pixels=new Uint8Array(size*size*4);r.readRenderTargetPixels(target,0,0,size,size,pixels)
   entity.material.transparent=true;entity2.material.transparent=true

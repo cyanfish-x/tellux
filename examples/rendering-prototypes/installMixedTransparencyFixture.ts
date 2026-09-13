@@ -44,6 +44,9 @@ export function installHorizonFixture(viewer:Viewer) {
   const distance=extent*4,direction=camera.getWorldDirection(new THREE.Vector3()),position=camera.position.clone().addScaledVector(direction,distance)
   const root=[...roots][0],delta=position.clone().sub(center)
   root.position.add(delta);root.updateMatrix();root.updateMatrixWorld(true)
+  // TilesGroup deliberately omits force when updating static tile children.
+  // The fixture relocates already loaded tiles, so explicitly refresh their world transforms.
+  for (const child of root.children) child.updateMatrixWorld(true)
   const map=new THREE.DataTexture(new Uint8Array([255,0,255,255,255,255,255,255,255,255,255,255,255,0,255,255]),2,2);map.needsUpdate=true
   const wall=new THREE.Mesh(new THREE.PlaneGeometry(extent*.3,extent*.6),new THREE.MeshBasicMaterial({color:0xffffff,alphaMap:map,alphaTest:.5}))
   wall.position.copy(camera.position).addScaledVector(direction,distance*.75)

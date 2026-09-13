@@ -18,13 +18,17 @@ try {
    await frame.evaluate(()=>{const v=window.viewer;v.clock.shouldAnimate=false;v.clock.currentTime=new Date('2026-09-12T02:00:00Z');v.scene.clouds.show=false;v.controls.adjustHeight=false;v.controls.enableDamping=false})
    if(id==='gaussian-splat-3d-tiles')await frame.waitForFunction(()=>/可见瓦片：[1-9]\d*|Visible tiles: [1-9]\d*/.test(document.body.innerText)&&!window.viewer.camera.isFlying,null,{timeout:90000})
    await page.waitForTimeout(4000)
-   if(process.argv.includes('--mixed'))await frame.evaluate(async()=>{
+   if(process.argv.includes('--mixed')&&id==='gaussian-splat-3d-tiles')await frame.evaluate(async()=>{
     const {installMixedTransparencyFixture}=await import('/rendering-prototypes/installMixedTransparencyFixture.ts')
     return installMixedTransparencyFixture(window.viewer)
    })
    if(process.argv.includes('--native'))await frame.evaluate(()=>{
     const v=window.viewer,m=v.postProcessing,r=v.renderer.raw,render=v.render
-    const native=m.activeEffects.filter(p=>p!==m.sceneSubmission.opaque&&p!==m.sceneSubmission.transparent).map(p=>p===m.opaqueNormalAdapter?m.normalAdapter:p)
+    const native=m.activeEffects.map(p=>p===m.sceneSubmission.opaque
+     ?{needsSwap:false,setSize(){},render(_r,_w,read){m.frame.publish(read)}}
+     :p===m.sceneSubmission.transparent
+     ?{needsSwap:false,setSize(){},render(r,_w,read){m.entityRenderer?.renderTransparency(r,read,m.frame.require('native reference').depth)}}
+     :p===m.opaqueNormalAdapter?m.normalAdapter:p)
     v.render=function(...args){r.setEffects(native);v.atmosphere.aerialPerspectiveEffect.normalBuffer=m.normalTexture;return render.apply(this,args)}
    })
    await frame.evaluate(()=>{window.motionStart=window.viewer.camera.getState()})
@@ -54,7 +58,7 @@ try {
     await page.setViewportSize(size);await page.waitForTimeout(500)
     sizes.push(await frame.evaluate(()=>{const r=window.viewer.renderer.raw;return {width:r.domElement.width,height:r.domElement.height,glError:r.getContext().getError()}}))
    }
-   report.push({name,mixed:process.argv.includes('--mixed'),nativeControl:process.argv.includes('--native'),states,sizes,highlighted,errors});console.log(JSON.stringify(report.at(-1)))
+   report.push({name,mixed:process.argv.includes('--mixed')&&id==='gaussian-splat-3d-tiles',nativeControl:process.argv.includes('--native'),states,sizes,highlighted,errors});console.log(JSON.stringify(report.at(-1)))
   }catch(e){report.push({name,error:String(e),errors});console.error(name,e)}
   await page.close();await writeFile(resolve(out,'motion.json'),JSON.stringify(report,null,2))
  }

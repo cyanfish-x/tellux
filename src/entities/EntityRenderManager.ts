@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import type { ThreeEffectPass } from '../effects'
 import type { EntityTransparencyMode } from '../types'
 import { isSymbolOcclusionObject } from './SymbolOcclusionPass'
 import type { TransparentAtmosphere } from '../rendering/TransparentAtmosphere'
@@ -41,10 +40,7 @@ export function resolveEntityTransparencyMode(
   }
 }
 
-export class EntityRenderManager implements ThreeEffectPass {
-  enabled = true
-  needsSwap = false
-
+export class EntityRenderManager {
   private requestedMode: EntityTransparencyMode
   private resolvedMode: EntityRenderModeResult
   private readonly mainSceneHiddenObjects: Array<{ object: THREE.Object3D, visible: boolean }> = []
@@ -62,7 +58,6 @@ export class EntityRenderManager implements ThreeEffectPass {
   private atmosphere: TransparentAtmosphere | null = null
   private depthSlice: TransparentDepthSlice | null = null
   private renderingDepthRange = false
-  private composedByPipeline = false
 
   /** 设置管线共享的大气适配器。 Sets the pipeline's shared atmosphere adapter. */
   setAtmosphere(atmosphere: TransparentAtmosphere | null) {
@@ -76,19 +71,8 @@ export class EntityRenderManager implements ThreeEffectPass {
       console.warn(`[tellux] ${this.resolvedMode.fallbackReason} Falling back to sorted entity transparency.`)
     }
 
-    // 合成不采样主色（tBase）再写入另一个 buffer，而是以 alpha 混合直接叠加回
-    // readBuffer（成图）：mix(base, c, a) ≡ 普通 SrcAlpha/OneMinusSrcAlpha 混合。
-    // 本 pass 排在大气之后、就地叠加无需 swap——readBuffer 可能是大气 swap 后的
-    // targetB（无深度），但颜色本就要画在成图上；OIT 遮挡剔除所需的场景深度另从
-    // read/write 两侧探测（见 render()）。alpha 通道用 Zero/One 保持 base 的 alpha 不变。
-    //
-    // The composite does not sample the base color into another buffer; it
-    // alpha-blends straight onto readBuffer (the frame): mix(base, c, a) is exactly
-    // SrcAlpha/OneMinusSrcAlpha blending. Running after the atmosphere pass, it
-    // composites in place and stays swap-free — readBuffer may be the depth-less
-    // targetB after the atmosphere swap, but the color belongs on the frame anyway;
-    // the scene depth for OIT occlusion is probed from both read/write buffers
-    // (see render()). Alpha writes use Zero/One so the base alpha is preserved.
+    // 在显式目标上用 alpha 混合合成，保留目标 alpha，不采样主色。
+    // Alpha-blend onto the explicit target, preserving its alpha without sampling base color.
     this.compositeMaterial = new THREE.ShaderMaterial({
       name: 'TelluxEntityOITComposite',
       depthTest: false,
@@ -153,7 +137,6 @@ export class EntityRenderManager implements ThreeEffectPass {
   }
 
   beginFrame() {
-    this.composedByPipeline = false
     this.restoreMainSceneVisibility()
     if (this.mode === 'weighted-oit') {
       this.hideTransparentObjectsForMainScene()
@@ -162,24 +145,22 @@ export class EntityRenderManager implements ThreeEffectPass {
     }
   }
 
-  render(
-    renderer: THREE.WebGLRenderer,
-    writeBuffer: THREE.WebGLRenderTarget,
-    readBuffer: THREE.WebGLRenderTarget
-  ) {
-    if (this.composedByPipeline) return
+  /** 帧结束或失败时恢复可见性并解除借用深度。 Restores visibility and releases borrowed depth at frame end or failure. */
+  endFrame() {
     this.restoreMainSceneVisibility()
-    // 本 pass 排在大气之后：大气 swap 后 readBuffer 是不带深度的 targetB，深度纹理
-    // 只在 targetA 上。read/write 两侧探测取场景深度（同 GroundClamp/SymbolOcclusion），
-    // 供 OIT 遮挡剔除采样；颜色则就地叠加到 readBuffer（成图）上。
-    const depthTexture = readBuffer.depthTexture ?? writeBuffer.depthTexture ?? null
-    if (this.mode !== 'weighted-oit' || !depthTexture || !this.hasTransparentRenderableEntities()) {
-      this.needsSwap = false
-      this.options.root.visible = true
-      return
+    this.depthSlice?.endFrame()
+    this.renderingDepthRange = false
+    if (this.atmosphere) this.atmosphere.active.value = false
+    for (const material of this.derivedMaterials) {
+      if (material.userData.telluxSceneDepthUniform) material.userData.telluxSceneDepthUniform.value = null
     }
+  }
 
-    this.renderWithDepth(renderer, readBuffer, depthTexture)
+  /** 合成完整深度范围内的实体。 Composites entities across the full depth range. */
+  renderTransparency(renderer: THREE.WebGLRenderer, colorTarget: THREE.WebGLRenderTarget, sceneDepth: THREE.Texture) {
+    this.restoreMainSceneVisibility()
+    if (this.mode !== 'weighted-oit' || !this.hasTransparentRenderableEntities()) return
+    this.renderWithDepth(renderer, colorTarget, sceneDepth)
   }
 
   /**
@@ -195,7 +176,6 @@ export class EntityRenderManager implements ThreeEffectPass {
   ) {
     this.restoreMainSceneVisibility()
     if (this.mode !== 'weighted-oit' || !this.hasTransparentRenderableEntities()) return
-    this.composedByPipeline = true
     this.depthSlice ??= new TransparentDepthSlice()
     this.depthSlice.setRange(lower, upper, colorTarget.width, colorTarget.height)
     this.renderingDepthRange = true
@@ -247,7 +227,7 @@ export class EntityRenderManager implements ThreeEffectPass {
   }
 
   dispose() {
-    this.depthSlice?.endFrame()
+    this.endFrame()
     this.accumulationTarget?.dispose()
     this.revealageTarget?.dispose()
     this.compositeMesh.geometry.dispose()

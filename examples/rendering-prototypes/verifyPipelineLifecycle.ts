@@ -111,6 +111,25 @@ export async function verifyPipelineLifecycle(options: { sharedMaterial?: boolea
         }
       }
     }
+    // A real object callback failure must unwind the compositor and allow the next frame.
+    const viewer = viewers[0], renderer = viewer.renderer.raw as THREE.WebGLRenderer
+    const mesh = meshes[0], previous = mesh.onBeforeRender
+    const target = renderer.getRenderTarget(), tone = renderer.toneMapping, autoClear = renderer.autoClear
+    const failure = new Error('pipeline lifecycle injected draw failure')
+    let caught = false, resumedDraws = 0
+    mesh.onBeforeRender = () => { throw failure }
+    try { viewer.render() } catch (error) { caught = error === failure }
+    finally { mesh.onBeforeRender = previous }
+    const restored = renderer.getRenderTarget() === target && renderer.toneMapping === tone && renderer.autoClear === autoClear && mesh.visible
+    const pipelineFrame = (viewer as unknown as { postProcessing: { frame: { require(consumer: string): unknown } } }).postProcessing.frame
+    let invalidated = false
+    try { pipelineFrame.require('lifecycle after failure') } catch { invalidated = true }
+    mesh.onBeforeRender = (...args) => { resumedDraws++; previous.apply(mesh, args) }
+    try { for (let i = 0; i < 5; i++) viewer.render() } finally { mesh.onBeforeRender = previous }
+    const failureGlError = renderer.getContext().getError()
+    results.push({ injectedFailure: true, caught, restored, invalidated, resumedDraws, glError: failureGlError })
+    if (!caught || !restored || !invalidated || !resumedDraws || failureGlError) throw new Error('Frame failure recovery did not restore the pipeline')
+
     // Destroy one owner while the second is still rendering.
     viewers[0].destroy()
     for(let i=0;i<5;i++)viewers[1].render()

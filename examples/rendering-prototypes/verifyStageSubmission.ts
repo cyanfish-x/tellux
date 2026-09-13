@@ -93,6 +93,7 @@ export function verifyStageSubmission(options: { dynamic?: boolean; transmission
     ...submission.opaque,
     render(r, write, read) {
       phase = 'opaque'
+      submission.beginFrame()
       try { submission.opaque.render(r, write, read, 0, false) } finally { phase = 'native' }
     },
   }
@@ -103,7 +104,7 @@ export function verifyStageSubmission(options: { dynamic?: boolean; transmission
       try {
         submission.transparent.render(r, write, read, 0, false)
         this.needsSwap = submission.transparent.needsSwap
-      } finally { phase = 'native' }
+      } finally { submission.endFrame(); phase = 'native' }
     },
   }
   let before = 0, after = 0, shadows = 0

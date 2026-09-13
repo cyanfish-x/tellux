@@ -4,6 +4,7 @@ import type { TransparentAtmosphere } from './TransparentAtmosphere'
 import type { RenderItem } from 'three/src/renderers/webgl/WebGLRenderLists.js'
 import type { EntityRenderManager } from '../entities/EntityRenderManager'
 import { MixedTransparency } from './MixedTransparency'
+import { SceneFrameResources } from './SceneFrameResources'
 import { isSymbolOcclusionObject } from '../entities/SymbolOcclusionPass'
 
 /** 内部主场景提交阶段。 Internal main-scene submission phase. */
@@ -99,7 +100,6 @@ export function submitScenePhase(
 export class SceneSubmission {
   hasPointNormalMask = false
   atmosphereEnabled = true
-  private sceneTarget: THREE.WebGLRenderTarget | null = null
   private hasTransparent = false
   private transparentItems: RenderItem[] = []
   private readonly mixed: MixedTransparency
@@ -116,7 +116,6 @@ export class SceneSubmission {
     isRenderPass: true, needsSwap: false,
     setSize() {}, dispose() {},
     render: (renderer, _write, read) => {
-      this.sceneTarget = read
       const target = renderer.getRenderTarget()
       try {
         renderer.setRenderTarget(read)
@@ -126,6 +125,7 @@ export class SceneSubmission {
           captureTransparent: items => { this.transparentItems = items.map(item => ({ ...item })) },
           captureOpaque: items => { this.hasPointNormalMask = items.some(item => item.geometry?.hasAttribute('aPointSize')) },
         }) > 0
+        this.frame.publish(read)
       } finally { renderer.setRenderTarget(target) }
     },
   }
@@ -135,9 +135,15 @@ export class SceneSubmission {
     setSize() {}, dispose() {},
     render: (renderer, write, read) => {
       this.transparent.needsSwap = false
-      if (!this.hasTransparent) return
-      const destination = this.sceneTarget
-      if (!destination || (destination !== read && destination !== write)) {
+      const entityRoot = this.entities?.mode === 'weighted-oit' ? this.entities.prepareTransparency() : null
+      if (!this.hasTransparent && !entityRoot) return
+      const resources = this.frame.require('transparent submission')
+      if (!this.hasTransparent) {
+        this.entities!.renderTransparency(renderer, read, resources.depth)
+        return
+      }
+      const destination = resources.target
+      if (destination !== read && destination !== write) {
         throw new Error('Tellux: scene submission target is not part of the current frame')
       }
       this.transparent.needsSwap = destination !== read
@@ -160,7 +166,7 @@ export class SceneSubmission {
             transparentItems:items,
           })
         }
-        const handled = this.mixed.render(renderer,destination,this.transparentItems,root => {
+        const handled = this.mixed.render(renderer,destination,this.transparentItems,entityRoot,root => {
           const entities: RenderItem[]=[]
           const collect = (items: RenderItem[]) => {
             for (const item of items) {
@@ -175,7 +181,10 @@ export class SceneSubmission {
           })
           return entities
         },draw)
-        if(!handled)draw(this.transparentItems,destination)
+        if (!handled) {
+          draw(this.transparentItems, destination)
+          if (entityRoot) this.entities!.renderTransparency(renderer, destination, resources.depth)
+        }
       } finally {
         if (this.atmosphere) this.atmosphere.active.value = false
         this.copyMaterial.uniforms.map.value = null
@@ -189,12 +198,28 @@ export class SceneSubmission {
     private readonly scene: THREE.Scene,
     private readonly camera: THREE.Camera,
     private readonly atmosphere?: TransparentAtmosphere,
-    entities?: EntityRenderManager,
+    private readonly entities?: EntityRenderManager,
+    readonly frame = new SceneFrameResources(),
   ) { this.mixed = new MixedTransparency(entities) }
 
-  dispose() {
-    this.sceneTarget = null // Borrowed targets are disposed by WebGLOutput.
+  beginFrame() {
+    this.frame.begin()
+    this.hasTransparent = false
+    this.hasPointNormalMask = false
     this.transparentItems = []
+    this.entities?.beginFrame()
+  }
+
+  endFrame() {
+    this.entities?.endFrame()
+    this.frame.end()
+    this.hasTransparent = false
+    this.transparentItems = []
+    if (this.atmosphere) this.atmosphere.active.value = false
+  }
+
+  dispose() {
+    this.endFrame()
     this.mixed.dispose()
     this.copy.geometry.dispose()
     this.copyMaterial.dispose()

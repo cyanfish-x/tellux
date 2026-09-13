@@ -1,8 +1,32 @@
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
-import { submitScenePhase } from '../rendering/SceneSubmission'
+import { SceneSubmission, submitScenePhase } from '../rendering/SceneSubmission'
+import { EntityRenderManager } from '../entities/EntityRenderManager'
 
 describe('scene submission ownership', () => {
+  it('submits entity-only OIT once on the current color target without mixed allocations', () => {
+    const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), root = new THREE.Group()
+    const material = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 })
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), material)
+    root.add(mesh); scene.add(root)
+    const entities = new EntityRenderManager({ root, camera, requestedMode: 'weighted-oit', supportsWeightedOit: true })
+    const renderEntities = vi.spyOn(entities, 'renderTransparency').mockImplementation(() => {})
+    const submission = new SceneSubmission(scene, camera, undefined, entities)
+    const opaque = new THREE.WebGLRenderTarget(16, 8, { depthTexture: new THREE.DepthTexture(16, 8) })
+    const color = new THREE.WebGLRenderTarget(16, 8)
+    submission.beginFrame()
+    expect(mesh.visible).toBe(false)
+    submission.frame.publish(opaque) // No native transparent items were collected.
+    submission.transparent.render({} as THREE.WebGLRenderer, opaque, color, 0, false)
+    expect(renderEntities).toHaveBeenCalledTimes(1)
+    expect(renderEntities).toHaveBeenCalledWith(expect.anything(), color, opaque.depthTexture)
+    expect(submission.transparent.needsSwap).toBe(false)
+    expect(mesh.visible).toBe(true)
+    submission.endFrame()
+    expect(() => submission.frame.require('test')).toThrow('current-frame')
+    submission.dispose(); entities.dispose(); mesh.geometry.dispose(); material.dispose(); opaque.dispose(); color.dispose()
+  })
+
   it('keeps callback material edits and restores renderer hooks after a thrown draw', () => {
     const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera()
     const material = new THREE.MeshBasicMaterial({ transparent: true })

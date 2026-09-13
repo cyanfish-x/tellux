@@ -1163,6 +1163,7 @@ export class Viewer {
     disposeModelManager(this.models)
     this.hismManager.dispose()
     this.highlighter.dispose()
+    this.postProcessing?.dispose()
     this.entityRenderManager.dispose()
     this.symbolOcclusionPass?.dispose()
     this.entitiesManager.dispose()
@@ -1171,7 +1172,6 @@ export class Viewer {
     this.heightSampler.dispose()
     this.targetFlights.dispose()
 
-    this.postProcessing?.dispose()
     this.webgpuTemporalAntialias?.dispose()
     this.webgpuLensFlare?.dispose()
     this.webgpuBloom?.dispose()
@@ -1207,10 +1207,19 @@ export class Viewer {
     this.hismManager.update(deltaTime)
     updateHighlightManager(this.highlighter)
     this.entitiesManager.update(deltaTime)
-    this.entityRenderManager.beginFrame()
-    this.symbolOcclusionPass?.beginFrame()
-    this.rendererAdapter.render(this.scene.raw, this.threeCamera)
-    this.renderSymbolsAfterComposite()
+    if (this.postProcessing) {
+      this.postProcessing.renderFrame(() => this.rendererAdapter.render(this.scene.raw, this.threeCamera))
+    } else {
+      try {
+        this.entityRenderManager.beginFrame()
+        this.symbolOcclusionPass?.beginFrame()
+        this.rendererAdapter.render(this.scene.raw, this.threeCamera)
+        this.renderSymbolsAfterComposite()
+      } finally {
+        this.symbolOcclusionPass?.endFrame()
+        this.entityRenderManager.endFrame()
+      }
+    }
   }
 
   /**
@@ -1227,11 +1236,7 @@ export class Viewer {
     const pass = this.symbolOcclusionPass
     if (!pass) return
     const renderer = this.renderer.raw as TelluxWebGLRenderer
-    const draw = () => pass.renderAfterComposite(renderer)
-    if (this.postProcessing) {
-      this.postProcessing.renderWithEffectsBypassed(draw)
-      return
-    }
+    const draw = () => pass.renderAfterComposite(renderer, null)
     // 无后处理管线（如 atmosphere 关闭）时手动旁路：内置 setEffects 管线在
     // NoToneMapping + 空 effects 时才会放行直绘。
     const previousToneMapping = renderer.toneMapping

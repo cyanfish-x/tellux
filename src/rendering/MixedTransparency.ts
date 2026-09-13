@@ -24,6 +24,7 @@ export class MixedTransparency {
     renderer: THREE.WebGLRenderer,
     destination: THREE.WebGLRenderTarget,
     nativeItems: readonly RenderItem[],
+    entityRoot: THREE.Object3D | null,
     collectEntities: (root: THREE.Object3D) => RenderItem[],
     draw: DrawItems,
   ) {
@@ -31,8 +32,7 @@ export class MixedTransparency {
     const overlays = nativeItems.filter(item => !item.material.depthTest)
     const sparks = nativeItems.filter(item => item.material.depthTest && isSparkMaterial(item.material))
     const surfaces = nativeItems.filter(item => item.material.depthTest && !isSparkMaterial(item.material))
-    const root = this.entities?.mode === 'weighted-oit' ? this.entities.prepareTransparency() : null
-    const entityItems = root ? collectEntities(root) : []
+    const entityItems = entityRoot ? collectEntities(entityRoot) : []
     if (!(surfaces.length && (sparks.length || entityItems.length) || sparks.length && entityItems.length)) return false
     const handled = this.renderLayers(renderer, destination, surfaces, sparks, entityItems, draw)
     if (handled && overlays.length) draw(overlays, destination)

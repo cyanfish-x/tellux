@@ -1,0 +1,26 @@
+flowchart TD
+    A["Viewer 更新场景<br/>时钟、相机、尺寸、瓦片、模型、实体、高亮"] --> B{"渲染后端"}
+    B -->|WebGPU| W["继续现有 WebGPU 路径<br/>不使用本次 WebGL 分段实现"]
+    B -->|WebGL| P
+
+    subgraph PIPE["统一帧边界"]
+        P["帧准备<br/>准备实体与标注，保存渲染状态"] --> O
+        O["① 不透明场景提交<br/>地形、建筑、模型、点云、不透明实体<br/>保留原生 transmission 流程"] --> N
+        N["② 按需生成法线与光照标记"] --> G
+        G["③ 贴地分类<br/>把贴地线、面合成到场景颜色"] --> AT
+        AT["④ 大气与现有体积云<br/>处理不透明场景与天空"] --> E
+        E["⑤ 点云 EDL（按需）<br/>增强点云深度轮廓"] --> T
+        T["⑥ 统一透明阶段<br/>普通透明、实体 OIT、Spark"] --> FX
+        FX["⑦ 后处理（按需）<br/>Bloom → LensFlare → Outline<br/>→ SMAA → Dithering"] --> OUT
+        OUT["⑧ 最终输出转换<br/>色调映射与输出色彩空间"] --> S
+        S["⑨ 标注后合成<br/>图标、文字按场景深度遮挡"] --> END
+        END["帧结束 / 异常恢复<br/>恢复可见性、临时状态和目标<br/>本帧资源失效"]
+    end
+
+    O -.-> R["SceneFrameResources<br/>不透明目标 + 深度纹理 + 像素尺寸"]
+    R -.-> G
+    R -.-> AT
+    R -.-> E
+    R -.-> T
+    R -.-> FX
+    R -.-> S

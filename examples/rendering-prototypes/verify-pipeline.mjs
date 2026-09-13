@@ -49,8 +49,11 @@ try {
         const gl = renderer.getContext(), timer = gl.getExtension('EXT_disjoint_timer_query_webgl2')
         const debug = gl.getExtension('WEBGL_debug_renderer_info')
         const all = [...manager.activeEffects]
-        const native = all.filter(p => p !== manager.sceneSubmission.opaque && p !== manager.sceneSubmission.transparent)
-          .map(p => p === manager.opaqueNormalAdapter ? manager.normalAdapter : p)
+        const native = all.map(p => p === manager.sceneSubmission.opaque
+          ? { needsSwap:false, setSize(){}, render(_r,_w,read){ manager.frame.publish(read) } }
+          : p === manager.sceneSubmission.transparent
+          ? { needsSwap:false, setSize(){}, render(r,_w,read){ manager.entityRenderer?.renderTransparency(r,read,manager.frame.require('native reference').depth) } }
+          : p === manager.opaqueNormalAdapter ? manager.normalAdapter : p)
         const blocks = []
         const adapter = manager.transparentAtmosphere, update = adapter.update
         let currentMode = 'aerial'
@@ -63,6 +66,7 @@ try {
         }
         const setMode = mode => {
           currentMode = mode
+          manager.sceneSubmission.atmosphereEnabled = mode === 'aerial'
           renderer.setEffects(mode === 'native' ? native : all)
         }
         const render = () => {

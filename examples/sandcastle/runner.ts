@@ -11,7 +11,7 @@ import {
   WATER_AREA_RUNTIME_BINDING_NAMES,
   detectOptionalRuntimeBindings,
 } from "./runtime-bindings"
-import exampleStyles from "../styles.css?raw"
+import exampleStyles from "../styles.css?inline"
 import type { SandboxLogLevel, SandcastleRunPayload } from "./types"
 
 const STORAGE_PREFIX = "tellux:sandcastle-run:"

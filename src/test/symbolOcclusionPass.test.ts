@@ -7,7 +7,7 @@ import {
 } from '../entities/SymbolOcclusionPass'
 
 describe('SymbolOcclusionPass', () => {
-  it('hides symbols for the main render, captures depth in-chain, and draws symbols to the canvas after composite', () => {
+  it('hides symbols for the main render, receives explicit depth, and draws symbols to the canvas after composite', () => {
     const root = new THREE.Group()
     const symbolMaterial = new THREE.MeshBasicMaterial({ depthTest: true })
     const symbol = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), symbolMaterial)
@@ -20,9 +20,9 @@ describe('SymbolOcclusionPass', () => {
     root.add(symbol, nonSymbol)
 
     const pass = new SymbolOcclusionPass(root, new THREE.PerspectiveCamera())
-    const depthTexture = new THREE.Texture()
-    const readBuffer = createRenderTarget({ depthTexture, texture: new THREE.Texture() })
-    const writeBuffer = createRenderTarget({ texture: new THREE.Texture() })
+    const depthTexture = new THREE.DepthTexture(16, 16)
+    const readBuffer = createRenderTarget({ depthTexture, texture: new THREE.DepthTexture(16, 16) })
+    const writeBuffer = createRenderTarget({ texture: new THREE.DepthTexture(16, 16) })
     const rootRenderStates: Array<{ symbolVisible: boolean; nonSymbolVisible: boolean; depthTest: boolean }> = []
     const renderTargets: Array<THREE.WebGLRenderTarget | null> = []
     const renderer = createRenderer((scene) => {
@@ -40,13 +40,10 @@ describe('SymbolOcclusionPass', () => {
     expect(symbol.visible).toBe(false)
     expect(nonSymbol.visible).toBe(true)
 
-    // 链内步骤只捕获深度，不绘制。In-chain step captures depth only, no draw.
-    pass.render(renderer, writeBuffer, readBuffer)
     expect(rootRenderStates).toEqual([])
-    expect(pass.needsSwap).toBe(false)
 
     // 后合成步骤：只画 symbol，直接画到默认帧缓冲（canvas）。
-    pass.renderAfterComposite(renderer)
+    pass.renderAfterComposite(renderer, {target: readBuffer, depth: depthTexture, width: 16, height: 16})
 
     expect(rootRenderStates).toEqual([
       { symbolVisible: true, nonSymbolVisible: false, depthTest: false }
@@ -78,16 +75,15 @@ describe('SymbolOcclusionPass', () => {
     root.add(symbol)
 
     const pass = new SymbolOcclusionPass(root, new THREE.PerspectiveCamera())
-    const readBuffer = createRenderTarget({ texture: new THREE.Texture() })
-    const writeBuffer = createRenderTarget({ texture: new THREE.Texture() })
+    const readBuffer = createRenderTarget({ texture: new THREE.DepthTexture(16, 16) })
+    const writeBuffer = createRenderTarget({ texture: new THREE.DepthTexture(16, 16) })
     const render = vi.fn()
     const renderer = createRenderer(render)
 
     pass.beginFrame()
-    pass.render(renderer, writeBuffer, readBuffer)
     expect(render).not.toHaveBeenCalled()
 
-    pass.renderAfterComposite(renderer)
+    pass.renderAfterComposite(renderer, null)
 
     expect(symbol.visible).toBe(true)
     // 无深度也照常绘制，只是关闭锚点遮挡。Draws without occlusion when depth is missing.
@@ -95,7 +91,6 @@ describe('SymbolOcclusionPass', () => {
     expect(controller.setEnabled).toHaveBeenNthCalledWith(1, false)
     expect(controller.setEnabled).toHaveBeenLastCalledWith(false)
     expect(controller.setDepthTexture).toHaveBeenLastCalledWith(null, null)
-    expect(pass.needsSwap).toBe(false)
 
     pass.dispose()
   })
@@ -107,12 +102,7 @@ describe('SymbolOcclusionPass', () => {
     const renderer = createRenderer(render)
 
     pass.beginFrame()
-    pass.render(
-      renderer,
-      createRenderTarget({ texture: new THREE.Texture() }),
-      createRenderTarget({ depthTexture: new THREE.Texture(), texture: new THREE.Texture() })
-    )
-    pass.renderAfterComposite(renderer)
+    pass.renderAfterComposite(renderer, null)
 
     expect(render).not.toHaveBeenCalled()
 
