@@ -354,7 +354,14 @@ export interface ViewerFallbackAmbientLightOptions {
  * Viewer volumetric cloud options.
  */
 export interface ViewerCloudOptions {
-  /** 是否启用体积云，默认 `true`。Enables volumetric clouds. Defaults to `true`. */
+  /**
+   * 是否启用体积云，默认 `true`。初始为 `false` 时不请求云专用贴图；
+   * 大气与云首次同时开启后异步加载，并复用成功加载的贴图。
+   *
+   * Enables volumetric clouds. Defaults to `true`. Initially disabling clouds
+   * skips cloud texture requests. Textures load asynchronously when atmosphere
+   * and clouds are first enabled together, and successful loads are reused.
+   */
   show?: boolean
   /** 体积云质量档位。Volumetric cloud quality preset. */
   quality?: CloudQualityPreset

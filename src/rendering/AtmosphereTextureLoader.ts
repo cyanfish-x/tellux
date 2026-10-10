@@ -8,33 +8,40 @@ export class AtmosphereTextureLoader {
   private readonly abortController = new AbortController()
   private isDisposed = false
 
-  loadCloudTexture(url: string, applyTexture: TextureApplyCallback<THREE.Texture>) {
+  loadCloudTexture(url: string, applyTexture: TextureApplyCallback<THREE.Texture>): Promise<boolean> {
+    if (this.isDisposed) return Promise.resolve(false)
     const loader = new THREE.TextureLoader()
-    loader.load(
-      url,
-      (texture) => {
-        if (this.isDisposed) {
-          texture.dispose()
-          return
-        }
+    return new Promise<boolean>((resolve, reject) => {
+      loader.load(
+        url,
+        (texture) => {
+          if (this.isDisposed) {
+            texture.dispose()
+            resolve(false)
+            return
+          }
 
-        texture.minFilter = THREE.LinearMipMapLinearFilter
-        texture.magFilter = THREE.LinearFilter
-        texture.wrapS = THREE.RepeatWrapping
-        texture.wrapT = THREE.RepeatWrapping
-        texture.colorSpace = THREE.NoColorSpace
-        texture.needsUpdate = true
-        this.loadedTextures.push(texture)
-        applyTexture(texture)
-      },
-      undefined,
-      (error) => {
-        this.warnLoadFailure(url, error)
-      }
-    )
+          texture.minFilter = THREE.LinearMipMapLinearFilter
+          texture.magFilter = THREE.LinearFilter
+          texture.wrapS = THREE.RepeatWrapping
+          texture.wrapT = THREE.RepeatWrapping
+          texture.colorSpace = THREE.NoColorSpace
+          texture.needsUpdate = true
+          this.loadedTextures.push(texture)
+          applyTexture(texture)
+          resolve(true)
+        },
+        undefined,
+        reject
+      )
+    }).catch((error) => {
+      this.warnLoadFailure(url, error)
+      return false
+    })
   }
 
   async loadData3DTexture(url: string, size: number, applyTexture: TextureApplyCallback<THREE.Data3DTexture>) {
+    if (this.isDisposed) return false
     try {
       const response = await fetch(url, { signal: this.abortController.signal })
       if (!response.ok) {
@@ -42,7 +49,7 @@ export class AtmosphereTextureLoader {
       }
 
       const buffer = await response.arrayBuffer()
-      if (this.isDisposed) return
+      if (this.isDisposed) return false
 
       const texture = new THREE.Data3DTexture(new Uint8Array(buffer), size, size, size)
       texture.format = THREE.RedFormat
@@ -55,9 +62,10 @@ export class AtmosphereTextureLoader {
       texture.needsUpdate = true
       this.loadedTextures.push(texture)
       applyTexture(texture)
+      return true
     } catch (error) {
-      if (this.isAbortError(error)) return
-      this.warnLoadFailure(url, error)
+      if (!this.isAbortError(error)) this.warnLoadFailure(url, error)
+      return false
     }
   }
 

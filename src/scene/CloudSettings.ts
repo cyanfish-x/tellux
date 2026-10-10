@@ -180,8 +180,11 @@ export class CloudSettings {
 
   /**
    * 体积云是否显示。
+   * 云专用贴图在大气与云首次同时开启时异步加载，成功加载后复用。
    *
    * Whether volumetric clouds are shown.
+   * Cloud textures load asynchronously when atmosphere and clouds are first
+   * enabled together, and are reused after successful loading.
    */
   get show() {
     return this.visibility.show

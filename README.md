@@ -45,7 +45,7 @@ npm install @mapbox/vector-tile pbf
 - **Terrain & Imagery**：支持 Cesium Quantized Mesh 地形、XYZ、WMS、WMTS、Cesium Ion 影像，以及 GeoJSON、MVT 贴地矢量图层；影像可按向阳面 / 背光面分别设置透明度。
 - **Entity**：支持点、折线、多边形矢量图形，以及屏幕空间图标与文字标注；可贴合地形与 3D Tiles，多边形可拉伸为体块，并参与拾取与半透明合成。
 - **3D Tiles & Gaussian Splatting**：支持加载 URL 或 Cesium Ion 3D Tiles，以及 glTF / GLB 模型、动画和 3D Gaussian Splatting 场景。
-- **Atmosphere & Rendering Effects**：支持天空大气、空气透视、体积云、昼夜光照以及 SMAA、镜头光晕等高级渲染效果。
+- **Atmosphere & Rendering Effects**：支持天空大气、空气透视、体积云、昼夜光照以及 SMAA、镜头光晕等高级渲染效果。WebGL 云专用贴图按需加载，关闭云时无需请求，开启后加载并复用。
 - **Three.js 原生兼容**：与 Three.js 场景、对象、坐标转换以及自定义渲染循环保持良好互操作性。
 - **WebGL & WebGPU**：默认使用 WebGL，同时提供实验性的 WebGPU 渲染路径，支持基础地球、地形、影像、3D Tiles、模型、大气和部分后处理效果。
 

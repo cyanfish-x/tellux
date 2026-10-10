@@ -146,6 +146,8 @@ viewer.scene.atmosphere.fallbackAmbientLight.intensity = 0.5
 
 `viewer.scene.clouds` 控制程序化体积云：
 
+WebGL 下，云专用天气、湍流、形状和细节贴图在大气与云首次同时开启、且大气散射纹理就绪后加载。初始化 `scene.clouds.show: false` 时不会请求这些贴图；运行时开启后异步加载，成功加载的贴图在关闭再开启时复用，失败项可通过关闭再开启重试。大气共用的 STBN 仍正常加载。云效果对象仍在 Viewer 初始化时创建。
+
 ```ts
 viewer.scene.clouds.show = true
 viewer.scene.clouds.quality = 'medium'

@@ -150,6 +150,9 @@ export class AtmosphereManager {
   private previousEnvironmentIntensity: number | null = null
   private appliedCloudCoverage = DEFAULT_CLOUD_COVERAGE
   private cloudAltitudeFade = 1
+  private cloudsEnabled = false
+  private atmosphereTexturesReady = false
+  private readonly requestedCloudTextures = new Set<string>()
   private isDisposed = false
 
   constructor(
@@ -220,6 +223,13 @@ export class AtmosphereManager {
     if (next === this.cloudAltitudeFade) return
     this.cloudAltitudeFade = next
     this.syncCloudCoverage()
+  }
+
+  /** 云与大气都开启时才加载云专用贴图；已开始的请求在隐藏后仍保留供复用。 */
+  setCloudsEnabled(enabled: boolean) {
+    if (this.isDisposed || this.cloudsEnabled === enabled) return
+    this.cloudsEnabled = enabled
+    if (enabled && this.atmosphereTexturesReady) this.loadCloudTextures()
   }
 
   syncCloudAtmosphereComposition(cloudsVisible: boolean, atmosphereVisible: boolean) {
@@ -392,13 +402,35 @@ export class AtmosphereManager {
       this.moonLightSource.transmittanceTexture = textures.transmittanceTexture
       this.skyLightSource.irradianceTexture = textures.irradianceTexture
 
+      this.atmosphereTexturesReady = true
       this.loadStarsData(getTelluxAssetUrl('stars'))
+      this.loadSTBNTexture(getTelluxAssetUrl('stbn'))
+      if (this.cloudsEnabled) this.loadCloudTextures()
+    } catch (error) {
+      this.textureLoader.warnLoadFailure('precomputed atmosphere textures', error)
+    }
+  }
+
+  private loadCloudTextures() {
+    const request = (asset: string, load: () => Promise<boolean>) => {
+      if (this.isDisposed || this.requestedCloudTextures.has(asset)) return
+      this.requestedCloudTextures.add(asset)
+      void load().then((loaded) => {
+        if (!loaded) this.requestedCloudTextures.delete(asset)
+      })
+    }
+
+    request('localWeather', () =>
       this.textureLoader.loadCloudTexture(getTelluxAssetUrl('localWeather'), (texture) => {
         this.cloudsEffect.localWeatherTexture = texture
       })
+    )
+    request('turbulence', () =>
       this.textureLoader.loadCloudTexture(getTelluxAssetUrl('turbulence'), (texture) => {
         this.cloudsEffect.turbulenceTexture = texture
       })
+    )
+    request('shape', () =>
       this.textureLoader.loadData3DTexture(
         getTelluxAssetUrl('shape'),
         CLOUD_SHAPE_TEXTURE_SIZE,
@@ -406,6 +438,8 @@ export class AtmosphereManager {
           this.cloudsEffect.shapeTexture = texture
         }
       )
+    )
+    request('shapeDetail', () =>
       this.textureLoader.loadData3DTexture(
         getTelluxAssetUrl('shapeDetail'),
         CLOUD_SHAPE_DETAIL_TEXTURE_SIZE,
@@ -413,10 +447,7 @@ export class AtmosphereManager {
           this.cloudsEffect.shapeDetailTexture = texture
         }
       )
-      this.loadSTBNTexture(getTelluxAssetUrl('stbn'))
-    } catch (error) {
-      this.textureLoader.warnLoadFailure('precomputed atmosphere textures', error)
-    }
+    )
   }
 
   dispose() {

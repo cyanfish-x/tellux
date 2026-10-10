@@ -179,6 +179,7 @@ export class PostProcessingManager {
 
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.atmosphere.show
+    this.atmosphere.setCloudsEnabled(shouldRenderAtmosphere && this.scene.clouds.show)
     const fade = cloudAltitudeFade(currentHeight)
     this.atmosphere.applyCloudAltitudeFade(fade)
     const shouldRenderClouds =

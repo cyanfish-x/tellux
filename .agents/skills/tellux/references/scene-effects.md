@@ -105,6 +105,8 @@ viewer.scene.atmosphere.fallbackAmbientLight.intensity = 0.5
 
 ## 体积云
 
+WebGL 云专用贴图按需加载：初始关闭云时不请求天气、湍流、形状和细节贴图。大气与云同时开启、且大气散射纹理就绪后加载；关闭再开启复用成功项，仅失败项在再次开启时重试。大气共用的 STBN 仍加载，云效果对象仍在初始化时创建。
+
 > **WebGL 专属，WebGPU 模式下完全不渲染**——WebGPU 下应 `clouds.show = false`。
 
 ```ts
