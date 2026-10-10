@@ -150,14 +150,14 @@ async function mountHeroGlobe(
     ],
     camera: {
       "destination": {
-        "longitude": -172.64189026815131,
-        "latitude": 37.69373233981144,
-        "height": 12471407.212467723
+        "longitude": 78.96611913690175,
+        "latitude": 28.20950857033016,
+        "height": 11660797.98287715
       },
       "orientation": {
-        "heading": -13.479441046974207,
-        "pitch": -89.88178523486314,
-        "roll": 6.247381123153318
+        "heading": -105.80271552841911,
+        "pitch": -88.51839779588111,
+        "roll": 99.97578420733487
       }
     },
     scene: {
