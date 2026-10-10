@@ -7,7 +7,16 @@
 `local_weather.png`、`turbulence.png`、`shape.bin`、`shape_detail.bin`、`stbn.bin` 和 `stars.bin`
 放到 `examples/public/tellux/`，再在示例入口中临时设置 `tellux.baseUrl = '/tellux/'`。
 
-本地 `pnpm dev` 默认使用 **ArcGIS 卫星影像 + Cesium Ion 地形**；生产构建默认使用 **Cesium Ion Bing 航空影像 + Cesium World Terrain**。两者都不请求天地图，避免消耗额度。首页 Hero 地球不走这套 profile：NASA Blue Marble XYZ 来自 `https://data.cyanfish.site/maptiles/blue-marble/`，不加载地形。
+本地 `pnpm dev` 默认使用 **ArcGIS 卫星影像 + Cesium Ion 地形**；生产构建默认使用 **Cesium Ion Bing 航空影像 + Cesium World Terrain**。两者都不请求天地图，避免消耗额度。首页 Hero 地球不走这套 profile：NASA Blue Marble XYZ 使用随站点发布的 `/blue-marble/{z}/{x}/{y}.jpg`，不加载地形。
+
+首页的 z0–z1 共 10 张 256×256 JPEG 已纳入项目静态资源，位于 `examples/public/blue-marble/`。开发和生产都从本站加载，避免远端 `data.cyanfish.site` 请求的 502 / 响应中断影响首页。原图是 [NASA Earth Observatory 的 July Blue Marble Next Generation](https://visibleearth.nasa.gov/images/73751/july-blue-marble-next-generation-w-topography-and-bathymetry)，地球角上的署名保留。重新生成：
+
+```bash
+python -m pip install Pillow
+python scripts/generate-blue-marble-tiles.py --max-zoom 1 --out examples/public/blue-marble
+```
+
+脚本将原图缓存到 `.tmp/blue-marble-source.jpg`；已有原图时可以加 `--skip-download`。生成路径使用独立的 `/blue-marble/` 前缀，避免被 Vite 的 `/maptiles` 远端代理转发。
 
 GIS 数据源集中在 `examples/map-sources.config.ts`：改 `localMapSourceProfile` 后刷新即可切换本地示例；改 `productionMapSourceProfile` 后重新构建即可切换线上。
 

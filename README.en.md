@@ -60,6 +60,8 @@ Tellux is a runtime and rendering engine for 3D Earth apps. It does not bind to 
 - glTF / GLB models
 - 3D Gaussian Splatting scenes
 
+The example site's homepage uses NASA Blue Marble z0–z1 tiles bundled with the site. See [examples/README.md](examples/README.md) for tile generation and map source configuration.
+
 ## 🧩 Architecture
 
 Tellux is not a simple globe widget; it is an engine layer for 3D Earth applications.

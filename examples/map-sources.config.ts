@@ -25,33 +25,23 @@ export const CESIUM_ION_WORLD_TERRAIN_ASSET_ID = 1
 export const CESIUM_ION_BING_AERIAL_ASSET_ID = 2
 
 /**
- * 首页 Hero 地球：NASA Blue Marble XYZ（EPSG:4326，z0–z1），托管在
- * `data.cyanfish.site`。生产直连；本地 `pnpm dev` 走 Vite `/maptiles` 代理
- * 并改写 Referer，避开 CORS / Hotlink。Hero 相机在 ~1.2 万 km，z0–z1 足够；
- * 更高层级会把 Vite 代理打满，localhost 的 6 条 HTTP/1.1 连接被上游挂起占死。
+ * 首页 Hero 地球：NASA Blue Marble XYZ（EPSG:4326，z0–z1）。10 张瓦片
+ * 放在 `examples/public/blue-marble/`，开发和生产都从本站静态目录加载。
+ * 独立的 `/blue-marble/` 路径避开 `/maptiles` 远端代理，避免上游 502
+ * 或响应中断阻塞首页。Hero 相机在 ~1.2 万 km，z0–z1 足够。
  *
- * Homepage hero globe: NASA Blue Marble XYZ (EPSG:4326, z0–z1) hosted on
- * `data.cyanfish.site`. Production uses the absolute origin; local `pnpm dev`
- * goes through the Vite `/maptiles` proxy with a rewritten Referer to satisfy
- * CORS and Hotlink Protection. The hero camera sits at ~12,000 km, so z0–z1
- * is enough; higher zooms flood the Vite proxy and stall localhost's 6 HTTP/1.1
- * connections when the origin hangs.
+ * Homepage hero globe: NASA Blue Marble XYZ (EPSG:4326, z0–z1). The ten tiles
+ * in `examples/public/blue-marble/` are served by the site in both development
+ * and production. The `/blue-marble/` path bypasses the remote `/maptiles`
+ * proxy, avoiding upstream 502s and incomplete responses. The hero camera
+ * sits at ~12,000 km, so z0–z1 is enough.
  */
-export const NASA_BLUE_MARBLE_TILE_ORIGIN = "https://data.cyanfish.site"
 export const NASA_BLUE_MARBLE_TILE_PATH =
-  "/maptiles/blue-marble/{z}/{x}/{y}.jpg"
-
-export function resolveNasaBlueMarbleTileUrl(
-  isDevelopment = import.meta.env.DEV
-): string {
-  return isDevelopment
-    ? NASA_BLUE_MARBLE_TILE_PATH
-    : `${NASA_BLUE_MARBLE_TILE_ORIGIN}${NASA_BLUE_MARBLE_TILE_PATH}`
-}
+  "/blue-marble/{z}/{x}/{y}.jpg"
 
 export const NASA_BLUE_MARBLE_IMAGERY_SOURCE = {
   type: "xyz" as const,
-  url: resolveNasaBlueMarbleTileUrl(),
+  url: NASA_BLUE_MARBLE_TILE_PATH,
   projection: "EPSG:4326" as const,
   levels: 2,
   tileDimension: 256,

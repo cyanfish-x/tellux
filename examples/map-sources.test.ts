@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest"
+import { readFileSync } from "node:fs"
 import { createExampleMapServiceConfig, resolveMapSourceProfile } from "./map-sources"
 import {
   ARCGIS_WORLD_IMAGERY_URL,
   NASA_BLUE_MARBLE_IMAGERY_SOURCE,
-  NASA_BLUE_MARBLE_TILE_ORIGIN,
   NASA_BLUE_MARBLE_TILE_PATH,
-  resolveNasaBlueMarbleTileUrl,
 } from "./map-sources.config"
 
 const baseOptions = {
@@ -51,21 +50,36 @@ describe("resolveMapSourceProfile", () => {
 })
 
 describe("NASA_BLUE_MARBLE_IMAGERY_SOURCE", () => {
-  it("uses the data.cyanfish.site XYZ template in production", () => {
-    expect(resolveNasaBlueMarbleTileUrl(false)).toBe(
-      `${NASA_BLUE_MARBLE_TILE_ORIGIN}${NASA_BLUE_MARBLE_TILE_PATH}`
+  it("loads homepage tiles from the site without the remote maptiles proxy", () => {
+    expect(NASA_BLUE_MARBLE_IMAGERY_SOURCE.url).toBe(
+      "/blue-marble/{z}/{x}/{y}.jpg"
     )
-    expect(resolveNasaBlueMarbleTileUrl(true)).toBe(NASA_BLUE_MARBLE_TILE_PATH)
   })
 
   it("is geographic XYZ at z0–z1 for the homepage globe", () => {
     expect(NASA_BLUE_MARBLE_IMAGERY_SOURCE).toMatchObject({
       type: "xyz",
-      url: resolveNasaBlueMarbleTileUrl(),
+      url: NASA_BLUE_MARBLE_TILE_PATH,
       projection: "EPSG:4326",
       levels: 2,
       tileDimension: 256,
     })
+  })
+
+  it("ships every JPEG needed by the configured geographic tile pyramid", () => {
+    for (let z = 0; z < NASA_BLUE_MARBLE_IMAGERY_SOURCE.levels; z++) {
+      for (let x = 0; x < 2 ** (z + 1); x++) {
+        for (let y = 0; y < 2 ** z; y++) {
+          const path = NASA_BLUE_MARBLE_TILE_PATH
+            .replace("{z}", String(z))
+            .replace("{x}", String(x))
+            .replace("{y}", String(y))
+          const jpeg = readFileSync(new URL(`./public${path}`, import.meta.url))
+          expect(jpeg.subarray(0, 2).toString("hex"), path).toBe("ffd8")
+          expect(jpeg.subarray(-2).toString("hex"), path).toBe("ffd9")
+        }
+      }
+    }
   })
 })
 

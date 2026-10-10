@@ -153,6 +153,8 @@ const threeCam = viewer.camera.raw         // 底层 THREE.PerspectiveCamera
 
 全部通过 `viewer.overlays` 管理。`add()` 返回图层句柄，可链式调用。
 
+仓库示例站首页通过 `examples/map-sources.config.ts` 的 `NASA_BLUE_MARBLE_IMAGERY_SOURCE` 加载本站 `/blue-marble/{z}/{x}/{y}.jpg`（`EPSG:4326`，`levels: 2`，256px）。z0–z1 共 10 张瓦片随 `examples/public/blue-marble/` 发布；首页不依赖远端 `/maptiles` 代理，也不走独立示例的 GIS profile。切瓦命令见 `examples/README.md`。
+
 ### 数据源（`source.type`）
 
 | type | 适用 | 关键字段 |

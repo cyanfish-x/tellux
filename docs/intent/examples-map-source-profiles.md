@@ -9,7 +9,7 @@
 - Why now: 个人天地图 token 额度太少，线上访客一多很快用完；匿名 ArcGIS World Imagery 瓦片也不符合 Esri 条款，所以生产改走带 token 的 Cesium Ion 影像和地形
 - Success: 生产构建走 `cesiumIon` 档；改 `productionMapSourceProfile` 再构建就能切回 `tianditu` 或 `local`
 - Constraint: catalog 可补 Cesium Ion 影像零件，工厂只加对应分支；不把 profile 做成环境变量
-- Out of scope: 不改引擎默认数据源、不改本地 `local` 档、不动 `data-sources` 这种本身就是天地图能力演示的示例。**首页 Hero 地球除外**：不走本 profile，固定 NASA Blue Marble XYZ（`https://data.cyanfish.site/maptiles/blue-marble/`，无地形）。
+- Out of scope: 不改引擎默认数据源、不改本地 `local` 档、不动 `data-sources` 这种本身就是天地图能力演示的示例。**首页 Hero 地球除外**：不走本 profile，固定 NASA Blue Marble XYZ（本站 `/blue-marble/{z}/{x}/{y}.jpg`，z0–z1，无地形）。瓦片在 `examples/public/blue-marble/`，开发和生产随站点提供，避免远端请求的 502 / 响应中断影响首页。
 
 ## 做法
 

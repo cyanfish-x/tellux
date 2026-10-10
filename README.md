@@ -60,6 +60,8 @@ Tellux 是面向三维地球应用的运行时与渲染引擎，不绑定特定�
 - glTF / GLB 三维模型
 - 3D Gaussian Splatting 场景数据
 
+示例站首页使用随站点发布的 NASA Blue Marble z0–z1 静态瓦片；本地生成和图源配置见 [examples/README.md](examples/README.md)。
+
 ## 🧩 架构
 
 Tellux 并不是一个简单的地球组件，而是一个面向三维地球应用的引擎层。
