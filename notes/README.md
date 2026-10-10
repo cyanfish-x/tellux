@@ -21,6 +21,7 @@
 | 正在做什么 | 先读哪里 | 何时继续展开 |
 | --- | --- | --- |
 | 调整模块职责、装配或销毁 | [项目架构](architecture/项目架构.md) | 涉及具体渲染、采样或状态所有权时读对应专题 |
+| 实施 Viewer 统一事件与首次画面生命周期 | [生命周期实施计划](decisions/Viewer生命周期与统一事件实施计划.md) | 2026-10-10 已确认设计、尚未实现；含首页与云贴图优化的换电脑接续记录 |
 | 使用或修改公开 API | [0.3 迁移指南](../docs/guide/migration-0.3.md)、[API 文档](../docs/api/viewer.md) | 要理解舍弃旧 API 的理由时读 [稳定公开面设计背景](decisions/API稳定版设计决策.md) |
 | 修改时间、Timeline 或昼夜联动 | [Clock 决策](decisions/Clock统一场景时钟.md) | 光照问题继续读 [光照指南](../docs/guide/lighting.md) 与下方渲染决策 |
 | 排查高度结果、最高细节或卡顿 | [采样实现链路](architecture/sampleHeightMostDetailed实现链路.md) | 调度问题读 [采样抢占渲染](engineering/高度采样更新抢占渲染循环坑点.md) |
