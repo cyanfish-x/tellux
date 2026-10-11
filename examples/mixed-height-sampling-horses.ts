@@ -266,6 +266,10 @@ async function buildHorseHerd(
   const matrix = new THREE.Matrix4()
   const scaleMatrix = new THREE.Matrix4()
   const color = new THREE.Color()
+  const rtcHandle = tellux.applyRTCInstancing(
+    instancedMesh,
+    viewer.hism.rtcUniforms
+  )
 
   sampledPlacements.forEach(({ placement, height }, index) => {
     viewer.cartographicToMatrix4(
@@ -275,12 +279,11 @@ async function buildHorseHerd(
     )
     scaleMatrix.makeScale(placement.scale, placement.scale, placement.scale)
     matrix.multiply(scaleMatrix)
-    instancedMesh.setMatrixAt(index, matrix)
+    tellux.setRTCMatrixAt(instancedMesh, index, matrix)
     color.setHSL(placement.colorHue / 360, 0.46, 0.64)
     instancedMesh.setColorAt(index, color)
   })
 
-  instancedMesh.instanceMatrix.needsUpdate = true
   if (instancedMesh.instanceColor) {
     instancedMesh.instanceColor.needsUpdate = true
   }
@@ -311,6 +314,7 @@ async function buildHorseHerd(
     dispose() {
       viewer.scene.raw.remove(group)
       mixer.stopAllAction()
+      rtcHandle.dispose()
       geometry.dispose()
       disposeMaterial(material)
       instancedMesh.morphTexture?.dispose()
