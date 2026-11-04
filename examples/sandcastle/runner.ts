@@ -154,13 +154,14 @@ async function executeExampleScript(source: string) {
     ? await import('../example-panel-leva') : null
   const symbolPanelModule = /\bsetupSymbolPanel\b/.test(source)
     ? await import('../setupSymbolPanel') : null
-  const prototypeModule = /\bstartRenderingPrototype\b/.test(source)
+  // 渲染实验 helper 只随开发服务加载，生产构建不打包（见 experimental-examples.ts）。
+  const prototypeModule = import.meta.env.DEV && /\bstartRenderingPrototype\b/.test(source)
     ? await import('../rendering-prototypes/startRenderingPrototype') : null
-  const refractionModule = /\bstartRefractionMedium\b/.test(source)
+  const refractionModule = import.meta.env.DEV && /\bstartRefractionMedium\b/.test(source)
     ? await import('../rendering-prototypes/startRefractionMedium') : null
-  const coverageModule = /\bstartMediumCoverage\b/.test(source)
+  const coverageModule = import.meta.env.DEV && /\bstartMediumCoverage\b/.test(source)
     ? await import('../rendering-prototypes/startMediumCoverage') : null
-  const mediumModule = /\bstartMediumIntegration\b/.test(source)
+  const mediumModule = import.meta.env.DEV && /\bstartMediumIntegration\b/.test(source)
     ? await import('../rendering-prototypes/startMediumIntegration') : null
   const sandcastleImportMeta = {
     env: { ...import.meta.env },

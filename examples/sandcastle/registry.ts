@@ -1,6 +1,7 @@
 import { messages } from "../i18n/messages"
 import type { LocalizedText } from "../i18n"
 import type { SandcastleExample } from "./types"
+import { isExperimentalExample } from "../experimental-examples"
 
 const htmlModules = {
   ...import.meta.glob("../*.html", {
@@ -232,6 +233,11 @@ function createExample(path: string, html: string): SandcastleExample | null {
   if (excludedHtmlFiles.has(id)) {
     return null
   }
+  // 实验页只在开发服务中展示；生产构建不包含其 HTML 入口。
+  const experimental = isExperimentalExample(id)
+  if (experimental && !import.meta.env.DEV) {
+    return null
+  }
 
   const scriptPath = findScriptPath(path, html)
   const javascript = getScriptSource(scriptPath)
@@ -248,6 +254,7 @@ function createExample(path: string, html: string): SandcastleExample | null {
     title,
     ...(order === undefined ? {} : { order }),
     ...(thumbnail === undefined ? {} : { thumbnail }),
+    ...(experimental ? { experimental } : {}),
     category: categoryById[id] ?? "Example",
     description,
     tags: getTags(

@@ -178,7 +178,7 @@ const viewer = new tellux.Viewer(container, {
 
 2026-09-12 已调整计划：用户目标是遮挡正确、性能良好，优先复用上游；A1 联合积分是参考研究，A2 新增折射不在本次范围，A3 按实际算法依赖引用。旧 A1–A3 不再是实施前置，不能将实验 helper 当成应用开发或核心重构的默认路线。当前范围见 `notes/decisions/统一场景渲染与大气透明合成架构.md`。
 
-`examples/rendering-stages.ts`、`rendering-splat-atmosphere.ts`、`rendering-cloud-transparency.ts` 是 WebGL Sandcastle 实验。使用说明见 `docs/guide/rendering-prototypes.md`。实验 helper 访问内部管线并注入 shader，不能作为公开应用 API 范例；这些原型本身不提供云穿插或跨渲染器统一排序。
+`examples/rendering-stages.ts`、`rendering-splat-atmosphere.ts`、`rendering-cloud-transparency.ts` 是 WebGL Sandcastle 实验。使用说明见 `docs/guide/rendering-prototypes.md`。所有 `rendering-*` 实验页登记在 `examples/experimental-examples.ts`，只由开发服务提供，生产构建不含其入口、源码与 helper。实验 helper 访问内部管线并注入 shader，不能作为公开应用 API 范例；这些原型本身不提供云穿插或跨渲染器统一排序。
 
 2026-09-13 阶段 0 复验入口为 `examples/rendering-prototypes/verify-stages.mjs`，需已运行的 Vite 开发服务。它包含 Three.js 材质组／深度／阴影／回调的小场景正负对照和真实入口观测；执行成功不等于视觉或性能验收。`withSubmissionState` 只供实验，不是应用 API，也不承诺动态回调、transmission 和跨渲染器排序。
 

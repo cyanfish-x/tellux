@@ -111,7 +111,7 @@ Cesium Ion is an optional data service. Tellux APIs support both self-hosted URL
 
 ## 🛠️ Development
 
-[Rendering boundary experiments](docs/guide/rendering-prototypes.md): three WebGL Sandcastle prototypes for staged rendering, splat aerial perspective, and cloud/transparency composition. These are not stable APIs.
+[Rendering boundary experiments](docs/guide/rendering-prototypes.md): WebGL Sandcastle experiment pages for staged rendering, splat aerial perspective, cloud/transparency composition, and the A1–A3 medium studies. They are served only by local `pnpm dev`, are not deployed with the site, and are not stable APIs.
 
 Stage 0 adds GPU positive and negative controls for native material groups, depth, shadows, and callbacks, plus standalone/Sandcastle baseline capture. These checks do not establish production pipeline performance or correct cloud occlusion.
 

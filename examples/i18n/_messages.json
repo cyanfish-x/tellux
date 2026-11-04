@@ -483,6 +483,10 @@
     "Running example...",
     "Running example..."
   ],
+  "sandcastle.card.experimental": [
+    "实验",
+    "Experimental"
+  ],
   "sandcastle.registry.defaultDescription": [
     "完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。",
     "Full-page example. Edit JavaScript and HTML/CSS, then run again."

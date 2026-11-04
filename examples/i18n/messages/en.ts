@@ -122,6 +122,7 @@ export const en: MessageTable = {
   'sandcastle.console.clear': 'Clear',
   'sandcastle.console.title': 'Console',
   'sandcastle.status.running': 'Running example...',
+  'sandcastle.card.experimental': 'Experimental',
   'sandcastle.registry.defaultDescription': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',
   'example.basic.registry.title': '3D Globe',
   'example.basic.registry.description': 'Full-page example. Edit JavaScript and HTML/CSS, then run again.',

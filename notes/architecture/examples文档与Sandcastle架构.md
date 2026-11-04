@@ -104,6 +104,12 @@ Sandcastle 是一个可编辑、可运行示例的交互页面，设计上分成
 
 `blank` 示例作为默认隐藏示例使用，不出现在普通示例列表中，但可作为 Sandcastle 初始空白场景。
 
+实验示例登记在 `examples/experimental-examples.ts` 的 `EXPERIMENTAL_EXAMPLE_IDS`，这是唯一名单：
+
+- 开发服务：照常提供独立页，Sandcastle 卡片显示“实验 / Experimental”角标（`sandcastle.card.experimental`）。
+- 生产构建：不列为 `htmlInputs`；registry 在 `!import.meta.env.DEV` 时跳过；`examples/vite.config.ts` 的 `omitExperimentalExampleSourcesPlugin` 把它们的 `?raw` 源码替换为空串；runner 对 `rendering-prototypes/start*` helper 的动态 import 也受 `import.meta.env.DEV` 约束。线上 `?example=<实验 id>` 回落到默认示例，独立页 URL 由 preview/托管回退到首页。
+- 依赖开发服务的 `rendering-prototypes/verify-*.mjs` 不受影响；不要用 `pnpm preview` 跑这些实验页。
+
 新增普通示例时，通常只需要新增一组 `examples/<id>.html` 和 `examples/<id>.ts`，并在必要时更新：
 
 - `examples/vite.config.ts` 的 `htmlInputs`

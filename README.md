@@ -111,7 +111,7 @@ Cesium Ion 是可选的数据服务；Tellux 的地形、影像和 3D Tiles API 
 
 ## 🛠️ 开发
 
-[渲染管线边界实验](docs/guide/rendering-prototypes.md)：三个 WebGL Sandcastle 原型，分别检查分阶段绘制、高斯空气透视、云与透明穿插；不属于稳定 API。
+[渲染管线边界实验](docs/guide/rendering-prototypes.md)：WebGL Sandcastle 实验页，检查分阶段绘制、高斯空气透视、云与透明穿插及 A1–A3 介质实验；只在本地 `pnpm dev` 中提供，不随站点部署，不属于稳定 API。
 
 阶段 0 已加入原生材质组、深度、阴影与回调的 GPU 正负对照，以及独立页／Sandcastle 的真实入口基线脚本；小场景验证不代表正式管线或云遮挡已完成。
 

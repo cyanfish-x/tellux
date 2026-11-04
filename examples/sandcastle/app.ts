@@ -700,7 +700,9 @@ function renderGallery(examples: SandcastleExample[]) {
     button.type = "button"
     button.dataset.exampleId = example.id
     button.toggleAttribute("data-active", example.id === activeExample?.id)
+    button.toggleAttribute("data-experimental", example.experimental === true)
     button.innerHTML = `
+      ${example.experimental ? `<span class="sandcastle-card__badge">${t("sandcastle.card.experimental")}</span>` : ""}
       <span class="sandcastle-card__thumb" aria-hidden="true"></span>
       <span class="sandcastle-card__body">
         <span class="sandcastle-card__category">${example.category}</span>
