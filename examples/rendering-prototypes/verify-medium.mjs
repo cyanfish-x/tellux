@@ -20,7 +20,7 @@ function assertReport(report) {
   if (!composition || Object.values(composition).some(row => row.nonFinite || row.referenceEnergy <= 0) || composition.centroid.alphaFromOptimized > 1e-6) {
     throw new Error('Cloud composition reference invalid or centroid changed opacity')
   }
-  for (const name of ['sampleOptimization', 'parameterFallback']) {
+  for (const name of ['sampleOptimization', 'parameterFallback', ...Object.keys(composition).filter(key => key.startsWith('phase') && key.endsWith('-optimized'))]) {
     if (!composition[name] || composition[name].max > 1e-4 || composition[name].alphaMax > 1e-4 || composition[name].p95 > 1e-6) throw new Error(`Sampling equivalence regression: ${name}`)
   }
   // Regression limits for this fixed fixture, not a declaration of physical accuracy.

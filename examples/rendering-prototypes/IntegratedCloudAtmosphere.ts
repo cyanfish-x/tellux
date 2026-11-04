@@ -82,12 +82,10 @@ export function skipErodedCloudSamples(shader: string): string {
   `)
 }
 
-/** 特化恒等天气幂与无指数密度剖面，运行时保留通用路径。 Specialize identity weather powers and linear profiles, retaining runtime fallbacks. */
+/** 特化无指数密度剖面，天气幂保留原浮点计算。 Specialize linear profiles while preserving upstream weather-power arithmetic. */
 export function optimizeCloudSampling(shader: string): string {
   shader = skipErodedCloudSamples(shader)
   const replacements: Array<[string, string]> = [
-    ['WeatherSample sampleWeather(', 'vec4 a1WeatherPower(vec4 value, vec4 exponent) {\n#ifdef A1_FAST_WEATHER\n  return value;\n#else\n  return pow(value, exponent);\n#endif\n}\nWeatherSample sampleWeather('],
-    ['vec4 localWeather = pow(', 'vec4 localWeather = a1WeatherPower('],
     ['vec4 getLayerDensity(const vec4 heightFraction) {', 'vec4 getLayerDensity(const vec4 heightFraction) {\n#ifdef A1_LINEAR_PROFILE\n  return densityProfile.linearTerms * heightFraction + densityProfile.constantTerms;\n#endif'],
   ]
   for (const [before, after] of replacements) {
@@ -99,10 +97,8 @@ export function optimizeCloudSampling(shader: string): string {
 
 /** 按当前 uniforms 选择等价编译分支，参数变化时自动退回通用分支。 Select equivalent compiled branches from current uniforms and restore general paths when parameters change. */
 export function syncCloudSamplingDefines(material: RawShaderMaterial) {
-  const optimized = material.fragmentShader.includes('a1WeatherPower(')
-  const weather = material.uniforms.weatherExponents.value
+  const optimized = material.fragmentShader.includes('A1_LINEAR_PROFILE')
   const profile = material.uniforms.densityProfile.value.expTerms
-  updateSamplingDefine(material, 'A1_FAST_WEATHER', optimized && weather.x === 1 && weather.y === 1 && weather.z === 1 && weather.w === 1)
   updateSamplingDefine(material, 'A1_LINEAR_PROFILE', optimized && profile.x === 0 && profile.y === 0 && profile.z === 0 && profile.w === 0)
 
 }

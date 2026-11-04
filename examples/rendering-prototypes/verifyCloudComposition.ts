@@ -53,9 +53,8 @@ export function verifyCloudComposition(renderer: THREE.WebGLRenderer, clouds: Cl
     // Scan fixed phases rather than depending on the frame when assets happened to become ready.
     const variants = {
       optimized,
-      erosion: optimized.replace('#ifdef A1_FAST_WEATHER', '#if 0').replace('#ifdef A1_LINEAR_PROFILE', '#if 0'),
-      weather: optimized.replace('#ifdef A1_LINEAR_PROFILE', '#if 0').replace('if (!any(greaterThan(density', 'if (false && !any(greaterThan(density'),
-      profile: optimized.replace('#ifdef A1_FAST_WEATHER', '#if 0').replace('if (!any(greaterThan(density', 'if (false && !any(greaterThan(density'),
+      erosion: optimized.replace('#ifdef A1_LINEAR_PROFILE', '#if 0'),
+      profile: optimized.replace('if (!any(greaterThan(density', 'if (false && !any(greaterThan(density'),
     }
     for (let phase = 0; phase < 16; phase++) {
       u.frame.value = phase
@@ -68,7 +67,7 @@ export function verifyCloudComposition(renderer: THREE.WebGLRenderer, clouds: Cl
     detail.set(-0.1, 0.5, 0, 1)
     const fallbackReference = read(baseShader)
     rows.parameterFallback = { ...difference(read(optimized), fallbackReference), alphaFromOptimized: 0 }
-    if ('A1_FAST_WEATHER' in material.defines || 'A1_LINEAR_PROFILE' in material.defines) throw new Error('Cloud specialization did not restore general path')
+    if ('A1_LINEAR_PROFILE' in material.defines) throw new Error('Cloud specialization did not restore general path')
     return rows
   } finally {
     u.frame.value = savedFrame;weather.copy(savedWeather); profile.expTerms.copy(savedTerms); profile.exponents.copy(savedExponents); detail.copy(savedDetail)

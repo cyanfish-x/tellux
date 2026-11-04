@@ -36,7 +36,7 @@ try {
     await page.screenshot({ path: resolve(directory, `${test.name}.png`) })
     await writeFile(resolve(directory, 'matrix.json'), JSON.stringify(results, null, 2))
     if (report.shaderError || !report.validation.analytic.passed || report.validation.cloudComposition.centroid.alphaFromOptimized > 1e-6 || report.validation.realMedium.rows.some(row => row.candidate.nonFinite || row.candidate.max > (row.output === 'T' ? 0.02 : 0.005))) throw Error(`Fixed-fixture regression: ${test.name}`)
-    for (const name of ['sampleOptimization', 'parameterFallback']) {
+    for (const name of ['sampleOptimization', 'parameterFallback', ...Object.keys(report.validation.cloudComposition).filter(key => key.startsWith('phase') && key.endsWith('-optimized'))]) {
       const row = report.validation.cloudComposition[name]
       if (!row || row.nonFinite || row.max > 1e-4 || row.alphaMax > 1e-4 || row.p95 > 1e-6) throw Error(`Sampling equivalence regression: ${test.name}/${name}`)
     }
