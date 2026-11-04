@@ -1,4 +1,4 @@
-export { configureWaterAreaMap, createWaterAreaDemo } from './createWaterAreaDemo'
+export { createWaterAreaDemo } from './createWaterAreaDemo'
 export { setupWaterAreaPanel } from './setupWaterAreaPanel'
 export { createTelluxPanel } from '../example-panel-leva'
 export {

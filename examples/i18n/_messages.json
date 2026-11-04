@@ -799,10 +799,6 @@
     "Cesium Ion asset id",
     "Cesium Ion asset id"
   ],
-  "example.3d-tiles.label.token": [
-    "Cesium Ion token",
-    "Cesium Ion token"
-  ],
   "example.3d-tiles.label.visible": [
     "显示 3D Tiles",
     "Show 3D Tiles"
@@ -819,14 +815,6 @@
     "移除",
     "Remove"
   ],
-  "example.3d-tiles.ph.tokenDefault": [
-    "留空使用默认 token",
-    "Leave empty to use default token"
-  ],
-  "example.3d-tiles.ph.tokenInput": [
-    "输入 Cesium Ion token",
-    "Enter Cesium Ion token"
-  ],
   "example.3d-tiles.status.loaded": [
     "{description} 已加入场景。图层 id：{id}",
     "{description} added. Layer id: {id}"
@@ -836,16 +824,16 @@
     "Enter a tileset.json URL, or set VITE_3D_TILESET_URL in .env."
   ],
   "example.3d-tiles.status.needIon": [
-    "请先输入 Cesium Ion asset id 和 token，或打开右上角设置填写 token。",
-    "Enter Cesium Ion asset id and token, or open Settings and paste a token."
+    "请打开右上角设置填写 Cesium Ion token。",
+    "Open Settings and paste a Cesium Ion token."
   ],
   "example.3d-tiles.status.switchedUrl": [
     "已切换到 URL 加载；填写 tileset.json 地址后点击“加载”。",
     "Switched to URL loading; enter tileset.json then click Load."
   ],
   "example.3d-tiles.status.switchedIon": [
-    "已切换到 Cesium Ion 加载；填写 asset id 和 token 后点击“加载”。",
-    "Switched to Cesium Ion; enter asset id and token then click Load."
+    "已切换到 Cesium Ion 加载；填写 asset id 后点击“加载”。token 使用右上角设置。",
+    "Switched to Cesium Ion; enter an asset id then click Load. The token comes from Settings."
   ],
   "example.3d-tiles.status.visibility": [
     "3D Tiles 已{state}。",
@@ -872,8 +860,8 @@
     "Enter tileset.json URL then click Load."
   ],
   "example.3d-tiles.status.promptIon": [
-    "输入 Cesium Ion asset id 和 token 后点击“加载”。",
-    "Enter Cesium Ion asset id and token then click Load."
+    "打开右上角设置填写 Cesium Ion token 后点击“加载”。",
+    "Open Settings, paste a Cesium Ion token, then click Load."
   ],
   "example.3d-tiles-picking.docTitle": [
     "Tellux 拾取与高亮",
@@ -907,25 +895,17 @@
     "移动鼠标高亮 feature，点击后锁定选择并展示属性。",
     "Hover to highlight features; click to lock selection and show properties."
   ],
-  "example.3d-tiles-picking.ph.tokenDefault": [
-    "留空使用默认 token",
-    "Leave empty to use default token"
-  ],
-  "example.3d-tiles-picking.ph.tokenInput": [
-    "输入 Cesium Ion token",
-    "Enter Cesium Ion token"
-  ],
   "example.3d-tiles-picking.status.needCreds": [
-    "请先输入 Cesium Ion asset id 和 token，或打开右上角设置填写 token。",
-    "Enter asset id and token, or open Settings and paste a token."
+    "请打开右上角设置填写 Cesium Ion token。",
+    "Open Settings and paste a Cesium Ion token."
   ],
   "example.3d-tiles-picking.status.loaded": [
     "3D Tiles 已加入场景。等待瓦片加载后移动鼠标拾取 feature。",
     "3D Tiles added. After tiles load, move the mouse to pick features."
   ],
   "example.3d-tiles-picking.status.prompt": [
-    "输入 Cesium Ion token 后点击加载；默认 asset id 对应 Cesium NYC buildings 示例。",
-    "Enter token then Load; default asset id is Cesium NYC buildings."
+    "打开右上角设置填写 token 后点击加载；默认 asset id 对应 Cesium NYC buildings 示例。",
+    "Open Settings and paste a token, then Load; default asset id is Cesium NYC buildings."
   ],
   "example.3d-tiles-picking.popup.meta": [
     "图层 {layerId} · feature {featureId}",
@@ -1039,25 +1019,17 @@
     "地图数据来源",
     "Map data attribution"
   ],
-  "example.google-photorealistic-3d-tiles.ph.tokenDefault": [
-    "留空使用设置里的 token",
-    "Leave empty to use the token from Settings"
-  ],
-  "example.google-photorealistic-3d-tiles.ph.tokenInput": [
-    "输入 Cesium Ion token",
-    "Enter Cesium Ion token"
-  ],
   "example.google-photorealistic-3d-tiles.status.needToken": [
-    "请先输入 Cesium Ion token，或打开右上角设置填写。",
-    "Enter a Cesium Ion token, or open Settings and paste one."
+    "请打开右上角设置填写 Cesium Ion token。",
+    "Open Settings and paste a Cesium Ion token."
   ],
   "example.google-photorealistic-3d-tiles.status.loaded": [
     "已通过 viewer.tilesets.add 加载城市级海量 3D Tiles 模型。",
     "City-scale 3D Tiles loaded via viewer.tilesets.add."
   ],
   "example.google-photorealistic-3d-tiles.status.prompt": [
-    "输入 Cesium Ion token 后加载城市级海量 3D Tiles 模型。",
-    "Enter Cesium Ion token to load city-scale 3D Tiles."
+    "打开右上角设置填写 token 后加载城市级海量 3D Tiles 模型。",
+    "Open Settings and paste a token to load city-scale 3D Tiles."
   ],
   "example.point-cloud-3d-tiles.docTitle": [
     "Tellux 点云 3D Tiles",
@@ -1139,10 +1111,6 @@
     "Cesium Ion terrain asset id",
     "Cesium Ion terrain asset id"
   ],
-  "example.terrain.label.ionToken": [
-    "Cesium Ion token",
-    "Cesium Ion token"
-  ],
   "example.terrain.label.enable": [
     "启用地形",
     "Enable terrain"
@@ -1163,14 +1131,6 @@
     "输入天地图 tk",
     "Enter Tianditu tk"
   ],
-  "example.terrain.ph.ionDefault": [
-    "留空使用设置里的 token",
-    "Leave empty to use the token from Settings"
-  ],
-  "example.terrain.ph.ionInput": [
-    "输入 Cesium Ion token",
-    "Enter Cesium Ion token"
-  ],
   "example.terrain.hint.template": [
     "服务模板：{url}",
     "Service template: {url}"
@@ -1180,8 +1140,8 @@
     "Enter Tianditu tk or set VITE_TIANDITU_TOKEN."
   ],
   "example.terrain.status.needIon": [
-    "请先输入 Cesium Ion terrain asset id 和 token，或打开右上角设置填写 token。",
-    "Enter Ion terrain asset id and token, or open Settings and paste a token."
+    "请打开右上角设置填写 Cesium Ion token。",
+    "Open Settings and paste a Cesium Ion token."
   ],
   "example.terrain.status.loadedTianditu": [
     "天地图 swdx 地形已通过 viewer.terrain.set 加载。",
@@ -2140,8 +2100,8 @@
     "WebGPU Water Area"
   ],
   "example.water-area.registry.description": [
-    "使用 OSM Shortbread MVT Worker 遮罩，在 Cesium Ion 地形与卫星影像上渲染水域材质。",
-    "Render water materials on Cesium Ion terrain and satellite imagery with worker-generated OSM Shortbread MVT masks."
+    "使用 OSM Shortbread MVT Worker 遮罩，在示例图源的地形与影像上渲染水域材质。",
+    "Render water materials on the example map profile's terrain and imagery with worker-generated OSM Shortbread MVT masks."
   ],
   "example.water-area.docTitle": [
     "Tellux WebGPU 水域渲染",
@@ -2214,10 +2174,6 @@
   "example.water-area.label.environmentIntensity": [
     "环境强度",
     "Environment intensity"
-  ],
-  "example.water-area.hint.tokenReload": [
-    "修改 Token 后按 Enter 重新加载案例。",
-    "Press Enter after changing the token to reload the example."
   ],
   "example.water-area.attr.aria": [
     "地图数据来源",

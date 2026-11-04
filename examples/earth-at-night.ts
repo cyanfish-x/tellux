@@ -1,12 +1,10 @@
 import tellux, { type ImageryLayerSourceOptions } from "../src"
 import { bootExampleI18n, t } from "./i18n"
 import { createTelluxPanel, type TelluxPanel } from "./example-panel-leva"
-import { CESIUM_ION_WORLD_TERRAIN_ASSET_ID } from "./map-sources.config"
-import { defaultCesiumIonToken } from "./shared"
+import { exampleMapServiceConfig, defaultCesiumIonToken } from "./shared"
 
 bootExampleI18n()
 
-const CESIUM_ION_BING_AERIAL_ASSET_ID = 2
 const CESIUM_ION_BLACK_MARBLE_ASSET_ID = 3812
 
 const container = document.querySelector("#viewer")
@@ -14,17 +12,19 @@ if (!(container instanceof HTMLElement)) {
   throw new Error("Viewer container not found.")
 }
 
-function createIonImagerySource(assetId: number): ImageryLayerSourceOptions | undefined {
+function createNightImagerySource(): ImageryLayerSourceOptions | undefined {
   if (!defaultCesiumIonToken) return undefined
   return {
     type: "cesium-ion",
-    assetId,
+    assetId: CESIUM_ION_BLACK_MARBLE_ASSET_ID,
     apiToken: defaultCesiumIonToken,
   }
 }
 
-const daySource = createIonImagerySource(CESIUM_ION_BING_AERIAL_ASSET_ID)
-const nightSource = createIonImagerySource(CESIUM_ION_BLACK_MARBLE_ASSET_ID)
+const nightSource = createNightImagerySource()
+const dayOverlays = exampleMapServiceConfig.createOverlays().map((layer, index) =>
+  index === 0 ? { ...layer, id: "day", name: "Daytime" } : layer
+)
 
 const initialClockTime = new Date()
 initialClockTime.setUTCHours(12, 0, 0, 0)
@@ -35,18 +35,9 @@ const viewer = new tellux.Viewer(container, {
     shouldAnimate: true,
     multiplier: 3600,
   },
-  terrain: defaultCesiumIonToken
-    ? {
-        type: "cesium-ion",
-        assetId: CESIUM_ION_WORLD_TERRAIN_ASSET_ID,
-        apiToken: defaultCesiumIonToken,
-        tileLoading: { enableTileSplitting: true },
-      }
-    : undefined,
+  terrain: exampleMapServiceConfig.createTerrainOptions(),
   overlays: [
-    ...(daySource
-      ? [{ id: "day", name: "Daytime", source: daySource }]
-      : []),
+    ...dayOverlays,
     ...(nightSource
       ? [
           {
@@ -167,12 +158,12 @@ const overlaySchema = () =>
         type: "hint" as const,
         value: defaultCesiumIonToken
           ? t({
-              zh: "白天 Bing 航空（Ion 2），夜光 Black Marble（Ion 3812），地形 World Terrain（Ion 1）。",
-              en: "Daytime Bing Aerial (Ion 2), night lights Black Marble (Ion 3812), World Terrain (Ion 1).",
+              zh: "白天底图和地形走示例图源配置。夜光是 Black Marble（Ion 3812）。",
+              en: "Daytime imagery and terrain follow the example map profile. Night lights are Black Marble (Ion 3812).",
             })
           : t({
-              zh: "本页只用 Cesium Ion 图源。请打开右上角设置填写 token 后刷新。",
-              en: "This page uses Cesium Ion sources only. Open Settings, paste a token, then reload.",
+              zh: "白天底图和地形走示例图源配置。夜光 Black Marble 需要右上角设置里的 Cesium Ion token，填写后刷新。",
+              en: "Daytime imagery and terrain follow the example map profile. Black Marble night lights need the Cesium Ion token in Settings; paste it and reload.",
             }),
       },
     },

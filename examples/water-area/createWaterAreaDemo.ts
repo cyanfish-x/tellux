@@ -18,16 +18,9 @@ import {
   resolveWaterAreaWaveOrigin
 } from './WaterAreaWaveFrame'
 import { disposeWaterAreaWorkerPool } from './worker/pool'
-import { CESIUM_ION_WORLD_TERRAIN_ASSET_ID } from '../map-sources.config'
-
-export const WATER_AREA_ION_TERRAIN_ASSET_ID = CESIUM_ION_WORLD_TERRAIN_ASSET_ID
-export const WATER_AREA_ION_IMAGERY_ASSET_ID =
-  import.meta.env.VITE_CESIUM_ION_IMAGERY_ASSET_ID ?? '2'
-export const WATER_AREA_IMAGERY_LAYER_ID = 'water-area-ion-imagery'
 
 export interface CreateWaterAreaDemoOptions {
   viewer: Viewer
-  apiToken: string
   show?: boolean
   appearance?: WaterAreaAppearanceOptions
   optics?: WaterAreaOpticsOptions
@@ -45,30 +38,8 @@ export interface WaterAreaDemo {
   dispose(): Promise<void>
 }
 
-export function configureWaterAreaMap(viewer: Viewer, apiToken: string): void {
-  viewer.overlays.removeAll()
-  viewer.overlays.add({
-    id: WATER_AREA_IMAGERY_LAYER_ID,
-    name: 'Cesium Ion Imagery',
-    source: {
-      type: 'cesium-ion',
-      apiToken,
-      assetId: WATER_AREA_ION_IMAGERY_ASSET_ID
-    }
-  })
-  viewer.terrain.set({
-    type: 'cesium-ion',
-    assetId: WATER_AREA_ION_TERRAIN_ASSET_ID,
-    apiToken,
-    tileLoading: {
-      enableTileSplitting: true
-    }
-  })
-}
-
 export function createWaterAreaDemo({
   viewer,
-  apiToken,
   show,
   appearance = {},
   optics = {},
@@ -77,8 +48,6 @@ export function createWaterAreaDemo({
   if (viewer.renderer.type !== 'webgpu') {
     throw new Error('Water Area requires a WebGPU viewer.')
   }
-
-  configureWaterAreaMap(viewer, apiToken)
 
   const tileset = viewer.globe.raw
   const resolvedWaveOrigin = resolveWaterAreaWaveOrigin(

@@ -23,10 +23,6 @@ const waterAreaSchema = (
   ({
     setup: {
       $: { label: t({ zh: "效果", en: "Effect" }) },
-      token: {
-        value: "",
-        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
-      },
       show: {
         value: appearance.show,
         label: t({ zh: "显示水域外观", en: "Show water appearance" }),
@@ -111,7 +107,6 @@ export type WaterAreaPanel = TelluxPanel<ReturnType<typeof waterAreaSchema>>
 
 export interface SetupWaterAreaPanelOptions {
   viewer: Viewer
-  defaultIonToken?: string
   attributionsElement: HTMLElement
   appearance?: WaterAreaAppearanceOptions
   optics?: WaterAreaOpticsOptions
@@ -126,7 +121,6 @@ export interface WaterAreaPanelHandle {
 
 export function setupWaterAreaPanel({
   viewer,
-  defaultIonToken = "",
   attributionsElement,
   appearance,
   optics,
@@ -226,22 +220,7 @@ export function setupWaterAreaPanel({
       })
     )
 
-    const tokenInput = currentPanel.getFieldElement("setup.token")
-    const onTokenKeydown = (event: KeyboardEvent) => {
-      if (event.key !== "Enter") return
-      event.preventDefault()
-      void reload()
-    }
-    if (tokenInput instanceof HTMLInputElement) {
-      tokenInput.addEventListener("keydown", onTokenKeydown)
-      cleanups.push(() => tokenInput.removeEventListener("keydown", onTokenKeydown))
-    }
-
     if (reloading) {
-      currentPanel.setFieldDisabled("setup.token", true)
-      currentPanel.setFieldDisabled("setup.show", true)
-      setOpticsControlsDisabled(currentPanel, true)
-    } else if (!defaultIonToken && !controls.setup.token.trim()) {
       currentPanel.setFieldDisabled("setup.show", true)
       setOpticsControlsDisabled(currentPanel, true)
     }
@@ -283,22 +262,8 @@ export function setupWaterAreaPanel({
 
   async function reload() {
     if (reloading) return
-    const { controls } = panel
-    const apiToken = controls.setup.token.trim() || defaultIonToken
-    if (!apiToken) {
-      panel.setFieldDisabled("setup.show", true)
-      setOpticsControlsDisabled(panel, true)
-      panel.setStatus(
-        t({
-          zh: "请输入 Cesium Ion token 后按 Enter，或打开右上角设置填写。",
-          en: "Enter a Cesium Ion token and press Enter, or open Settings and paste one.",
-        })
-      )
-      return
-    }
 
     reloading = true
-    panel.setFieldDisabled("setup.token", true)
     panel.setFieldDisabled("setup.show", true)
     setOpticsControlsDisabled(panel, true)
     try {
@@ -307,7 +272,6 @@ export function setupWaterAreaPanel({
       onDemoChange?.(null)
       activeDemo = createWaterAreaDemo({
         viewer,
-        apiToken,
         appearance: appearanceState,
         optics: opticsState,
       })
@@ -321,27 +285,12 @@ export function setupWaterAreaPanel({
       console.error(error)
     } finally {
       reloading = false
-      panel.setFieldDisabled("setup.token", false)
     }
   }
 
   renderAttributions()
 
-  void (async () => {
-    if (defaultIonToken) {
-      await reload()
-      return
-    }
-
-    panel.setFieldDisabled("setup.show", true)
-    setOpticsControlsDisabled(panel, true)
-    panel.setStatus(
-      t({
-        zh: "输入 Cesium Ion token 后按 Enter 加载 Water Area 案例。",
-        en: "Enter a Cesium Ion token and press Enter to load the Water Area example.",
-      })
-    )
-  })()
+  void reload()
 
   return {
     panel,

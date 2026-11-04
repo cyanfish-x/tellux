@@ -106,15 +106,21 @@ function createTiandituTerrainOptions(): TerrainOptions | null {
 
 function createIonTerrainOptions(): TerrainOptions | null {
   const assetId = panel?.controls.source.ionAssetId.trim() ?? ""
-  const apiToken =
-    (panel?.controls.source.ionToken.trim() || DEFAULT_ION_TOKEN) ?? ""
+  const apiToken = DEFAULT_ION_TOKEN
 
   if (!assetId || !apiToken) {
     setStatus(
-      t({
-        zh: "请先输入 Cesium Ion terrain asset id 和 token，或打开右上角设置填写 token。",
-        en: "Enter Ion terrain asset id and token, or open Settings and paste a token.",
-      })
+      t(
+        apiToken
+          ? {
+              zh: "请先输入 Cesium Ion terrain asset id。",
+              en: "Enter a Cesium Ion terrain asset id.",
+            }
+          : {
+              zh: "请打开右上角设置填写 Cesium Ion token。",
+              en: "Open Settings and paste a Cesium Ion token.",
+            }
+      )
     )
     return null
   }
@@ -142,7 +148,6 @@ function syncTerrainSourceFields(
   currentPanel.controls.visibility("source.tiandituToken", isTianditu)
   currentPanel.controls.visibility("source.tiandituHint", isTianditu)
   currentPanel.controls.visibility("source.ionAssetId", !isTianditu)
-  currentPanel.controls.visibility("source.ionToken", !isTianditu)
 }
 
 function enableSelectedTerrain() {
@@ -204,8 +209,8 @@ function getInitialStatus() {
     })
   }
   return t({
-    zh: "请配置 VITE_TIANDITU_TOKEN，或输入天地图 tk / Cesium Ion 凭据后加载。",
-    en: "Set VITE_TIANDITU_TOKEN, or enter Tianditu tk / Ion credentials.",
+    zh: "请配置 VITE_TIANDITU_TOKEN，或打开右上角设置填写 Cesium Ion token 后加载。",
+    en: "Set VITE_TIANDITU_TOKEN, or open Settings and paste a Cesium Ion token.",
   })
 }
 
@@ -238,10 +243,6 @@ const terrainSchema = () =>
           zh: "Cesium Ion terrain asset id",
           en: "Cesium Ion terrain asset id",
         }),
-      },
-      ionToken: {
-        value: "",
-        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
       },
     },
     toggle: {
@@ -301,17 +302,6 @@ function bindPanelInteractions(
     })
   )
   cleanups.push(bindTokenField(currentPanel, "source.ionAssetId", {}))
-  cleanups.push(
-    bindTokenField(currentPanel, "source.ionToken", {
-      password: true,
-      placeholder: DEFAULT_ION_TOKEN
-        ? t({
-            zh: "留空使用设置里的 token",
-            en: "Leave empty to use the token from Settings",
-          })
-        : t({ zh: "输入 Cesium Ion token", en: "Enter Cesium Ion token" }),
-    })
-  )
 
   cleanups.push(
     controls.effect(() => {

@@ -18,7 +18,7 @@
 - `localMapSourceProfile`：本地 `pnpm dev`，默认 `"local"`（ArcGIS + Ion 地形）
 - `productionMapSourceProfile`：生产构建，默认 `"cesiumIon"`（Ion Bing 航空 asset `2` + Ion 地形 asset `1`）
 
-`resolveMapSourceProfile` 按 `import.meta.env.DEV` 二选一。Cesium Ion token 由示例页 / Sandcastle 右上角设置写入 `localStorage`（`tellux:cesium-ion-token`），不读 `VITE_CESIUM_ION_TOKEN`。天地图 token 仍放 `.env` 的 `VITE_TIANDITU_TOKEN`。没有 Ion token 时不创建 Cesium Ion 影像或地形，设置面板自动打开。
+`resolveMapSourceProfile` 按 `import.meta.env.DEV` 二选一。Cesium Ion token 由示例页 / Sandcastle 右上角设置写入 `localStorage`（`tellux:cesium-ion-token`），不读 `VITE_CESIUM_ION_TOKEN`。案例面板不再单独收集这份 token。天地图 token 仍放 `.env` 的 `VITE_TIANDITU_TOKEN`。没有 Ion token 时不创建 Cesium Ion 影像或地形，设置面板自动打开。水域和昼夜地球的白天底图、地形走本 profile；昼夜地球的夜光 Black Marble（Ion 3812）是案例自己的图层，token 仍用这份全局设置。
 
 不采用环境变量读 profile。profile 是仓库策略不是密钥；本仓库没有可提交的 `.env.development` / `.env.production`，`.env.*` 还在 gitignore。组合继续写在 ts；天地图密钥继续放 `.env`，Ion token 放浏览器 localStorage。
 

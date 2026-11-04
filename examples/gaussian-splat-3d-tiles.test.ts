@@ -4,7 +4,7 @@ import ts from 'typescript'
 import * as THREE from 'three'
 
 // Execute the real example with scene/network doubles; no browser or WebGL context.
-function setup() {
+function setup(token = '') {
   class Element {}
   class Input extends Element {}
   class Tiles {
@@ -56,7 +56,7 @@ function setup() {
     CesiumIonAuthPlugin: class { constructor(options: unknown) { auth(options) } }, ImplicitTilingPlugin: class {},
     bootExampleI18n() {}, t: (value: any) => value.en,
     ExampleMessage: { error: errors },
-    defaultCesiumIonToken: '',
+    defaultCesiumIonToken: token,
     exampleMapServiceConfig: { createTerrainOptions() {}, createImagerySource() {}, createOverlays() { return [] } },
     createTelluxPanel: (factory: () => any) => {
       panel = { controls: controlsFrom(factory()), setStatus: vi.fn(), dispose() {} }
@@ -90,20 +90,23 @@ describe('Gaussian source lifecycle', () => {
     tile.events['load-model']({ scene })
     expect(h.stabilizeSplatRaycast).toHaveBeenCalledTimes(1)
   })
-  it('uses the public evaluation token only for the official asset and honors explicit credentials', async () => {
+  it('uses the public evaluation token for the official asset and the global token for other assets', async () => {
     const h = setup()
     expect(h.auth).toHaveBeenCalledWith(expect.objectContaining({ assetId: '4547222', apiToken: 'public-evaluation-test' }))
     h.panel.controls.source.kind = 'ion'
     await h.api.loadSource()
     expect(h.auth).toHaveBeenLastCalledWith(expect.objectContaining({ assetId: '4547222', apiToken: 'public-evaluation-test' }))
-    h.panel.controls.connection.token = 'explicit-test-token'
-    await h.api.loadSource()
-    expect(h.auth).toHaveBeenLastCalledWith(expect.objectContaining({ apiToken: 'explicit-test-token' }))
     h.auth.mockClear()
-    h.panel.controls.connection.token = ''
     h.panel.controls.connection.assetId = '123'
     await h.api.loadSource()
     expect(h.auth).not.toHaveBeenCalled()
+
+    const withGlobalToken = setup('global-token')
+    withGlobalToken.auth.mockClear()
+    withGlobalToken.panel.controls.connection.assetId = '123'
+    withGlobalToken.panel.controls.source.kind = 'ion'
+    await withGlobalToken.api.loadSource()
+    expect(withGlobalToken.auth).toHaveBeenCalledWith(expect.objectContaining({ assetId: '123', apiToken: 'global-token' }))
   })
   it('flies to the designed Redmond view for the ion source', () => {
     const h = setup()

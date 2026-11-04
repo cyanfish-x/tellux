@@ -187,11 +187,14 @@ async function loadSource() {
   const source = panel.controls.source.kind as SourceId
   const url = source === "ion" ? "" : panel.controls.connection.url.trim()
   const assetId = Number(panel.controls.connection.assetId)
-  const apiToken = panel.controls.connection.token.trim()
-    || (assetId === 4547222 ? CESIUM_ION_EVALUATION_TOKEN : DEFAULT_ION_TOKEN)
+  const apiToken = assetId === 4547222 ? CESIUM_ION_EVALUATION_TOKEN : DEFAULT_ION_TOKEN
   clearSource()
   if (source === "ion" && (!Number.isSafeInteger(assetId) || assetId <= 0 || !apiToken)) {
-    setStatus(t({ zh: "请输入有效 Asset ID 和 ion token，或打开右上角设置填写 token。", en: "Enter a valid asset ID and ion token, or open Settings and paste a token." }))
+    setStatus(t(
+      Number.isSafeInteger(assetId) && assetId > 0
+        ? { zh: "请打开右上角设置填写 Cesium Ion token。", en: "Open Settings and paste a Cesium Ion token." }
+        : { zh: "请输入有效 Asset ID。", en: "Enter a valid asset ID." }
+    ))
     return
   }
   if (source !== "ion" && !url) {
@@ -301,7 +304,7 @@ function frame(time: number) {
 function sourceDescription(source: SourceId) {
   if (source === "svirnas") return t({ zh: "分层 3D Tiles · 整套约 100 MiB，按需加载。", en: "Hierarchical 3D Tiles · About 100 MiB total, streamed on demand." })
   if (source === "elevator") return t({ zh: "分层 3D Tiles · 整套约 269 MiB，按需加载。", en: "Hierarchical 3D Tiles · About 269 MiB total, streamed on demand." })
-  if (source === "ion") return t({ zh: "官方 Redmond 园区 · 留空使用 CesiumJS 公开评估 token，无需填写自己的 token。仅供评估；其他资产需自行授权。", en: "Official Redmond campus · Leave token empty to use the public CesiumJS evaluation token. Evaluation only; other assets require your own access." })
+  if (source === "ion") return t({ zh: "官方 Redmond 园区 · 使用 CesiumJS 公开评估 token。仅供评估；其他资产使用右上角设置里的 token。", en: "Official Redmond campus · Uses the public CesiumJS evaluation token. Evaluation only; other assets use the token from Settings." })
   if (source === "butterfly") return t({ zh: "Spark 官方蝴蝶 · 单文件约 4 MB。放置于展示锚点，缩放至约 12 米。", en: "Official Spark butterfly · About 4 MB. Placed at a display anchor and scaled to about 12 meters." })
   return t({ zh: "支持高斯扩展的 tileset.json；普通 PLY/SPZ 请使用 Spark 单文件入口。", en: "Use a tileset.json with Gaussian extensions; use the Spark source for single files." })
 }
@@ -320,7 +323,6 @@ const splatSchema = () => ({
     $: { label: t({ zh: "连接配置", en: "Connection" }) },
     url: { value: SOURCES[INITIAL_SOURCE].url, label: "URL" },
     assetId: { value: "4547222", label: "Asset ID" },
-    token: { value: "", label: "Ion token" },
     load: { label: t({ zh: "加载 / 重试", en: "Load / Retry" }), onClick: () => { void loadSource() } },
     locate: { label: t({ zh: "定位资源", en: "Fly to source" }), onClick: flyToSource },
     remove: { label: t({ zh: "移除资源", en: "Remove" }), onClick: () => {
@@ -343,17 +345,11 @@ const splatSchema = () => ({
 
 function bindPanel(currentPanel: TelluxPanel<ReturnType<typeof splatSchema>>) {
   const { controls } = currentPanel
-  const token = currentPanel.getFieldElement("connection.token")
-  if (token instanceof HTMLInputElement) {
-    token.type = "password"
-    token.placeholder = t({ zh: "官方样例可留空", en: "Optional for the official sample" })
-  }
   let previousSource = controls.source.kind
   const sourceEffect = controls.effect(() => {
     const source = controls.source.kind as SourceId
     controls.visibility("connection.url", source !== "ion")
     controls.visibility("connection.assetId", source === "ion")
-    controls.visibility("connection.token", source === "ion")
     controls.visibility("display.detail", source !== "butterfly")
     controls.source.description = sourceDescription(source)
     controls.status.credit = source === "ion" ? "Cesium ion · Bentley Systems"

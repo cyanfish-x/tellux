@@ -34,7 +34,7 @@ export const productionMapSourceProfile = "cesiumIon"     // Cesium Ion 影像 +
 TELLUX_TIANDITU_DEV_REFERER=https://tellux.cyanfish.site/
 ```
 
-Cesium Ion token 在独立示例页和 Sandcastle 右上角齿轮里填写，写入浏览器 `localStorage`（`tellux:cesium-ion-token`），本地和生产同一条路径，不读 `VITE_CESIUM_ION_TOKEN`。没有 token 时不会请求 Cesium Ion 影像或地形，设置面板会自动打开。首页、gallery 和 Sandcastle runner iframe 不挂该设置。
+Cesium Ion token 在独立示例页和 Sandcastle 右上角齿轮里填写，写入浏览器 `localStorage`（`tellux:cesium-ion-token`），本地和生产同一条路径，不读 `VITE_CESIUM_ION_TOKEN`。案例面板不再单独收集这份 token。没有 token 时不会请求 Cesium Ion 影像或地形，设置面板会自动打开。首页、gallery 和 Sandcastle runner iframe 不挂该设置。水域、昼夜地球的白天底图和地形走上面的 profile；昼夜地球的夜光 Black Marble 是额外的 Ion 图层，3D Tiles 等案例资源也只读这份全局 token。高斯泼溅的官方 Redmond 样例使用 CesiumJS 公开评估 token。
 
 天地图密钥仍放在项目根 `.env`（模板见 `.env.example`）：
 

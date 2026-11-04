@@ -236,7 +236,7 @@ function loadIonTileset() {
 
   const assetId = panel.controls.source.ionAssetId.trim()
 
-  const apiToken = panel.controls.source.ionToken.trim() || DEFAULT_ION_TOKEN
+  const apiToken = DEFAULT_ION_TOKEN
 
 
 
@@ -244,13 +244,27 @@ function loadIonTileset() {
 
     setStatus(
 
-      t({
+      t(
 
-        zh: "请先输入 Cesium Ion asset id 和 token，或打开右上角设置填写 token。",
+        apiToken
 
-        en: "Enter Cesium Ion asset id and token, or open Settings and paste a token.",
+          ? {
 
-      })
+              zh: "请先输入 Cesium Ion asset id。",
+
+              en: "Enter a Cesium Ion asset id.",
+
+            }
+
+          : {
+
+              zh: "请打开右上角设置填写 Cesium Ion token。",
+
+              en: "Open Settings and paste a Cesium Ion token.",
+
+            }
+
+      )
 
     )
 
@@ -308,8 +322,6 @@ function syncSourceFieldState(currentPanel: TelluxPanel<ReturnType<typeof tilese
 
   currentPanel.setFieldDisabled("source.ionAssetId", isUrl)
 
-  currentPanel.setFieldDisabled("source.ionToken", isUrl)
-
 }
 
 
@@ -360,9 +372,9 @@ function getInitialStatus() {
 
     : t({
 
-        zh: "输入 Cesium Ion asset id 和 token 后点击“加载”。",
+        zh: "打开右上角设置填写 Cesium Ion token 后点击“加载”。",
 
-        en: "Enter Cesium Ion asset id and token then click Load.",
+        en: "Open Settings, paste a Cesium Ion token, then click Load.",
 
       })
 
@@ -407,14 +419,6 @@ const tilesetSchema = () =>
         value: DEFAULT_ION_ASSET_ID,
 
         label: t({ zh: "Cesium Ion asset id", en: "Cesium Ion asset id" }),
-
-      },
-
-      ionToken: {
-
-        value: "",
-
-        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
 
       },
 

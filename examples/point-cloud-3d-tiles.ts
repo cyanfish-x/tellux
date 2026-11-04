@@ -107,14 +107,21 @@ function flyToMelbourne() {
 function loadPointCloudTileset() {
   if (!panel) return
   const assetId = panel.controls.load.assetId.trim() || DEFAULT_ASSET_ID
-  const apiToken = panel.controls.load.token.trim() || DEFAULT_ION_TOKEN
+  const apiToken = DEFAULT_ION_TOKEN
 
   if (!assetId || !apiToken) {
     setStatus(
-      t({
-        zh: "请先输入 Cesium Ion asset id 和 token，或打开右上角设置填写 token。",
-        en: "Enter Cesium Ion asset id and token, or open Settings and paste a token.",
-      })
+      t(
+        apiToken
+          ? {
+              zh: "请先输入 Cesium Ion asset id。",
+              en: "Enter a Cesium Ion asset id.",
+            }
+          : {
+              zh: "请打开右上角设置填写 Cesium Ion token。",
+              en: "Open Settings and paste a Cesium Ion token.",
+            }
+      )
     )
     return
   }
@@ -180,8 +187,8 @@ function getInitialStatus() {
         en: "Point cloud 3D Tiles loaded (Tellux pointCloudShading: attenuation / EDL). Waiting for tile refinement...",
       })
     : t({
-        zh: "输入 Cesium Ion token 后加载 Melbourne Point Cloud。",
-        en: "Enter a Cesium Ion token to load Melbourne Point Cloud.",
+        zh: "打开右上角设置填写 token 后加载 Melbourne Point Cloud。",
+        en: "Open Settings and paste a token to load Melbourne Point Cloud.",
       })
 }
 
@@ -199,10 +206,6 @@ const pointCloudSchema = () =>
       assetId: {
         value: DEFAULT_ASSET_ID,
         label: t({ zh: "Cesium Ion asset id", en: "Cesium Ion asset id" }),
-      },
-      token: {
-        value: "",
-        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
       },
       loadTileset: {
         onClick: () => loadPointCloudTileset(),

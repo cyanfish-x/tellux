@@ -183,13 +183,13 @@ function scheduleAttributionUpdate() {
 }
 
 function loadGooglePhotorealisticTiles() {
-  const apiToken = panel!.controls.load.token.trim() || DEFAULT_ION_TOKEN
+  const apiToken = DEFAULT_ION_TOKEN
 
   if (!apiToken) {
     setStatus(
       t({
-        zh: "请先输入 Cesium Ion token，或打开右上角设置填写。",
-        en: "Enter a Cesium Ion token, or open Settings and paste one.",
+        zh: "请打开右上角设置填写 Cesium Ion token。",
+        en: "Open Settings and paste a Cesium Ion token.",
       })
     )
     return
@@ -228,8 +228,8 @@ function getInitialStatus() {
         en: "City-scale 3D Tiles loaded via viewer.tilesets.add.",
       })
     : t({
-        zh: "输入 Cesium Ion token 后加载城市级海量 3D Tiles 模型。",
-        en: "Enter Cesium Ion token to load city-scale 3D Tiles.",
+        zh: "打开右上角设置填写 token 后加载城市级海量 3D Tiles 模型。",
+        en: "Open Settings and paste a token to load city-scale 3D Tiles.",
       })
 }
 
@@ -237,10 +237,6 @@ const citySchema = () =>
   ({
     load: {
       $: { label: t({ zh: "加载", en: "Load" }) },
-      token: {
-        value: "",
-        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
-      },
       loadTileset: {
         onClick: () => loadGooglePhotorealisticTiles(),
         label: t({ zh: "加载 3D Tiles", en: "Load 3D Tiles" }),

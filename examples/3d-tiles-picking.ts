@@ -110,14 +110,21 @@ function clearActiveLayer() {
 function loadTileset() {
   if (!panel) return
   const assetId = panel.controls.load.assetId.trim()
-  const apiToken = panel.controls.load.token.trim() || DEFAULT_TOKEN
+  const apiToken = DEFAULT_TOKEN
 
   if (!assetId || !apiToken) {
     setStatus(
-      t({
-        zh: "请先输入 Cesium Ion asset id 和 token，或打开右上角设置填写 token。",
-        en: "Enter asset id and token, or open Settings and paste a token.",
-      })
+      t(
+        apiToken
+          ? {
+              zh: "请先输入 Cesium Ion asset id。",
+              en: "Enter a Cesium Ion asset id.",
+            }
+          : {
+              zh: "请打开右上角设置填写 Cesium Ion token。",
+              en: "Open Settings and paste a Cesium Ion token.",
+            }
+      )
     )
     return
   }
@@ -283,8 +290,8 @@ function getInitialStatus() {
         en: "3D Tiles added. After tiles load, move the mouse to pick features.",
       })
     : t({
-        zh: "输入 Cesium Ion token 后点击加载；默认 asset id 对应 Cesium NYC buildings 示例。",
-        en: "Enter token then Load; default asset id is Cesium NYC buildings.",
+        zh: "打开右上角设置填写 token 后点击加载；默认 asset id 对应 Cesium NYC buildings 示例。",
+        en: "Open Settings and paste a token, then Load; default asset id is Cesium NYC buildings.",
       })
 }
 
@@ -302,10 +309,6 @@ const pickingSchema = () =>
       assetId: {
         value: DEFAULT_ASSET_ID,
         label: t({ zh: "Cesium Ion asset id", en: "Cesium Ion asset id" }),
-      },
-      token: {
-        value: "",
-        label: t({ zh: "Cesium Ion token", en: "Cesium Ion token" }),
       },
       loadTileset: {
         onClick: () => loadTileset(),
