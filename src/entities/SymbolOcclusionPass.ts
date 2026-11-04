@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { ThreeEffectPass } from '../effects'
+import type { SceneDepthResources } from '../rendering/SceneFrameResources'
 
 const SYMBOL_OCCLUSION_KEY = 'telluxSymbolOcclusion'
 
@@ -27,29 +27,18 @@ interface MaterialDepthState {
  * 压扁（半透明边缘像素被映射得远比预期亮/暗），文字看起来膨胀、发糊、带脏边；
  * 后续 SMAA 还会把小字形再模糊一遍。
  *
- * 因此本类拆成两步：
- * 1. 作为 effects 链内的 pass（{@link render}）：只捕获场景深度纹理与其 texel 尺寸，
- *    不做任何绘制（needsSwap 恒为 false）。
- * 2. {@link renderAfterComposite}：由 Viewer 在 `renderer.render()` 完成（canvas 已是
- *    最终 sRGB 图像）后调用，绕过 effects 链直接把 symbol 子树画到默认帧缓冲。
- *    锚点遮挡仍用捕获的深度纹理在 fragment shader 里判定（全有 / 全无）。
- *
- * Symbol occlusion + post-composite draw. Symbols must be alpha-blended in display
- * color space AFTER whole-frame tone mapping (like Mapbox), otherwise AgX warps the
- * antialiased coverage ramp of glyph edges (dirty, bloated text) and SMAA smears
- * small glyphs. The in-chain pass only captures the scene depth texture;
- * renderAfterComposite draws the symbols straight to the canvas afterwards,
- * sampling that depth for all-or-nothing anchor occlusion.
+ * 管线在主绘制前隐藏标注，最终输出后调用 renderAfterComposite，并显式传入本帧深度。
+ * 标注直接以 display 色彩空间混合到 canvas，锚点使用场景深度做全有／全无遮挡。
+ * The pipeline hides symbols before the scene draw and supplies explicit current-frame depth
+ * to renderAfterComposite. Symbols blend in display space after tone mapping, using scene
+ * depth for all-or-nothing anchor occlusion. They do not participate in the effects chain.
  */
-export class SymbolOcclusionPass implements ThreeEffectPass {
-  enabled = true
-  needsSwap = false
+export class SymbolOcclusionPass {
 
   private readonly hiddenSymbols: VisibilityState[] = []
   private readonly hiddenNonSymbols: VisibilityState[] = []
   private readonly materialDepthStates: MaterialDepthState[] = []
   private readonly depthTexelSize = new THREE.Vector2(1, 1)
-  private capturedDepth: THREE.Texture | null = null
 
   constructor(
     private readonly root: THREE.Object3D,
@@ -65,20 +54,12 @@ export class SymbolOcclusionPass implements ThreeEffectPass {
     })
   }
 
-  /**
-   * effects 链内步骤：仅捕获本帧场景深度，供 {@link renderAfterComposite} 使用。
-   * In-chain step: captures this frame's scene depth for renderAfterComposite.
-   */
-  render(
-    _renderer: THREE.WebGLRenderer,
-    writeBuffer: THREE.WebGLRenderTarget,
-    readBuffer: THREE.WebGLRenderTarget
-  ) {
-    const depthOnRead = readBuffer.depthTexture ?? null
-    this.capturedDepth = depthOnRead ?? writeBuffer.depthTexture ?? null
-    const source = depthOnRead ? readBuffer : writeBuffer
-    this.depthTexelSize.set(1 / Math.max(1, source.width), 1 / Math.max(1, source.height))
-    this.needsSwap = false
+  /** 恢复本帧所有临时状态。 Restores all temporary frame state. */
+  endFrame() {
+    this.restoreHiddenSymbols()
+    this.restoreNonSymbolVisibility()
+    this.restoreMaterialDepthTests()
+    this.disableSymbolOcclusion()
   }
 
   /**
@@ -89,10 +70,10 @@ export class SymbolOcclusionPass implements ThreeEffectPass {
    * chain and tone-mapped output finished. The caller must bypass the renderer's
    * effects chain around this call.
    */
-  renderAfterComposite(renderer: THREE.WebGLRenderer) {
+  renderAfterComposite(renderer: THREE.WebGLRenderer, resources: SceneDepthResources | null) {
     this.restoreHiddenSymbols()
-    const depth = this.capturedDepth
-    this.capturedDepth = null
+    const depth = resources?.depth ?? null
+    if (resources) this.depthTexelSize.set(1 / resources.width, 1 / resources.height)
     if (!this.hasRenderableSymbols()) {
       this.disableSymbolOcclusion()
       return
@@ -115,14 +96,8 @@ export class SymbolOcclusionPass implements ThreeEffectPass {
     }
   }
 
-  setSize(_width: number, _height: number) {}
-
   dispose() {
-    this.restoreHiddenSymbols()
-    this.restoreNonSymbolVisibility()
-    this.restoreMaterialDepthTests()
-    this.disableSymbolOcclusion()
-    this.capturedDepth = null
+    this.endFrame()
   }
 
   private configureSymbolRender(depth: THREE.Texture | null) {

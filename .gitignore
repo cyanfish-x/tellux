@@ -46,8 +46,12 @@ benchmark-results/
 
 # MSDF atlas 生成脚本的中间产物
 scripts/charset.txt
+/artifacts/
 
 # Blue Marble 切瓦源图（约 27MB JPEG，不要提交）
 .tmp/
 
 
+
+# Raw validation evidence stays local; keep the former path ignored too.
+/notes/research/evidence/

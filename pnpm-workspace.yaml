@@ -1,2 +1,3 @@
 patchedDependencies:
+  3d-tiles-rendererjs-3dgs-plugin@0.1.14: patches/3d-tiles-rendererjs-3dgs-plugin@0.1.14.patch
   '@sparkjsdev/spark@2.1.0': patches/@sparkjsdev__spark@2.1.0.patch

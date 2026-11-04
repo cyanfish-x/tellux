@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { ThreeEffectPass } from '../effects'
+import type { SceneDepthResources } from './SceneFrameResources'
 
 const MASK_VERTEX = /* glsl */ `
 attribute float aPointSize;
@@ -95,13 +95,11 @@ void main() {
 /**
  * 点云 EDL pass（独立 mask + 成图加深）。
  *
- * 关键：挂在大气之后时 readBuffer 常是无深度的 targetB；旧 `Effect` 路径只绑
- * `readBuffer.depthTexture`，EDL 静默失效。本 pass 两侧探测深度、`needsSwap=false`、
- * 眼空间线性深度算轮廓（对标 Cesium 黑边观感，非像素级公式复刻）。
+ * 使用管线显式提供的深度，以眼空间线性深度差加深轮廓；保持主色目标和无交换合同。
+ * Uses explicit pipeline depth to shade eye-space depth differences, preserving the current color destination.
  */
-export class PointCloudEdlPass implements ThreeEffectPass {
+export class PointCloudEdlPass {
   enabled = true
-  needsSwap = false
 
   private readonly maskTarget: THREE.WebGLRenderTarget
   private readonly colorTemp: THREE.WebGLRenderTarget
@@ -215,20 +213,15 @@ export class PointCloudEdlPass implements ThreeEffectPass {
   render(
     renderer: THREE.WebGLRenderer,
     writeBuffer: THREE.WebGLRenderTarget,
-    readBuffer: THREE.WebGLRenderTarget
+    readBuffer: THREE.WebGLRenderTarget,
+    resources: SceneDepthResources
   ) {
-    if (!this.enabled) {
-      this.needsSwap = false
-      return
-    }
-
-    const depth = readBuffer.depthTexture ?? writeBuffer.depthTexture ?? null
-    if (!depth) {
-      this.needsSwap = false
-      return
-    }
-
-    this.setSize(readBuffer.width, readBuffer.height)
+    if (!this.enabled) return
+    const depth = resources.depth
+    // The shaded draw samples opaque depth, so use a depth-free destination when needed.
+    const destination = readBuffer.depthTexture === depth ? writeBuffer : readBuffer
+    if (destination.depthTexture === depth) throw new Error('Tellux: EDL cannot sample its depth attachment')
+    this.setSize(resources.width, resources.height)
     this.renderMask(renderer)
 
     const previousTarget = renderer.getRenderTarget()
@@ -255,15 +248,23 @@ export class PointCloudEdlPass implements ThreeEffectPass {
       this.edlMaterial.uniforms.edlRadius.value = this.radius
 
       this.fullscreenMesh.material = this.edlMaterial
-      renderer.setRenderTarget(readBuffer)
+      renderer.setRenderTarget(destination)
       renderer.render(this.fullscreenScene, this.fullscreenCamera)
+      if (destination !== readBuffer) {
+        this.fullscreenMesh.material = this.copyMaterial
+        this.copyMaterial.uniforms.tDiffuse.value = destination.texture
+        renderer.setRenderTarget(readBuffer)
+        renderer.render(this.fullscreenScene, this.fullscreenCamera)
+      }
     } finally {
       renderer.autoClear = previousAutoClear
       renderer.setClearColor(previousClearColor, previousClearAlpha)
       renderer.setRenderTarget(previousTarget)
+      this.edlMaterial.uniforms.tDepth.value = null
+      this.edlMaterial.uniforms.tDiffuse.value = null
+      this.copyMaterial.uniforms.tDiffuse.value = null
     }
 
-    this.needsSwap = false
   }
 
   dispose() {

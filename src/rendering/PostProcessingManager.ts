@@ -12,6 +12,12 @@ import { applyBloomAppearanceState } from './bloomAppearance'
 import { cloudAltitudeFade, shouldRenderCloudPass } from './cloudAltitudeFade'
 import { LightingMaskPass } from './LightingMaskPass'
 import { PointCloudEdlPass } from './PointCloudEdlEffect'
+import { SceneSubmission, submitScenePhase } from './SceneSubmission'
+import { TransparentAtmosphere } from './TransparentAtmosphere'
+import type { EntityRenderManager } from '../entities/EntityRenderManager'
+import type { SymbolOcclusionPass } from '../entities/SymbolOcclusionPass'
+import type { GroundClampPass } from './GroundClampPass'
+import { SceneFrameResources } from './SceneFrameResources'
 
 /**
  * 法线 pass 专用材质：
@@ -61,6 +67,11 @@ function createPointCloudAwareNormalMaterial() {
 }
 
 export class PostProcessingManager {
+  private readonly frame = new SceneFrameResources()
+  private frameRunning = false
+  private frameFailed = false
+  private frameError: unknown
+  private readonly guardedEffects = new WeakSet<ThreeEffectPass>()
   private readonly effectAdapters: ThreeEffectPass[] = []
   private readonly normalAdapter: ThreeEffectPass
   private readonly lightingMaskPass: LightingMaskPass
@@ -77,6 +88,10 @@ export class PostProcessingManager {
   private currentEffectsKey = ''
   private activeEffects: ThreeEffectPass[] = []
   private cloudPassActive = false
+  private readonly sceneSubmission: SceneSubmission
+  private readonly transparentAtmosphere: TransparentAtmosphere
+  private readonly opaqueNormalAdapter: ThreeEffectPass
+  private readonly normalTexture: THREE.Texture
 
   constructor(
     private readonly renderer: ThreeRendererWithEffects,
@@ -87,13 +102,16 @@ export class PostProcessingManager {
     private readonly camera: THREE.PerspectiveCamera,
     private readonly atmosphere: AtmosphereManager,
     private readonly getCurrentHeight: () => number | null,
-    private readonly entityRenderer?: ThreeEffectPass,
-    private readonly groundClampPass?: ThreeEffectPass,
-    private readonly symbolOcclusionPass?: ThreeEffectPass,
+    private readonly entityRenderer?: EntityRenderManager,
+    private readonly groundClampPass?: GroundClampPass,
+    private readonly symbolOcclusionPass?: SymbolOcclusionPass,
     outlineEffect?: OutlineEffect | null,
     private readonly getPointCloudEdlState?: () => PointCloudEdlAggregate
   ) {
+    this.transparentAtmosphere = new TransparentAtmosphere(this.atmosphere.aerialPerspectiveEffect)
+    this.sceneSubmission = new SceneSubmission(threeScene, this.camera, this.transparentAtmosphere, this.entityRenderer, this.frame)
     const normalPass = new NormalPass(threeScene, this.camera)
+    this.normalTexture = normalPass.texture
     ;(normalPass as unknown as {
       renderPass: { overrideMaterial: THREE.Material }
     }).renderPass.overrideMaterial = createPointCloudAwareNormalMaterial()
@@ -102,30 +120,44 @@ export class PostProcessingManager {
 
     this.cloudAtmosphereAdapter = new EffectPassAdapter(
       new EffectPass(this.camera, this.atmosphere.cloudsEffect, this.atmosphere.aerialPerspectiveEffect),
-      () => this.camera
+      () => this.camera, this.frame
     )
     this.atmosphereAdapter = new EffectPassAdapter(
       new EffectPass(this.camera, this.atmosphere.aerialPerspectiveEffect),
-      () => this.camera
+      () => this.camera, this.frame
     )
     this.normalAdapter = new EffectPassAdapter(normalPass, () => this.camera)
+    this.opaqueNormalAdapter = {
+      setSize: (width, height) => this.normalAdapter.setSize(width, height),
+      dispose() {},
+      render: (renderer, write, read, delta, mask) => {
+        const effect = this.atmosphere.aerialPerspectiveEffect
+        const needsNormals = this.cloudPassActive || effect.sunLight || effect.skyLight || this.sceneSubmission.hasPointNormalMask
+        effect.normalBuffer = needsNormals ? normalPass.texture : null
+        if (!needsNormals) return
+        submitScenePhase(renderer, threeScene, this.camera, 'opaque', {
+          draw: () => this.normalAdapter.render(renderer, write, read, delta, mask),
+        })
+      },
+    }
+    Object.assign(this.opaqueNormalAdapter, { needsSwap: false })
     this.lightingMaskPass = new LightingMaskPass(threeScene, this.camera)
     this.atmosphere.setLightingMaskMap(this.lightingMaskPass.texture)
     this.pointCloudEdlPass = new PointCloudEdlPass(threeScene, this.camera)
     this.bloomEffect = new BloomEffect({ mipmapBlur: true })
     this.bloomAdapter = new EffectPassAdapter(
       new EffectPass(this.camera, this.bloomEffect),
-      () => this.camera
+      () => this.camera, this.frame
     )
     this.lensFlareEffect = new LensFlareEffect()
     this.lensFlareAdapter = new EffectPassAdapter(
       new EffectPass(this.camera, this.lensFlareEffect),
-      () => this.camera
+      () => this.camera, this.frame
     )
-    this.smaaAdapter = new EffectPassAdapter(new EffectPass(this.camera, new SMAAEffect()), () => this.camera)
-    this.ditheringAdapter = new EffectPassAdapter(new EffectPass(this.camera, new DitheringEffect()), () => this.camera)
+    this.smaaAdapter = new EffectPassAdapter(new EffectPass(this.camera, new SMAAEffect()), () => this.camera, this.frame)
+    this.ditheringAdapter = new EffectPassAdapter(new EffectPass(this.camera, new DitheringEffect()), () => this.camera, this.frame)
     this.outlineAdapter = outlineEffect
-      ? new EffectPassAdapter(new EffectPass(this.camera, outlineEffect), () => this.camera)
+      ? new EffectPassAdapter(new EffectPass(this.camera, outlineEffect), () => this.camera, this.frame)
       : null
 
     this.effectAdapters.push(
@@ -133,7 +165,6 @@ export class PostProcessingManager {
       this.lightingMaskPass,
       this.cloudAtmosphereAdapter,
       this.atmosphereAdapter,
-      this.pointCloudEdlPass,
       this.bloomAdapter,
       this.lensFlareAdapter,
       this.smaaAdapter,
@@ -180,6 +211,8 @@ export class PostProcessingManager {
     const nextEffects: ThreeEffectPass[] = []
     const shouldRenderAtmosphere = this.scene.atmosphere.show
     this.atmosphere.setCloudsEnabled(shouldRenderAtmosphere && this.scene.clouds.show)
+    this.sceneSubmission.atmosphereEnabled = shouldRenderAtmosphere
+    this.transparentAtmosphere.postProcessLighting.value = this.scene.atmosphere.lighting.mode === 'post-process'
     const fade = cloudAltitudeFade(currentHeight)
     this.atmosphere.applyCloudAltitudeFade(fade)
     const shouldRenderClouds =
@@ -189,7 +222,6 @@ export class PostProcessingManager {
     this.cloudPassActive = shouldRenderClouds
     const outlineEnabled =
       Boolean(this.outlineAdapter) && this.highlight.outline.enabled
-    const entityOitEnabled = this.isEntityWeightedOitEnabled()
     const effectsKey = [
       shouldRenderAtmosphere,
       shouldRenderClouds,
@@ -200,23 +232,34 @@ export class PostProcessingManager {
       edl.enabled,
       edl.strength,
       edl.radius,
-      this.postProcess.bloom.enabled,
-      entityOitEnabled
+      this.postProcess.bloom.enabled
     ].join(':')
 
     this.atmosphere.syncCloudAtmosphereComposition(shouldRenderClouds, shouldRenderAtmosphere)
+    this.entityRenderer?.setAtmosphere(
+      shouldRenderAtmosphere ? this.transparentAtmosphere : null
+    )
     if (!forceRecompile && effectsKey === this.currentEffectsKey) return
 
     this.cloudAtmosphereAdapter.recompile?.()
     this.atmosphereAdapter.recompile?.()
 
+    // One submission contract also applies when clouds or atmosphere are toggled.
+    // Clouds retain the upstream overlay; object/cloud intersection is deferred for this version.
+    nextEffects.push(this.sceneSubmission.opaque)
     if (shouldRenderAtmosphere) {
-      nextEffects.push(this.normalAdapter)
+      nextEffects.push(this.opaqueNormalAdapter)
       nextEffects.push(this.lightingMaskPass)
     }
     if (this.groundClampPass) {
       // 贴地分类：读并集深度、渲分类几何、合成回主色。空场景时 pass 内部 no-op。
-      nextEffects.push(this.groundClampPass)
+      const pass = this.groundClampPass
+      nextEffects.push({
+        needsSwap: false, setSize: (w, h) => pass.setSize(w, h), dispose() {},
+        render: (renderer, write, read) => {
+          if (pass.enabled) pass.render(renderer, write, read, this.frame.require('ground classification'))
+        },
+      })
     }
     if (shouldRenderClouds) {
       nextEffects.push(this.cloudAtmosphereAdapter)
@@ -224,26 +267,18 @@ export class PostProcessingManager {
       nextEffects.push(this.atmosphereAdapter)
     }
     if (edl.enabled) {
-      // EDL 在大气成图之后：自定义 pass 两侧取深度，needsSwap=false，避免 Effect 绑不到深度。
-      nextEffects.push(this.pointCloudEdlPass)
+      const pass = this.pointCloudEdlPass
+      nextEffects.push({
+        needsSwap: false, setSize: (w, h) => pass.setSize(w, h), dispose() {},
+        render: (renderer, write, read) => pass.render(renderer, write, read, this.frame.require('point cloud EDL')),
+      })
     }
-    if (entityOitEnabled && this.entityRenderer) {
-      // 透明实体在大气之后合成：实体 OIT 不写入场景缓冲。排在大气前时，天空像素
-      // （深度=远平面 1.0）即便已改为按覆盖率叠在天空上，OIT 结果也不在 inputColor
-      // 里，仍会被当成纯天空。移到大气后，实体直接叠加在成图上始终清晰（与 symbol
-      // 同理）。pass 内部从 read/write 两侧探测场景深度做遮挡剔除，故 swap 后
-      // readBuffer 无深度也能正确取到 targetA 的深度。
-      nextEffects.push(this.entityRenderer)
-    }
+    nextEffects.push(this.sceneSubmission.transparent)
+
     if (this.postProcess.bloom.enabled) {
       nextEffects.push(this.bloomAdapter)
     }
-    if (this.symbolOcclusionPass) {
-      // Labels are screen-space overlays: draw them after atmosphere/cloud composition so
-      // aerial perspective does not soften glyph edges. The pass still samples scene depth
-      // for anchor occlusion and then leaves SMAA/dithering to process the final image.
-      nextEffects.push(this.symbolOcclusionPass)
-    }
+
     if (this.postProcess.lensFlare.enabled) {
       nextEffects.push(this.lensFlareAdapter)
     }
@@ -259,13 +294,54 @@ export class PostProcessingManager {
     }
 
     this.currentEffectsKey = effectsKey
-    this.activeEffects = nextEffects
-    this.renderer.setEffects(nextEffects)
+    this.activeEffects = nextEffects.map(effect => this.guardEffect(effect))
+    this.renderer.setEffects(this.activeEffects)
   }
 
-  private isEntityWeightedOitEnabled() {
-    const pass = this.entityRenderer as { mode?: string } | undefined
-    return pass?.mode === 'weighted-oit'
+  // Three's output compositor has no exception finally. Let it unwind its frame,
+  // then rethrow at our frame boundary; subsequent effects must not consume partial resources.
+  private guardEffect(effect: ThreeEffectPass): ThreeEffectPass {
+    if (this.guardedEffects.has(effect)) return effect
+    this.guardedEffects.add(effect)
+    const render = effect.render
+    const owner = this
+    effect.render = function (...args) {
+      if (owner.frameFailed) return
+      try { render.apply(this, args) } catch (error) {
+        owner.frameFailed = true
+        owner.frameError = error
+      }
+    }
+    return effect
+  }
+
+  /** 统一 WebGL 帧边界，包含输出后的标注及异常恢复。 Owns the WebGL frame, post-output symbols and failure cleanup. */
+  renderFrame(draw: () => void) {
+    if (this.frameRunning) throw new Error('Tellux: nested pipeline frames are not supported')
+    this.frameRunning = true
+    const target = this.renderer.getRenderTarget()
+    const tone = this.renderer.toneMapping, autoClear = this.renderer.autoClear
+    this.frameFailed = false
+    this.frameError = undefined
+    try {
+      this.sceneSubmission.beginFrame()
+      this.symbolOcclusionPass?.beginFrame()
+      draw()
+      if (this.frameFailed) throw this.frameError
+      if (this.symbolOcclusionPass) {
+        const resources = this.frame.require('symbol occlusion')
+        this.renderWithEffectsBypassed(() => this.symbolOcclusionPass!.renderAfterComposite(this.renderer, resources))
+      }
+    } finally {
+      this.symbolOcclusionPass?.endFrame()
+      this.sceneSubmission.endFrame()
+      this.renderer.setRenderTarget(target)
+      this.renderer.toneMapping = tone
+      this.renderer.autoClear = autoClear
+      this.frameFailed = false
+      this.frameError = undefined
+      this.frameRunning = false
+    }
   }
 
   private syncLensFlareSettings() {
@@ -307,6 +383,11 @@ export class PostProcessingManager {
 
   dispose() {
     this.renderer.setEffects(null)
+    this.symbolOcclusionPass?.endFrame()
+    this.sceneSubmission.dispose()
+    this.entityRenderer?.setAtmosphere(null)
+    this.transparentAtmosphere.dispose()
+    this.pointCloudEdlPass.dispose()
     this.effectAdapters.forEach((adapter) => adapter.dispose())
   }
 }

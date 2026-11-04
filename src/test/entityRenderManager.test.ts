@@ -115,26 +115,17 @@ describe('EntityRenderManager', () => {
       requestedMode: 'weighted-oit',
       supportsWeightedOit: true
     })
-    const renderer = {} as THREE.WebGLRenderer
-    const readBuffer = {
-      width: 1,
-      height: 1
-    } as THREE.WebGLRenderTarget
-    const writeBuffer = { width: 1, height: 1 } as THREE.WebGLRenderTarget
 
     manager.beginFrame()
-    manager.render(renderer, writeBuffer, readBuffer)
+    manager.endFrame()
 
     expect(root.visible).toBe(true)
     expect(transparentPoint.visible).toBe(true)
     manager.dispose()
   })
 
-  // 回归：实体 pass 排在大气之后，大气 swap 使 readBuffer 变成无深度的 targetB。
-  // 此时必须回退用 writeBuffer（targetA）的场景深度继续 OIT，而不是 no-op——否则
-  // 透明实体整帧消失。Regression: after the atmosphere swap the read buffer carries
-  // no depth; the pass must fall back to the write buffer's depth, not no-op.
-  it('falls back to the write buffer depth texture when the read buffer has none', () => {
+  // Color buffer swaps do not select or replace the explicit scene depth.
+  it('uses explicitly supplied scene depth when the color target has none', () => {
     const root = new THREE.Group()
     const transparentPoint = new THREE.Points(
       new THREE.BufferGeometry(),
@@ -149,11 +140,10 @@ describe('EntityRenderManager', () => {
     })
     const sceneDepth = new THREE.Texture()
     const readBuffer = { width: 1, height: 1 } as THREE.WebGLRenderTarget
-    const writeBuffer = { width: 1, height: 1, depthTexture: sceneDepth } as THREE.WebGLRenderTarget
     const renderer = createOitRenderer()
 
     manager.beginFrame()
-    manager.render(renderer, writeBuffer, readBuffer)
+    manager.renderTransparency(renderer, readBuffer, sceneDepth)
 
     expect(renderer.render).toHaveBeenCalled()
     expect(root.visible).toBe(true)

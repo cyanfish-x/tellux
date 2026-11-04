@@ -82,6 +82,8 @@ viewer.globe.material.mode = "standard"
 
 ;(window as any).viewer = viewer
 
+
+
 const rawRenderer = viewer.renderer.raw
 if (!(rawRenderer instanceof THREE.WebGLRenderer)) {
   throw new Error("This Gaussian splat example requires WebGLRenderer.")
@@ -99,6 +101,7 @@ let requestController: AbortController | null = null
 let generation = 0
 let animationFrame = 0
 let previousVisibleCount = -1
+
 
 function setStatus(message: string) { panel?.setStatus(message) }
 

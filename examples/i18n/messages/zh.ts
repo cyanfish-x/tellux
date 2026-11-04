@@ -133,6 +133,7 @@ export const zh: MessageTable = {
   'sandcastle.console.clear': 'Clear',
   'sandcastle.console.title': 'Console',
   'sandcastle.status.running': 'Running example...',
+  'sandcastle.card.experimental': '实验',
   'sandcastle.registry.defaultDescription': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',
   'example.basic.registry.title': '三维地球',
   'example.basic.registry.description': '完整页面示例，可编辑 JavaScript 和 HTML/CSS 后重新运行。',

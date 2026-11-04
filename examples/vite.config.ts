@@ -1,10 +1,30 @@
 import { resolve } from "node:path"
 import https from "node:https"
-import { defineConfig, loadEnv, type ProxyOptions } from "vite"
+import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from "vite"
+import { stripRuntimeDocumentationPlugin } from "../src/build/stripRuntimeDocumentation"
 import {
   TIANDITU_DEV_TILE_PROXY_PREFIX,
   TIANDITU_SUBDOMAINS,
 } from "./tiandituDevProxy"
+import { EXPERIMENTAL_EXAMPLE_IDS } from "./experimental-examples"
+
+/**
+ * 生产构建时把实验页的 `?raw` 源码替换为空串，避免 Sandcastle 的 glob 将其打包；
+ * registry 在非开发模式已跳过这些 id。
+ */
+function omitExperimentalExampleSourcesPlugin(): Plugin {
+  const pattern = new RegExp(
+    `[\\\\/]examples[\\\\/](?:${EXPERIMENTAL_EXAMPLE_IDS.join("|")})\\.(?:html|ts)\\?raw$`
+  )
+  return {
+    name: "tellux-omit-experimental-example-sources",
+    apply: "build",
+    enforce: "pre",
+    load(id) {
+      return pattern.test(id) ? 'export default ""' : null
+    },
+  }
+}
 
 function resolveTiandituDevReferer(raw: string): { origin: string; referer: string } {
   try {
@@ -139,6 +159,7 @@ function createTiandituDevProxy(refererOrigin: string): Record<string, ProxyOpti
 }
 
 const projectRoot = resolve(__dirname, "..")
+// 实验页（examples/experimental-examples.ts）只由开发服务直接提供，不列为生产构建入口。
 const htmlInputs = {
   index: resolve(__dirname, "index.html"),
   gallery: resolve(__dirname, "gallery.html"),
@@ -216,6 +237,8 @@ export default defineConfig(({ mode }) => {
       ],
     },
     plugins: [
+      omitExperimentalExampleSourcesPlugin(),
+      stripRuntimeDocumentationPlugin(),
       {
         name: "tellux-favicon",
         transformIndexHtml(html) {

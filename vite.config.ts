@@ -4,6 +4,7 @@ import {
   isBundledExternalModule,
   isPeerDependencyExternal
 } from './src/build/peerDependencyExternal'
+import { stripRuntimeDocumentationPlugin } from './src/build/stripRuntimeDocumentation'
 
 const telluxAssetUrlMarker = '__TELLUX_ASSET_URL__/'
 
@@ -58,6 +59,7 @@ function assertPeerDependenciesExternal(): Plugin {
 
 export default defineConfig({
   plugins: [
+    stripRuntimeDocumentationPlugin(),
     preserveTelluxAssetUrls(),
     assertPeerDependenciesExternal()
   ],

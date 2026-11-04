@@ -12,6 +12,8 @@ export interface SandcastleExample {
   sourceHtmlPath: string
   sourceScriptPath: string
   thumbnail?: string
+  /** 仅开发服务展示的实验示例。 Experimental example shown only by the dev server. */
+  experimental?: boolean
 }
 
 export type SandcastleEditorPane = "javascript" | "html"
